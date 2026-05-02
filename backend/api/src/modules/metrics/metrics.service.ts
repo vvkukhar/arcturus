@@ -1,12 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { Queue, type ConnectionOptions } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 
-function redisConnection() {
+function redisConnection(): ConnectionOptions {
+  const redisUrl = process.env.REDIS_URL?.trim();
+
+  if (redisUrl) {
+    return {
+      url: redisUrl,
+      maxRetriesPerRequest: null,
+    };
+  }
+
   return {
     host: process.env.REDIS_HOST ?? 'localhost',
     port: Number(process.env.REDIS_PORT ?? 6379),
     password: process.env.REDIS_PASSWORD || undefined,
+    maxRetriesPerRequest: null,
   };
 }
 
@@ -147,12 +157,13 @@ export class MetricsService {
 
   async getQueueHealth(): Promise<unknown[]> {
     const queueNames = ['market', 'decisions', 'scraper', 'maintenance'];
+    const connection = redisConnection();
 
     const result = [];
 
     for (const name of queueNames) {
       const queue = new Queue(name, {
-        connection: redisConnection(),
+        connection,
       });
 
       const [waiting, active, completed, failed, delayed] = await Promise.all([
