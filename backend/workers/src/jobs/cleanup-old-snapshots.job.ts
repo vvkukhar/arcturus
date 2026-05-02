@@ -1,5 +1,9 @@
 import { prisma } from '../prisma';
 
+type IdRow = {
+  id: string;
+};
+
 export async function cleanupOldSnapshotsJob(params?: {
   keepPerItem?: number;
 }): Promise<{
@@ -18,7 +22,7 @@ export async function cleanupOldSnapshotsJob(params?: {
   let deletedDecisions = 0;
 
   for (const item of items) {
-    const snapshots = await prisma.marketSnapshot.findMany({
+    const snapshots: IdRow[] = await prisma.marketSnapshot.findMany({
       where: {
         itemId: item.id,
       },
@@ -35,7 +39,7 @@ export async function cleanupOldSnapshotsJob(params?: {
       const result = await prisma.marketSnapshot.deleteMany({
         where: {
           id: {
-            in: snapshots.map((snapshot) => snapshot.id),
+            in: snapshots.map((snapshot: IdRow) => snapshot.id),
           },
         },
       });
@@ -43,7 +47,7 @@ export async function cleanupOldSnapshotsJob(params?: {
       deletedSnapshots += result.count;
     }
 
-    const decisions = await prisma.decisionSnapshot.findMany({
+    const decisions: IdRow[] = await prisma.decisionSnapshot.findMany({
       where: {
         itemId: item.id,
       },
@@ -60,7 +64,7 @@ export async function cleanupOldSnapshotsJob(params?: {
       const result = await prisma.decisionSnapshot.deleteMany({
         where: {
           id: {
-            in: decisions.map((decision) => decision.id),
+            in: decisions.map((decision: IdRow) => decision.id),
           },
         },
       });

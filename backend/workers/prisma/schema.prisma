@@ -83,12 +83,13 @@ model InventoryItem {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  item         Item              @relation(fields: [itemId], references: [id])
-  assignedUser User?            @relation(fields: [assignedUserId], references: [id])
-  images       InventoryImage[]
-  sales        Sale[]
-  repriceFlows RepriceFlowItem[]
-  reviewFlows  ReviewFlowItem[]
+  item            Item              @relation(fields: [itemId], references: [id])
+  assignedUser    User?             @relation(fields: [assignedUserId], references: [id])
+  images          InventoryImage[]
+  sales           Sale[]
+  repriceFlows    RepriceFlowItem[]
+  reviewFlows     ReviewFlowItem[]
+  reserveRequests ReserveRequest[]
 
   @@index([itemId])
   @@index([assignedUserId])

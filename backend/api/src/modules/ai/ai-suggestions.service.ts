@@ -10,6 +10,49 @@ import {
 export class AiSuggestionsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  explainDeal(params: {
+    title?: string;
+    buyPrice?: number;
+    targetSellPrice?: number;
+    roiPercent?: number;
+    profit?: number;
+    score?: number;
+  }): unknown {
+    const roi = Number(params.roiPercent ?? 0);
+    const profit = Number(params.profit ?? 0);
+    const score = Number(params.score ?? 0);
+
+    const strengths: string[] = [];
+    const risks: string[] = [];
+
+    if (roi >= 35) strengths.push('Strong ROI profile');
+    else risks.push('ROI is below strong-flip threshold');
+
+    if (profit >= 300) strengths.push('Good absolute profit');
+    else risks.push('Profit may be too small after time and overhead');
+
+    if (score >= 80) strengths.push('High engine score');
+    else risks.push('Engine score is not decisive');
+
+    return {
+      title: params.title ?? 'Deal',
+      verdict:
+        score >= 85 || (roi >= 35 && profit >= 300)
+          ? 'strong_candidate'
+          : roi >= 20 && profit >= 150
+            ? 'watch_or_negotiate'
+            : 'weak_candidate',
+      strengths,
+      risks,
+      summary:
+        score >= 85 || (roi >= 35 && profit >= 300)
+          ? 'This looks like a strong resale candidate.'
+          : roi >= 20 && profit >= 150
+            ? 'This may work, but negotiation or manual review is recommended.'
+            : 'This deal is weak unless there is missing context.',
+    };
+  }
+
   async getSuggestions(): Promise<unknown[]> {
     const [inventory, watchlist, unresolved, staleSources] = await Promise.all([
       this.prisma.inventoryItem.findMany({

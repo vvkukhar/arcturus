@@ -5,11 +5,13 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { InventoryController } from './inventory.controller';
 import { InventoryService } from './inventory.service';
+import { InventoryExportController } from './inventory-export.controller';
+import { InventoryExportService } from './inventory-export.service';
 
 @Module({
   imports: [AuthModule, RealtimeModule, ActivityModule, NotificationsModule],
-  controllers: [InventoryController],
-  providers: [InventoryService],
-  exports: [InventoryService],
+  controllers: [InventoryController, InventoryExportController],
+  providers: [InventoryService, InventoryExportService],
+  exports: [InventoryService, InventoryExportService],
 })
 export class InventoryModule {}

@@ -5,18 +5,64 @@ import {
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
+export type AuthUser = {
+  id: string;
+  name: string;
+  email: string | null;
+  role: string;
+};
+
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
+  extractBearerToken(authorization?: string | null): string | null {
+    if (!authorization) {
+      return null;
+    }
+
+    const [type, token] = authorization.split(' ');
+
+    if (type !== 'Bearer' || !token) {
+      return null;
+    }
+
+    return token;
+  }
+
+  async validateToken(token: string): Promise<AuthUser> {
+    return this.verifyToken(token);
+  }
+
+  async verifyToken(token: string): Promise<AuthUser> {
+    const session = await this.prisma.userSession.findUnique({
+      where: {
+        token,
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!session || !session.user || !session.user.active) {
+      throw new UnauthorizedException('Invalid session');
+    }
+
+    if (session.expiresAt && session.expiresAt.getTime() < Date.now()) {
+      throw new UnauthorizedException('Session expired');
+    }
+
+    return {
+      id: session.user.id,
+      name: session.user.name,
+      email: session.user.email,
+      role: session.user.role,
+    };
+  }
+
   async loginWithToken(token: string): Promise<{
     token: string;
-    user: {
-      id: string;
-      name: string;
-      email: string | null;
-      role: string;
-    };
+    user: AuthUser;
   }> {
     const adminToken = process.env.ADMIN_TOKEN;
 

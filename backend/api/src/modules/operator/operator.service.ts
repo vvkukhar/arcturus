@@ -1,3 +1,4 @@
+// backend/api/src/modules/operator/operator.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
@@ -9,24 +10,29 @@ export class OperatorService {
     private readonly realtime: RealtimeGateway,
   ) {}
 
-  async getUnresolvedMatches(status = 'pending', limit = 50): Promise<unknown[]> {
-    return this.prisma.unresolvedMatchQueue.findMany({
-      where: {
-        status,
-      },
+  private async attachListing(queueItem: any): Promise<any> {
+    const listing = await this.prisma.marketListing.findUnique({
+      where: { id: queueItem.listingId },
       include: {
-        listing: {
-          include: {
-            source: true,
-            item: true,
-          },
-        },
+        source: true,
+        item: true,
       },
-      orderBy: {
-        createdAt: 'asc',
-      },
+    });
+
+    return {
+      ...queueItem,
+      listing,
+    };
+  }
+
+  async getUnresolvedMatches(status = 'pending', limit = 50): Promise<unknown[]> {
+    const rows = await this.prisma.unresolvedMatchQueue.findMany({
+      where: { status },
+      orderBy: { createdAt: 'asc' },
       take: limit,
     });
+
+    return Promise.all(rows.map((row) => this.attachListing(row)));
   }
 
   async resolveMatch(params: {
@@ -35,22 +41,15 @@ export class OperatorService {
     operatorNote?: string;
   }): Promise<unknown> {
     const queueItem = await this.prisma.unresolvedMatchQueue.findUnique({
-      where: {
-        id: params.queueId,
-      },
-      include: {
-        listing: true,
-      },
+      where: { id: params.queueId },
     });
 
-    if (queueItem == null) {
+    if (!queueItem) {
       throw new NotFoundException('Queue item not found');
     }
 
     const targetItem = await this.prisma.item.findUnique({
-      where: {
-        id: params.itemId,
-      },
+      where: { id: params.itemId },
     });
 
     if (!targetItem) {
@@ -59,25 +58,17 @@ export class OperatorService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.marketListing.update({
-        where: {
-          id: queueItem.listingId,
-        },
-        data: {
-          itemId: params.itemId,
-        },
+        where: { id: queueItem.listingId },
+        data: { itemId: params.itemId },
       });
 
       return tx.unresolvedMatchQueue.update({
-        where: {
-          id: params.queueId,
-        },
+        where: { id: params.queueId },
         data: {
           suggestedItemId: params.itemId,
-          operatorNote: params.operatorNote,
+          resolvedItemId: params.itemId,
+          resolutionNote: params.operatorNote ?? null,
           status: 'resolved',
-        },
-        include: {
-          listing: true,
         },
       });
     });
@@ -95,7 +86,7 @@ export class OperatorService {
     this.realtime.emitItemRefresh(params.itemId, 'operator_match_resolved');
     this.realtime.emitOpportunityRefresh('operator_match_resolved');
 
-    return result;
+    return this.attachListing(result);
   }
 
   async dismissMatch(params: {
@@ -103,21 +94,17 @@ export class OperatorService {
     operatorNote?: string;
   }): Promise<unknown> {
     const queueItem = await this.prisma.unresolvedMatchQueue.findUnique({
-      where: {
-        id: params.queueId,
-      },
+      where: { id: params.queueId },
     });
 
-    if (queueItem == null) {
+    if (!queueItem) {
       throw new NotFoundException('Queue item not found');
     }
 
     const updated = await this.prisma.unresolvedMatchQueue.update({
-      where: {
-        id: params.queueId,
-      },
+      where: { id: params.queueId },
       data: {
-        operatorNote: params.operatorNote,
+        resolutionNote: params.operatorNote ?? null,
         status: 'dismissed',
       },
     });
@@ -126,7 +113,7 @@ export class OperatorService {
       queueId: params.queueId,
     });
 
-    return updated;
+    return this.attachListing(updated);
   }
 
   async updateOperatorNote(params: {
@@ -134,23 +121,21 @@ export class OperatorService {
     operatorNote: string;
   }): Promise<unknown> {
     const queueItem = await this.prisma.unresolvedMatchQueue.findUnique({
-      where: {
-        id: params.queueId,
-      },
+      where: { id: params.queueId },
     });
 
-    if (queueItem == null) {
+    if (!queueItem) {
       throw new NotFoundException('Queue item not found');
     }
 
-    return this.prisma.unresolvedMatchQueue.update({
-      where: {
-        id: params.queueId,
-      },
+    const updated = await this.prisma.unresolvedMatchQueue.update({
+      where: { id: params.queueId },
       data: {
-        operatorNote: params.operatorNote,
+        resolutionNote: params.operatorNote,
       },
     });
+
+    return this.attachListing(updated);
   }
 
   async getUnresolvedSummary(): Promise<{
@@ -160,21 +145,9 @@ export class OperatorService {
     total: number;
   }> {
     const [pending, resolved, dismissed] = await Promise.all([
-      this.prisma.unresolvedMatchQueue.count({
-        where: {
-          status: 'pending',
-        },
-      }),
-      this.prisma.unresolvedMatchQueue.count({
-        where: {
-          status: 'resolved',
-        },
-      }),
-      this.prisma.unresolvedMatchQueue.count({
-        where: {
-          status: 'dismissed',
-        },
-      }),
+      this.prisma.unresolvedMatchQueue.count({ where: { status: 'pending' } }),
+      this.prisma.unresolvedMatchQueue.count({ where: { status: 'resolved' } }),
+      this.prisma.unresolvedMatchQueue.count({ where: { status: 'dismissed' } }),
     ]);
 
     return {
@@ -186,36 +159,23 @@ export class OperatorService {
   }
 
   async getOperatorDashboard(): Promise<unknown> {
-    const [summary, oldestPending, recentResolved] = await Promise.all([
+    const [summary, oldestPendingRaw, recentResolvedRaw] = await Promise.all([
       this.getUnresolvedSummary(),
       this.prisma.unresolvedMatchQueue.findMany({
-        where: {
-          status: 'pending',
-        },
-        orderBy: {
-          createdAt: 'asc',
-        },
+        where: { status: 'pending' },
+        orderBy: { createdAt: 'asc' },
         take: 10,
-        include: {
-          listing: {
-            include: {
-              source: true,
-            },
-          },
-        },
       }),
       this.prisma.unresolvedMatchQueue.findMany({
-        where: {
-          status: 'resolved',
-        },
-        orderBy: {
-          updatedAt: 'desc',
-        },
+        where: { status: 'resolved' },
+        orderBy: { updatedAt: 'desc' },
         take: 10,
-        include: {
-          listing: true,
-        },
       }),
+    ]);
+
+    const [oldestPending, recentResolved] = await Promise.all([
+      Promise.all(oldestPendingRaw.map((row) => this.attachListing(row))),
+      Promise.all(recentResolvedRaw.map((row) => this.attachListing(row))),
     ]);
 
     return {

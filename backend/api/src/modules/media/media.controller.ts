@@ -1,3 +1,4 @@
+// backend/api/src/modules/media/media.controller.ts
 import {
   Body,
   Controller,
@@ -14,7 +15,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-import { MediaService } from './media.service';
+import { MediaService, UploadedInventoryImageFile } from './media.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'operator')
@@ -25,7 +26,7 @@ export class MediaController {
   @Post('inventory-image')
   @UseInterceptors(FileInterceptor('file'))
   addInventoryImage(
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFile() file: UploadedInventoryImageFile | undefined,
     @Body()
     body: {
       inventoryItemId: string;
@@ -42,22 +43,12 @@ export class MediaController {
   }
 
   @Delete('inventory-image')
-  deleteInventoryImage(
-    @Body()
-    body: {
-      imageId: string;
-    },
-  ): Promise<unknown> {
+  deleteInventoryImage(@Body() body: { imageId: string }): Promise<unknown> {
     return this.mediaService.deleteInventoryImage(body.imageId);
   }
 
   @Patch('inventory-image/primary')
-  setPrimaryInventoryImage(
-    @Body()
-    body: {
-      imageId: string;
-    },
-  ): Promise<unknown> {
+  setPrimaryInventoryImage(@Body() body: { imageId: string }): Promise<unknown> {
     return this.mediaService.setPrimaryInventoryImage(body.imageId);
   }
 

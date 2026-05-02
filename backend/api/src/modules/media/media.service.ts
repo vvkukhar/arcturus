@@ -1,11 +1,17 @@
+// backend/api/src/modules/media/media.service.ts
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ActivityService } from '../activity/activity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import { ActivityService } from '../activity/activity.service';
+
+export type UploadedInventoryImageFile = {
+  buffer: Buffer;
+  mimetype: string;
+};
 
 @Injectable()
 export class MediaService {
@@ -15,7 +21,7 @@ export class MediaService {
     private readonly activity: ActivityService,
   ) {}
 
-  private buildDataUrl(file: Express.Multer.File): string {
+  private buildDataUrl(file: UploadedInventoryImageFile): string {
     if (!file?.buffer || !file?.mimetype) {
       throw new BadRequestException('Invalid file');
     }
@@ -25,7 +31,7 @@ export class MediaService {
 
   async addInventoryImage(params: {
     inventoryItemId: string;
-    file?: Express.Multer.File;
+    file?: UploadedInventoryImageFile;
     imageUrl?: string;
     altText?: string | null;
   }): Promise<unknown> {
@@ -78,9 +84,7 @@ export class MediaService {
 
   async deleteInventoryImage(imageId: string): Promise<unknown> {
     const existing = await this.prisma.inventoryImage.findUnique({
-      where: {
-        id: imageId,
-      },
+      where: { id: imageId },
     });
 
     if (!existing) {
@@ -88,9 +92,7 @@ export class MediaService {
     }
 
     const deleted = await this.prisma.inventoryImage.delete({
-      where: {
-        id: imageId,
-      },
+      where: { id: imageId },
     });
 
     if (existing.isPrimary) {
@@ -105,12 +107,8 @@ export class MediaService {
 
       if (next) {
         await this.prisma.inventoryImage.update({
-          where: {
-            id: next.id,
-          },
-          data: {
-            isPrimary: true,
-          },
+          where: { id: next.id },
+          data: { isPrimary: true },
         });
       }
     }
@@ -131,9 +129,7 @@ export class MediaService {
 
   async setPrimaryInventoryImage(imageId: string): Promise<unknown> {
     const image = await this.prisma.inventoryImage.findUnique({
-      where: {
-        id: imageId,
-      },
+      where: { id: imageId },
     });
 
     if (!image) {
@@ -150,12 +146,8 @@ export class MediaService {
     });
 
     const updated = await this.prisma.inventoryImage.update({
-      where: {
-        id: imageId,
-      },
-      data: {
-        isPrimary: true,
-      },
+      where: { id: imageId },
+      data: { isPrimary: true },
     });
 
     await this.activity.log('inventory.image_primary_set', {
@@ -193,12 +185,8 @@ export class MediaService {
     await this.prisma.$transaction(
       imageIds.map((imageId, index) =>
         this.prisma.inventoryImage.update({
-          where: {
-            id: imageId,
-          },
-          data: {
-            sortOrder: index,
-          },
+          where: { id: imageId },
+          data: { sortOrder: index },
         }),
       ),
     );

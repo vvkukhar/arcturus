@@ -125,7 +125,7 @@ export class RepricerV2Service {
             ? 0.68
             : 0.45;
 
-    let mode = params.mode ?? 'balanced';
+    let mode: RepriceV2Result['mode'] = params.mode ?? 'balanced';
     let suggested = median;
 
     if (mode === 'fast_sale') {

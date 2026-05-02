@@ -5,6 +5,10 @@ function toMoney(value: number): number {
   return Number(value.toFixed(2));
 }
 
+type SaleRow = {
+  sellPrice: number;
+};
+
 async function evaluateInventoryItem(inventoryItemId: string): Promise<unknown> {
   const inventory = await prisma.inventoryItem.findUnique({
     where: {
@@ -12,7 +16,6 @@ async function evaluateInventoryItem(inventoryItemId: string): Promise<unknown> 
     },
     include: {
       item: true,
-      expenses: true,
     },
   });
 
@@ -20,18 +23,15 @@ async function evaluateInventoryItem(inventoryItemId: string): Promise<unknown> 
     return null;
   }
 
-  const expenses = toMoney(
-    inventory.expenses.reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0),
-  );
-
-  const totalCost = toMoney(Number(inventory.totalCost ?? 0) + expenses);
+  const totalCost = toMoney(Number(inventory.totalCost ?? 0));
   const currentExpected = toMoney(
     Number(inventory.expectedSalePriceManual ?? inventory.totalCost ?? 0),
   );
 
   const targetRoiPercent = 35;
   const expectedProfit = toMoney(currentExpected - totalCost);
-  const roiPercent = totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
+  const roiPercent =
+    totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
 
   let action = 'HOLD';
   let score = 50;
@@ -68,7 +68,6 @@ async function evaluateInventoryItem(inventoryItemId: string): Promise<unknown> 
       payloadJson: {
         inventoryItemId: inventory.id,
         totalCost,
-        expenses,
         currentExpected,
         expectedProfit,
         roiPercent,
@@ -100,36 +99,35 @@ async function evaluateListing(listingId: string): Promise<unknown> {
     return null;
   }
 
-  const historicalSales = await prisma.sale.findMany({
+  const historicalSales: SaleRow[] = await prisma.sale.findMany({
     where: {
       itemId: listing.itemId,
+    },
+    select: {
+      sellPrice: true,
     },
   });
 
   const avgSellPrice =
     historicalSales.length > 0
       ? toMoney(
-          historicalSales.reduce((sum, sale) => sum + Number(sale.sellPrice ?? 0), 0) /
-            historicalSales.length,
+          historicalSales.reduce(
+            (sum: number, sale: SaleRow) =>
+              sum + Number(sale.sellPrice ?? 0),
+            0,
+          ) / historicalSales.length,
         )
       : toMoney(totalCost * 1.4);
 
   const expectedProfit = toMoney(avgSellPrice - totalCost);
-  const roiPercent = totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
+  const roiPercent =
+    totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
 
   let score = 50 + Math.min(30, roiPercent / 2);
 
-  if (expectedProfit < 0) {
-    score -= 60;
-  }
-
-  if (roiPercent < 15) {
-    score -= 25;
-  }
-
-  if (roiPercent >= 40) {
-    score += 15;
-  }
+  if (expectedProfit < 0) score -= 60;
+  if (roiPercent < 15) score -= 25;
+  if (roiPercent >= 40) score += 15;
 
   score = Math.max(0, Math.min(100, toMoney(score)));
 
@@ -206,18 +204,12 @@ export async function recomputeDecisionsJob(): Promise<{
 
   for (const row of inventory) {
     const result = await evaluateInventoryItem(row.id);
-
-    if (result) {
-      inventoryEvaluated += 1;
-    }
+    if (result) inventoryEvaluated += 1;
   }
 
   for (const listing of listings) {
     const result = await evaluateListing(listing.id);
-
-    if (result) {
-      listingsEvaluated += 1;
-    }
+    if (result) listingsEvaluated += 1;
   }
 
   await prisma.activityLog.create({

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { toMoney } from '../../common/money.utils';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -316,7 +317,7 @@ export class ReportsService {
         type: 'financial',
         periodStart: from,
         periodEnd: to,
-        payloadJson: payload,
+        payloadJson: payload as Prisma.InputJsonValue,
       },
     });
   }

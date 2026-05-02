@@ -10,6 +10,24 @@ import { SmartPricingService } from '../strategy/smart-pricing.service';
 export class PricingService {
   constructor(private readonly smartPricing: SmartPricingService) {}
 
+  calculateROI(params: {
+    buyPrice: number;
+    sellPrice: number;
+  }): number {
+    const buyPrice = toMoney(params.buyPrice);
+    const sellPrice = toMoney(params.sellPrice);
+
+    const profit = calculateProfit({
+      revenue: sellPrice,
+      cost: buyPrice,
+    });
+
+    return calculateRoiPercent({
+      profit,
+      cost: buyPrice,
+    });
+  }
+
   analyze(params: {
     buyPrice: number;
     sellPrice?: number | null;

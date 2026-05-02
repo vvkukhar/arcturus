@@ -12,8 +12,8 @@ export async function scheduledRefreshJob(): Promise<{
     snapshotsCreated: number;
   };
   decisions?: {
-    inventoryDecisions: number;
-    watchlistDecisions: number;
+    inventoryEvaluated: number;
+    listingsEvaluated: number;
   };
   stale?: {
     markedStale: number;

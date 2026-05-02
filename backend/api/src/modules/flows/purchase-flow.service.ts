@@ -89,7 +89,7 @@ export class PurchaseFlowService {
       id: row.id,
       status: row.status,
       selectedPrice: row.selectedPrice,
-      selectedSource: row.selectedSource,
+      selectedSource: row.reason,
       watchlistItemId: row.watchlistItemId,
       itemId: row.watchlistItem.itemId,
       title: row.watchlistItem.titleSnapshot,
@@ -151,7 +151,9 @@ export class PurchaseFlowService {
       data: {
         watchlistItemId: body.watchlistItemId,
         selectedPrice,
-        selectedSource: body.selectedSource ?? 'manual',
+        reason: body.selectedSource
+          ? `Selected source: ${body.selectedSource}`
+          : 'Selected source: manual',
         status: 'pending',
       },
       include: {
@@ -270,11 +272,9 @@ export class PurchaseFlowService {
           itemId: flowItem.watchlistItem.itemId,
           titleSnapshot: flowItem.watchlistItem.titleSnapshot,
           purchasePrice: body.purchasePrice,
-          extraCosts,
           totalCost,
           quantity: body.quantity,
           condition: body.condition ?? 'used',
-          completenessPercent,
           sealed: body.sealed ?? false,
           expectedSalePriceManual: flowItem.watchlistItem.targetSellPrice ?? null,
           notes: body.notes,

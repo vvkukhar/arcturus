@@ -19,6 +19,13 @@ export async function enqueueUnresolvedMatch(params: {
     },
   });
 
+  const resolutionNote =
+    params.reason || params.confidence != null
+      ? `Auto match: ${params.reason ?? 'unresolved'} / confidence ${
+          params.confidence ?? 0
+        }`
+      : undefined;
+
   if (existing) {
     await prisma.unresolvedMatchQueue.update({
       where: {
@@ -28,12 +35,7 @@ export async function enqueueUnresolvedMatch(params: {
         normalizedTitle,
         extractedSetNo,
         suggestedItemId: params.suggestedItemId ?? existing.suggestedItemId,
-        operatorNote:
-          params.reason || params.confidence != null
-            ? `Auto match: ${params.reason ?? 'unresolved'} / confidence ${
-                params.confidence ?? 0
-              }`
-            : existing.operatorNote,
+        resolutionNote: resolutionNote ?? existing.resolutionNote,
       },
     });
 
@@ -48,12 +50,7 @@ export async function enqueueUnresolvedMatch(params: {
       normalizedTitle,
       extractedSetNo,
       suggestedItemId: params.suggestedItemId ?? null,
-      operatorNote:
-        params.reason || params.confidence != null
-          ? `Auto match: ${params.reason ?? 'unresolved'} / confidence ${
-              params.confidence ?? 0
-            }`
-          : null,
+      resolutionNote: resolutionNote ?? null,
       status: 'pending',
     },
   });

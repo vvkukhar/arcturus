@@ -80,14 +80,14 @@ export async function autoQueueOpportunitiesJob(params?: {
       continue;
     }
 
-    await prisma.purchaseFlowItem.create({
-      data: {
-        watchlistItemId: item.id,
-        selectedPrice: buyPrice,
-        selectedSource: listing.source?.code ?? 'market',
-        status: 'queued',
-      },
-    });
+await prisma.purchaseFlowItem.create({
+  data: {
+    watchlistItemId: item.id,
+    selectedPrice: buyPrice,
+    status: 'queued',
+    reason: `Queued from ${listing.source?.code ?? 'market'}`,
+  },
+});
 
     queued += 1;
   }

@@ -124,12 +124,13 @@ export class DecisionEngineService {
 
     const buyPrice = toMoney(dto.buyPrice ?? listing?.price ?? 0);
     const shippingPrice = toMoney(dto.shippingPrice ?? listing?.shippingPrice ?? 0);
-    const targetSellPrice = toMoney(
-      dto.targetSellPrice ??
-        economics.avgSellPrice ??
-        Number(listing?.price ?? 0) * 1.4 ??
-        buyPrice * 1.4,
-    );
+const fallbackSellPrice = Number(listing?.price ?? 0) * 1.4;
+
+const targetSellPrice = toMoney(
+  dto.targetSellPrice ??
+    economics.avgSellPrice ??
+    (fallbackSellPrice || buyPrice * 1.4),
+);
 
     if (buyPrice <= 0) {
       throw new BadRequestException('buyPrice is required');

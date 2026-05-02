@@ -2,6 +2,14 @@ import { convertToUah } from '../common/currency-converter';
 import { avg, median } from '../common/money';
 import { prisma } from '../prisma';
 
+type MarketListingRow = {
+  price: number;
+  currency: string;
+  shippingPrice: number | null;
+  shippingCurrency: string | null;
+  sealed: boolean | null;
+};
+
 function confidenceFromCount(count: number): number {
   if (count >= 10) return 0.95;
   if (count >= 5) return 0.8;
@@ -23,10 +31,17 @@ export async function recomputeMarketSnapshotsJob(): Promise<{
   let snapshotsCreated = 0;
 
   for (const item of items) {
-    const listings = await prisma.marketListing.findMany({
+    const listings: MarketListingRow[] = await prisma.marketListing.findMany({
       where: {
         itemId: item.id,
         status: 'active',
+      },
+      select: {
+        price: true,
+        currency: true,
+        shippingPrice: true,
+        shippingCurrency: true,
+        sealed: true,
       },
     });
 
@@ -45,11 +60,13 @@ export async function recomputeMarketSnapshotsJob(): Promise<{
     }
 
     const prices = listings
-      .map((listing) => convertToUah(listing.price, listing.currency))
-      .filter((value) => Number.isFinite(value) && value > 0);
+      .map((listing: MarketListingRow) =>
+        convertToUah(listing.price, listing.currency),
+      )
+      .filter((value: number) => Number.isFinite(value) && value > 0);
 
     const pricesWithShipping = listings
-      .map((listing) => {
+      .map((listing: MarketListingRow) => {
         const price = convertToUah(listing.price, listing.currency);
         const shipping = convertToUah(
           listing.shippingPrice ?? 0,
@@ -58,26 +75,30 @@ export async function recomputeMarketSnapshotsJob(): Promise<{
 
         return price + shipping;
       })
-      .filter((value) => Number.isFinite(value) && value > 0);
+      .filter((value: number) => Number.isFinite(value) && value > 0);
 
     const shipping = listings
-      .map((listing) =>
+      .map((listing: MarketListingRow) =>
         convertToUah(
           listing.shippingPrice ?? 0,
           listing.shippingCurrency ?? listing.currency,
         ),
       )
-      .filter((value) => Number.isFinite(value) && value >= 0);
+      .filter((value: number) => Number.isFinite(value) && value >= 0);
 
     const sealedPrices = listings
-      .filter((listing) => listing.sealed === true)
-      .map((listing) => convertToUah(listing.price, listing.currency))
-      .filter((value) => Number.isFinite(value) && value > 0);
+      .filter((listing: MarketListingRow) => listing.sealed === true)
+      .map((listing: MarketListingRow) =>
+        convertToUah(listing.price, listing.currency),
+      )
+      .filter((value: number) => Number.isFinite(value) && value > 0);
 
     const usedPrices = listings
-      .filter((listing) => listing.sealed !== true)
-      .map((listing) => convertToUah(listing.price, listing.currency))
-      .filter((value) => Number.isFinite(value) && value > 0);
+      .filter((listing: MarketListingRow) => listing.sealed !== true)
+      .map((listing: MarketListingRow) =>
+        convertToUah(listing.price, listing.currency),
+      )
+      .filter((value: number) => Number.isFinite(value) && value > 0);
 
     await prisma.marketSnapshot.create({
       data: {

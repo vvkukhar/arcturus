@@ -204,8 +204,8 @@ export class OpportunityEngineService {
               data: {
                 watchlistItemId: watch.id,
                 selectedPrice: buyPrice,
-                selectedSource: listing.source?.code ?? 'market',
                 status: 'queued',
+                reason: `Queued from ${listing.source?.code ?? 'market'}`,
               },
             });
 
