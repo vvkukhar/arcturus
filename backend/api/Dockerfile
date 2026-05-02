@@ -3,7 +3,6 @@ FROM node:22-alpine AS deps
 
 WORKDIR /app
 
-# 🔧 FIX Prisma (openssl)
 RUN apk add --no-cache openssl
 
 COPY package.json package-lock.json* ./
@@ -42,5 +41,4 @@ COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 4000
 
-# 🔥 запускаємо міграції + сервер
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+CMD ["node", "dist/main.js"]
