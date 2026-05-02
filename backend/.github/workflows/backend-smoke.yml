@@ -1,0 +1,76 @@
+name: Backend Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: arcturus_smoke
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d arcturus_smoke"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    defaults:
+      run:
+        working-directory: backend/api
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/arcturus_smoke
+      ADMIN_TOKEN: supersecret
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      CORS_ORIGIN: http://localhost:3000
+      API_BASE: http://localhost:4000/api
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/api/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Prisma setup
+        run: |
+          npx prisma generate
+          npx prisma db push
+          npm run seed
+
+      - name: Build
+        run: npm run build
+
+      - name: Start API
+        run: |
+          npm run start > api.log 2>&1 &
+          sleep 8
+
+      - name: Smoke test
+        run: npm run smoke
+
+      - name: Print API logs on failure
+        if: failure()
+        run: cat api.log

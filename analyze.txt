@@ -1,0 +1,669 @@
+﻿Analyzing lego_trading_manager...                               
+
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/settings/presentation/system_health_screen.dart' - lib\app\app.dart:30:8 - uri_does_not_exist
+  error - The method 'buildAppTheme' isn't defined for the type 'LegoTradingApp' - lib\app\app.dart:42:14 - undefined_method
+  error - The getter 'home' isn't defined for the type 'AppRouter' - lib\app\app.dart:43:31 - undefined_getter
+  error - The getter 'home' isn't defined for the type 'AppRouter' - lib\app\app.dart:45:19 - undefined_getter
+  error - The getter 'addItem' isn't defined for the type 'AppRouter' - lib\app\app.dart:48:19 - undefined_getter
+  error - The getter 'market' isn't defined for the type 'AppRouter' - lib\app\app.dart:50:19 - undefined_getter
+  error - The getter 'marketNotesCenter' isn't defined for the type 'AppRouter' - lib\app\app.dart:51:19 - undefined_getter
+  error - The getter 'purchases' isn't defined for the type 'AppRouter' - lib\app\app.dart:52:19 - undefined_getter
+  error - The name 'PurchasesScreen' isn't a class - lib\app\app.dart:52:43 - creation_with_non_type
+  error - The getter 'addPurchase' isn't defined for the type 'AppRouter' - lib\app\app.dart:53:19 - undefined_getter
+  error - The getter 'sales' isn't defined for the type 'AppRouter' - lib\app\app.dart:54:19 - undefined_getter
+  error - The name 'SalesScreen' is defined in the libraries 'package:lego_trading_manager/features/purchases/presentation/purchases_screen.dart' and 'package:lego_trading_manager/features/sales/presentation/sales_screen.dart' - lib\app\app.dart:54:39 - ambiguous_import
+  error - The getter 'addSale' isn't defined for the type 'AppRouter' - lib\app\app.dart:55:19 - undefined_getter
+  error - The getter 'analytics' isn't defined for the type 'AppRouter' - lib\app\app.dart:56:19 - undefined_getter
+  error - The getter 'settings' isn't defined for the type 'AppRouter' - lib\app\app.dart:57:19 - undefined_getter
+  error - The getter 'export' isn't defined for the type 'AppRouter' - lib\app\app.dart:58:19 - undefined_getter
+  error - The getter 'importRestore' isn't defined for the type 'AppRouter' - lib\app\app.dart:59:19 - undefined_getter
+  error - The getter 'backupHistory' isn't defined for the type 'AppRouter' - lib\app\app.dart:60:19 - undefined_getter
+  error - The getter 'commandCenter' isn't defined for the type 'AppRouter' - lib\app\app.dart:61:19 - undefined_getter
+  error - The getter 'systemHealth' isn't defined for the type 'AppRouter' - lib\app\app.dart:62:19 - undefined_getter
+  error - The name 'SystemHealthScreen' isn't a class - lib\app\app.dart:62:46 - creation_with_non_type
+  error - The getter 'manualActionReports' isn't defined for the type 'AppRouter' - lib\app\app.dart:63:19 - undefined_getter
+  error - The getter 'activityLog' isn't defined for the type 'AppRouter' - lib\app\app.dart:64:19 - undefined_getter
+  error - The getter 'activityTimeline' isn't defined for the type 'AppRouter' - lib\app\app.dart:65:19 - undefined_getter
+  error - The getter 'globalSearch' isn't defined for the type 'AppRouter' - lib\app\app.dart:66:19 - undefined_getter
+  error - The getter 'deadStockCenter' isn't defined for the type 'AppRouter' - lib\app\app.dart:67:19 - undefined_getter
+  error - The getter 'inventoryActionCenter' isn't defined for the type 'AppRouter' - lib\app\app.dart:68:19 - undefined_getter
+  error - The getter 'opportunityCenter' isn't defined for the type 'AppRouter' - lib\app\app.dart:70:19 - undefined_getter
+  error - The getter 'dealEvaluator' isn't defined for the type 'AppRouter' - lib\app\app.dart:71:19 - undefined_getter
+  error - The getter 'dealHistory' isn't defined for the type 'AppRouter' - lib\app\app.dart:72:19 - undefined_getter
+   info - The imported package 'uuid' isn't a dependency of the importing package - lib\core\offline\offline_mutation_service.dart:1:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:uuid/uuid.dart' - lib\core\offline\offline_mutation_service.dart:1:8 - uri_does_not_exist
+  error - Undefined class 'Uuid' - lib\core\offline\offline_mutation_service.dart:11:9 - undefined_class
+  error - The name 'Uuid' isn't a class - lib\core\offline\offline_mutation_service.dart:11:28 - creation_with_non_type
+  error - Undefined name 'ConflictAlgorithm' - lib\core\storage\cache_repository.dart:16:26 - undefined_identifier
+   info - The imported package 'shared_preferences' isn't a dependency of the importing package - lib\core\storage\json_store.dart:1:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:shared_preferences/shared_preferences.dart' - lib\core\storage\json_store.dart:1:8 - uri_does_not_exist
+  error - Undefined name 'SharedPreferences' - lib\core\storage\json_store.dart:7:25 - undefined_identifier
+  error - Undefined name 'SharedPreferences' - lib\core\storage\json_store.dart:12:25 - undefined_identifier
+  error - Undefined name 'SharedPreferences' - lib\core\storage\json_store.dart:17:25 - undefined_identifier
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\ui\app_offline_banner.dart:8:25 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\ui\status_badge.dart:31:25 - deprecated_member_use
+  error - The getter 'home' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:45:32 - undefined_getter
+  error - The getter 'market' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:69:32 - undefined_getter
+  error - The getter 'marketNotesCenter' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:75:32 - undefined_getter
+  error - The getter 'purchases' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:81:32 - undefined_getter
+  error - The getter 'sales' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:87:32 - undefined_getter
+  error - The getter 'analytics' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:93:32 - undefined_getter
+  error - The getter 'commandCenter' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:99:32 - undefined_getter
+  error - The getter 'opportunityCenter' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:105:32 - undefined_getter
+  error - The getter 'deadStockCenter' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:111:32 - undefined_getter
+  error - The getter 'inventoryActionCenter' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:117:32 - undefined_getter
+  error - The getter 'dealEvaluator' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:123:32 - undefined_getter
+  error - The getter 'dealHistory' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:129:32 - undefined_getter
+  error - The getter 'activityLog' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:135:32 - undefined_getter
+  error - The getter 'settings' isn't defined for the type 'AppRouter' - lib\core\widgets\app_drawer.dart:141:32 - undefined_getter
+   info - The imported package 'shared_preferences' isn't a dependency of the importing package - lib\data\datasources\cache\shared_prefs_cache_datasource.dart:3:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:shared_preferences/shared_preferences.dart' - lib\data\datasources\cache\shared_prefs_cache_datasource.dart:3:8 - uri_does_not_exist
+  error - Undefined name 'SharedPreferences' - lib\data\datasources\cache\shared_prefs_cache_datasource.dart:9:25 - undefined_identifier
+  error - Undefined name 'SharedPreferences' - lib\data\datasources\cache\shared_prefs_cache_datasource.dart:15:25 - undefined_identifier
+  error - Undefined name 'SharedPreferences' - lib\data\datasources\cache\shared_prefs_cache_datasource.dart:21:25 - undefined_identifier
+   info - The imported package 'shared_preferences' isn't a dependency of the importing package - lib\data\datasources\cache\shared_prefs_currency_cache_datasource.dart:5:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:shared_preferences/shared_preferences.dart' - lib\data\datasources\cache\shared_prefs_currency_cache_datasource.dart:5:8 - uri_does_not_exist
+  error - Undefined name 'SharedPreferences' - lib\data\datasources\cache\shared_prefs_currency_cache_datasource.dart:15:25 - undefined_identifier
+  error - Undefined name 'SharedPreferences' - lib\data\datasources\cache\shared_prefs_currency_cache_datasource.dart:26:25 - undefined_identifier
+  error - Undefined name 'SharedPreferences' - lib\data\datasources\cache\shared_prefs_currency_cache_datasource.dart:32:25 - undefined_identifier
+   info - The imported package 'shared_preferences' isn't a dependency of the importing package - lib\data\datasources\manual\shared_prefs_manual_currency_rates_datasource.dart:5:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:shared_preferences/shared_preferences.dart' - lib\data\datasources\manual\shared_prefs_manual_currency_rates_datasource.dart:5:8 - uri_does_not_exist
+  error - Undefined name 'SharedPreferences' - lib\data\datasources\manual\shared_prefs_manual_currency_rates_datasource.dart:15:25 - undefined_identifier
+  error - Undefined name 'SharedPreferences' - lib\data\datasources\manual\shared_prefs_manual_currency_rates_datasource.dart:32:25 - undefined_identifier
+   info - The imported package 'shared_preferences' isn't a dependency of the importing package - lib\data\persistence\shared_prefs_json_store.dart:3:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:shared_preferences/shared_preferences.dart' - lib\data\persistence\shared_prefs_json_store.dart:3:8 - uri_does_not_exist
+  error - Undefined name 'SharedPreferences' - lib\data\persistence\shared_prefs_json_store.dart:7:25 - undefined_identifier
+  error - Undefined name 'SharedPreferences' - lib\data\persistence\shared_prefs_json_store.dart:12:25 - undefined_identifier
+  error - Undefined name 'SharedPreferences' - lib\data\persistence\shared_prefs_json_store.dart:17:25 - undefined_identifier
+  error - The getter 'activeDaysInLast7' isn't defined for the type 'ActivityConsistencyModel' - lib\features\activity\application\activity_discipline_provider.dart:10:19 - undefined_getter
+  error - The getter 'activeDaysInLast7' isn't defined for the type 'ActivityConsistencyModel' - lib\features\activity\application\activity_discipline_provider.dart:12:25 - undefined_getter
+  error - The getter 'activeDaysInLast7' isn't defined for the type 'ActivityConsistencyModel' - lib\features\activity\application\activity_weekly_consistency_ratio_provider.dart:10:21 - undefined_getter
+  error - The argument type 'ActivityMomentumModel (where ActivityMomentumModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_momentum_provider.dart)' can't be assigned to the parameter type 'ActivityMomentumModel (where ActivityMomentumModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_momentum_model.dart)'.  - lib\features\activity\presentation\activity_timeline_screen.dart:164:43 - argument_type_not_assignable
+  error - The argument type 'ActivityWeeklyRhythmModel (where ActivityWeeklyRhythmModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_weekly_rhythm_provider.dart)' can't be assigned to the parameter type 'ActivityWeeklyRhythmModel (where ActivityWeeklyRhythmModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_weekly_rhythm_model.dart)'.  - lib\features\activity\presentation\activity_timeline_screen.dart:166:45 - argument_type_not_assignable
+  error - The argument type 'ActivityConsistencyModel (where ActivityConsistencyModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_consistency_provider.dart)' can't be assigned to the parameter type 'ActivityConsistencyModel (where ActivityConsistencyModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_consistency_model.dart)'.  - lib\features\activity\presentation\activity_timeline_screen.dart:168:44 - argument_type_not_assignable
+  error - The argument type 'ActivityWeeklyStabilityModel (where ActivityWeeklyStabilityModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_weekly_stability_provider.dart)' can't be assigned to the parameter type 'ActivityWeeklyStabilityModel (where ActivityWeeklyStabilityModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_weekly_stability_model.dart)'.  - lib\features\activity\presentation\activity_timeline_screen.dart:170:50 - argument_type_not_assignable
+  error - The argument type 'ActivityControlMomentumCompareModel (where ActivityControlMomentumCompareModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_control_momentum_compare_provider.dart)' can't be assigned to the parameter type 'ActivityControlMomentumCompareModel (where ActivityControlMomentumCompareModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_control_momentum_compare_model.dart)'.  - lib\features\activity\presentation\activity_timeline_screen.dart:182:55 - argument_type_not_assignable
+  error - The argument type 'ActivityOperatingCadenceModel (where ActivityOperatingCadenceModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_operating_cadence_provider.dart)' can't be assigned to the parameter type 'ActivityOperatingCadenceModel (where ActivityOperatingCadenceModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_operating_cadence_model.dart)'.  - lib\features\activity\presentation\activity_timeline_screen.dart:184:49 - argument_type_not_assignable
+  error - The argument type 'ActivityCadenceStabilityCompareModel (where ActivityCadenceStabilityCompareModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_cadence_stability_compare_provider.dart)' can't be assigned to the parameter type 'ActivityCadenceStabilityCompareModel (where ActivityCadenceStabilityCompareModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_cadence_stability_compare_model.dart)'.  - lib\features\activity\presentation\activity_timeline_screen.dart:186:56 - argument_type_not_assignable
+  error - The argument type 'ActivitySystemBalanceModel (where ActivitySystemBalanceModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_system_balance_provider.dart)' can't be assigned to the parameter type 'ActivitySystemBalanceModel (where ActivitySystemBalanceModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_system_balance_model.dart)'.  - lib\features\activity\presentation\activity_timeline_screen.dart:188:46 - argument_type_not_assignable
+   info - Don't use 'BuildContext's across async gaps - lib\features\activity\presentation\widgets\activity_copy_summary_button.dart:17:30 - use_build_context_synchronously
+  error - The method 'replaceAll' isn't defined for the type 'InventoryRepository' - lib\features\analytics\application\analytics_auto_rule_execution_service.dart:39:10 - undefined_method
+warning - Dead code - lib\features\analytics\application\analytics_automation_stability_provider.dart:21:9 - dead_code
+  error - The method 'replaceAll' isn't defined for the type 'InventoryRepository' - lib\features\analytics\application\analytics_bulk_reprice_service.dart:23:10 - undefined_method
+  error - The getter 'totalAffectedItems' isn't defined for the type 'AnalyticsExecutionTotalsModel' - lib\features\analytics\application\analytics_execution_efficiency_provider.dart:9:42 - undefined_getter
+  error - The getter 'totalAffectedItems' isn't defined for the type 'AnalyticsExecutionTotalsModel' - lib\features\analytics\application\analytics_execution_efficiency_provider.dart:12:27 - undefined_getter
+  error - The argument type 'num' can't be assigned to the parameter type 'double'.  - lib\features\analytics\application\analytics_profit_summary_provider.dart:25:17 - argument_type_not_assignable
+warning - The member 'state' can only be used within 'package:state_notifier/state_notifier.dart' or a test - lib\features\analytics\application\analytics_rule_presets_service.dart:17:51 - invalid_use_of_visible_for_testing_member
+warning - The member 'state' can only be used within instance members of subclasses of 'package:state_notifier/state_notifier.dart' - lib\features\analytics\application\analytics_rule_presets_service.dart:17:51 - invalid_use_of_protected_member
+  error - The getter 'totalAffectedItems' isn't defined for the type 'AnalyticsExecutionTotalsModel' - lib\features\analytics\application\analytics_run_pressure_provider.dart:17:27 - undefined_getter
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\analytics\application\capital_allocation_provider.dart:20:23 - undefined_enum_constant
+  error - The argument type 'AnalyticsAutomationPressureSummaryModel (where AnalyticsAutomationPressureSummaryModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_automation_pressure_summary_provider.dart)' can't be assigned to the parameter type 'AnalyticsAutomationPressureSummaryModel (where AnalyticsAutomationPressureSummaryModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_automation_pressure_summary_model.dart)'.  - lib\features\analytics\presentation\analytics_screen.dart:262:57 - argument_type_not_assignable
+  error - The argument type 'AnalyticsAutomationStabilityModel (where AnalyticsAutomationStabilityModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_automation_stability_provider.dart)' can't be assigned to the parameter type 'AnalyticsAutomationStabilityModel (where AnalyticsAutomationStabilityModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_automation_stability_model.dart)'.  - lib\features\analytics\presentation\analytics_screen.dart:264:51 - argument_type_not_assignable
+  error - The argument type 'AnalyticsAutomationConfidenceModel (where AnalyticsAutomationConfidenceModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_automation_confidence_provider.dart)' can't be assigned to the parameter type 'AnalyticsAutomationConfidenceModel (where AnalyticsAutomationConfidenceModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_automation_confidence_model.dart)'.  - lib\features\analytics\presentation\analytics_screen.dart:266:54 - argument_type_not_assignable
+  error - The argument type 'AnalyticsRuleStackSummaryModel (where AnalyticsRuleStackSummaryModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_rule_stack_summary_provider.dart)' can't be assigned to the parameter type 'AnalyticsRuleStackSummaryModel (where AnalyticsRuleStackSummaryModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_rule_stack_summary_model.dart)'.  - lib\features\analytics\presentation\analytics_screen.dart:268:48 - argument_type_not_assignable
+  error - The argument type 'AnalyticsStackPressureModel (where AnalyticsStackPressureModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_stack_pressure_provider.dart)' can't be assigned to the parameter type 'AnalyticsStackPressureModel (where AnalyticsStackPressureModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_stack_pressure_model.dart)'.  - lib\features\analytics\presentation\analytics_screen.dart:272:45 - argument_type_not_assignable
+warning - The member 'state' can only be used within 'package:state_notifier/state_notifier.dart' or a test - lib\features\analytics\presentation\analytics_screen.dart:291:68 - invalid_use_of_visible_for_testing_member
+warning - The member 'state' can only be used within instance members of subclasses of 'package:state_notifier/state_notifier.dart' - lib\features\analytics\presentation\analytics_screen.dart:291:68 - invalid_use_of_protected_member
+  error - The argument type 'AnalyticsExecutionTotalsModel (where AnalyticsExecutionTotalsModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_execution_totals_provider.dart)' can't be assigned to the parameter type 'AnalyticsExecutionTotalsModel (where AnalyticsExecutionTotalsModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_execution_totals_model.dart)'.  - lib\features\analytics\presentation\analytics_screen.dart:400:47 - argument_type_not_assignable
+  error - The getter 'market' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_counters_provider.dart:28:24 - undefined_getter
+  error - The getter 'purchases' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_counters_provider.dart:32:24 - undefined_getter
+  error - The getter 'sales' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_counters_provider.dart:36:24 - undefined_getter
+  error - The getter 'activityLog' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_counters_provider.dart:40:24 - undefined_getter
+  error - The getter 'activityTimeline' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_counters_provider.dart:44:24 - undefined_getter
+  error - Invalid constant value - lib\features\command_center\application\command_center_sections_provider.dart:29:18 - invalid_constant
+  error - The getter 'market' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_sections_provider.dart:29:28 - undefined_getter
+  error - Invalid constant value - lib\features\command_center\application\command_center_sections_provider.dart:40:18 - invalid_constant
+  error - The getter 'purchases' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_sections_provider.dart:40:28 - undefined_getter
+  error - Invalid constant value - lib\features\command_center\application\command_center_sections_provider.dart:46:18 - invalid_constant
+  error - The getter 'sales' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_sections_provider.dart:46:28 - undefined_getter
+  error - Invalid constant value - lib\features\command_center\application\command_center_sections_provider.dart:52:18 - invalid_constant
+  error - The getter 'dealEvaluator' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_sections_provider.dart:52:28 - undefined_getter
+  error - Invalid constant value - lib\features\command_center\application\command_center_sections_provider.dart:63:18 - invalid_constant
+  error - The getter 'addItem' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_sections_provider.dart:63:28 - undefined_getter
+  error - Invalid constant value - lib\features\command_center\application\command_center_sections_provider.dart:69:18 - invalid_constant
+  error - The getter 'addPurchase' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_sections_provider.dart:69:28 - undefined_getter
+  error - Invalid constant value - lib\features\command_center\application\command_center_sections_provider.dart:75:18 - invalid_constant
+  error - The getter 'addSale' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_sections_provider.dart:75:28 - undefined_getter
+  error - Invalid constant value - lib\features\command_center\application\command_center_sections_provider.dart:86:18 - invalid_constant
+  error - The getter 'settings' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_sections_provider.dart:86:28 - undefined_getter
+  error - Invalid constant value - lib\features\command_center\application\command_center_sections_provider.dart:92:18 - invalid_constant
+  error - The getter 'activityLog' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_sections_provider.dart:92:28 - undefined_getter
+  error - Invalid constant value - lib\features\command_center\application\command_center_sections_provider.dart:98:18 - invalid_constant
+  error - The getter 'globalSearch' isn't defined for the type 'AppRouter' - lib\features\command_center\application\command_center_sections_provider.dart:98:28 - undefined_getter
+warning - Unused import: 'package:lego_trading_manager/features/command_center/application/command_center_action_model.dart' - lib\features\command_center\application\command_center_visible_sections_provider.dart:4:8 - unused_import
+   info - Don't use 'BuildContext's across async gaps - lib\features\conflicts\presentation\conflict_queue_screen.dart:84:52 - use_build_context_synchronously
+  error - The getter 'addItem' isn't defined for the type 'AppRouter' - lib\features\core\presentation\quick_add_sheet.dart:29:32 - undefined_getter
+  error - The getter 'addPurchase' isn't defined for the type 'AppRouter' - lib\features\core\presentation\quick_add_sheet.dart:35:32 - undefined_getter
+  error - The getter 'addSale' isn't defined for the type 'AppRouter' - lib\features\core\presentation\quick_add_sheet.dart:41:32 - undefined_getter
+  error - The getter 'opportunityCenter' isn't defined for the type 'AppRouter' - lib\features\core\presentation\quick_add_sheet.dart:47:32 - undefined_getter
+  error - The getter 'deadStockCenter' isn't defined for the type 'AppRouter' - lib\features\core\presentation\quick_add_sheet.dart:53:32 - undefined_getter
+  error - The getter 'dealEvaluator' isn't defined for the type 'AppRouter' - lib\features\core\presentation\quick_add_sheet.dart:59:32 - undefined_getter
+  error - The getter 'commandCenter' isn't defined for the type 'AppRouter' - lib\features\core\presentation\quick_add_sheet.dart:65:32 - undefined_getter
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:9:1 - expected_token
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/dashboard/application/dashboard_execution_su' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:9:1 - uri_does_not_exist
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:9:83 - unterminated_string_literal
+   info - The function 'mmary_provider' should have a return type but doesn't - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:10:1 - always_declare_return_types
+   info - The variable name 'mmary_provider' isn't a lowerCamelCase identifier - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:10:1 - non_constant_identifier_names
+  error - Functions must have an explicit list of parameters - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:10:1 - missing_function_parameters
+  error - A function body must be provided - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:10:15 - missing_function_body
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:10:15 - expected_executable
+   info - An uninitialized variable should have an explicit type annotation - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:10:16 - prefer_typing_uninitialized_variables
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:10:16 - expected_token
+  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:10:16 - missing_const_final_var_or_type
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:10:20 - expected_executable
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:10:21 - unterminated_string_literal
+  error - Directives must appear before any declarations - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:11:1 - directive_after_declaration
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:12:1 - expected_token
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/dashboard/application/dashboard_flow_counter' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:12:1 - uri_does_not_exist
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:12:83 - unterminated_string_literal
+   info - The function 's_api_provider' should have a return type but doesn't - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:13:1 - always_declare_return_types
+   info - The variable name 's_api_provider' isn't a lowerCamelCase identifier - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:13:1 - non_constant_identifier_names
+  error - Functions must have an explicit list of parameters - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:13:1 - missing_function_parameters
+  error - A function body must be provided - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:13:15 - missing_function_body
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:13:15 - expected_executable
+   info - An uninitialized variable should have an explicit type annotation - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:13:16 - prefer_typing_uninitialized_variables
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:13:16 - expected_token
+  error - The name 'dart' is already defined - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:13:16 - duplicate_definition
+  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:13:16 - missing_const_final_var_or_type
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:13:20 - expected_executable
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:13:21 - unterminated_string_literal
+  error - Directives must appear before any declarations - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:14:1 - directive_after_declaration
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:15:1 - expected_token
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/dashboard/application/dashboard_market_pulse' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:15:1 - uri_does_not_exist
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:15:83 - unterminated_string_literal
+   info - The function '_provider' should have a return type but doesn't - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:16:1 - always_declare_return_types
+warning - The declaration '_provider' isn't referenced - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:16:1 - unused_element
+  error - Functions must have an explicit list of parameters - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:16:1 - missing_function_parameters
+  error - A function body must be provided - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:16:10 - missing_function_body
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:16:10 - expected_executable
+   info - An uninitialized variable should have an explicit type annotation - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:16:11 - prefer_typing_uninitialized_variables
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:16:11 - expected_token
+  error - The name 'dart' is already defined - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:16:11 - duplicate_definition
+  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:16:11 - missing_const_final_var_or_type
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:16:15 - expected_executable
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:16:16 - unterminated_string_literal
+  error - Directives must appear before any declarations - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:17:1 - directive_after_declaration
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:18:1 - expected_token
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/dashboard/application/dashboard_opportunities' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:18:1 - uri_does_not_exist
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:18:84 - unterminated_string_literal
+   info - The function '_block_provider' should have a return type but doesn't - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:19:1 - always_declare_return_types
+   info - The variable name '_block_provider' isn't a lowerCamelCase identifier - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:19:1 - non_constant_identifier_names
+warning - The declaration '_block_provider' isn't referenced - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:19:1 - unused_element
+  error - Functions must have an explicit list of parameters - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:19:1 - missing_function_parameters
+  error - A function body must be provided - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:19:16 - missing_function_body
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:19:16 - expected_executable
+   info - An uninitialized variable should have an explicit type annotation - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:19:17 - prefer_typing_uninitialized_variables
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:19:17 - expected_token
+  error - The name 'dart' is already defined - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:19:17 - duplicate_definition
+  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:19:17 - missing_const_final_var_or_type
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:19:21 - expected_executable
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:19:22 - unterminated_string_literal
+  error - Directives must appear before any declarations - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:20:1 - directive_after_declaration
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:21:1 - expected_token
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/dashboard/application/dashboard_priority_queu' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:21:1 - uri_does_not_exist
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:21:84 - unterminated_string_literal
+   info - The function 'e_api_provider' should have a return type but doesn't - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:22:1 - always_declare_return_types
+   info - The variable name 'e_api_provider' isn't a lowerCamelCase identifier - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:22:1 - non_constant_identifier_names
+  error - Functions must have an explicit list of parameters - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:22:1 - missing_function_parameters
+  error - A function body must be provided - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:22:15 - missing_function_body
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:22:15 - expected_executable
+   info - An uninitialized variable should have an explicit type annotation - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:22:16 - prefer_typing_uninitialized_variables
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:22:16 - expected_token
+  error - The name 'dart' is already defined - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:22:16 - duplicate_definition
+  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:22:16 - missing_const_final_var_or_type
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:22:20 - expected_executable
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:22:21 - unterminated_string_literal
+  error - Directives must appear before any declarations - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:23:1 - directive_after_declaration
+  error - Directives must appear before any declarations - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:25:1 - directive_after_declaration
+  error - Directives must appear before any declarations - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:27:1 - directive_after_declaration
+  error - Directives must appear before any declarations - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:29:1 - directive_after_declaration
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:30:1 - expected_token
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/operator/application/operator_health_summary_' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:30:1 - uri_does_not_exist
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:30:84 - unterminated_string_literal
+   info - The function 'provider' should have a return type but doesn't - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:31:1 - always_declare_return_types
+  error - Functions must have an explicit list of parameters - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:31:1 - missing_function_parameters
+  error - A function body must be provided - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:31:9 - missing_function_body
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:31:9 - expected_executable
+   info - An uninitialized variable should have an explicit type annotation - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:31:10 - prefer_typing_uninitialized_variables
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:31:10 - expected_token
+  error - The name 'dart' is already defined - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:31:10 - duplicate_definition
+  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:31:10 - missing_const_final_var_or_type
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:31:14 - expected_executable
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:31:15 - unterminated_string_literal
+  error - Directives must appear before any declarations - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:32:1 - directive_after_declaration
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:33:1 - expected_token
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/operator/application/unresolved_summary_provi' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:33:1 - uri_does_not_exist
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:33:84 - unterminated_string_literal
+   info - The function 'der' should have a return type but doesn't - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:34:1 - always_declare_return_types
+  error - Functions must have an explicit list of parameters - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:34:1 - missing_function_parameters
+  error - A function body must be provided - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:34:4 - missing_function_body
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:34:4 - expected_executable
+   info - An uninitialized variable should have an explicit type annotation - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:34:5 - prefer_typing_uninitialized_variables
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:34:5 - expected_token
+  error - The name 'dart' is already defined - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:34:5 - duplicate_definition
+  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:34:5 - missing_const_final_var_or_type
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:34:9 - expected_executable
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:34:10 - unterminated_string_literal
+  error - Directives must appear before any declarations - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:35:1 - directive_after_declaration
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:36:1 - expected_token
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/source_health/application/source_health_summ' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:36:1 - uri_does_not_exist
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:36:83 - unterminated_string_literal
+   info - The function 'ary_provider' should have a return type but doesn't - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:37:1 - always_declare_return_types
+   info - The variable name 'ary_provider' isn't a lowerCamelCase identifier - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:37:1 - non_constant_identifier_names
+  error - Functions must have an explicit list of parameters - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:37:1 - missing_function_parameters
+  error - A function body must be provided - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:37:13 - missing_function_body
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:37:13 - expected_executable
+   info - An uninitialized variable should have an explicit type annotation - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:37:14 - prefer_typing_uninitialized_variables
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:37:14 - expected_token
+  error - The name 'dart' is already defined - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:37:14 - duplicate_definition
+  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:37:14 - missing_const_final_var_or_type
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:37:18 - expected_executable
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:37:19 - unterminated_string_literal
+  error - Directives must appear before any declarations - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:38:1 - directive_after_declaration
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:39:1 - expected_token
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/sync/application/dashboard_sync_summary_pro' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:39:1 - uri_does_not_exist
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:39:82 - unterminated_string_literal
+   info - The function 'vider' should have a return type but doesn't - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:40:1 - always_declare_return_types
+  error - Functions must have an explicit list of parameters - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:40:1 - missing_function_parameters
+  error - A function body must be provided - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:40:6 - missing_function_body
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:40:6 - expected_executable
+   info - An uninitialized variable should have an explicit type annotation - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:40:7 - prefer_typing_uninitialized_variables
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:40:7 - expected_token
+  error - The name 'dart' is already defined - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:40:7 - duplicate_definition
+  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:40:7 - missing_const_final_var_or_type
+  error - Expected a method, getter, setter or operator declaration - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:40:11 - expected_executable
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:40:12 - unterminated_string_literal
+  error - Directives must appear before any declarations - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:41:1 - directive_after_declaration
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/sync/application/global_sync_state_provider.dart;' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:42:1 - uri_does_not_exist
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:42:87 - unterminated_string_literal
+  error - Expected to find ';' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:43:1 - expected_token
+  error - Unterminated string literal - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:43:2 - unterminated_string_literal
+  error - Undefined name 'dashboardExecutionSummaryProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:50:17 - undefined_identifier
+  error - Undefined name 'dashboardFlowCountersApiProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:51:17 - undefined_identifier
+  error - Undefined name 'dashboardMarketPulseProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:52:17 - undefined_identifier
+  error - Undefined name 'dashboardOpportunitiesBlockProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:53:17 - undefined_identifier
+  error - Undefined name 'dashboardPriorityQueueApiProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:54:17 - undefined_identifier
+  error - Undefined name 'dashboardSyncSummaryProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:55:17 - undefined_identifier
+  error - Undefined name 'globalSyncStateProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:56:17 - undefined_identifier
+  error - Undefined name 'unresolvedSummaryProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:57:17 - undefined_identifier
+  error - Undefined name 'operatorHealthSummaryProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:58:17 - undefined_identifier
+  error - Undefined name 'sourceHealthSummaryProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:59:17 - undefined_identifier
+  error - Undefined name 'dashboardExecutionSummaryProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:78:17 - undefined_identifier
+  error - Undefined name 'dashboardFlowCountersApiProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:79:17 - undefined_identifier
+  error - Undefined name 'dashboardMarketPulseProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:82:17 - undefined_identifier
+  error - Undefined name 'dashboardOpportunitiesBlockProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:83:17 - undefined_identifier
+  error - Undefined name 'dashboardPriorityQueueApiProvider' - lib\features\dashboard\application\dashboard_realtime_bridge_provider.dart:84:17 - undefined_identifier
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/source_health/presentation/widgets/source_health_summary_card.dart' - lib\features\dashboard\presentation\dashboard_live_screen.dart:23:8 - uri_does_not_exist
+  error - The method 'SourceHealthSummaryCard' isn't defined for the type 'DashboardLiveScreen' - lib\features\dashboard\presentation\dashboard_live_screen.dart:155:29 - undefined_method
+  error - The getter 'purchaseFlow' isn't defined for the type 'DashboardFlowCountersApiModel' - lib\features\dashboard\presentation\widgets\dashboard_live_backend_card.dart:19:48 - undefined_getter
+  error - The getter 'repriceFlow' isn't defined for the type 'DashboardFlowCountersApiModel' - lib\features\dashboard\presentation\widgets\dashboard_live_backend_card.dart:20:47 - undefined_getter
+  error - The getter 'reviewFlow' isn't defined for the type 'DashboardFlowCountersApiModel' - lib\features\dashboard\presentation\widgets\dashboard_live_backend_card.dart:21:46 - undefined_getter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\dashboard\presentation\widgets\dashboard_offline_banner.dart:8:28 - deprecated_member_use
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/deals/presentation/widgets/deal_history_search_field.dart' - lib\features\deals\presentation\deal_history_screen.dart:8:8 - uri_does_not_exist
+  error - The method 'DealHistorySearchField' isn't defined for the type '_DealHistoryScreenState' - lib\features\deals\presentation\deal_history_screen.dart:80:19 - undefined_method
+  error - The method 'updatePurchaseStatus' isn't defined for the type 'FlowsApiRepository' - lib\features\flows\presentation\purchase_flow_live_screen.dart:41:44 - undefined_method
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\flows\presentation\purchase_flow_screen.dart:118:62 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\flows\presentation\purchase_flow_screen.dart:121:70 - use_build_context_synchronously
+  error - The method 'updateRepriceStatus' isn't defined for the type 'FlowsApiRepository' - lib\features\flows\presentation\reprice_flow_live_screen.dart:42:44 - undefined_method
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\flows\presentation\reprice_flow_screen.dart:101:62 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\flows\presentation\reprice_flow_screen.dart:104:70 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\flows\presentation\review_flow_screen.dart:114:62 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\flows\presentation\review_flow_screen.dart:117:70 - use_build_context_synchronously
+  error - Invalid constant value - lib\features\home\application\home_quick_links_provider.dart:21:14 - invalid_constant
+  error - The getter 'globalSearch' isn't defined for the type 'AppRouter' - lib\features\home\application\home_quick_links_provider.dart:21:24 - undefined_getter
+  error - Invalid constant value - lib\features\home\application\home_quick_links_provider.dart:26:14 - invalid_constant
+  error - The getter 'opportunityCenter' isn't defined for the type 'AppRouter' - lib\features\home\application\home_quick_links_provider.dart:26:24 - undefined_getter
+  error - Invalid constant value - lib\features\home\application\home_quick_links_provider.dart:31:14 - invalid_constant
+  error - The getter 'deadStockCenter' isn't defined for the type 'AppRouter' - lib\features\home\application\home_quick_links_provider.dart:31:24 - undefined_getter
+  error - Invalid constant value - lib\features\home\application\home_quick_links_provider.dart:36:14 - invalid_constant
+  error - The getter 'dealEvaluator' isn't defined for the type 'AppRouter' - lib\features\home\application\home_quick_links_provider.dart:36:24 - undefined_getter
+  error - Invalid constant value - lib\features\home\application\home_quick_links_provider.dart:41:14 - invalid_constant
+  error - The getter 'analytics' isn't defined for the type 'AppRouter' - lib\features\home\application\home_quick_links_provider.dart:41:24 - undefined_getter
+  error - Invalid constant value - lib\features\home\application\home_quick_links_provider.dart:46:14 - invalid_constant
+  error - The getter 'activityTimeline' isn't defined for the type 'AppRouter' - lib\features\home\application\home_quick_links_provider.dart:46:24 - undefined_getter
+  error - The getter 'opportunityCenter' isn't defined for the type 'AppRouter' - lib\features\inventory\application\inventory_action_executor_service.dart:27:26 - undefined_getter
+  error - The getter 'deadStockCenter' isn't defined for the type 'AppRouter' - lib\features\inventory\application\inventory_action_executor_service.dart:29:26 - undefined_getter
+  error - The type 'InventoryState' used in the 'for' loop must implement 'Iterable' - lib\features\inventory\application\inventory_alert_center_provider.dart:9:22 - for_in_of_invalid_type
+  error - The method 'where' isn't defined for the type 'InventoryState' - lib\features\inventory\application\inventory_archived_counter_provider.dart:6:16 - undefined_method
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\application\inventory_bulk_action_service.dart:17:51 - undefined_enum_constant
+  error - The method 'replaceAll' isn't defined for the type 'InventoryRepository' - lib\features\inventory\application\inventory_bulk_apply_service.dart:26:10 - undefined_method
+  error - Undefined name 'inventoryBulkActionServiceProvider' - lib\features\inventory\application\inventory_bulk_apply_usecase.dart:20:27 - undefined_identifier
+  error - The method 'replaceAll' isn't defined for the type 'InventoryRepository' - lib\features\inventory\application\inventory_bulk_apply_usecase.dart:26:10 - undefined_method
+warning - Unused import: 'package:lego_trading_manager/data/models/item_model.dart' - lib\features\inventory\application\inventory_bulk_reprice_usecase.dart:3:8 - unused_import
+  error - The method 'replaceAll' isn't defined for the type 'InventoryRepository' - lib\features\inventory\application\inventory_bulk_reprice_usecase.dart:33:10 - undefined_method
+  error - The method 'replaceAll' isn't defined for the type 'InventoryRepository' - lib\features\inventory\application\inventory_bulk_reserve_service.dart:20:10 - undefined_method
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\application\inventory_bulk_reserve_service.dart:36:47 - undefined_enum_constant
+  error - The method 'replaceAll' isn't defined for the type 'InventoryRepository' - lib\features\inventory\application\inventory_bulk_reserve_service.dart:38:10 - undefined_method
+  error - Target of URI doesn't exist: 'package:flutter_riverpod/flutter_rpod.dart' - lib\features\inventory\application\inventory_bulk_selection_controller.dart:3:8 - uri_does_not_exist
+  error - Classes can only extend other classes - lib\features\inventory\application\inventory_bulk_selection_controller.dart:5:48 - extends_non_class
+  error - Too many positional arguments: 0 expected, but 1 found - lib\features\inventory\application\inventory_bulk_selection_controller.dart:6:46 - extra_positional_arguments
+  error - Undefined name 'state' - lib\features\inventory\application\inventory_bulk_selection_controller.dart:9:30 - undefined_identifier
+  error - Undefined name 'state' - lib\features\inventory\application\inventory_bulk_selection_controller.dart:15:5 - undefined_identifier
+  error - Undefined name 'state' - lib\features\inventory\application\inventory_bulk_selection_controller.dart:19:5 - undefined_identifier
+  error - Undefined name 'state' - lib\features\inventory\application\inventory_bulk_selection_controller.dart:23:5 - undefined_identifier
+  error - Undefined name 'state' - lib\features\inventory\application\inventory_bulk_selection_controller.dart:26:33 - undefined_identifier
+  error - The function 'StateNotifierProvider' isn't defined - lib\features\inventory\application\inventory_bulk_selection_controller.dart:30:5 - undefined_function
+  error - The method 'replaceAll' isn't defined for the type 'InventoryRepository' - lib\features\inventory\application\inventory_bulk_status_service.dart:23:10 - undefined_method
+  error - The getter 'type' isn't defined for the type 'InventoryFilterModel' - lib\features\inventory\application\inventory_controller.dart:78:20 - undefined_getter
+  error - The getter 'type' isn't defined for the type 'InventoryFilterModel' - lib\features\inventory\application\inventory_controller.dart:79:61 - undefined_getter
+  error - The getter 'ownershipType' isn't defined for the type 'InventoryFilterModel' - lib\features\inventory\application\inventory_controller.dart:86:20 - undefined_getter
+  error - The getter 'ownershipType' isn't defined for the type 'InventoryFilterModel' - lib\features\inventory\application\inventory_controller.dart:88:61 - undefined_getter
+  error - The getter 'condition' isn't defined for the type 'InventoryFilterModel' - lib\features\inventory\application\inventory_controller.dart:92:20 - undefined_getter
+  error - The getter 'condition' isn't defined for the type 'InventoryFilterModel' - lib\features\inventory\application\inventory_controller.dart:94:57 - undefined_getter
+  error - The getter 'theme' isn't defined for the type 'InventoryFilterModel' - lib\features\inventory\application\inventory_controller.dart:98:21 - undefined_getter
+  error - The getter 'theme' isn't defined for the type 'InventoryFilterModel' - lib\features\inventory\application\inventory_controller.dart:99:32 - undefined_getter
+  error - The getter 'resaleOnly' isn't defined for the type 'InventoryFilterModel' - lib\features\inventory\application\inventory_controller.dart:105:20 - undefined_getter
+  error - There's no constant named 'titleDesc' in 'InventorySortOption' - lib\features\inventory\application\inventory_controller.dart:132:32 - undefined_enum_constant
+  error - There's no constant named 'marketHighToLow' in 'InventorySortOption' - lib\features\inventory\application\inventory_controller.dart:142:32 - undefined_enum_constant
+  error - The type 'InventoryState' used in the 'for' loop must implement 'Iterable' - lib\features\inventory\application\inventory_danger_summary_provider.dart:11:22 - for_in_of_invalid_type
+  error - The named parameter 'isArchived' isn't defined - lib\features\inventory\application\inventory_inline_action_service.dart:42:35 - undefined_named_parameter
+  error - The type 'InventoryState' used in the 'for' loop must implement 'Iterable' - lib\features\inventory\application\inventory_inline_price_suggestion_provider.dart:9:22 - for_in_of_invalid_type
+  error - The getter '_cache' isn't defined for the type 'InventoryCachedRepository' - lib\features\inventory\application\inventory_mutation_controller.dart:31:16 - undefined_getter
+  error - Invalid constant value - lib\features\inventory\application\inventory_preset_model.dart:37:17 - invalid_constant
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\application\inventory_preset_model.dart:37:28 - undefined_enum_constant
+  error - The type 'InventoryState' used in the 'for' loop must implement 'Iterable' - lib\features\inventory\application\inventory_profit_bucket_provider.dart:11:22 - for_in_of_invalid_type
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\application\inventory_reserve_toggle_service.dart:16:22 - undefined_enum_constant
+  error - The type 'InventoryState' used in the 'for' loop must implement 'Iterable' - lib\features\inventory\application\inventory_risk_flag_provider.dart:8:22 - for_in_of_invalid_type
+  error - The method 'where' isn't defined for the type 'InventoryState' - lib\features\inventory\application\inventory_split_counter_provider.dart:8:24 - undefined_method
+  error - The method 'where' isn't defined for the type 'InventoryState' - lib\features\inventory\application\inventory_split_counter_provider.dart:9:26 - undefined_method
+  error - The type 'InventoryState' used in the 'for' loop must implement 'Iterable' - lib\features\inventory\application\inventory_trade_decision_provider.dart:32:22 - for_in_of_invalid_type
+  error - Spread elements in list or set literals must implement 'Iterable' - lib\features\inventory\application\inventory_visible_items_provider.dart:13:20 - not_iterable_spread
+  error - The returned type 'List<dynamic>' isn't returnable from a 'List<ItemModel>' function, as required by the closure's context - lib\features\inventory\application\inventory_visible_items_provider.dart:87:10 - return_of_invalid_type_from_closure
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\application\item_lifecycle_service.dart:11:18 - undefined_enum_constant
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\application\item_lifecycle_service.dart:45:27 - undefined_enum_constant
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\application\item_lifecycle_service.dart:46:23 - undefined_enum_constant
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\application\item_status_transition_service.dart:9:27 - undefined_enum_constant
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\application\item_status_transition_service.dart:10:23 - undefined_enum_constant
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\application\item_status_transition_service.dart:23:23 - undefined_enum_constant
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\application\item_status_transition_service.dart:26:27 - undefined_enum_constant
+  error - The method 'getByItemId' isn't defined for the type 'PurchasesRepository' - lib\features\inventory\application\item_timeline_service.dart:22:44 - undefined_method
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\inventory\presentation\inventory_edit_form.dart:50:40 - use_build_context_synchronously
+  error - The method 'createInventory' isn't defined for the type 'OperatorApiRepository' - lib\features\inventory\presentation\inventory_form_screen.dart:45:27 - undefined_method
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\inventory\presentation\inventory_form_screen.dart:51:44 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\inventory\presentation\inventory_live_screen.dart:127:56 - use_build_context_synchronously
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/inventory/presentation/widgets/inventory_inline_action_provider.dart' - lib\features\inventory\presentation\inventory_screen.dart:65:8 - uri_does_not_exist
+  error - The getter 'length' isn't defined for the type 'InventoryState' - lib\features\inventory\presentation\inventory_screen.dart:119:57 - undefined_getter
+  error - The getter 'length' isn't defined for the type 'InventoryState' - lib\features\inventory\presentation\inventory_screen.dart:143:57 - undefined_getter
+  error - The method 'removeItem' isn't defined for the type 'InventoryController' - lib\features\inventory\presentation\inventory_screen.dart:202:54 - undefined_method
+  error - The argument type 'InventoryReviewLaneModel (where InventoryReviewLaneModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_review_lane_provider.dart)' can't be assigned to the parameter type 'InventoryReviewLaneModel (where InventoryReviewLaneModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_review_lane_model.dart)'.  - lib\features\inventory\presentation\inventory_screen.dart:382:42 - argument_type_not_assignable
+  error - The argument type 'InventoryReviewHeatModel (where InventoryReviewHeatModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_review_heat_provider.dart)' can't be assigned to the parameter type 'InventoryReviewHeatModel (where InventoryReviewHeatModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_review_heat_model.dart)'.  - lib\features\inventory\presentation\inventory_screen.dart:384:42 - argument_type_not_assignable
+  error - The argument type 'InventoryReviewExecutionHintModel (where InventoryReviewExecutionHintModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_review_execution_hint_provider.dart)' can't be assigned to the parameter type 'InventoryReviewExecutionHintModel (where InventoryReviewExecutionHintModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_review_execution_hint_model.dart)'.  - lib\features\inventory\presentation\inventory_screen.dart:386:53 - argument_type_not_assignable
+  error - The argument type 'InventoryReviewStabilityModel (where InventoryReviewStabilityModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_review_stability_provider.dart)' can't be assigned to the parameter type 'InventoryReviewStabilityModel (where InventoryReviewStabilityModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_review_stability_model.dart)'.  - lib\features\inventory\presentation\inventory_screen.dart:392:47 - argument_type_not_assignable
+  error - The argument type 'InventoryActionReadinessModel (where InventoryActionReadinessModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_action_readiness_provider.dart)' can't be assigned to the parameter type 'InventoryActionReadinessModel (where InventoryActionReadinessModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_action_readiness_model.dart)'.  - lib\features\inventory\presentation\inventory_screen.dart:394:49 - argument_type_not_assignable
+  error - The argument type 'InventoryControlEquilibriumModel (where InventoryControlEquilibriumModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_control_equilibrium_provider.dart)' can't be assigned to the parameter type 'InventoryControlEquilibriumModel (where InventoryControlEquilibriumModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_control_equilibrium_model.dart)'.  - lib\features\inventory\presentation\inventory_screen.dart:398:50 - argument_type_not_assignable
+  error - Undefined name 'inventoryInlineActionProvider' - lib\features\inventory\presentation\inventory_screen.dart:491:33 - undefined_identifier
+  error - Undefined name 'inventoryInlineActionProvider' - lib\features\inventory\presentation\inventory_screen.dart:502:33 - undefined_identifier
+  error - Undefined name 'inventoryInlineActionProvider' - lib\features\inventory\presentation\inventory_screen.dart:512:33 - undefined_identifier
+  error - Const variables must be initialized with a constant value - lib\features\inventory\presentation\widgets\inventory_bulk_quick_status_bar.dart:18:7 - const_initialized_with_non_constant_value
+  error - The values in a const list literal must be constants - lib\features\inventory\presentation\widgets\inventory_bulk_quick_status_bar.dart:18:7 - non_constant_list_element
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\presentation\widgets\inventory_bulk_quick_status_bar.dart:18:18 - undefined_enum_constant
+  error - The argument type 'Object?' can't be assigned to the parameter type 'ItemStatus'.  - lib\features\inventory\presentation\widgets\inventory_bulk_quick_status_bar.dart:31:46 - argument_type_not_assignable
+  error - The property 'name' can't be unconditionally accessed because the receiver can be 'null' - lib\features\inventory\presentation\widgets\inventory_bulk_quick_status_bar.dart:32:41 - unchecked_use_of_nullable_value
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\presentation\widgets\inventory_quick_status_chips.dart:17:18 - undefined_enum_constant
+  error - The property 'name' can't be unconditionally accessed because the receiver can be 'null' - lib\features\inventory\presentation\widgets\inventory_quick_status_chips.dart:27:30 - unchecked_use_of_nullable_value
+  error - The argument type 'Object?' can't be assigned to the parameter type 'ItemStatus'.  - lib\features\inventory\presentation\widgets\inventory_quick_status_chips.dart:29:40 - argument_type_not_assignable
+  error - The named parameter 'onReserveToggle' isn't defined - lib\features\inventory\presentation\widgets\inventory_selectable_card.dart:94:21 - undefined_named_parameter
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\inventory\presentation\widgets\inventory_status_badge_v2.dart:14:23 - undefined_enum_constant
+  error - The argument type 'PartOutProjectStatus' can't be assigned to the parameter type 'String'.  - lib\features\item_details\presentation\item_details_screen.dart:454:36 - argument_type_not_assignable
+  error - The argument type 'List<dynamic>' can't be assigned to the parameter type 'List<String>'.  - lib\features\item_details\presentation\item_details_screen.dart:483:36 - argument_type_not_assignable
+  error - The method 'createItem' isn't defined for the type 'ItemsApiRepository' - lib\features\items\presentation\item_form_screen.dart:46:28 - undefined_method
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\items\presentation\item_form_screen.dart:52:44 - use_build_context_synchronously
+  error - The method 'replaceAll' isn't defined for the type 'MarketRepository' - lib\features\market\application\market_bulk_apply_usecase.dart:26:10 - undefined_method
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/market/presentation/widgets/market_bulk_action_bar.dart' - lib\features\market\presentation\market_screen.dart:22:8 - uri_does_not_exist
+warning - The declaration '_openAdd' isn't referenced - lib\features\market\presentation\market_screen.dart:65:16 - unused_element
+  error - '_MarketScreenState.build' ('Widget Function(BuildContext, WidgetRef)') isn't a valid override of 'State.build' ('Widget Function(BuildContext)') - lib\features\market\presentation\market_screen.dart:152:10 - invalid_override
+  error - The method 'MarketBulkActionBar' isn't defined for the type '_MarketScreenState' - lib\features\market\presentation\market_screen.dart:208:19 - undefined_method
+  error - Undefined name 'marketSnapshotInsightsProvider' - lib\features\market\presentation\market_snapshot_details_screen.dart:198:32 - undefined_identifier
+  error - The method 'getHealth' isn't defined for the type 'OperatorApiRepository' - lib\features\operator\data\operator_cached_repository.dart:10:33 - undefined_method
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\operator\presentation\operator_unresolved_matches_screen.dart:67:36 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\operator\presentation\operator_unresolved_matches_screen.dart:69:44 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\operator\presentation\operator_unresolved_matches_screen.dart:152:46 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\operator\presentation\operator_unresolved_matches_screen.dart:154:54 - use_build_context_synchronously
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/data/models/partout_project_status.dart' - lib\features\partout\application\partout_filter_model.dart:3:8 - uri_does_not_exist
+  error - Undefined class 'PartOutProjectStatus' - lib\features\partout\application\partout_filter_model.dart:6:9 - undefined_class
+  error - Undefined class 'PartOutProjectStatus' - lib\features\partout\application\partout_filter_model.dart:23:5 - undefined_class
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/data/models/partout_project_status.dart' - lib\features\partout\presentation\widgets\partout_filter_sheet.dart:4:8 - uri_does_not_exist
+  error - The name 'PartOutProjectStatus' isn't a type, so it can't be used as a type argument - lib\features\partout\presentation\widgets\partout_filter_sheet.dart:72:37 - non_type_as_type_argument
+  error - The name 'PartOutProjectStatus' isn't a type, so it can't be used as a type argument - lib\features\partout\presentation\widgets\partout_filter_sheet.dart:76:40 - non_type_as_type_argument
+  error - Undefined name 'PartOutProjectStatus' - lib\features\partout\presentation\widgets\partout_filter_sheet.dart:80:20 - undefined_identifier
+  error - The name 'PartOutProjectStatus' isn't a type, so it can't be used as a type argument - lib\features\partout\presentation\widgets\partout_filter_sheet.dart:81:48 - non_type_as_type_argument
+  error - Undefined name 'purchasePriceController' - lib\features\purchases\presentation\add_purchase_screen.dart:236:27 - undefined_identifier
+  error - The argument type 'void Function()' can't be assigned to the parameter type 'ValueChanged<String>?'.  - lib\features\purchases\presentation\add_purchase_screen.dart:242:26 - argument_type_not_assignable
+  error - Undefined name 'shippingCostController' - lib\features\purchases\presentation\add_purchase_screen.dart:246:27 - undefined_identifier
+  error - The argument type 'void Function()' can't be assigned to the parameter type 'ValueChanged<String>?'.  - lib\features\purchases\presentation\add_purchase_screen.dart:252:26 - argument_type_not_assignable
+  error - Undefined name 'additionalCostsController' - lib\features\purchases\presentation\add_purchase_screen.dart:256:27 - undefined_identifier
+  error - The argument type 'void Function()' can't be assigned to the parameter type 'ValueChanged<String>?'.  - lib\features\purchases\presentation\add_purchase_screen.dart:262:26 - argument_type_not_assignable
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'String', is a potentially non-nullable type - lib\features\purchases\presentation\purchases_screen.dart:37:10 - body_might_complete_normally
+  error - Undefined class 'SalesSortOption' - lib\features\purchases\presentation\purchases_screen.dart:37:21 - undefined_class
+  error - Undefined name 'SalesSortOption' - lib\features\purchases\presentation\purchases_screen.dart:39:12 - undefined_identifier
+  error - Undefined name 'SalesSortOption' - lib\features\purchases\presentation\purchases_screen.dart:41:12 - undefined_identifier
+  error - Undefined name 'SalesSortOption' - lib\features\purchases\presentation\purchases_screen.dart:43:12 - undefined_identifier
+  error - Undefined name 'SalesSortOption' - lib\features\purchases\presentation\purchases_screen.dart:45:12 - undefined_identifier
+  error - Undefined name 'SalesSortOption' - lib\features\purchases\presentation\purchases_screen.dart:47:12 - undefined_identifier
+warning - The declaration '_openAddSale' isn't referenced - lib\features\purchases\presentation\purchases_screen.dart:52:16 - unused_element
+  error - The method 'addSale' isn't defined for the type 'SalesController' - lib\features\purchases\presentation\purchases_screen.dart:143:50 - undefined_method
+  error - The getter 'sort' isn't defined for the type 'SalesUiState' - lib\features\purchases\presentation\purchases_screen.dart:208:31 - undefined_getter
+  error - The getter 'sort' isn't defined for the type 'SalesUiState' - lib\features\purchases\presentation\purchases_screen.dart:220:46 - undefined_getter
+  error - Undefined name 'salePriceController' - lib\features\sales\presentation\quick_sale_screen.dart:180:27 - undefined_identifier
+  error - The argument type 'void Function()' can't be assigned to the parameter type 'ValueChanged<String>?'.  - lib\features\sales\presentation\quick_sale_screen.dart:186:26 - argument_type_not_assignable
+  error - Undefined name 'platformFeeController' - lib\features\sales\presentation\quick_sale_screen.dart:207:27 - undefined_identifier
+  error - The argument type 'void Function()' can't be assigned to the parameter type 'ValueChanged<String>?'.  - lib\features\sales\presentation\quick_sale_screen.dart:213:26 - argument_type_not_assignable
+  error - Undefined name 'shippingByMeController' - lib\features\sales\presentation\quick_sale_screen.dart:217:27 - undefined_identifier
+  error - The argument type 'void Function()' can't be assigned to the parameter type 'ValueChanged<String>?'.  - lib\features\sales\presentation\quick_sale_screen.dart:223:26 - argument_type_not_assignable
+  error - Missing concrete implementation of 'abstract class State<T extends StatefulWidget> with Diagnosticable.build' - lib\features\sales\presentation\sales_screen.dart:37:7 - non_abstract_class_inherits_abstract_member
+warning - The value of the field '_searchController' isn't used - lib\features\sales\presentation\sales_screen.dart:38:8 - unused_field
+warning - The declaration '_resolveItemTitle' isn't referenced - lib\features\sales\presentation\sales_screen.dart:39:9 - unused_element
+warning - The declaration '_sortLabel' isn't referenced - lib\features\sales\presentation\sales_screen.dart:42:9 - unused_element
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'String', is a potentially non-nullable type - lib\features\sales\presentation\sales_screen.dart:42:9 - body_might_complete_normally
+  error - Undefined class 'SalesSortOption' - lib\features\sales\presentation\sales_screen.dart:42:20 - undefined_class
+  error - Undefined name 'SalesSortOption' - lib\features\sales\presentation\sales_screen.dart:44:7 - undefined_identifier
+  error - Undefined name 'SalesSortOption' - lib\features\sales\presentation\sales_screen.dart:46:7 - undefined_identifier
+  error - Undefined name 'SalesSortOption' - lib\features\sales\presentation\sales_screen.dart:48:7 - undefined_identifier
+  error - Undefined name 'SalesSortOption' - lib\features\sales\presentation\sales_screen.dart:50:7 - undefined_identifier
+  error - Undefined name 'SalesSortOption' - lib\features\sales\presentation\sales_screen.dart:52:7 - undefined_identifier
+warning - The declaration '_openAddSale' isn't referenced - lib\features\sales\presentation\sales_screen.dart:56:15 - unused_element
+warning - The declaration '_openDetails' isn't referenced - lib\features\sales\presentation\sales_screen.dart:82:15 - unused_element
+  error - Expected to find ';' - lib\features\sales\presentation\sales_screen.dart:97:8 - expected_token
+  error - Unterminated string literal - lib\features\sales\presentation\sales_screen.dart:97:8 - unterminated_string_literal
+  error - Expected to find ')' - lib\features\sales\presentation\sales_screen.dart:97:9 - expected_token
+  error - Expected to find '}' - lib\features\sales\presentation\sales_screen.dart:97:9 - expected_token
+   info - Statements in an if should be enclosed in a block - lib\features\sales\presentation\widgets\sales_active_filter_chips.dart:19:7 - curly_braces_in_flow_control_structures
+  error - The name 'GlobalSearchResultModel' is defined in the libraries 'package:lego_trading_manager/features/search/application/global_search_provider.dart' and 'package:lego_trading_manager/features/search/application/global_search_result_model.dart' - lib\features\search\application\global_search_grouped_provider.dart:9:14 - ambiguous_import
+  error - The name 'GlobalSearchResultModel' is defined in the libraries 'package:lego_trading_manager/features/search/application/global_search_provider.dart' and 'package:lego_trading_manager/features/search/application/global_search_result_model.dart' - lib\features\search\application\global_search_grouped_provider.dart:22:33 - ambiguous_import
+  error - The getter 'type' isn't defined for the type 'GlobalSearchResultModel' - lib\features\search\application\global_search_grouped_provider.dart:25:30 - undefined_getter
+  error - The property 'priorityScore' can't be unconditionally accessed because the receiver can be 'null' - lib\features\search\application\global_search_grouped_provider.dart:47:26 - unchecked_use_of_nullable_value
+  error - The property 'priorityScore' can't be unconditionally accessed because the receiver can be 'null' - lib\features\search\application\global_search_grouped_provider.dart:47:52 - unchecked_use_of_nullable_value
+warning - The '?' is unnecessary because 'dynamic' is nullable without it - lib\features\search\application\global_search_open_fallback_provider.dart:27:40 - unnecessary_question_mark
+warning - The '?' is unnecessary because 'dynamic' is nullable without it - lib\features\search\application\global_search_open_fallback_provider.dart:42:40 - unnecessary_question_mark
+warning - The '?' is unnecessary because 'dynamic' is nullable without it - lib\features\search\application\global_search_open_fallback_provider.dart:57:40 - unnecessary_question_mark
+warning - The '?' is unnecessary because 'dynamic' is nullable without it - lib\features\search\application\global_search_open_fallback_provider.dart:72:40 - unnecessary_question_mark
+  error - The name 'GlobalSearchResultModel' is defined in the libraries 'package:lego_trading_manager/features/search/application/global_search_provider.dart' and 'package:lego_trading_manager/features/search/application/global_search_result_model.dart' - lib\features\search\application\global_search_open_pinned_helper.dart:7:21 - ambiguous_import
+  error - The getter 'type' isn't defined for the type 'GlobalSearchResultModel' - lib\features\search\application\global_search_open_pinned_helper.dart:12:40 - undefined_getter
+  error - The returned type 'GlobalSearchSectionModel' isn't returnable from a 'GlobalSearchWeightedSectionModel?' function, as required by the closure's context - lib\features\search\application\global_search_section_winner_provider.dart:9:10 - return_of_invalid_type_from_closure
+  error - The name 'GlobalSearchResultModel' is defined in the libraries 'package:lego_trading_manager/features/search/application/global_search_provider.dart' and 'package:lego_trading_manager/features/search/application/global_search_result_model.dart' - lib\features\search\application\global_search_top_result_provider.dart:5:48 - ambiguous_import
+  error - The name 'GlobalSearchResultModel' is defined in the libraries 'package:lego_trading_manager/features/search/application/global_search_provider.dart' and 'package:lego_trading_manager/features/search/application/global_search_result_model.dart' - lib\features\search\presentation\global_search_screen.dart:126:28 - ambiguous_import
+  error - The method 'removeItem' isn't defined for the type 'InventoryController' - lib\features\search\presentation\global_search_screen.dart:143:56 - undefined_method
+  error - The method 'addSale' isn't defined for the type 'SalesController' - lib\features\search\presentation\global_search_screen.dart:198:52 - undefined_method
+  error - The getter 'type' isn't defined for the type 'GlobalSearchResultModel' - lib\features\search\presentation\global_search_screen.dart:237:42 - undefined_getter
+  error - The named parameter 'focusNode' isn't defined - lib\features\search\presentation\global_search_screen.dart:302:19 - undefined_named_parameter
+  error - The named parameter 'onOpenPinned' isn't defined - lib\features\search\presentation\global_search_screen.dart:381:17 - undefined_named_parameter
+  error - The argument type 'List<GlobalSearchSectionModel>' can't be assigned to the parameter type 'List<GlobalSearchWeightedSectionModel>'.  - lib\features\search\presentation\global_search_screen.dart:396:55 - argument_type_not_assignable
+  error - The argument type 'GlobalSearchDominanceRatioModel? (where GlobalSearchDominanceRatioModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\search\application\global_search_dominance_ratio_provider.dart)' can't be assigned to the parameter type 'GlobalSearchDominanceRatioModel? (where GlobalSearchDominanceRatioModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\search\application\global_search_dominance_ratio_model.dart)'.  - lib\features\search\presentation\global_search_screen.dart:415:53 - argument_type_not_assignable
+  error - The argument type 'GlobalSearchRelevanceDensityModel (where GlobalSearchRelevanceDensityModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\search\application\global_search_relevance_density_provider.dart)' can't be assigned to the parameter type 'GlobalSearchRelevanceDensityModel (where GlobalSearchRelevanceDensityModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\search\application\global_search_relevance_density_model.dart)'.  - lib\features\search\presentation\global_search_screen.dart:439:55 - argument_type_not_assignable
+  error - Undefined name 'repository' - lib\features\settings\application\action_report_helper_provider.dart:6:9 - undefined_identifier
+  error - Undefined name 'ref' - lib\features\settings\application\action_report_helper_provider.dart:11:9 - undefined_identifier
+  error - Undefined name 'activityLogProvider' - lib\features\settings\application\action_report_helper_provider.dart:11:18 - undefined_identifier
+  error - The values in a const list literal must be constants - lib\features\settings\application\settings_quick_links_provider.dart:8:16 - non_constant_list_element
+  error - The values in a const map literal must be constant - lib\features\settings\application\settings_quick_links_provider.dart:8:16 - non_constant_map_value
+  error - The getter 'currencyHub' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_quick_links_provider.dart:8:26 - undefined_getter
+  error - The values in a const list literal must be constants - lib\features\settings\application\settings_quick_links_provider.dart:12:16 - non_constant_list_element
+  error - The values in a const map literal must be constant - lib\features\settings\application\settings_quick_links_provider.dart:12:16 - non_constant_map_value
+  error - The getter 'defaultFees' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_quick_links_provider.dart:12:26 - undefined_getter
+  error - The values in a const list literal must be constants - lib\features\settings\application\settings_quick_links_provider.dart:16:16 - non_constant_list_element
+  error - The values in a const map literal must be constant - lib\features\settings\application\settings_quick_links_provider.dart:16:16 - non_constant_map_value
+  error - The getter 'currencyHistory' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_quick_links_provider.dart:16:26 - undefined_getter
+  error - The values in a const list literal must be constants - lib\features\settings\application\settings_quick_links_provider.dart:20:16 - non_constant_list_element
+  error - The values in a const map literal must be constant - lib\features\settings\application\settings_quick_links_provider.dart:20:16 - non_constant_map_value
+  error - The getter 'export' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_quick_links_provider.dart:20:26 - undefined_getter
+  error - The values in a const list literal must be constants - lib\features\settings\application\settings_quick_links_provider.dart:24:16 - non_constant_list_element
+  error - The values in a const map literal must be constant - lib\features\settings\application\settings_quick_links_provider.dart:24:16 - non_constant_map_value
+  error - The getter 'importRestore' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_quick_links_provider.dart:24:26 - undefined_getter
+  error - Invalid constant value - lib\features\settings\application\settings_sections_provider.dart:11:14 - invalid_constant
+  error - The getter 'currencyRates' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_sections_provider.dart:11:24 - undefined_getter
+  error - Invalid constant value - lib\features\settings\application\settings_sections_provider.dart:16:14 - invalid_constant
+  error - The getter 'currencyConverter' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_sections_provider.dart:16:24 - undefined_getter
+  error - Invalid constant value - lib\features\settings\application\settings_sections_provider.dart:21:14 - invalid_constant
+  error - The getter 'manualRates' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_sections_provider.dart:21:24 - undefined_getter
+  error - Invalid constant value - lib\features\settings\application\settings_sections_provider.dart:26:14 - invalid_constant
+  error - The getter 'currencyHistory' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_sections_provider.dart:26:24 - undefined_getter
+  error - Invalid constant value - lib\features\settings\application\settings_sections_provider.dart:31:14 - invalid_constant
+  error - The getter 'defaultFees' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_sections_provider.dart:31:24 - undefined_getter
+  error - Invalid constant value - lib\features\settings\application\settings_sections_provider.dart:36:14 - invalid_constant
+  error - The getter 'export' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_sections_provider.dart:36:24 - undefined_getter
+  error - Invalid constant value - lib\features\settings\application\settings_sections_provider.dart:41:14 - invalid_constant
+  error - The getter 'importRestore' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_sections_provider.dart:41:24 - undefined_getter
+  error - Invalid constant value - lib\features\settings\application\settings_sections_provider.dart:46:14 - invalid_constant
+  error - The getter 'backupAutomation' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_sections_provider.dart:46:24 - undefined_getter
+  error - Invalid constant value - lib\features\settings\application\settings_sections_provider.dart:51:14 - invalid_constant
+  error - The getter 'themeSettings' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_sections_provider.dart:51:24 - undefined_getter
+  error - Invalid constant value - lib\features\settings\application\settings_sections_provider.dart:56:14 - invalid_constant
+  error - The getter 'resetData' isn't defined for the type 'AppRouter' - lib\features\settings\application\settings_sections_provider.dart:56:24 - undefined_getter
+   info - The imported package 'shared_preferences' isn't a dependency of the importing package - lib\features\settings\data\shared_prefs_app_settings_datasource.dart:5:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:shared_preferences/shared_preferences.dart' - lib\features\settings\data\shared_prefs_app_settings_datasource.dart:5:8 - uri_does_not_exist
+  error - Undefined name 'SharedPreferences' - lib\features\settings\data\shared_prefs_app_settings_datasource.dart:14:25 - undefined_identifier
+  error - Undefined name 'SharedPreferences' - lib\features\settings\data\shared_prefs_app_settings_datasource.dart:27:25 - undefined_identifier
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/settings/presentation/widgets/settings_info_banner.dart' - lib\features\settings\presentation\backup_automation_screen.dart:4:8 - uri_does_not_exist
+  error - The name 'SettingsInfoBanner' isn't a class - lib\features\settings\presentation\backup_automation_screen.dart:62:17 - creation_with_non_type
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/settings/application/backup_history_provider.dart' - lib\features\settings\presentation\backup_history_screen.dart:5:8 - uri_does_not_exist
+  error - Undefined name 'backupHistoryServiceProvider' - lib\features\settings\presentation\backup_history_screen.dart:27:33 - undefined_identifier
+  error - Undefined name 'backupHistoryServiceProvider' - lib\features\settings\presentation\backup_history_screen.dart:37:20 - undefined_identifier
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/settings/presentation/widgets/settings_currency_header_card.dart' - lib\features\settings\presentation\currency_hub_screen.dart:10:8 - uri_does_not_exist
+  error - The method 'SettingsCurrencyHeaderCard' isn't defined for the type 'CurrencyHubScreen' - lib\features\settings\presentation\currency_hub_screen.dart:25:11 - undefined_method
+  error - The getter 'currencyRates' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\currency_hub_screen.dart:36:59 - undefined_getter
+  error - The getter 'currencyConverter' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\currency_hub_screen.dart:42:59 - undefined_getter
+  error - The getter 'manualRates' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\currency_hub_screen.dart:47:68 - undefined_getter
+  error - The getter 'currencySettings' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\currency_hub_screen.dart:53:59 - undefined_getter
+  error - The getter 'currencyHistory' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\currency_hub_screen.dart:59:59 - undefined_getter
+  error - The getter 'defaultFees' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\currency_hub_screen.dart:64:68 - undefined_getter
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/settings/presentation/widgets/settings_info_banner.dart' - lib\features\settings\presentation\reset_data_screen.dart:10:8 - uri_does_not_exist
+  error - The name 'SettingsInfoBanner' isn't a class - lib\features\settings\presentation\reset_data_screen.dart:65:17 - creation_with_non_type
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/settings/presentation/widgets/settings_info_banner.dart' - lib\features\settings\presentation\settings_hub_screen.dart:5:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/settings/presentation/widgets/settings_link_list.dart' - lib\features\settings\presentation\settings_hub_screen.dart:6:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/settings/presentation/widgets/settings_section_title.dart' - lib\features\settings\presentation\settings_hub_screen.dart:8:8 - uri_does_not_exist
+  error - The name 'SettingsInfoBanner' isn't a class - lib\features\settings\presentation\settings_hub_screen.dart:25:17 - creation_with_non_type
+  error - The name 'SettingsSectionTitle' isn't a class - lib\features\settings\presentation\settings_hub_screen.dart:32:17 - creation_with_non_type
+  error - The method 'SettingsLinkList' isn't defined for the type 'SettingsHubScreen' - lib\features\settings\presentation\settings_hub_screen.dart:34:11 - undefined_method
+  error - The name 'SettingsSectionTitle' isn't a class - lib\features\settings\presentation\settings_hub_screen.dart:36:17 - creation_with_non_type
+  error - The getter 'commandCenter' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\settings_screen.dart:54:59 - undefined_getter
+  error - The getter 'globalSearch' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\settings_screen.dart:60:59 - undefined_getter
+  error - The getter 'systemHealth' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\settings_screen.dart:66:59 - undefined_getter
+  error - The getter 'backupHistory' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\settings_screen.dart:72:59 - undefined_getter
+  error - The getter 'manualActionReports' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\settings_screen.dart:78:59 - undefined_getter
+  error - The getter 'activityLog' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\settings_screen.dart:83:68 - undefined_getter
+  error - The getter 'activityTimeline' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\settings_screen.dart:89:59 - undefined_getter
+  error - The getter 'marketNotesCenter' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\settings_screen.dart:95:59 - undefined_getter
+  error - The getter 'export' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\settings_screen.dart:100:68 - undefined_getter
+  error - The getter 'importRestore' isn't defined for the type 'AppRouter' - lib\features\settings\presentation\settings_screen.dart:106:59 - undefined_getter
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/settings/presentation/widgets/settings_info_banner.dart' - lib\features\settings\presentation\theme_settings_screen.dart:5:8 - uri_does_not_exist
+  error - The name 'SettingsInfoBanner' isn't a class - lib\features\settings\presentation\theme_settings_screen.dart:37:17 - creation_with_non_type
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/source_health/data/source_health_api_repository_provider.dart' - lib\features\source_health\application\source_health_summary_provider.dart:2:8 - uri_does_not_exist
+  error - Undefined name 'sourceHealthApiRepositoryProvider' - lib\features\source_health\application\source_health_summary_provider.dart:38:32 - undefined_identifier
+  error - The method 'getHealth' isn't defined for the type 'SourceHealthApiRepository' - lib\features\source_health\data\source_health_cached_repository.dart:10:33 - undefined_method
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/source_health/data/source_health_api_repository_provider.dart' - lib\features\source_health\data\source_health_cached_repository_provider.dart:3:8 - uri_does_not_exist
+  error - Undefined name 'sourceHealthApiRepositoryProvider' - lib\features\source_health\data\source_health_cached_repository_provider.dart:8:25 - undefined_identifier
+  error - Target of URI doesn't exist: 'package:lego_trading_manager/features/source_health/data/source_health_api_repository_provider.dart' - lib\features\source_health\presentation\source_health_details_screen.dart:3:8 - uri_does_not_exist
+  error - Undefined name 'sourceHealthApiRepositoryProvider' - lib\features\source_health\presentation\source_health_details_screen.dart:20:24 - undefined_identifier
+  error - Undefined name 'sourceHealthApiRepositoryProvider' - lib\features\source_health\presentation\source_health_details_screen.dart:25:26 - undefined_identifier
+  error - Undefined name 'sourceHealthApiRepositoryProvider' - lib\features\source_health\presentation\source_health_details_screen.dart:32:34 - undefined_identifier
+   info - Don't use 'BuildContext's across async gaps - lib\features\source_health\presentation\source_health_details_screen.dart:93:52 - use_build_context_synchronously
+  error - A value of type 'Future<dynamic>' can't be returned from the method 'risk' because it has a return type of 'Future<Map<String, dynamic>>' - lib\features\strategy\data\strategy_api_repository.dart:25:12 - return_of_invalid_type
+  error - A value of type 'Future<dynamic>' can't be returned from the method 'profit' because it has a return type of 'Future<Map<String, dynamic>>' - lib\features\strategy\data\strategy_api_repository.dart:31:12 - return_of_invalid_type
+warning - The value of the local variable 'queueRepository' isn't used - lib\features\sync\presentation\manual_sync_queue_screen.dart:30:11 - unused_local_variable
+   info - Don't use 'BuildContext's across async gaps - lib\features\sync\presentation\manual_sync_queue_screen.dart:41:34 - use_build_context_synchronously
+  error - The method 'where' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_auto_trigger_candidates_provider.dart:10:8 - undefined_method
+warning - Unused import: 'package:lego_trading_manager/data/models/watchlist_item_model.dart' - lib\features\watchlist\application\watchlist_bulk_actions_service.dart:1:8 - unused_import
+  error - The type 'WatchlistState' used in the 'for' loop must implement 'Iterable' - lib\features\watchlist\application\watchlist_buy_decision_provider.dart:24:22 - for_in_of_invalid_type
+  error - Invalid constant value - lib\features\watchlist\application\watchlist_commit_stability_provider.dart:23:12 - invalid_constant
+  error - The getter 'type' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\application\watchlist_controller.dart:78:20 - undefined_getter
+  error - The getter 'type' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\application\watchlist_controller.dart:79:61 - undefined_getter
+  error - The getter 'theme' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\application\watchlist_controller.dart:82:21 - undefined_getter
+  error - The getter 'theme' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\application\watchlist_controller.dart:83:32 - undefined_getter
+  error - The getter 'opportunitiesOnly' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\application\watchlist_controller.dart:93:20 - undefined_getter
+  error - There's no constant named 'biggestGapFirst' in 'WatchlistSortOption' - lib\features\watchlist\application\watchlist_controller.dart:119:32 - undefined_enum_constant
+  error - The type 'WatchlistState' used in the 'for' loop must implement 'Iterable' - lib\features\watchlist\application\watchlist_item_by_id_provider.dart:9:22 - for_in_of_invalid_type
+  error - The method 'where' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_metrics_provider.dart:27:32 - undefined_method
+  error - The method 'where' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_metrics_provider.dart:28:34 - undefined_method
+  error - The method 'where' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_metrics_provider.dart:30:16 - undefined_method
+  error - The method 'where' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_metrics_provider.dart:32:37 - undefined_method
+  error - The getter 'length' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_metrics_provider.dart:39:26 - undefined_getter
+  error - The getter '_cache' isn't defined for the type 'WatchlistCachedRepository' - lib\features\watchlist\application\watchlist_mutation_controller.dart:30:16 - undefined_getter
+  error - The method 'where' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_opportunities_provider.dart:11:8 - undefined_method
+  error - The type 'WatchlistState' used in the 'for' loop must implement 'Iterable' - lib\features\watchlist\application\watchlist_opportunity_summary_provider.dart:13:22 - for_in_of_invalid_type
+  error - The method 'cast' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_priority_breakdown_provider.dart:8:22 - undefined_method
+warning - The '?' is unnecessary because 'dynamic' is nullable without it - lib\features\watchlist\application\watchlist_priority_breakdown_provider.dart:8:34 - unnecessary_question_mark
+  error - The method 'map' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_priority_provider.dart:9:24 - undefined_method
+  error - There's no constant named 'inStock' in 'ItemStatus' - lib\features\watchlist\application\watchlist_purchase_create_service.dart:39:26 - undefined_enum_constant
+  error - Invalid constant value - lib\features\watchlist\application\watchlist_queue_actionable_summary_provider.dart:31:12 - invalid_constant
+  error - Invalid constant value - lib\features\watchlist\application\watchlist_queue_execution_pressure_summary_provider.dart:25:12 - invalid_constant
+  error - The name 'WatchlistQuickBuyService' isn't a type, so it can't be used as a type argument - lib\features\watchlist\application\watchlist_quick_buy_provider.dart:5:44 - non_type_as_type_argument
+  error - The function 'WatchlistQuickBuyService' isn't defined - lib\features\watchlist\application\watchlist_quick_buy_provider.dart:6:10 - undefined_function
+  error - Undefined class 'WatchlistItemModel' - lib\features\watchlist\application\watchlist_quick_buy_service.dart:2:18 - undefined_class
+  error - Undefined name 'ref' - lib\features\watchlist\application\watchlist_quick_buy_service.dart:3:18 - undefined_identifier
+  error - Undefined name 'watchlistPurchaseCreateProvider' - lib\features\watchlist\application\watchlist_quick_buy_service.dart:3:27 - undefined_identifier
+  error - Undefined name 'ref' - lib\features\watchlist\application\watchlist_quick_buy_service.dart:4:3 - undefined_identifier
+  error - Undefined name 'inventoryControllerProvider' - lib\features\watchlist\application\watchlist_quick_buy_service.dart:4:12 - undefined_identifier
+  error - Undefined name 'ref' - lib\features\watchlist\application\watchlist_quick_buy_service.dart:5:3 - undefined_identifier
+  error - Undefined name 'purchasesControllerProvider' - lib\features\watchlist\application\watchlist_quick_buy_service.dart:5:12 - undefined_identifier
+  error - Undefined name 'ref' - lib\features\watchlist\application\watchlist_quick_buy_service.dart:7:3 - undefined_identifier
+  error - Undefined name 'watchlistControllerProvider' - lib\features\watchlist\application\watchlist_quick_buy_service.dart:7:12 - undefined_identifier
+  error - Undefined name 'ref' - lib\features\watchlist\application\watchlist_quick_buy_service.dart:8:9 - undefined_identifier
+  error - Undefined name 'activityLogProvider' - lib\features\watchlist\application\watchlist_quick_buy_service.dart:8:18 - undefined_identifier
+warning - Unused import: 'package:lego_trading_manager/data/models/item_model.dart' - lib\features\watchlist\application\watchlist_quick_purchase_service.dart:1:8 - unused_import
+  error - The method 'where' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_review_queue_provider.dart:9:8 - undefined_method
+  error - The method 'map' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_smart_rank_provider.dart:8:24 - undefined_method
+  error - The method 'where' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_stats_provider.dart:6:16 - undefined_method
+  error - The method 'where' isn't defined for the type 'WatchlistState' - lib\features\watchlist\application\watchlist_top_targets_provider.dart:10:28 - undefined_method
+  error - Spread elements in list or set literals must implement 'Iterable' - lib\features\watchlist\application\watchlist_visible_items_provider.dart:11:20 - not_iterable_spread
+  error - The returned type 'List<dynamic>' isn't returnable from a 'List<WatchlistItemModel>' function, as required by the closure's context - lib\features\watchlist\application\watchlist_visible_items_provider.dart:69:10 - return_of_invalid_type_from_closure
+  error - Spread elements in list or set literals must implement 'Iterable' - lib\features\watchlist\application\watchlist_visible_provider.dart:13:20 - not_iterable_spread
+  error - The getter 'type' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\application\watchlist_visible_provider.dart:27:14 - undefined_getter
+  error - The getter 'type' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\application\watchlist_visible_provider.dart:28:57 - undefined_getter
+  error - The getter 'underDesiredOnly' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\application\watchlist_visible_provider.dart:42:14 - undefined_getter
+  error - The getter 'withMarketPriceOnly' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\application\watchlist_visible_provider.dart:58:14 - undefined_getter
+  error - The getter 'sortOption' isn't defined for the type 'WatchlistUiState' - lib\features\watchlist\application\watchlist_visible_provider.dart:62:14 - undefined_getter
+  error - The returned type 'List<dynamic>' isn't returnable from a 'List<WatchlistItemModel>' function, as required by the closure's context - lib\features\watchlist\application\watchlist_visible_provider.dart:87:10 - return_of_invalid_type_from_closure
+  error - The method 'firstWhere' isn't defined for the type 'WatchlistState' - lib\features\watchlist\presentation\buy_queue_screen.dart:29:47 - undefined_method
+  error - Undefined name 'activityLogHelperProvider' - lib\features\watchlist\presentation\opportunity_center_screen.dart:54:20 - undefined_identifier
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\watchlist\presentation\watchlist_edit_form.dart:50:40 - use_build_context_synchronously
+  error - The method 'createWatchlist' isn't defined for the type 'OperatorApiRepository' - lib\features\watchlist\presentation\watchlist_form_screen.dart:44:27 - undefined_method
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\watchlist\presentation\watchlist_form_screen.dart:50:44 - use_build_context_synchronously
+  error - The argument type 'WatchlistPurchasePayloadModel' can't be assigned to the parameter type 'WatchlistToPurchaseDraftModel'.  - lib\features\watchlist\presentation\watchlist_item_details_screen.dart:117:18 - argument_type_not_assignable
+   info - Don't use 'BuildContext's across async gaps - lib\features\watchlist\presentation\watchlist_live_screen.dart:112:56 - use_build_context_synchronously
+  error - The getter 'length' isn't defined for the type 'WatchlistState' - lib\features\watchlist\presentation\watchlist_screen.dart:314:67 - undefined_getter
+  error - The argument type 'WatchlistQueueBuyPowerRatioModel (where WatchlistQueueBuyPowerRatioModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_queue_buy_power_ratio_provider.dart)' can't be assigned to the parameter type 'WatchlistQueueBuyPowerRatioModel (where WatchlistQueueBuyPowerRatioModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_queue_buy_power_ratio_model.dart)'.  - lib\features\watchlist\presentation\watchlist_screen.dart:383:34 - argument_type_not_assignable
+  error - The argument type 'WatchlistQueueActionableSummaryModel (where WatchlistQueueActionableSummaryModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_queue_actionable_summary_provider.dart)' can't be assigned to the parameter type 'WatchlistQueueActionableSummaryModel (where WatchlistQueueActionableSummaryModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_queue_actionable_summary_model.dart)'.  - lib\features\watchlist\presentation\watchlist_screen.dart:414:34 - argument_type_not_assignable
+  error - The argument type 'WatchlistQueueExecutionPressureSummaryModel (where WatchlistQueueExecutionPressureSummaryModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_queue_execution_pressure_summary_provider.dart)' can't be assigned to the parameter type 'WatchlistQueueExecutionPressureSummaryModel (where WatchlistQueueExecutionPressureSummaryModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_queue_execution_pressure_summary_model.dart)'.  - lib\features\watchlist\presentation\watchlist_screen.dart:422:34 - argument_type_not_assignable
+  error - The argument type 'WatchlistQueueActionConfidenceModel (where WatchlistQueueActionConfidenceModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_queue_action_confidence_provider.dart)' can't be assigned to the parameter type 'WatchlistQueueActionConfidenceModel (where WatchlistQueueActionConfidenceModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_queue_action_confidence_model.dart)'.  - lib\features\watchlist\presentation\watchlist_screen.dart:434:34 - argument_type_not_assignable
+  error - The argument type 'WatchlistCommitStabilityModel (where WatchlistCommitStabilityModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_commit_stability_provider.dart)' can't be assigned to the parameter type 'WatchlistCommitStabilityModel (where WatchlistCommitStabilityModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_commit_stability_model.dart)'.  - lib\features\watchlist\presentation\watchlist_screen.dart:439:63 - argument_type_not_assignable
+  error - The argument type 'WatchlistExecutionMaturityModel (where WatchlistExecutionMaturityModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_execution_maturity_provider.dart)' can't be assigned to the parameter type 'WatchlistExecutionMaturityModel (where WatchlistExecutionMaturityModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_execution_maturity_model.dart)'.  - lib\features\watchlist\presentation\watchlist_screen.dart:442:36 - argument_type_not_assignable
+  error - The argument type 'WatchlistExecutionDisciplineModel (where WatchlistExecutionDisciplineModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_execution_discipline_provider.dart)' can't be assigned to the parameter type 'WatchlistExecutionDisciplineModel (where WatchlistExecutionDisciplineModel is defined in C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\application\watchlist_execution_discipline_model.dart)'.  - lib\features\watchlist\presentation\watchlist_screen.dart:451:34 - argument_type_not_assignable
+   info - Statements in an if should be enclosed in a block - lib\features\watchlist\presentation\watchlist_screen.dart:467:33 - curly_braces_in_flow_control_structures
+  error - The getter 'opportunityCenter' isn't defined for the type 'AppRouter' - lib\features\watchlist\presentation\watchlist_screen.dart:496:54 - undefined_getter
+  error - The getter 'type' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\presentation\widgets\watchlist_active_filter_chips.dart:18:16 - undefined_getter
+  error - The getter 'type' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\presentation\widgets\watchlist_active_filter_chips.dart:18:56 - undefined_getter
+  error - The getter 'underDesiredOnly' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\presentation\widgets\watchlist_active_filter_chips.dart:23:16 - undefined_getter
+  error - The getter 'withMarketPriceOnly' isn't defined for the type 'WatchlistFilterModel' - lib\features\watchlist\presentation\widgets\watchlist_active_filter_chips.dart:25:16 - undefined_getter
+  error - The getter 'currentMarketPrice' isn't defined for the type 'WatchlistOpportunityModel' - lib\features\watchlist\presentation\widgets\watchlist_opportunity_card.dart:33:52 - undefined_getter
+  error - The getter 'targetPrice' isn't defined for the type 'WatchlistOpportunityModel' - lib\features\watchlist\presentation\widgets\watchlist_opportunity_card.dart:34:53 - undefined_getter
+  error - The getter 'maxPrice' isn't defined for the type 'WatchlistOpportunityModel' - lib\features\watchlist\presentation\widgets\watchlist_opportunity_card.dart:35:49 - undefined_getter
+   info - The imported package 'lego_trading_manager.features' isn't a dependency of the importing package - lib\features\watchlist\presentation\widgets\watchlist_review_queue_card.dart:4:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:lego_trading_manager.features/watchlist/presentation/widgets/watchlist_review_queue_priority_badge.dart' - lib\features\watchlist\presentation\widgets\watchlist_review_queue_card.dart:4:8 - uri_does_not_exist
+  error - The method 'WatchlistReviewQueuePriorityBadge' isn't defined for the type 'WatchlistReviewQueueCard' - lib\features\watchlist\presentation\widgets\watchlist_review_queue_card.dart:65:23 - undefined_method
+
+flutter : 659 issues found. (ran in 3.0s)
+At line:1 char:1
++ flutter analyze 2>&1 | Out-File "$root\analyze.txt" -Encoding UTF8
++ ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (659 issues found. (ran in 3.0s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

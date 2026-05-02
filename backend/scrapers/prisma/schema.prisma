@@ -1,0 +1,490 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?  @unique
+  role      String   @default("operator")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions               UserSession[]
+  assignedInventoryItems InventoryItem[]
+  assignedWatchlistItems WatchlistItem[]
+  notifications          Notification[]
+
+  @@index([role])
+  @@index([active])
+}
+
+model UserSession {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Item {
+  id               String   @id @default(cuid())
+  kind             String   @default("set")
+  title            String
+  setNumber        String?
+  theme            String?
+  conditionDefault String?  @default("used")
+  imageUrl         String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  inventoryItems    InventoryItem[]
+  watchlistItems    WatchlistItem[]
+  marketListings    MarketListing[]
+  marketSnapshots   MarketSnapshot[]
+  decisionSnapshots DecisionSnapshot[]
+  soldComps         SoldComp[]
+  sales             Sale[]
+
+  @@index([kind])
+  @@index([theme])
+  @@index([title])
+  @@index([setNumber])
+}
+
+model InventoryItem {
+  id                      String   @id @default(cuid())
+  itemId                  String
+  titleSnapshot           String
+  purchasePrice           Float
+  totalCost               Float
+  quantity                Int      @default(1)
+  condition               String   @default("used")
+  sealed                  Boolean  @default(false)
+  expectedSalePriceManual Float?
+  source                  String?
+  purchaseUrl             String?
+  storageLocation         String?
+  notes                   String?
+  priority                Int      @default(50)
+  assignedUserId          String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  item         Item              @relation(fields: [itemId], references: [id])
+  assignedUser User?            @relation(fields: [assignedUserId], references: [id])
+  images       InventoryImage[]
+  sales        Sale[]
+  repriceFlows RepriceFlowItem[]
+  reviewFlows  ReviewFlowItem[]
+
+  @@index([itemId])
+  @@index([assignedUserId])
+  @@index([quantity])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+model InventoryImage {
+  id              String   @id @default(cuid())
+  inventoryItemId String
+  imageUrl        String
+  altText         String?
+  isPrimary       Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryItemId])
+  @@index([isPrimary])
+  @@index([sortOrder])
+}
+
+model WatchlistItem {
+  id              String   @id @default(cuid())
+  itemId          String
+  titleSnapshot   String
+  desiredBuyPrice Float
+  maxBuyPrice     Float
+  targetSellPrice Float?
+  active          Boolean  @default(true)
+  priority        Int      @default(50)
+  notes           String?
+  assignedUserId  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  item          Item               @relation(fields: [itemId], references: [id])
+  assignedUser  User?              @relation(fields: [assignedUserId], references: [id])
+  purchaseFlows PurchaseFlowItem[]
+  deals         Deal[]
+
+  @@index([itemId])
+  @@index([assignedUserId])
+  @@index([active])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+model MarketSource {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  type      String   @default("manual")
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listings MarketListing[]
+  runs     SourceRunLog[]
+
+  @@index([enabled])
+  @@index([type])
+}
+
+model MarketListing {
+  id                  String   @id
+  sourceId            String
+  sourceCode          String
+  itemId              String
+  externalListingId   String
+  externalId          String?
+  titleRaw            String
+  title               String
+  url                 String
+  imageUrl            String?
+  sellerName          String?
+  sellerRating        Float?
+  price               Float
+  currency            String   @default("UAH")
+  shippingPrice       Float?
+  shippingCurrency    String?
+  country             String?
+  condition           String?
+  sealed              Boolean?
+  completenessPercent Int?
+  quantityAvailable   Int?
+  status              String   @default("active")
+  fetchedAt           DateTime @default(now())
+  firstSeenAt         DateTime @default(now())
+  lastSeenAt          DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  source MarketSource @relation(fields: [sourceId], references: [id])
+  item   Item         @relation(fields: [itemId], references: [id])
+  deals  Deal[]
+
+  @@index([sourceId])
+  @@index([sourceCode])
+  @@index([itemId])
+  @@index([externalListingId])
+  @@index([status])
+  @@index([price])
+  @@index([fetchedAt])
+  @@index([lastSeenAt])
+}
+
+model MarketSnapshot {
+  id                      String   @id @default(cuid())
+  itemId                  String
+  scope                   String   @default("ua")
+  listingsCount           Int      @default(0)
+  lowestPrice             Float?
+  lowestPriceWithShipping Float?
+  avgPrice                Float?
+  medianPrice             Float?
+  avgShipping             Float?
+  minShipping             Float?
+  maxShipping             Float?
+  sealedAvgPrice          Float?
+  usedAvgPrice            Float?
+  confidenceScore         Float    @default(0)
+  computedAt              DateTime @default(now())
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([scope])
+  @@index([computedAt])
+}
+
+model DecisionSnapshot {
+  id              String   @id @default(cuid())
+  itemId          String
+  contextType     String
+  contextId       String
+  action          String
+  score           Float
+  confidence      Float
+  reasonPrimary   String
+  reasonSecondary String?
+  payloadJson     Json?
+  createdAt       DateTime @default(now())
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([contextType])
+  @@index([contextId])
+  @@index([action])
+  @@index([score])
+  @@index([createdAt])
+}
+
+model PurchaseFlowItem {
+  id              String   @id @default(cuid())
+  watchlistItemId String
+  selectedPrice   Float?
+  status          String   @default("pending")
+  reason          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
+
+  @@index([watchlistItemId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RepriceFlowItem {
+  id              String   @id @default(cuid())
+  inventoryItemId String
+  currentPrice    Float?
+  suggestedPrice  Float?
+  status          String   @default("pending")
+  reason          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryItemId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ReviewFlowItem {
+  id              String   @id @default(cuid())
+  inventoryItemId String
+  status          String   @default("pending")
+  reason          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryItemId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Deal {
+  id              String   @id @default(cuid())
+  listingId       String
+  watchlistItemId String
+  buyPrice        Float
+  targetSellPrice Float
+  profit          Float
+  roiPercent      Float
+  action          String
+  score           Float
+  status          String   @default("open")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  listing       MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([watchlistItemId])
+  @@index([action])
+  @@index([status])
+  @@index([score])
+  @@index([createdAt])
+}
+
+model Sale {
+  id              String   @id @default(cuid())
+  inventoryItemId String
+  itemId          String
+  quantity        Int      @default(1)
+  sellPrice       Float
+  costBasis       Float
+  profit          Float
+  roiPercent      Float
+  channel         String?
+  buyerName       String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  item          Item          @relation(fields: [itemId], references: [id])
+
+  @@index([inventoryItemId])
+  @@index([itemId])
+  @@index([createdAt])
+}
+
+model SoldComp {
+  id              String   @id @default(cuid())
+  sourceCode      String
+  externalId      String
+  itemId          String?
+  title           String
+  normalizedTitle String
+  extractedSetNo  String?
+  soldPrice       Float
+  currency        String   @default("UAH")
+  soldAt          DateTime
+  url             String?
+  imageUrl        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  item Item? @relation(fields: [itemId], references: [id])
+
+  @@unique([sourceCode, externalId])
+  @@index([sourceCode])
+  @@index([externalId])
+  @@index([itemId])
+  @@index([extractedSetNo])
+  @@index([soldAt])
+}
+
+model ReserveRequest {
+  id              String   @id @default(cuid())
+  inventoryItemId String?
+  productTitle    String
+  name            String
+  contact         String
+  message         String?
+  status          String   @default("pending")
+  adminNote       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([inventoryItemId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  title        String
+  message      String
+  type         String   @default("info")
+  read         Boolean  @default(false)
+  targetUserId String?
+  payloadJson  Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  targetUser User? @relation(fields: [targetUserId], references: [id])
+
+  @@index([targetUserId])
+  @@index([read])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  action      String
+  payloadJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+}
+
+model UnresolvedMatchQueue {
+  id              String   @id @default(cuid())
+  listingId       String
+  sourceCode      String
+  titleRaw        String
+  normalizedTitle String?
+  extractedSetNo  String?
+  suggestedItemId String?
+  resolvedItemId  String?
+  status          String   @default("pending")
+  resolutionNote  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([listingId])
+  @@index([sourceCode])
+  @@index([status])
+  @@index([extractedSetNo])
+  @@index([createdAt])
+}
+
+model SourceRunLog {
+  id            String    @id @default(cuid())
+  sourceId      String
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  status        String    @default("running")
+  itemsSeen     Int       @default(0)
+  itemsMatched  Int       @default(0)
+  itemsInserted Int       @default(0)
+  itemsUpdated  Int       @default(0)
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+
+  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model SyncErrorLog {
+  id          String   @id @default(cuid())
+  scope       String
+  sourceCode  String?
+  referenceId String?
+  message     String
+  detailsJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([scope])
+  @@index([sourceCode])
+  @@index([referenceId])
+  @@index([createdAt])
+}
+
+model ScanJob {
+  id           String    @id @default(cuid())
+  sourceCode   String
+  query        String?
+  status       String    @default("queued")
+  resultCount  Int       @default(0)
+  errorMessage String?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([sourceCode])
+  @@index([status])
+  @@index([createdAt])
+}

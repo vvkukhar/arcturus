@@ -1,0 +1,2 @@
+# Daily Arcturus DB backup at 03:15
+15 3 * * * cd /opt/arcturus/backend && bash scripts/backup-db.sh >> /var/log/arcturus-backup.log 2>&1

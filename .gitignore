@@ -1,0 +1,106 @@
+# =========================
+# ENV (НАЙВАЖЛИВІШЕ)
+# =========================
+.env
+.env.*
+!.env.example
+!.env.local.example
+!.env.supabase.example
+
+# =========================
+# NODE / BACKEND
+# =========================
+node_modules/
+dist/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# PRISMA
+# =========================
+prisma/dev.db
+prisma/dev.db-journal
+
+# =========================
+# LOGS
+# =========================
+*.log
+
+# =========================
+# OS FILES
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE
+# =========================
+.idea/
+*.iml
+*.ipr
+.iws
+
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# =========================
+# TEMP / CACHE
+# =========================
+.cache/
+.tmp/
+temp/
+
+# =========================
+# DOCKER
+# =========================
+docker-compose.override.yml
+
+# =========================
+# FLUTTER / DART
+# =========================
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+
+# Flutter iOS
+ios/Flutter/.last_build_id
+
+# Flutter Android
+android/app/debug
+android/app/profile
+android/app/release
+
+# =========================
+# SWIFT / XCODE (якщо буде)
+# =========================
+.build/
+DerivedData/
+*.swiftpm/
+
+# =========================
+# PYTHON (на всякий)
+# =========================
+*.pyc
+pycache/
+
+# =========================
+# GIT
+# =========================
+*.swp
+.history
+.svn/
+
+# =========================
+# SYMBOLS / MAPS
+# =========================
+app..symbols
+app..map.json

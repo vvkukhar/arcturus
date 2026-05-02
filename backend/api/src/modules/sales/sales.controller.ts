@@ -1,0 +1,61 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Query,
+  UseGuards,
+  Post,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
+import { SalesService } from './sales.service';
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin', 'operator')
+@Controller('sales')
+export class SalesController {
+  constructor(private readonly salesService: SalesService) {}
+
+  @Get()
+  list(
+    @Query('q') q?: string,
+    @Query('limit') limit?: string,
+  ): Promise<unknown[]> {
+    return this.salesService.list({
+      q,
+      limit: limit ? Number(limit) : 100,
+    });
+  }
+
+  @Get('stats')
+  stats(): Promise<unknown> {
+    return this.salesService.stats();
+  }
+
+  @Post()
+  registerSale(
+    @Body()
+    body: {
+      inventoryItemId: string;
+      sellPrice: number;
+      quantity?: number;
+      channel?: string | null;
+      buyerName?: string | null;
+      notes?: string | null;
+    },
+  ): Promise<unknown> {
+    return this.salesService.registerSale(body);
+  }
+
+  @Delete()
+  deleteSale(
+    @Body()
+    body: {
+      id: string;
+    },
+  ): Promise<unknown> {
+    return this.salesService.deleteSale(body.id);
+  }
+}

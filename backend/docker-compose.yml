@@ -1,0 +1,76 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: arcturus_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: arcturus
+    ports:
+      - "5432:5432"
+    volumes:
+      - arcturus_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d arcturus"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: arcturus_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - arcturus_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: arcturus_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/arcturus
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PORT: 4000
+      NODE_ENV: production
+      CORS_ORIGIN: http://localhost:3000
+      ADMIN_TOKEN: supersecret
+    ports:
+      - "4000:4000"
+    command: sh -c "npx prisma generate && npx prisma db push && node dist/main.js"
+
+  workers:
+    build:
+      context: ./workers
+      dockerfile: Dockerfile
+    container_name: arcturus_workers
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/arcturus
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      NODE_ENV: production
+      WORKER_INTERVAL_MINUTES: 15
+    command: sh -c "npx prisma generate && node dist/main.js"
+
+volumes:
+  arcturus_pg_data:
+  arcturus_redis_data:

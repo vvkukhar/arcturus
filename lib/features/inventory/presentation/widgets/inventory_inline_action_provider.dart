@@ -1,0 +1,1 @@
+export 'package:lego_trading_manager/features/inventory/application/inventory_inline_action_provider.dart';

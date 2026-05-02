@@ -1,0 +1,975 @@
+﻿
+
+--- FILE: lib\features\activity\application\activity_cadence_stability_compare_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_operating_cadence_provider.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_weekly_stability_provider.dart';
+
+class ActivityCadenceStabilityCompareModel {
+  final String label;
+  final int weeklyActiveDays;
+  final String stabilityLabel;
+
+  const ActivityCadenceStabilityCompareModel({
+    required this.label,
+    required this.weeklyActiveDays,
+    required this.stabilityLabel,
+  });
+}
+
+final activityCadenceStabilityCompareProvider =
+    Provider<ActivityCadenceStabilityCompareModel>((ref) {
+  final cadence = ref.watch(activityOperatingCadenceProvider);
+  final stability = ref.watch(activityWeeklyStabilityProvider);
+  final label = cadence.label.contains('strong') &&
+          stability.label.contains('very strong')
+      ? 'cadence and stability aligned'
+      : cadence.label.contains('stable')
+          ? 'cadence leads stability'
+          : 'stability is weaker than cadence';
+  return ActivityCadenceStabilityCompareModel(
+    label: label,
+    weeklyActiveDays: cadence.weeklyActiveDays,
+    stabilityLabel: stability.label,
+  );
+});
+
+
+
+--- FILE: lib\features\activity\application\activity_consistency_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class ActivityConsistencyModel {
+  final int totalDaysTracked;
+
+  const ActivityConsistencyModel({
+    required this.totalDaysTracked,
+  });
+}
+
+final activityConsistencyProvider = Provider<ActivityConsistencyModel>((ref) {
+  return const ActivityConsistencyModel(
+    totalDaysTracked: 10,
+  );
+});
+
+
+
+--- FILE: lib\features\activity\application\activity_control_momentum_compare_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_momentum_provider.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_weekly_control_score_provider.dart';
+
+class ActivityControlMomentumCompareModel {
+  final String label;
+  final double controlScore;
+  final String momentumLabel;
+
+  const ActivityControlMomentumCompareModel({
+    required this.label,
+    required this.controlScore,
+    required this.momentumLabel,
+  });
+}
+
+final activityControlMomentumCompareProvider =
+    Provider<ActivityControlMomentumCompareModel>((ref) {
+  final control = ref.watch(activityWeeklyControlScoreProvider);
+  final momentum = ref.watch(activityMomentumProvider);
+  final label = control.score >= 70 && momentum.label == 'Strong momentum'
+      ? 'control and momentum aligned'
+      : control.score >= 45
+          ? 'control leads momentum'
+          : 'momentum is weaker than control';
+  return ActivityControlMomentumCompareModel(
+    label: label,
+    controlScore: control.score,
+    momentumLabel: momentum.label,
+  );
+});
+
+
+
+--- FILE: lib\features\activity\application\activity_momentum_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class ActivityMomentumModel {
+  final String label;
+
+  const ActivityMomentumModel({
+    required this.label,
+  });
+}
+
+final activityMomentumProvider = Provider<ActivityMomentumModel>((ref) {
+  return const ActivityMomentumModel(
+    label: 'Stable momentum',
+  );
+});
+
+
+
+--- FILE: lib\features\activity\application\activity_operating_cadence_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_weekly_control_score_provider.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_weekly_rhythm_provider.dart';
+
+class ActivityOperatingCadenceModel {
+  final String label;
+  final int weeklyActiveDays;
+  final double controlScore;
+
+  const ActivityOperatingCadenceModel({
+    required this.label,
+    required this.weeklyActiveDays,
+    required this.controlScore,
+  });
+}
+
+final activityOperatingCadenceProvider =
+    Provider<ActivityOperatingCadenceModel>((ref) {
+  final rhythm = ref.watch(activityWeeklyRhythmProvider);
+  final control = ref.watch(activityWeeklyControlScoreProvider);
+  final label = rhythm.activeDaysInLast7 >= 6 && control.score >= 70
+      ? 'strong operating cadence'
+      : rhythm.activeDaysInLast7 >= 4 && control.score >= 45
+          ? 'stable operating cadence'
+          : rhythm.activeDaysInLast7 >= 2
+              ? 'light operating cadence'
+              : 'broken operating cadence';
+  return ActivityOperatingCadenceModel(
+    label: label,
+    weeklyActiveDays: rhythm.activeDaysInLast7,
+    controlScore: control.score,
+  );
+});
+
+
+
+--- FILE: lib\features\activity\application\activity_system_balance_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_control_momentum_compare_provider.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_weekly_control_score_provider.dart';
+
+class ActivitySystemBalanceModel {
+  final double score;
+  final String label;
+
+  const ActivitySystemBalanceModel({
+    required this.score,
+    required this.label,
+  });
+}
+
+final activitySystemBalanceProvider =
+    Provider<ActivitySystemBalanceModel>((ref) {
+  final compare = ref.watch(activityControlMomentumCompareProvider);
+  final control = ref.watch(activityWeeklyControlScoreProvider);
+  double score = control.score;
+  if (compare.label == 'control and momentum aligned') {
+    score += 15;
+  } else if (compare.label == 'control leads momentum') {
+    score += 5;
+  } else {
+    score -= 10;
+  }
+  if (score < 0) score = 0;
+  if (score > 100) score = 100;
+  final label = score >= 75
+      ? 'system balance is strong'
+      : score >= 50
+          ? 'system balance is workable'
+          : 'system balance is weak';
+  return ActivitySystemBalanceModel(
+    score: score,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\activity\application\activity_weekly_rhythm_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class ActivityWeeklyRhythmModel {
+  final int activeDaysInLast7;
+
+  const ActivityWeeklyRhythmModel({
+    required this.activeDaysInLast7,
+  });
+}
+
+final activityWeeklyRhythmProvider = Provider<ActivityWeeklyRhythmModel>((ref) {
+  return const ActivityWeeklyRhythmModel(
+    activeDaysInLast7: 4,
+  );
+});
+
+
+
+--- FILE: lib\features\activity\application\activity_weekly_stability_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_consistency_provider.dart';
+
+class ActivityWeeklyStabilityModel {
+  final String label;
+  final int activeDaysInLast7;
+  final int totalTrackedDays;
+
+  const ActivityWeeklyStabilityModel({
+    required this.label,
+    required this.activeDaysInLast7,
+    required this.totalTrackedDays,
+  });
+}
+
+final activityWeeklyStabilityProvider =
+    Provider<ActivityWeeklyStabilityModel>((ref) {
+  final consistency = ref.watch(activityConsistencyProvider);
+  const activeDaysInLast7 = 4;
+  final label = consistency.totalDaysTracked == 0
+      ? 'No weekly stability yet'
+      : activeDaysInLast7 >= 6
+          ? 'Weekly stability is very strong'
+          : activeDaysInLast7 >= 4
+              ? 'Weekly stability is stable'
+              : activeDaysInLast7 >= 2
+                  ? 'Weekly stability is fragile'
+                  : 'Weekly stability is weak';
+  return ActivityWeeklyStabilityModel(
+    label: label,
+    activeDaysInLast7: activeDaysInLast7,
+    totalTrackedDays: consistency.totalDaysTracked,
+  );
+});
+
+
+
+--- FILE: lib\features\analytics\application\analytics_automation_confidence_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/analytics/application/analytics_execution_totals_provider.dart';
+
+class AnalyticsAutomationConfidenceModel {
+  final String label;
+
+  const AnalyticsAutomationConfidenceModel({
+    required this.label,
+  });
+}
+
+final analyticsAutomationConfidenceProvider =
+    Provider<AnalyticsAutomationConfidenceModel>((ref) {
+  final totals = ref.watch(analyticsExecutionTotalsProvider);
+
+  final label = totals.totalRuns >= 50
+      ? 'Automation confidence is high'
+      : totals.totalRuns >= 15
+          ? 'Automation confidence is building'
+          : 'Automation confidence is low';
+
+  return AnalyticsAutomationConfidenceModel(
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\analytics\application\analytics_automation_pressure_summary_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/analytics/application/analytics_rule_stack_summary_provider.dart';
+
+class AnalyticsAutomationPressureSummaryModel {
+  final int enabledRules;
+  final bool scheduleEnabled;
+  final String label;
+
+  const AnalyticsAutomationPressureSummaryModel({
+    required this.enabledRules,
+    required this.scheduleEnabled,
+    required this.label,
+  });
+}
+
+final analyticsAutomationPressureSummaryProvider =
+    Provider<AnalyticsAutomationPressureSummaryModel>((ref) {
+  final stack = ref.watch(analyticsRuleStackSummaryProvider);
+  final label = !stack.scheduleEnabled && stack.enabledRules == 0
+      ? 'No automation pressure'
+      : !stack.scheduleEnabled && stack.enabledRules > 0
+          ? 'Manual automation pressure'
+          : stack.enabledRules <= 1
+              ? 'Low automation pressure'
+              : stack.enabledRules <= 2
+                  ? 'Stable automation pressure'
+                  : 'High automation pressure';
+  return AnalyticsAutomationPressureSummaryModel(
+    enabledRules: stack.enabledRules,
+    scheduleEnabled: stack.scheduleEnabled,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\analytics\application\analytics_automation_stability_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/analytics/application/analytics_execution_totals_provider.dart';
+
+class AnalyticsAutomationStabilityModel {
+  final String label;
+  final int totalRuns;
+  final bool scheduleEnabled;
+
+  const AnalyticsAutomationStabilityModel({
+    required this.label,
+    required this.totalRuns,
+    required this.scheduleEnabled,
+  });
+}
+
+final analyticsAutomationStabilityProvider =
+    Provider<AnalyticsAutomationStabilityModel>((ref) {
+  final totals = ref.watch(analyticsExecutionTotalsProvider);
+  const scheduleEnabled = true;
+  final label = !scheduleEnabled
+      ? 'Automation stability not established'
+      : totals.totalRuns == 0
+          ? 'Automation enabled but untested'
+          : totals.totalRuns < 5
+              ? 'Automation stability emerging'
+              : totals.totalRuns < 12
+                  ? 'Automation stability forming'
+                  : 'Automation stability strong';
+  return AnalyticsAutomationStabilityModel(
+    label: label,
+    totalRuns: totals.totalRuns,
+    scheduleEnabled: scheduleEnabled,
+  );
+});
+
+
+
+--- FILE: lib\features\analytics\application\analytics_execution_totals_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class AnalyticsExecutionTotalsModel {
+  final int totalRuns;
+
+  const AnalyticsExecutionTotalsModel({
+    required this.totalRuns,
+  });
+}
+
+final analyticsExecutionTotalsProvider =
+    Provider<AnalyticsExecutionTotalsModel>((ref) {
+  return const AnalyticsExecutionTotalsModel(
+    totalRuns: 24,
+  );
+});
+
+
+
+--- FILE: lib\features\analytics\application\analytics_rule_stack_summary_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class AnalyticsRuleStackSummaryModel {
+  final int enabledRules;
+  final bool scheduleEnabled;
+  final String frequency;
+  final String label;
+
+  const AnalyticsRuleStackSummaryModel({
+    required this.enabledRules,
+    required this.scheduleEnabled,
+    required this.frequency,
+    required this.label,
+  });
+}
+
+final analyticsRuleStackSummaryProvider =
+    Provider<AnalyticsRuleStackSummaryModel>((ref) {
+  return const AnalyticsRuleStackSummaryModel(
+    enabledRules: 2,
+    scheduleEnabled: true,
+    frequency: 'daily',
+    label: '2 active rules on daily cadence',
+  );
+});
+
+
+
+--- FILE: lib\features\analytics\application\analytics_stack_pressure_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/analytics/application/analytics_automation_pressure_summary_provider.dart';
+import 'package:lego_trading_manager/features/analytics/application/analytics_execution_totals_provider.dart';
+
+class AnalyticsStackPressureModel {
+  final double score;
+  final String label;
+
+  const AnalyticsStackPressureModel({
+    required this.score,
+    required this.label,
+  });
+}
+
+final analyticsStackPressureProvider =
+    Provider<AnalyticsStackPressureModel>((ref) {
+  final pressure = ref.watch(analyticsAutomationPressureSummaryProvider);
+  final totals = ref.watch(analyticsExecutionTotalsProvider);
+  double score = 0;
+  score += pressure.enabledRules * 18;
+  score += totals.totalRuns * 2;
+  if (pressure.scheduleEnabled) score += 12;
+  final label = score >= 70
+      ? 'high stack pressure'
+      : score >= 40
+          ? 'moderate stack pressure'
+          : score > 0
+              ? 'light stack pressure'
+              : 'no stack pressure';
+  return AnalyticsStackPressureModel(
+    score: score,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\inventory\application\inventory_action_readiness_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_execution_confidence_provider.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_execution_pressure_provider.dart';
+
+class InventoryActionReadinessModel {
+  final double score;
+  final String label;
+
+  const InventoryActionReadinessModel({
+    required this.score,
+    required this.label,
+  });
+}
+
+final inventoryActionReadinessProvider =
+    Provider<InventoryActionReadinessModel>((ref) {
+  final confidence = ref.watch(inventoryExecutionConfidenceProvider);
+  final pressure = ref.watch(inventoryExecutionPressureProvider);
+  double score = confidence.score - pressure.score;
+  if (score < 0) score = 0;
+  if (score > 100) score = 100;
+  final label = score >= 65
+      ? 'ready for action'
+      : score >= 40
+          ? 'partially ready'
+          : 'not ready yet';
+  return InventoryActionReadinessModel(
+    score: score,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\inventory\application\inventory_control_equilibrium_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_action_readiness_provider.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_review_stability_provider.dart';
+
+class InventoryControlEquilibriumModel {
+  final double score;
+  final String label;
+
+  const InventoryControlEquilibriumModel({
+    required this.score,
+    required this.label,
+  });
+}
+
+final inventoryControlEquilibriumProvider =
+    Provider<InventoryControlEquilibriumModel>((ref) {
+  final readiness = ref.watch(inventoryActionReadinessProvider);
+  final stability = ref.watch(inventoryReviewStabilityProvider);
+  final score = (readiness.score * 0.55) + (stability.score * 0.45);
+  final label = score >= 75
+      ? 'strong control equilibrium'
+      : score >= 50
+          ? 'moderate control equilibrium'
+          : 'weak control equilibrium';
+  return InventoryControlEquilibriumModel(
+    score: score,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\inventory\application\inventory_review_execution_hint_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_review_heat_provider.dart';
+
+class InventoryReviewExecutionHintModel {
+  final String label;
+
+  const InventoryReviewExecutionHintModel({
+    required this.label,
+  });
+}
+
+final inventoryReviewExecutionHintProvider =
+    Provider<InventoryReviewExecutionHintModel>((ref) {
+  final heat = ref.watch(inventoryReviewHeatProvider);
+  final label = heat.heatScore >= 25
+      ? 'Start with urgent inventory items immediately'
+      : heat.heatScore >= 12
+          ? 'Review urgent items first, then backlog'
+          : 'Keep steady review cadence across normal lane';
+  return InventoryReviewExecutionHintModel(
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\inventory\application\inventory_review_heat_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_review_lane_provider.dart';
+
+class InventoryReviewHeatModel {
+  final double heatScore;
+  final String label;
+
+  const InventoryReviewHeatModel({
+    required this.heatScore,
+    required this.label,
+  });
+}
+
+final inventoryReviewHeatProvider = Provider<InventoryReviewHeatModel>((ref) {
+  final lane = ref.watch(inventoryReviewLaneProvider);
+  final heatScore =
+      (lane.urgent * 3.0) + (lane.backlog * 1.5) + (lane.normal * 0.5);
+
+  final label = heatScore >= 25
+      ? 'High review heat'
+      : heatScore >= 12
+          ? 'Moderate review heat'
+          : heatScore > 0
+              ? 'Low review heat'
+              : 'No review heat';
+
+  return InventoryReviewHeatModel(
+    heatScore: heatScore,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\inventory\application\inventory_review_lane_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class InventoryReviewLaneModel {
+  final int urgent;
+  final int normal;
+  final int backlog;
+
+  const InventoryReviewLaneModel({
+    required this.urgent,
+    required this.normal,
+    required this.backlog,
+  });
+}
+
+final inventoryReviewLaneProvider = Provider<InventoryReviewLaneModel>((ref) {
+  return const InventoryReviewLaneModel(
+    urgent: 3,
+    normal: 8,
+    backlog: 5,
+  );
+});
+
+
+
+--- FILE: lib\features\inventory\application\inventory_review_stability_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_review_heat_provider.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_review_lane_provider.dart';
+
+class InventoryReviewStabilityModel {
+  final double score;
+  final String label;
+
+  const InventoryReviewStabilityModel({
+    required this.score,
+    required this.label,
+  });
+}
+
+final inventoryReviewStabilityProvider =
+    Provider<InventoryReviewStabilityModel>((ref) {
+  final heat = ref.watch(inventoryReviewHeatProvider);
+  final lane = ref.watch(inventoryReviewLaneProvider);
+
+  final total = lane.urgent + lane.normal + lane.backlog;
+  final urgentRatio = total == 0 ? 0.0 : lane.urgent / total;
+  final backlogRatio = total == 0 ? 0.0 : lane.backlog / total;
+
+  double score = 100;
+  score -= heat.heatScore * 2;
+  score -= urgentRatio * 35;
+  score -= backlogRatio * 20;
+  if (score < 0) score = 0;
+
+  final label = score >= 75
+      ? 'stable review flow'
+      : score >= 50
+          ? 'moderately stable review flow'
+          : score >= 25
+              ? 'fragile review flow'
+              : 'unstable review flow';
+
+  return InventoryReviewStabilityModel(
+    score: score,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\search\application\global_search_dominance_ratio_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/search/application/global_search_weighted_sections_provider.dart';
+
+class GlobalSearchDominanceRatioModel {
+  final double ratio;
+  final String label;
+
+  const GlobalSearchDominanceRatioModel({
+    required this.ratio,
+    required this.label,
+  });
+}
+
+final globalSearchDominanceRatioProvider =
+    Provider<GlobalSearchDominanceRatioModel?>((ref) {
+  final sections = ref.watch(globalSearchWeightedSectionsProvider);
+  if (sections.isEmpty) return null;
+  final winner = sections.first.totalScore.toDouble();
+  final runnerUp =
+      sections.length > 1 ? sections[1].totalScore.toDouble() : 0.0;
+  final ratio = runnerUp <= 0 ? winner : winner / runnerUp;
+  final label = ratio >= 2.0
+      ? 'winner dominates strongly'
+      : ratio >= 1.3
+          ? 'winner dominates moderately'
+          : 'winner only slightly ahead';
+  return GlobalSearchDominanceRatioModel(
+    ratio: ratio,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\search\application\global_search_relevance_density_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/search/application/global_search_provider.dart';
+
+class GlobalSearchRelevanceDensityModel {
+  final double ratio;
+  final String label;
+
+  const GlobalSearchRelevanceDensityModel({
+    required this.ratio,
+    required this.label,
+  });
+}
+
+final globalSearchRelevanceDensityProvider =
+    Provider<GlobalSearchRelevanceDensityModel>((ref) {
+  final results = ref.watch(globalSearchProvider);
+  if (results.isEmpty) {
+    return const GlobalSearchRelevanceDensityModel(
+      ratio: 0,
+      label: 'no relevance density',
+    );
+  }
+  int goodOrBetter = 0;
+  for (final item in results) {
+    if (item.priorityScore >= 500) {
+      goodOrBetter++;
+    }
+  }
+  final ratio = goodOrBetter / results.length;
+  final label = ratio >= 0.7
+      ? 'high relevance density'
+      : ratio >= 0.4
+          ? 'moderate relevance density'
+          : 'low relevance density';
+  return GlobalSearchRelevanceDensityModel(
+    ratio: ratio,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\watchlist\application\watchlist_commit_stability_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class WatchlistCommitStabilityModel {
+  final double score;
+  final String label;
+
+  const WatchlistCommitStabilityModel({
+    required this.score,
+    required this.label,
+  });
+}
+
+final watchlistCommitStabilityProvider =
+    Provider<WatchlistCommitStabilityModel>((ref) {
+  const score = 72.0;
+  final label = score >= 75
+      ? 'stable commit'
+      : score >= 50
+          ? 'partial commit stability'
+          : 'unstable commit';
+  return const WatchlistCommitStabilityModel(
+    score: score,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\watchlist\application\watchlist_execution_discipline_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/watchlist/application/watchlist_capital_discipline_provider.dart';
+
+class WatchlistExecutionDisciplineModel {
+  final double score;
+  final String label;
+
+  const WatchlistExecutionDisciplineModel({
+    required this.score,
+    required this.label,
+  });
+}
+
+final watchlistExecutionDisciplineProvider =
+    Provider<WatchlistExecutionDisciplineModel>((ref) {
+  final capital = ref.watch(watchlistCapitalDisciplineProvider);
+  double score = 0;
+  if (capital.ratio <= 0.7) {
+    score = 85;
+  } else if (capital.ratio <= 1.0) {
+    score = 68;
+  } else if (capital.ratio <= 1.2) {
+    score = 48;
+  } else {
+    score = 25;
+  }
+  final label = score >= 70
+      ? 'strong execution discipline'
+      : score >= 45
+          ? 'moderate execution discipline'
+          : 'weak execution discipline';
+  return WatchlistExecutionDisciplineModel(
+    score: score,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\watchlist\application\watchlist_execution_maturity_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/watchlist/application/watchlist_commit_stability_provider.dart';
+import 'package:lego_trading_manager/features/watchlist/application/watchlist_execution_discipline_provider.dart';
+
+class WatchlistExecutionMaturityModel {
+  final double score;
+  final String label;
+
+  const WatchlistExecutionMaturityModel({
+    required this.score,
+    required this.label,
+  });
+}
+
+final watchlistExecutionMaturityProvider =
+    Provider<WatchlistExecutionMaturityModel>((ref) {
+  final stability = ref.watch(watchlistCommitStabilityProvider);
+  final discipline = ref.watch(watchlistExecutionDisciplineProvider);
+  final score = (stability.score * 0.5) + (discipline.score * 0.5);
+  final label = score >= 75
+      ? 'high execution maturity'
+      : score >= 50
+          ? 'moderate execution maturity'
+          : 'low execution maturity';
+  return WatchlistExecutionMaturityModel(
+    score: score,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\watchlist\application\watchlist_queue_action_confidence_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/features/watchlist/application/watchlist_queue_actionable_summary_provider.dart';
+import 'package:lego_trading_manager/features/watchlist/application/watchlist_queue_execution_pressure_summary_provider.dart';
+
+class WatchlistQueueActionConfidenceModel {
+  final double score;
+  final String label;
+
+  const WatchlistQueueActionConfidenceModel({
+    required this.score,
+    required this.label,
+  });
+}
+
+final watchlistQueueActionConfidenceProvider =
+    Provider<WatchlistQueueActionConfidenceModel>((ref) {
+  final pressure = ref.watch(watchlistQueueExecutionPressureSummaryProvider);
+  final actionable = ref.watch(watchlistQueueActionableSummaryProvider);
+  double score = 0;
+  if (actionable.selectedCount > 0) score += 40;
+  if (actionable.selectedGap > 0) score += 30;
+  if (pressure.pressure == 'light' || pressure.pressure == 'healthy') {
+    score += 30;
+  } else if (pressure.pressure == 'tight') {
+    score += 15;
+  }
+  final label = score >= 80
+      ? 'high confidence'
+      : score >= 55
+          ? 'medium confidence'
+          : 'low confidence';
+  return WatchlistQueueActionConfidenceModel(
+    score: score,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\watchlist\application\watchlist_queue_actionable_summary_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class WatchlistQueueActionableSummaryModel {
+  final int selectedCount;
+  final double selectedSpend;
+  final double selectedGap;
+  final String label;
+
+  const WatchlistQueueActionableSummaryModel({
+    required this.selectedCount,
+    required this.selectedSpend,
+    required this.selectedGap,
+    required this.label,
+  });
+}
+
+final watchlistQueueActionableSummaryProvider =
+    Provider<WatchlistQueueActionableSummaryModel>((ref) {
+  const selectedCount = 4;
+  const selectedSpend = 8200.0;
+  const selectedGap = 1400.0;
+  final label = selectedCount == 0
+      ? 'No queue items selected'
+      : selectedGap > 0
+          ? 'Selection has positive spread'
+          : 'Selection needs review';
+  return const WatchlistQueueActionableSummaryModel(
+    selectedCount: selectedCount,
+    selectedSpend: selectedSpend,
+    selectedGap: selectedGap,
+    label: label,
+  );
+});
+
+
+
+--- FILE: lib\features\watchlist\application\watchlist_queue_buy_power_ratio_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class WatchlistQueueBuyPowerRatioModel {
+  final double ratio;
+
+  const WatchlistQueueBuyPowerRatioModel({
+    required this.ratio,
+  });
+}
+
+final watchlistQueueBuyPowerRatioProvider =
+    Provider<WatchlistQueueBuyPowerRatioModel>((ref) {
+  return const WatchlistQueueBuyPowerRatioModel(
+    ratio: 0.85,
+  );
+});
+
+
+
+--- FILE: lib\features\watchlist\application\watchlist_queue_execution_pressure_summary_provider.dart ---
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class WatchlistQueueExecutionPressureSummaryModel {
+  final int selectedCount;
+  final String pressure;
+  final String label;
+
+  const WatchlistQueueExecutionPressureSummaryModel({
+    required this.selectedCount,
+    required this.pressure,
+    required this.label,
+  });
+}
+
+final watchlistQueueExecutionPressureSummaryProvider =
+    Provider<WatchlistQueueExecutionPressureSummaryModel>((ref) {
+  const selectedCount = 4;
+  const pressure = 'healthy';
+  final label = selectedCount == 0
+      ? 'No queue selection active'
+      : '$pressure pressure on current queue selection';
+  return const WatchlistQueueExecutionPressureSummaryModel(
+    selectedCount: selectedCount,
+    pressure: pressure,
+    label: label,
+  );
+});
+
+
