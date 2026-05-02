@@ -1,6 +1,10 @@
+# ---------- deps ----------
 FROM node:22-alpine AS deps
 
 WORKDIR /app
+
+# 🔧 FIX Prisma (openssl)
+RUN apk add --no-cache openssl
 
 COPY package.json package-lock.json* ./
 RUN npm install
@@ -8,18 +12,26 @@ RUN npm install
 COPY prisma ./prisma
 RUN npx prisma generate
 
+
+# ---------- builder ----------
 FROM node:22-alpine AS builder
 
 WORKDIR /app
+
+RUN apk add --no-cache openssl
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 RUN npm run build
 
+
+# ---------- runner ----------
 FROM node:22-alpine AS runner
 
 WORKDIR /app
+
+RUN apk add --no-cache openssl
 
 ENV NODE_ENV=production
 
@@ -30,4 +42,5 @@ COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 4000
 
+# 🔥 запускаємо міграції + сервер
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
