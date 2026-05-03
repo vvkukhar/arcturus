@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { ArrowRight, ShieldCheck, Zap, PackageSearch, Gem } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Magnetic } from '@/components/ui/magnetic';
 
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-transparent flex flex-col font-sans relative overflow-hidden">
       <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-400/20 blur-[120px] mix-blend-multiply pointer-events-none animate-float" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-indigo-400/20 blur-[120px] mix-blend-multiply pointer-events-none animate-float" style={{ animationDelay: '-3s' }} />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-indigo-400/20 blur-[120px] mix-blend-multiply pointer-events-none animate-float delay-300" />
 
       <header className="absolute top-0 w-full z-50 px-6 py-6 flex justify-between items-center max-w-7xl mx-auto left-0 right-0 animate-fade-in-up">
         <div className="flex items-center gap-3">
@@ -45,10 +46,12 @@ export default function HomePage() {
           </p>
           
           <div className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-5 animate-fade-in-up delay-300">
-            <Button href="/store/catalog" size="lg" className="w-full sm:w-auto group rounded-[2rem] h-16 px-10 text-lg bg-slate-900 hover:bg-black transition-all">
-              Відкрити колекцію
-              <ArrowRight className="ml-3 h-6 w-6 transition-transform group-hover:translate-x-2" />
-            </Button>
+            <Magnetic>
+              <Button href="/store/catalog" size="lg" className="w-full sm:w-auto group rounded-[2rem] h-16 px-10 text-lg bg-slate-900 hover:bg-black transition-all">
+                Відкрити колекцію
+                <ArrowRight className="ml-3 h-6 w-6 transition-transform group-hover:translate-x-2" />
+              </Button>
+            </Magnetic>
           </div>
         </div>
 
