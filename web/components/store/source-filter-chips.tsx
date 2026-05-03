@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 const themes = ['Ninjago', 'Star Wars', 'Harry Potter', 'Marvel', 'Minecraft'];
 
@@ -22,31 +23,36 @@ export function SourceFilterChips() {
   };
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2 pt-2">
       <button
         onClick={() => update(null)}
-        className={`rounded-full border border-border px-3 py-2 text-sm font-semibold ${
+        className={cn(
+          'rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200 border',
           currentTheme === ''
-            ? 'bg-slate-900 text-white'
-            : 'bg-white text-slate-700 hover:bg-slate-50'
-        }`}
+            ? 'bg-slate-900 border-slate-900 text-white shadow-md'
+            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-900'
+        )}
       >
         All Themes
       </button>
 
-      {themes.map((theme) => (
-        <button
-          key={theme}
-          onClick={() => update(theme)}
-          className={`rounded-full border border-border px-3 py-2 text-sm font-semibold ${
-            currentTheme === theme
-              ? 'bg-slate-900 text-white'
-              : 'bg-white text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          {theme}
-        </button>
-      ))}
+      {themes.map((theme) => {
+        const isActive = currentTheme === theme;
+        return (
+          <button
+            key={theme}
+            onClick={() => update(theme)}
+            className={cn(
+              'rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200 border',
+              isActive
+                ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-900'
+            )}
+          >
+            {theme}
+          </button>
+        );
+      })}
     </div>
   );
 }
