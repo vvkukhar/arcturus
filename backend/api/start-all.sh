@@ -1,14 +1,11 @@
 #!/bin/sh
+echo "Starting Triple-Engine Monolith..."
 
-# 1. Запускаємо API у фоновому режимі
-echo "Starting API..."
+# Запуск API
 node dist/src/main.js &
 
-# 2. Переходимо у папку воркерів, білдимо та запускаємо у фоні
-# Ми використовуємо локальні файли, які вже завантажені на Render
-echo "Starting Workers..."
+# Запуск Workers
 cd ../workers && node dist/main.js &
 
-# 3. Запускаємо скрейпери в циклі
-echo "Starting Scraper Loop..."
+# Запуск Scrapers
 cd ../scrapers && node dist/scraper-loop.js

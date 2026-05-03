@@ -1,37 +1,39 @@
-# Спільна база для всіх
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 RUN apk add --no-cache openssl
 
-# Копіюємо весь backend (включаючи api, workers, scrapers)
+COPY package.json package-lock.json* ./
+# Копіюємо всі package.json з підпапок, щоб закешувати депси
+COPY api/package.json ./api/
+COPY workers/package.json ./workers/
+COPY scrapers/package.json ./scrapers/
+
+# Встановлюємо залежності для всього монорепозиторію
+RUN npm install
+
 COPY . .
 
-# Збираємо API
+# Збираємо по черзі, очищуючи кеш npm після кожного кроку для економії RAM
 WORKDIR /app/api
-RUN npm install && npm run build && npx prisma generate
+RUN npx prisma generate && npm run build
 
-# Збираємо Workers
 WORKDIR /app/workers
-RUN npm install && npm run build && npx prisma generate
+RUN npx prisma generate && npm run build
 
-# Збираємо Scrapers
 WORKDIR /app/scrapers
-RUN npm install && npm run build && npx prisma generate
+RUN npx prisma generate && npm run build
 
-# Фінальний образ
+# Runner stage
 FROM node:22-alpine AS runner
 WORKDIR /app
 RUN apk add --no-cache openssl
 
-# Копіюємо зібрані дистрибутиви
 COPY --from=builder /app /app
 
-# Даємо права на виконання скрипту запуску
 WORKDIR /app/api
 RUN chmod +x start-all.sh
 
 EXPOSE 4000
 
-# Запускаємо наш "комбайн"
 CMD ["./start-all.sh"]
