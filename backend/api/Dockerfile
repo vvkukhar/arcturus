@@ -1,44 +1,37 @@
-# ---------- deps ----------
-FROM node:22-alpine AS deps
-
-WORKDIR /app
-
-RUN apk add --no-cache openssl
-
-COPY package.json package-lock.json* ./
-RUN npm install
-
-COPY prisma ./prisma
-RUN npx prisma generate
-
-
-# ---------- builder ----------
+# Спільна база для всіх
 FROM node:22-alpine AS builder
 
 WORKDIR /app
-
 RUN apk add --no-cache openssl
 
-COPY --from=deps /app/node_modules ./node_modules
+# Копіюємо весь backend (включаючи api, workers, scrapers)
 COPY . .
 
-RUN npm run build
+# Збираємо API
+WORKDIR /app/api
+RUN npm install && npm run build && npx prisma generate
 
+# Збираємо Workers
+WORKDIR /app/workers
+RUN npm install && npm run build && npx prisma generate
 
-# ---------- runner ----------
+# Збираємо Scrapers
+WORKDIR /app/scrapers
+RUN npm install && npm run build && npx prisma generate
+
+# Фінальний образ
 FROM node:22-alpine AS runner
-
 WORKDIR /app
-
 RUN apk add --no-cache openssl
 
-ENV NODE_ENV=production
+# Копіюємо зібрані дистрибутиви
+COPY --from=builder /app /app
 
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
+# Даємо права на виконання скрипту запуску
+WORKDIR /app/api
+RUN chmod +x start-all.sh
 
 EXPOSE 4000
 
-CMD ["node", "dist/src/main.js"]
+# Запускаємо наш "комбайн"
+CMD ["./start-all.sh"]
