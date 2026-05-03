@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/main.js",
+    "start": "node dist/scraper-loop.js",
     "start:dev": "ts-node src/main.ts",
     "loop": "ts-node src/scraper-loop.ts"
   },
