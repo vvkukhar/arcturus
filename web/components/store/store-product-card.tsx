@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { ArrowUpRight } from 'lucide-react';
 
 type Props = {
   title: string;
@@ -22,51 +23,61 @@ export function StoreProductCard({
   imageUrl,
 }: Props) {
   return (
-    <Link href={`/store/catalog/${slug}`} className="group block h-full">
-      <div className="flex h-full flex-col overflow-hidden rounded-[2rem] border border-slate-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-glow">
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-50 p-2">
-          <div className="relative h-full w-full overflow-hidden rounded-[1.5rem] bg-white">
+    <Link href={`/store/catalog/${slug}`} className="group block h-full outline-none">
+      <div className="relative flex h-full flex-col overflow-hidden rounded-[2.5rem] border border-slate-200/50 bg-white/70 backdrop-blur-xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-200">
+        
+        <div className="absolute top-4 right-4 z-10 opacity-0 transform translate-y-4 transition-all duration-500 group-hover:opacity-100 group-hover:translate-y-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg">
+            <ArrowUpRight size={20} />
+          </div>
+        </div>
+
+        <div className="relative aspect-square w-full overflow-hidden p-3">
+          <div className="relative h-full w-full overflow-hidden rounded-[2rem] bg-slate-50 transition-colors duration-500 group-hover:bg-blue-50/50">
             {imageUrl ? (
               <Image
                 src={imageUrl}
                 alt={title}
                 fill
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                className="object-cover transition-transform duration-700 group-hover:scale-110"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-slate-50 text-sm font-semibold text-slate-400">
-                No Image
+              <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-300">
+                NO MEDIA
               </div>
             )}
           </div>
         </div>
-        <div className="flex flex-1 flex-col p-6">
+        
+        <div className="flex flex-1 flex-col p-6 pt-4">
           <div className="flex-1">
-            <h3 className="line-clamp-2 text-lg font-black leading-tight text-slate-900">
-              {title}
-            </h3>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {condition ? (
-                <Badge className="border-transparent bg-slate-100 text-slate-600 shadow-none">
-                  {condition}
-                </Badge>
-              ) : null}
+            <div className="flex flex-wrap gap-2 mb-3">
               {status ? (
                 <Badge
                   className={cn(
-                    'border-transparent shadow-none',
+                    'border-transparent shadow-sm px-3 py-1',
                     status.toLowerCase() === 'available'
-                      ? 'bg-emerald-50 text-emerald-700'
+                      ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-slate-100 text-slate-500'
                   )}
                 >
+                  <div className={cn("w-1.5 h-1.5 rounded-full mr-1.5", status.toLowerCase() === 'available' ? 'bg-emerald-500' : 'bg-slate-400')} />
                   {status}
                 </Badge>
               ) : null}
+              {condition ? (
+                <Badge className="border-slate-200 bg-white text-slate-600 shadow-sm px-3 py-1">
+                  {condition}
+                </Badge>
+              ) : null}
             </div>
+            <h3 className="line-clamp-2 text-xl font-black leading-tight text-slate-900 transition-colors group-hover:text-blue-600">
+              {title}
+            </h3>
           </div>
-          <div className="mt-6 flex items-end justify-between">
-            <div className="text-2xl font-black tracking-tight text-slate-900">
+          
+          <div className="mt-6 flex items-end justify-between border-t border-slate-100 pt-4">
+            <div className="text-3xl font-black tracking-tighter text-slate-900">
               {formatMoney(price)}
             </div>
           </div>
