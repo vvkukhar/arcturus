@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { RedisModule } from './modules/redis/redis.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { AiModule } from './modules/ai/ai.module';
 import { AllocationModule } from './modules/allocation/allocation.module';
@@ -49,6 +50,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
 @Module({
   imports: [
     PrismaModule,
+    RedisModule,
     RealtimeModule,
     RateLimitModule,
     AuthModule,

@@ -25,7 +25,7 @@ model User {
   expenses               Expense[]
   auditLogs              AuditLog[]
 
-  @@index([role])
+  @@index([role, active])
   @@index([active])
 }
 
@@ -38,7 +38,7 @@ model UserSession {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, expiresAt])
   @@index([expiresAt])
 }
 
@@ -63,9 +63,8 @@ model Item {
   sales             Sale[]
   purchaseOrders    PurchaseOrder[]
 
-  @@index([kind])
+  @@index([kind, theme])
   @@index([theme])
-  @@index([title])
   @@index([setNumber])
 }
 
@@ -100,9 +99,7 @@ model StorageLocation {
   inventoryItems InventoryItem[]
 
   @@unique([warehouseId, code])
-  @@index([warehouseId])
-  @@index([active])
-  @@index([zone])
+  @@index([warehouseId, active])
 }
 
 model InventoryItem {
@@ -140,12 +137,10 @@ model InventoryItem {
   returns         ReturnRequest[]
   expenses        Expense[]
 
-  @@index([itemId])
-  @@index([assignedUserId])
-  @@index([storageLocationId])
-  @@index([warehouseId])
-  @@index([quantity])
-  @@index([priority])
+  @@index([itemId, quantity])
+  @@index([assignedUserId, quantity])
+  @@index([warehouseId, storageLocationId])
+  @@index([quantity, expectedSalePriceManual])
   @@index([createdAt])
 }
 
@@ -163,10 +158,8 @@ model StockMovement {
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
   warehouse     Warehouse?    @relation(fields: [warehouseId], references: [id])
 
-  @@index([inventoryItemId])
-  @@index([warehouseId])
-  @@index([type])
-  @@index([createdAt])
+  @@index([inventoryItemId, type])
+  @@index([warehouseId, createdAt])
 }
 
 model InventoryImage {
@@ -181,9 +174,8 @@ model InventoryImage {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId])
-  @@index([isPrimary])
-  @@index([sortOrder])
+  @@index([inventoryItemId, sortOrder])
+  @@index([inventoryItemId, isPrimary])
 }
 
 model WatchlistItem {
@@ -200,21 +192,20 @@ model WatchlistItem {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  item           Item               @relation(fields: [itemId], references: [id])
-  assignedUser   User?              @relation(fields: [assignedUserId], references: [id])
-  purchaseFlows  PurchaseFlowItem[]
-  deals          Deal[]
+  item          Item               @relation(fields: [itemId], references: [id])
+  assignedUser  User?              @relation(fields: [assignedUserId], references: [id])
+  purchaseFlows PurchaseFlowItem[]
+  deals         Deal[]
   purchaseOrders PurchaseOrder[]
 
-  @@index([itemId])
-  @@index([assignedUserId])
-  @@index([active])
-  @@index([priority])
+  @@index([itemId, active])
+  @@index([assignedUserId, active])
+  @@index([active, priority])
   @@index([createdAt])
 }
 
 model PurchaseOrder {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   itemId          String
   watchlistItemId String?
   inventoryItemId String?
@@ -223,34 +214,30 @@ model PurchaseOrder {
   sourceCode      String?
   supplierName    String?
   sourceUrl       String?
-  status          String   @default("planned")
+  status          String    @default("planned")
   plannedPrice    Float?
   actualPrice     Float?
   shippingPrice   Float?
   totalCost       Float?
   targetSellPrice Float?
-  quantity        Int      @default(1)
-  condition       String   @default("used")
-  sealed          Boolean  @default(false)
+  quantity        Int       @default(1)
+  condition       String    @default("used")
+  sealed          Boolean   @default(false)
   notes           String?
   purchasedAt     DateTime?
   receivedAt      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   item          Item           @relation(fields: [itemId], references: [id])
   watchlistItem WatchlistItem? @relation(fields: [watchlistItemId], references: [id])
   inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  assignedUser  User?         @relation(fields: [assignedUserId], references: [id])
+  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
   expenses      Expense[]
 
-  @@index([itemId])
-  @@index([watchlistItemId])
-  @@index([inventoryItemId])
-  @@index([assignedUserId])
-  @@index([status])
-  @@index([sourceCode])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([itemId, status])
+  @@index([assignedUserId, status])
 }
 
 model MarketSource {
@@ -265,8 +252,7 @@ model MarketSource {
   listings MarketListing[]
   runs     SourceRunLog[]
 
-  @@index([enabled])
-  @@index([type])
+  @@index([enabled, type])
 }
 
 model MarketListing {
@@ -302,14 +288,10 @@ model MarketListing {
   item   Item         @relation(fields: [itemId], references: [id])
   deals  Deal[]
 
-  @@index([sourceId])
-  @@index([sourceCode])
-  @@index([itemId])
-  @@index([externalListingId])
-  @@index([status])
-  @@index([price])
-  @@index([fetchedAt])
-  @@index([lastSeenAt])
+  @@index([itemId, status, price])
+  @@index([sourceId, status, fetchedAt])
+  @@index([status, fetchedAt])
+  @@index([sourceCode, externalId])
 }
 
 model MarketSnapshot {
@@ -331,13 +313,11 @@ model MarketSnapshot {
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@index([itemId])
-  @@index([scope])
-  @@index([computedAt])
+  @@index([itemId, computedAt])
 }
 
 model DecisionSnapshot {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   itemId          String
   contextType     String
   contextId       String
@@ -347,20 +327,16 @@ model DecisionSnapshot {
   reasonPrimary   String
   reasonSecondary String?
   payloadJson     Json?
-  executionStatus String   @default("pending")
+  executionStatus String    @default("pending")
   executedAt      DateTime?
   ignoredAt       DateTime?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@index([itemId])
-  @@index([contextType])
-  @@index([contextId])
-  @@index([action])
-  @@index([score])
-  @@index([executionStatus])
-  @@index([createdAt])
+  @@index([contextType, contextId, createdAt])
+  @@index([executionStatus, action, score])
+  @@index([itemId, executionStatus])
 }
 
 model PurchaseFlowItem {
@@ -374,9 +350,8 @@ model PurchaseFlowItem {
 
   watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
-  @@index([watchlistItemId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([watchlistItemId, status])
 }
 
 model RepriceFlowItem {
@@ -391,9 +366,8 @@ model RepriceFlowItem {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([inventoryItemId, status])
 }
 
 model ReviewFlowItem {
@@ -406,9 +380,8 @@ model ReviewFlowItem {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([inventoryItemId, status])
 }
 
 model Deal {
@@ -428,12 +401,9 @@ model Deal {
   listing       MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
-  @@index([listingId])
-  @@index([watchlistItemId])
-  @@index([action])
-  @@index([status])
-  @@index([score])
-  @@index([createdAt])
+  @@index([status, score])
+  @@index([action, status])
+  @@index([watchlistItemId, listingId])
 }
 
 model Sale {
@@ -451,14 +421,13 @@ model Sale {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  inventoryItem InventoryItem   @relation(fields: [inventoryItemId], references: [id])
-  item          Item            @relation(fields: [itemId], references: [id])
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  item          Item          @relation(fields: [itemId], references: [id])
   orders        Order[]
   returns       ReturnRequest[]
   expenses      Expense[]
 
-  @@index([inventoryItemId])
-  @@index([itemId])
+  @@index([itemId, createdAt])
   @@index([createdAt])
 }
 
@@ -484,37 +453,31 @@ model Order {
   returns        ReturnRequest[]
   expenses       Expense[]
 
-  @@index([reserveRequestId])
+  @@index([status, createdAt])
   @@index([inventoryItemId])
-  @@index([saleId])
-  @@index([status])
-  @@index([createdAt])
 }
 
 model ReturnRequest {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   saleId          String
   orderId         String?
   inventoryItemId String
-  status          String   @default("requested")
+  status          String    @default("requested")
   reason          String?
   refundAmount    Float?
-  restock          Boolean  @default(true)
-  quantity         Int      @default(1)
-  adminNote        String?
-  resolvedAt       DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  restock         Boolean   @default(true)
+  quantity        Int       @default(1)
+  adminNote       String?
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   sale          Sale          @relation(fields: [saleId], references: [id])
   order         Order?        @relation(fields: [orderId], references: [id])
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
 
+  @@index([status, createdAt])
   @@index([saleId])
-  @@index([orderId])
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
 }
 
 model Expense {
@@ -539,14 +502,8 @@ model Expense {
   order         Order?         @relation(fields: [orderId], references: [id])
   assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
 
-  @@index([type])
-  @@index([category])
-  @@index([inventoryItemId])
-  @@index([purchaseOrderId])
-  @@index([saleId])
-  @@index([orderId])
-  @@index([assignedUserId])
-  @@index([incurredAt])
+  @@index([category, incurredAt])
+  @@index([type, incurredAt])
 }
 
 model ReportSnapshot {
@@ -557,10 +514,7 @@ model ReportSnapshot {
   payloadJson Json
   createdAt   DateTime @default(now())
 
-  @@index([type])
-  @@index([periodStart])
-  @@index([periodEnd])
-  @@index([createdAt])
+  @@index([type, createdAt])
 }
 
 model BackupSnapshot {
@@ -571,9 +525,7 @@ model BackupSnapshot {
   notes       String?
   createdAt   DateTime @default(now())
 
-  @@index([type])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
 }
 
 model AuditLog {
@@ -590,11 +542,115 @@ model AuditLog {
 
   actor User? @relation(fields: [actorUserId], references: [id])
 
-  @@index([actorUserId])
-  @@index([action])
-  @@index([entityType])
-  @@index([entityId])
-  @@index([createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([action, createdAt])
+}
+
+model ReserveRequest {
+  id              String   @id @default(cuid())
+  inventoryItemId String?
+  productTitle    String
+  name            String
+  contact         String
+  message         String?
+  status          String   @default("pending")
+  adminNote       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  orders        Order[]
+
+  @@index([status, createdAt])
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  title        String
+  message      String
+  type         String   @default("info")
+  read         Boolean  @default(false)
+  targetUserId String?
+  payloadJson  Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  targetUser User? @relation(fields: [targetUserId], references: [id])
+
+  @@index([targetUserId, read, createdAt])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  action      String
+  payloadJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([action, createdAt])
+}
+
+model UnresolvedMatchQueue {
+  id              String   @id @default(cuid())
+  listingId       String
+  sourceCode      String
+  titleRaw        String
+  normalizedTitle String?
+  extractedSetNo  String?
+  suggestedItemId String?
+  resolvedItemId  String?
+  status          String   @default("pending")
+  resolutionNote  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([sourceCode, status])
+}
+
+model SourceRunLog {
+  id            String    @id @default(cuid())
+  sourceId      String
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  status        String    @default("running")
+  itemsSeen     Int       @default(0)
+  itemsMatched  Int       @default(0)
+  itemsInserted Int       @default(0)
+  itemsUpdated  Int       @default(0)
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+
+  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, startedAt])
+}
+
+model SyncErrorLog {
+  id          String   @id @default(cuid())
+  scope       String
+  sourceCode  String?
+  referenceId String?
+  message     String
+  detailsJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([scope, createdAt])
+  @@index([sourceCode, createdAt])
+}
+
+model ScanJob {
+  id           String    @id @default(cuid())
+  sourceCode   String
+  query        String?
+  status       String    @default("queued")
+  resultCount  Int       @default(0)
+  errorMessage String?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, createdAt])
 }
 
 model SoldComp {
@@ -613,7 +669,7 @@ model SoldComp {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  item Item? @relation(fields: [itemId], references: [id])
+  item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   @@unique([sourceCode, externalId])
   @@index([sourceCode])
@@ -621,126 +677,4 @@ model SoldComp {
   @@index([itemId])
   @@index([extractedSetNo])
   @@index([soldAt])
-}
-
-model ReserveRequest {
-  id              String   @id @default(cuid())
-  inventoryItemId String?
-  productTitle    String
-  name            String
-  contact         String
-  message         String?
-  status          String   @default("pending")
-  adminNote       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  orders        Order[]
-
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
-}
-
-model Notification {
-  id           String   @id @default(cuid())
-  title        String
-  message      String
-  type         String   @default("info")
-  read         Boolean  @default(false)
-  targetUserId String?
-  payloadJson  Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  targetUser User? @relation(fields: [targetUserId], references: [id])
-
-  @@index([targetUserId])
-  @@index([read])
-  @@index([type])
-  @@index([createdAt])
-}
-
-model ActivityLog {
-  id          String   @id @default(cuid())
-  action      String
-  payloadJson Json?
-  createdAt   DateTime @default(now())
-
-  @@index([action])
-  @@index([createdAt])
-}
-
-model UnresolvedMatchQueue {
-  id              String   @id @default(cuid())
-  listingId       String
-  sourceCode      String
-  titleRaw        String
-  normalizedTitle String?
-  extractedSetNo  String?
-  suggestedItemId String?
-  resolvedItemId  String?
-  status          String   @default("pending")
-  resolutionNote  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([listingId])
-  @@index([sourceCode])
-  @@index([status])
-  @@index([extractedSetNo])
-  @@index([createdAt])
-}
-
-model SourceRunLog {
-  id            String    @id @default(cuid())
-  sourceId      String
-  startedAt     DateTime  @default(now())
-  finishedAt    DateTime?
-  status        String    @default("running")
-  itemsSeen     Int       @default(0)
-  itemsMatched  Int       @default(0)
-  itemsInserted Int       @default(0)
-  itemsUpdated  Int       @default(0)
-  errorMessage  String?
-  createdAt     DateTime  @default(now())
-
-  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-
-  @@index([sourceId])
-  @@index([status])
-  @@index([startedAt])
-}
-
-model SyncErrorLog {
-  id          String   @id @default(cuid())
-  scope       String
-  sourceCode  String?
-  referenceId String?
-  message     String
-  detailsJson Json?
-  createdAt   DateTime @default(now())
-
-  @@index([scope])
-  @@index([sourceCode])
-  @@index([referenceId])
-  @@index([createdAt])
-}
-
-model ScanJob {
-  id           String    @id @default(cuid())
-  sourceCode   String
-  query        String?
-  status       String    @default("queued")
-  resultCount  Int       @default(0)
-  errorMessage String?
-  startedAt    DateTime?
-  finishedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([sourceCode])
-  @@index([status])
-  @@index([createdAt])
 }

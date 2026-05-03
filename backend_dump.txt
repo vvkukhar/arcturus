@@ -36,6 +36,9 @@ coverage
 .prisma
 *.log
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\backend_dump.txt =====
+
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\DEPLOYMENT.md =====
 
 # Arcturus Backend Deployment
@@ -7644,11 +7647,7 @@ export class DealsModule {}
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\deals\deals.service.ts =====
 
 import { Injectable } from '@nestjs/common';
-import {
-  calculateProfit,
-  calculateRoiPercent,
-  toMoney,
-} from '../../common/money.utils';
+import { calculateProfit, calculateRoiPercent, toMoney } from '../../common/money.utils';
 import { ActivityService } from '../activity/activity.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7665,54 +7664,50 @@ export class DealsService {
 
   async detectDeals(): Promise<unknown[]> {
     const listings = await this.prisma.marketListing.findMany({
-      where: {
-        status: 'active',
-      },
-      include: {
-        item: true,
-        source: true,
-      },
-      orderBy: {
-        fetchedAt: 'desc',
-      },
+      where: { status: 'active' },
+      include: { item: true, source: true },
+      orderBy: { fetchedAt: 'desc' },
       take: 500,
     });
 
+    if (listings.length === 0) return [];
+
+    const itemIds = [...new Set(listings.map((l) => l.itemId))];
+
+    const watchlistItems = await this.prisma.watchlistItem.findMany({
+      where: { itemId: { in: itemIds }, active: true },
+      include: { assignedUser: true },
+    });
+
+    if (watchlistItems.length === 0) return [];
+
+    const watchlistMap = new Map<string, typeof watchlistItems>();
+    for (const w of watchlistItems) {
+      const arr = watchlistMap.get(w.itemId) || [];
+      arr.push(w);
+      watchlistMap.set(w.itemId, arr);
+    }
+
+    const existingDeals = await this.prisma.deal.findMany({
+      where: { listingId: { in: listings.map((l) => l.id) } },
+    });
+
+    const existingDealsMap = new Map(
+      existingDeals.map((d) => [`${d.listingId}_${d.watchlistItemId}`, d]),
+    );
+
     const createdOrUpdated: unknown[] = [];
+    const notificationsToSend: any[] = [];
+    const dbOperations: any[] = [];
 
     for (const listing of listings) {
-      const watchlistItems = await this.prisma.watchlistItem.findMany({
-        where: {
-          itemId: listing.itemId,
-          active: true,
-        },
-        include: {
-          assignedUser: true,
-        },
-      });
+      const matchedWatchlists = watchlistMap.get(listing.itemId) || [];
 
-      if (watchlistItems.length === 0) {
-        continue;
-      }
-
-      for (const watchlist of watchlistItems) {
-        const buyPrice = toMoney(
-          Number(listing.price) + Number(listing.shippingPrice ?? 0),
-        );
-
-        const targetSellPrice = toMoney(
-          watchlist.targetSellPrice ?? watchlist.maxBuyPrice * 1.4,
-        );
-
-        const profit = calculateProfit({
-          revenue: targetSellPrice,
-          cost: buyPrice,
-        });
-
-        const roiPercent = calculateRoiPercent({
-          profit,
-          cost: buyPrice,
-        });
+      for (const watchlist of matchedWatchlists) {
+        const buyPrice = toMoney(Number(listing.price) + Number(listing.shippingPrice ?? 0));
+        const targetSellPrice = toMoney(watchlist.targetSellPrice ?? watchlist.maxBuyPrice * 1.4);
+        const profit = calculateProfit({ revenue: targetSellPrice, cost: buyPrice });
+        const roiPercent = calculateRoiPercent({ profit, cost: buyPrice });
 
         let action = 'SKIP';
         let score = 35;
@@ -7728,82 +7723,65 @@ export class DealsService {
           score = 60;
         }
 
-        if (action === 'SKIP') {
-          continue;
-        }
+        if (action === 'SKIP') continue;
 
-        const existing = await this.prisma.deal.findFirst({
-          where: {
-            listingId: listing.id,
-            watchlistItemId: watchlist.id,
-          },
-        });
+        const dealKey = `${listing.id}_${watchlist.id}`;
+        const existing = existingDealsMap.get(dealKey);
 
-        const deal = existing
-          ? await this.prisma.deal.update({
-              where: {
-                id: existing.id,
-              },
-              data: {
-                buyPrice,
-                targetSellPrice,
-                profit,
-                roiPercent,
-                action,
-                score,
-                status: 'open',
-              },
+        const dealData = {
+          buyPrice,
+          targetSellPrice,
+          profit,
+          roiPercent,
+          action,
+          score,
+          status: 'open',
+        };
+
+        if (existing) {
+          dbOperations.push(
+            this.prisma.deal.update({
+              where: { id: existing.id },
+              data: dealData,
               include: {
-                listing: {
-                  include: {
-                    item: true,
-                    source: true,
-                  },
-                },
-                watchlistItem: {
-                  include: {
-                    assignedUser: true,
-                  },
-                },
+                listing: { include: { item: true, source: true } },
+                watchlistItem: { include: { assignedUser: true } },
               },
             })
-          : await this.prisma.deal.create({
+          );
+        } else {
+          dbOperations.push(
+            this.prisma.deal.create({
               data: {
                 listingId: listing.id,
                 watchlistItemId: watchlist.id,
-                buyPrice,
-                targetSellPrice,
-                profit,
-                roiPercent,
-                action,
-                score,
-                status: 'open',
+                ...dealData,
               },
               include: {
-                listing: {
-                  include: {
-                    item: true,
-                    source: true,
-                  },
-                },
-                watchlistItem: {
-                  include: {
-                    assignedUser: true,
-                  },
-                },
+                listing: { include: { item: true, source: true } },
+                watchlistItem: { include: { assignedUser: true } },
               },
-            });
-
-        createdOrUpdated.push(deal);
+            })
+          );
+        }
 
         if (action === 'BUY_NOW') {
-          await this.notifications.createDealNotification({
+          notificationsToSend.push({
             itemTitle: watchlist.titleSnapshot,
             roi: roiPercent,
             action,
             targetUserId: watchlist.assignedUserId ?? null,
           });
         }
+      }
+    }
+
+    if (dbOperations.length > 0) {
+      const results = await this.prisma.$transaction(dbOperations);
+      createdOrUpdated.push(...results);
+
+      for (const notification of notificationsToSend) {
+        await this.notifications.createDealNotification(notification);
       }
     }
 
@@ -7817,65 +7795,26 @@ export class DealsService {
     return createdOrUpdated;
   }
 
-  async list(params?: {
-    status?: string;
-    action?: string;
-    limit?: number;
-  }): Promise<unknown[]> {
+  async list(params?: { status?: string; action?: string; limit?: number }): Promise<unknown[]> {
     return this.prisma.deal.findMany({
       where: {
-        ...(params?.status && params.status !== 'all'
-          ? {
-              status: params.status,
-            }
-          : {}),
-        ...(params?.action && params.action !== 'all'
-          ? {
-              action: params.action,
-            }
-          : {}),
+        ...(params?.status && params.status !== 'all' ? { status: params.status } : {}),
+        ...(params?.action && params.action !== 'all' ? { action: params.action } : {}),
       },
       include: {
-        listing: {
-          include: {
-            item: true,
-            source: true,
-          },
-        },
-        watchlistItem: {
-          include: {
-            item: true,
-            assignedUser: true,
-          },
-        },
+        listing: { include: { item: true, source: true } },
+        watchlistItem: { include: { item: true, assignedUser: true } },
       },
-      orderBy: [
-        {
-          score: 'desc',
-        },
-        {
-          createdAt: 'desc',
-        },
-      ],
+      orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
       take: params?.limit ?? 100,
     });
   }
 
-  async updateStatus(params: {
-    id: string;
-    status: string;
-  }): Promise<unknown> {
+  async updateStatus(params: { id: string; status: string }): Promise<unknown> {
     const updated = await this.prisma.deal.update({
-      where: {
-        id: params.id,
-      },
-      data: {
-        status: params.status,
-      },
-      include: {
-        listing: true,
-        watchlistItem: true,
-      },
+      where: { id: params.id },
+      data: { status: params.status },
+      include: { listing: true, watchlistItem: true },
     });
 
     await this.activity.log('deal.status_updated', {
@@ -7890,24 +7829,17 @@ export class DealsService {
 
   async stats(): Promise<unknown> {
     const deals = await this.prisma.deal.findMany();
-
     return {
       total: deals.length,
       open: deals.filter((deal) => deal.status === 'open').length,
       buyNow: deals.filter((deal) => deal.action === 'BUY_NOW').length,
       buy: deals.filter((deal) => deal.action === 'BUY').length,
       watch: deals.filter((deal) => deal.action === 'WATCH').length,
-      avgRoi:
-        deals.length > 0
-          ? toMoney(
-              deals.reduce((sum, deal) => sum + Number(deal.roiPercent), 0) /
-                deals.length,
-            )
-          : 0,
+      avgRoi: deals.length > 0
+        ? toMoney(deals.reduce((sum, deal) => sum + Number(deal.roiPercent), 0) / deals.length)
+        : 0,
       totalPotentialProfit: toMoney(
-        deals
-          .filter((deal) => deal.status === 'open')
-          .reduce((sum, deal) => sum + Number(deal.profit), 0),
+        deals.filter((deal) => deal.status === 'open').reduce((sum, deal) => sum + Number(deal.profit), 0),
       ),
     };
   }
@@ -8402,24 +8334,12 @@ export class DecisionEngineService {
     const roiPercent = totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
 
     let score = 50;
-
     score += Math.min(30, roiPercent / 2);
 
-    if (params.historicalRoi > 30) {
-      score += 10;
-    }
-
-    if (expectedProfit < 0) {
-      score -= 60;
-    }
-
-    if (roiPercent < 15) {
-      score -= 25;
-    }
-
-    if (roiPercent >= 40) {
-      score += 15;
-    }
+    if (params.historicalRoi > 30) score += 10;
+    if (expectedProfit < 0) score -= 60;
+    if (roiPercent < 15) score -= 25;
+    if (roiPercent >= 40) score += 15;
 
     score = Math.max(0, Math.min(100, toMoney(score)));
 
@@ -8464,44 +8384,32 @@ export class DecisionEngineService {
 
   async evaluateBuy(dto: EvaluateBuyDto): Promise<unknown> {
     const item = await this.prisma.item.findUnique({
-      where: {
-        id: dto.itemId,
-      },
+      where: { id: dto.itemId },
     });
 
-    if (!item) {
-      throw new NotFoundException('Item not found');
-    }
+    if (!item) throw new NotFoundException('Item not found');
 
     let listing = null;
-
     if (dto.listingId) {
       listing = await this.prisma.marketListing.findUnique({
-        where: {
-          id: dto.listingId,
-        },
+        where: { id: dto.listingId },
       });
-
-      if (!listing) {
-        throw new NotFoundException('Listing not found');
-      }
+      if (!listing) throw new NotFoundException('Listing not found');
     }
 
     const economics = (await this.unitEconomics.perItem(dto.itemId)) as any;
 
     const buyPrice = toMoney(dto.buyPrice ?? listing?.price ?? 0);
     const shippingPrice = toMoney(dto.shippingPrice ?? listing?.shippingPrice ?? 0);
-const fallbackSellPrice = Number(listing?.price ?? 0) * 1.4;
+    const fallbackSellPrice = Number(listing?.price ?? 0) * 1.4;
 
-const targetSellPrice = toMoney(
-  dto.targetSellPrice ??
-    economics.avgSellPrice ??
-    (fallbackSellPrice || buyPrice * 1.4),
-);
+    const targetSellPrice = toMoney(
+      dto.targetSellPrice ??
+        economics.avgSellPrice ??
+        (fallbackSellPrice || buyPrice * 1.4),
+    );
 
-    if (buyPrice <= 0) {
-      throw new BadRequestException('buyPrice is required');
-    }
+    if (buyPrice <= 0) throw new BadRequestException('buyPrice is required');
 
     const decision = this.scoreBuy({
       buyPrice,
@@ -8547,18 +8455,11 @@ const targetSellPrice = toMoney(
 
   async evaluateInventory(dto: EvaluateInventoryDto): Promise<unknown> {
     const inventory = await this.prisma.inventoryItem.findUnique({
-      where: {
-        id: dto.inventoryItemId,
-      },
-      include: {
-        item: true,
-        expenses: true,
-      },
+      where: { id: dto.inventoryItemId },
+      include: { item: true, expenses: true },
     });
 
-    if (!inventory) {
-      throw new NotFoundException('Inventory item not found');
-    }
+    if (!inventory) throw new NotFoundException('Inventory item not found');
 
     const targetRoiPercent = dto.targetRoiPercent ?? 35;
     const expenses = toMoney(
@@ -8645,68 +8546,44 @@ const targetSellPrice = toMoney(
         ...(params?.action ? { action: params.action } : {}),
         ...(params?.executionStatus ? { executionStatus: params.executionStatus } : {}),
       },
-      include: {
-        item: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      include: { item: true },
+      orderBy: { createdAt: 'desc' },
       take: params?.limit ?? 100,
     });
   }
 
   async runInventorySweep(): Promise<unknown> {
     const inventory = await this.prisma.inventoryItem.findMany({
-      where: {
-        quantity: {
-          gt: 0,
-        },
-      },
+      where: { quantity: { gt: 0 } },
       take: 200,
     });
 
     const results = [];
-
     for (const row of inventory) {
-      const decision = await this.evaluateInventory({
-        inventoryItemId: row.id,
-      });
-
+      const decision = await this.evaluateInventory({ inventoryItemId: row.id });
       results.push(decision);
     }
 
-    return {
-      evaluated: results.length,
-      results,
-    };
+    return { evaluated: results.length, results };
   }
 
   async runBuySweep(): Promise<unknown> {
     const listings = await this.prisma.marketListing.findMany({
-      where: {
-        status: 'active',
-      },
-      orderBy: {
-        fetchedAt: 'desc',
-      },
+      where: { status: 'active' },
+      orderBy: { fetchedAt: 'desc' },
       take: 200,
     });
 
     const results = [];
-
     for (const listing of listings) {
       const decision = await this.evaluateBuy({
         itemId: listing.itemId,
         listingId: listing.id,
       });
-
       results.push(decision);
     }
 
-    return {
-      evaluated: results.length,
-      results,
-    };
+    return { evaluated: results.length, results };
   }
 }
 
@@ -15019,72 +14896,92 @@ export class MarketIntelligenceService {
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+
 @Injectable()
 export class MarketSnapshotRecomputeService {
- constructor(private readonly prisma: PrismaService) {}
- async recomputeForItem(itemId: string, scope = 'ua'): Promise<unknown> {
- const listings = await this.prisma.marketListing.findMany({
- where: {
- itemId,
- status: 'active',
- },
- orderBy: {
- fetchedAt: 'desc',
- },
- });
- if (listings.length === 0) {
- return this.prisma.marketSnapshot.create({
- data: {
- itemId,
- scope,
- listingsCount: 0,
- confidenceScore: 0,
- },
- });
- }
- const prices = listings
- .map((item) => item.price)
- .filter((value) => value !== null)
- .sort((a, b) => a - b);
- const pricesWithShipping = listings
- .map((item) => item.price + (item.shippingPrice ?? 0))
- .sort((a, b) => a - b);
- const shippingValues = listings
- .map((item) => item.shippingPrice ?? 0)
- .sort((a, b) => a - b);
- const usedListings = listings.filter((item) => item.sealed !== true);
- const sealedListings = listings.filter((item) => item.sealed === true);
- const avg = (values: number[]): number | null => {
- if (values.length === 0) return null;
- return values.reduce((sum, value) => sum + value, 0) / values.length;
- };
- const median = (values: number[]): number | null => {
- if (values.length === 0) return null;
- const mid = Math.floor(values.length / 2);
- return values.length % 2 === 0
- ? (values[mid - 1] + values[mid]) / 2
- : values[mid];
- };
- const confidenceScore =
- listings.length >= 10 ? 0.95 : listings.length >= 5 ? 0.8 : listings.length >= 2 ? 0.65 : 0.45;
- return this.prisma.marketSnapshot.create({
- data: {
- itemId,
- scope,
- listingsCount: listings.length,
- lowestPrice: prices[0] ?? null,
- lowestPriceWithShipping: pricesWithShipping[0] ?? null,
- avgPrice: avg(prices),
- medianPrice: median(prices),
- avgShipping: avg(shippingValues),
- minShipping: shippingValues[0] ?? null,
- maxShipping: shippingValues[shippingValues.length - 1] ?? null,
- sealedAvgPrice: avg(sealedListings.map((item) => item.price)),
- usedAvgPrice: avg(usedListings.map((item) => item.price)),
- confidenceScore,
- },
- });
- }
+  constructor(private readonly prisma: PrismaService) {}
+
+  async recomputeForItem(itemId: string, scope = 'ua'): Promise<unknown> {
+    const listings = await this.prisma.marketListing.findMany({
+      where: { itemId, status: 'active' },
+      select: { price: true, shippingPrice: true, sealed: true },
+    });
+
+    if (listings.length === 0) {
+      return this.prisma.marketSnapshot.create({
+        data: { itemId, scope, listingsCount: 0, confidenceScore: 0 },
+      });
+    }
+
+    let minPrice = Infinity;
+    let minPriceWithShipping = Infinity;
+    let minShipping = Infinity;
+    let maxShipping = -Infinity;
+    
+    let sumPrice = 0;
+    let sumShipping = 0;
+    let sumSealed = 0;
+    let sumUsed = 0;
+    
+    let countSealed = 0;
+    let countUsed = 0;
+    let countShipping = 0;
+
+    const prices: number[] = [];
+
+    for (const item of listings) {
+      const p = item.price;
+      const s = item.shippingPrice ?? 0;
+      const pws = p + s;
+
+      prices.push(p);
+      sumPrice += p;
+
+      if (p < minPrice) minPrice = p;
+      if (pws < minPriceWithShipping) minPriceWithShipping = pws;
+
+      if (s > 0) {
+        sumShipping += s;
+        countShipping++;
+        if (s < minShipping) minShipping = s;
+        if (s > maxShipping) maxShipping = s;
+      }
+
+      if (item.sealed) {
+        sumSealed += p;
+        countSealed++;
+      } else {
+        sumUsed += p;
+        countUsed++;
+      }
+    }
+
+    prices.sort((a, b) => a - b);
+
+    const avg = sumPrice / listings.length;
+    const mid = Math.floor(prices.length / 2);
+    const median = prices.length % 2 === 0 ? (prices[mid - 1] + prices[mid]) / 2 : prices[mid];
+    
+    const confidenceScore = listings.length >= 10 ? 0.95 : listings.length >= 5 ? 0.8 : listings.length >= 2 ? 0.65 : 0.45;
+
+    return this.prisma.marketSnapshot.create({
+      data: {
+        itemId,
+        scope,
+        listingsCount: listings.length,
+        lowestPrice: minPrice === Infinity ? null : minPrice,
+        lowestPriceWithShipping: minPriceWithShipping === Infinity ? null : minPriceWithShipping,
+        avgPrice: avg,
+        medianPrice: median,
+        avgShipping: countShipping > 0 ? sumShipping / countShipping : null,
+        minShipping: minShipping === Infinity ? null : minShipping,
+        maxShipping: maxShipping === -Infinity ? null : maxShipping,
+        sealedAvgPrice: countSealed > 0 ? sumSealed / countSealed : null,
+        usedAvgPrice: countUsed > 0 ? sumUsed / countUsed : null,
+        confidenceScore,
+      },
+    });
+  }
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\market\market-sync.service.ts =====
@@ -16996,11 +16893,7 @@ export class OpportunitiesModule {}
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\opportunities\opportunities.service.ts =====
 
 import { Injectable } from '@nestjs/common';
-import {
-  calculateProfit,
-  calculateRoiPercent,
-  toMoney,
-} from '../../common/money.utils';
+import { calculateProfit, calculateRoiPercent, toMoney } from '../../common/money.utils';
 import { PrismaService } from '../prisma/prisma.service';
 import { FlipStrategyService } from '../strategy/flip-strategy.service';
 import { SmartPricingService } from '../strategy/smart-pricing.service';
@@ -17023,79 +16916,69 @@ export class OpportunitiesService {
     return 'set';
   }
 
-  async getBuyOpportunities(params?: {
-    limit?: number;
-    minScore?: number;
-  }): Promise<unknown[]> {
+  async getBuyOpportunities(params?: { limit?: number; minScore?: number }): Promise<unknown[]> {
     const watchlist = await this.prisma.watchlistItem.findMany({
-      where: {
-        active: true,
-      },
-      include: {
-        item: true,
-        assignedUser: true,
-      },
-      orderBy: [
-        {
-          priority: 'desc',
-        },
-        {
-          createdAt: 'desc',
-        },
-      ],
+      where: { active: true },
+      include: { item: true, assignedUser: true },
+      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
       take: 300,
     });
+
+    if (watchlist.length === 0) return [];
+
+    const itemIds = watchlist.map((w) => w.itemId);
+    const setNumbers = watchlist.map((w) => w.item?.setNumber).filter(Boolean) as string[];
+
+    const [snapshots, decisions, listings, soldComps] = await Promise.all([
+      this.prisma.marketSnapshot.findMany({
+        where: { itemId: { in: itemIds } },
+        orderBy: { computedAt: 'desc' },
+        distinct: ['itemId'],
+      }),
+      this.prisma.decisionSnapshot.findMany({
+        where: { contextType: 'watchlist', contextId: { in: watchlist.map(w => w.id) } },
+        orderBy: { createdAt: 'desc' },
+        distinct: ['contextId'],
+      }),
+      this.prisma.marketListing.findMany({
+        where: { itemId: { in: itemIds }, status: 'active' },
+        orderBy: { price: 'asc' },
+        include: { source: true },
+      }),
+      this.prisma.soldComp.findMany({
+        where: { OR: [{ extractedSetNo: { in: setNumbers } }, { itemId: { in: itemIds } }] },
+        orderBy: { soldAt: 'desc' },
+      }),
+    ]);
+
+    const snapshotsMap = new Map(snapshots.map((s) => [s.itemId, s]));
+    const decisionsMap = new Map(decisions.map((d) => [d.contextId, d]));
+    const listingsMap = new Map<string, any[]>();
+    const soldCompsMap = new Map<string, any[]>();
+
+    for (const listing of listings) {
+      const arr = listingsMap.get(listing.itemId) || [];
+      if (arr.length < 10) arr.push(listing);
+      listingsMap.set(listing.itemId, arr);
+    }
+
+    for (const comp of soldComps) {
+      const key = comp.extractedSetNo || comp.itemId;
+      if (!key) continue;
+      const arr = soldCompsMap.get(key) || [];
+      if (arr.length < 30) arr.push(comp);
+      soldCompsMap.set(key, arr);
+    }
 
     const rows: unknown[] = [];
 
     for (const entry of watchlist) {
-      const [snapshot, latestDecision, listings, soldComps] = await Promise.all([
-        this.prisma.marketSnapshot.findFirst({
-          where: {
-            itemId: entry.itemId,
-          },
-          orderBy: {
-            computedAt: 'desc',
-          },
-        }),
-        this.prisma.decisionSnapshot.findFirst({
-          where: {
-            contextType: 'watchlist',
-            contextId: entry.id,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        }),
-        this.prisma.marketListing.findMany({
-          where: {
-            itemId: entry.itemId,
-            status: 'active',
-          },
-          orderBy: {
-            price: 'asc',
-          },
-          take: 10,
-          include: {
-            source: true,
-          },
-        }),
-        this.prisma.soldComp.findMany({
-          where: entry.item?.setNumber
-            ? {
-                extractedSetNo: entry.item.setNumber,
-              }
-            : {
-                normalizedTitle: {
-                  contains: entry.titleSnapshot.toLowerCase().slice(0, 18),
-                  mode: 'insensitive',
-                },
-              },
-          take: 30,
-        }),
-      ]);
+      const snapshot = snapshotsMap.get(entry.itemId);
+      const latestDecision = decisionsMap.get(entry.id);
+      const entryListings = listingsMap.get(entry.itemId) || [];
+      const entrySoldComps = soldCompsMap.get(entry.item?.setNumber || entry.itemId) || [];
 
-      const bestListing = listings[0] ?? null;
+      const bestListing = entryListings[0] ?? null;
       const totalBuy = toMoney(
         snapshot?.lowestPriceWithShipping ??
           (bestListing
@@ -17109,42 +16992,28 @@ export class OpportunitiesService {
           Math.max(entry.maxBuyPrice * 1.35, entry.desiredBuyPrice * 1.45),
       );
 
-      const profit = calculateProfit({
-        revenue: targetSellPrice,
-        cost: totalBuy,
-      });
-
-      const roi = calculateRoiPercent({
-        profit,
-        cost: totalBuy,
-      });
+      const profit = calculateProfit({ revenue: targetSellPrice, cost: totalBuy });
+      const roi = calculateRoiPercent({ profit, cost: totalBuy });
 
       const itemType = this.resolveItemType(entry.item?.kind);
-      const volatility = Number(
-        ((latestDecision?.payloadJson as any)?.volatility ?? 0.25),
-      );
+      const volatility = Number(((latestDecision?.payloadJson as any)?.volatility ?? 0.25));
 
       const strategy = this.flipStrategy.decide({
         itemType,
         buyPrice: totalBuy,
         targetSellPrice,
         medianPrice: Number(snapshot?.medianPrice ?? targetSellPrice),
-        soldCount: soldComps.length,
+        soldCount: entrySoldComps.length,
         volatility,
         confidenceScore: Number(snapshot?.confidenceScore ?? 0.4),
       });
 
-      const bundle = this.bundleDetection.detect({
-        title: entry.titleSnapshot,
-        price: totalBuy,
-      });
-
-      const arbitrage =
-        itemType === 'minifigure'
+      const bundle = this.bundleDetection.detect({ title: entry.titleSnapshot, price: totalBuy });
+      const arbitrage = itemType === 'minifigure'
           ? this.minifigureArbitrage.evaluate({
               buyPrice: totalBuy,
               targetSellPrice,
-              soldCount: soldComps.length,
+              soldCount: entrySoldComps.length,
               volatility,
               confidenceScore: Number(snapshot?.confidenceScore ?? 0.4),
             })
@@ -17152,10 +17021,8 @@ export class OpportunitiesService {
 
       let action = latestDecision?.action ?? 'wait';
       let score = Number(latestDecision?.score ?? 45);
-      let reasonPrimary =
-        latestDecision?.reasonPrimary ?? 'Waiting for better market entry';
-      let reasonSecondary =
-        latestDecision?.reasonSecondary ?? 'No strong buy signal yet';
+      let reasonPrimary = latestDecision?.reasonPrimary ?? 'Waiting for better market entry';
+      let reasonSecondary = latestDecision?.reasonSecondary ?? 'No strong buy signal yet';
 
       if (roi >= 35 && profit >= 250 && totalBuy <= entry.maxBuyPrice) {
         action = 'BUY_NOW';
@@ -17201,7 +17068,7 @@ export class OpportunitiesService {
         bundleConfidence: bundle.confidence,
         arbitrageScore: arbitrage?.score ?? null,
         market: {
-          listingsCount: snapshot?.listingsCount ?? listings.length,
+          listingsCount: snapshot?.listingsCount ?? entryListings.length,
           medianPrice: snapshot?.medianPrice ?? null,
           lowestPriceWithShipping: snapshot?.lowestPriceWithShipping ?? null,
           confidenceScore: snapshot?.confidenceScore ?? null,
@@ -17215,91 +17082,78 @@ export class OpportunitiesService {
       .slice(0, params?.limit ?? 50);
   }
 
-  async getSellOpportunities(params?: {
-    limit?: number;
-    minScore?: number;
-  }): Promise<unknown[]> {
+  async getSellOpportunities(params?: { limit?: number; minScore?: number }): Promise<unknown[]> {
     const inventory = await this.prisma.inventoryItem.findMany({
-      where: {
-        quantity: {
-          gt: 0,
-        },
-      },
-      include: {
-        item: true,
-        assignedUser: true,
-        images: {
-          orderBy: {
-            sortOrder: 'asc',
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      where: { quantity: { gt: 0 } },
+      include: { item: true, assignedUser: true, images: { orderBy: { sortOrder: 'asc' } } },
+      orderBy: { createdAt: 'desc' },
       take: 300,
     });
+
+    if (inventory.length === 0) return [];
+
+    const itemIds = inventory.map((i) => i.itemId);
+    const setNumbers = inventory.map((i) => i.item?.setNumber).filter(Boolean) as string[];
+
+    const [snapshots, decisions, listings, soldComps] = await Promise.all([
+      this.prisma.marketSnapshot.findMany({
+        where: { itemId: { in: itemIds } },
+        orderBy: { computedAt: 'desc' },
+        distinct: ['itemId'],
+      }),
+      this.prisma.decisionSnapshot.findMany({
+        where: { contextType: 'inventory', contextId: { in: inventory.map(i => i.id) } },
+        orderBy: { createdAt: 'desc' },
+        distinct: ['contextId'],
+      }),
+      this.prisma.marketListing.findMany({
+        where: { itemId: { in: itemIds }, status: 'active' },
+        orderBy: { price: 'asc' },
+        include: { source: true },
+      }),
+      this.prisma.soldComp.findMany({
+        where: { OR: [{ extractedSetNo: { in: setNumbers } }, { itemId: { in: itemIds } }] },
+        orderBy: { soldAt: 'desc' },
+      }),
+    ]);
+
+    const snapshotsMap = new Map(snapshots.map((s) => [s.itemId, s]));
+    const decisionsMap = new Map(decisions.map((d) => [d.contextId, d]));
+    const listingsMap = new Map<string, any[]>();
+    const soldCompsMap = new Map<string, any[]>();
+
+    for (const listing of listings) {
+      const arr = listingsMap.get(listing.itemId) || [];
+      if (arr.length < 30) arr.push(listing);
+      listingsMap.set(listing.itemId, arr);
+    }
+
+    for (const comp of soldComps) {
+      const key = comp.extractedSetNo || comp.itemId;
+      if (!key) continue;
+      const arr = soldCompsMap.get(key) || [];
+      if (arr.length < 30) arr.push(comp);
+      soldCompsMap.set(key, arr);
+    }
 
     const rows: unknown[] = [];
 
     for (const entry of inventory) {
-      const [snapshot, latestDecision, listings, soldComps] = await Promise.all([
-        this.prisma.marketSnapshot.findFirst({
-          where: {
-            itemId: entry.itemId,
-          },
-          orderBy: {
-            computedAt: 'desc',
-          },
-        }),
-        this.prisma.decisionSnapshot.findFirst({
-          where: {
-            contextType: 'inventory',
-            contextId: entry.id,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        }),
-        this.prisma.marketListing.findMany({
-          where: {
-            itemId: entry.itemId,
-            status: 'active',
-          },
-          orderBy: {
-            price: 'asc',
-          },
-          take: 30,
-        }),
-        this.prisma.soldComp.findMany({
-          where: entry.item?.setNumber
-            ? {
-                extractedSetNo: entry.item.setNumber,
-              }
-            : {
-                normalizedTitle: {
-                  contains: entry.titleSnapshot.toLowerCase().slice(0, 18),
-                  mode: 'insensitive',
-                },
-              },
-          take: 30,
-        }),
-      ]);
+      const snapshot = snapshotsMap.get(entry.itemId);
+      const latestDecision = decisionsMap.get(entry.id);
+      const entryListings = listingsMap.get(entry.itemId) || [];
+      const entrySoldComps = soldCompsMap.get(entry.item?.setNumber || entry.itemId) || [];
 
       const totalCostBasis = toMoney(entry.totalCost);
       const itemType = this.resolveItemType(entry.item?.kind);
-      const volatility = Number(
-        ((latestDecision?.payloadJson as any)?.volatility ?? 0.25),
-      );
+      const volatility = Number(((latestDecision?.payloadJson as any)?.volatility ?? 0.25));
 
       const strategy = this.flipStrategy.decide({
         itemType,
         buyPrice: totalCostBasis,
-        targetSellPrice: Number(
-          entry.expectedSalePriceManual ?? snapshot?.medianPrice ?? totalCostBasis,
-        ),
+        targetSellPrice: Number(entry.expectedSalePriceManual ?? snapshot?.medianPrice ?? totalCostBasis),
         medianPrice: Number(snapshot?.medianPrice ?? totalCostBasis),
-        soldCount: soldComps.length,
+        soldCount: entrySoldComps.length,
         volatility,
         confidenceScore: Number(snapshot?.confidenceScore ?? 0.4),
       });
@@ -17307,33 +17161,20 @@ export class OpportunitiesService {
       const smartPrice = this.smartPricing.suggest({
         costBasis: totalCostBasis,
         lowestMarketPrice: Number(snapshot?.lowestPriceWithShipping ?? totalCostBasis),
-        medianMarketPrice: Number(
-          snapshot?.medianPrice ?? entry.expectedSalePriceManual ?? totalCostBasis,
-        ),
-        soldCount: soldComps.length,
+        medianMarketPrice: Number(snapshot?.medianPrice ?? entry.expectedSalePriceManual ?? totalCostBasis),
+        soldCount: entrySoldComps.length,
         volatility,
         strategy: strategy.strategy,
       });
 
-      const targetSellPrice = toMoney(
-        entry.expectedSalePriceManual ?? smartPrice.suggestedPrice,
-      );
-
-      const profit = calculateProfit({
-        revenue: targetSellPrice,
-        cost: totalCostBasis,
-      });
-
-      const roi = calculateRoiPercent({
-        profit,
-        cost: totalCostBasis,
-      });
+      const targetSellPrice = toMoney(entry.expectedSalePriceManual ?? smartPrice.suggestedPrice);
+      const profit = calculateProfit({ revenue: targetSellPrice, cost: totalCostBasis });
+      const roi = calculateRoiPercent({ profit, cost: totalCostBasis });
 
       let action = latestDecision?.action ?? 'hold';
       let score = Number(latestDecision?.score ?? 50);
       let reasonPrimary = latestDecision?.reasonPrimary ?? 'Hold position';
-      let reasonSecondary =
-        latestDecision?.reasonSecondary ?? 'No urgent sell signal';
+      let reasonSecondary = latestDecision?.reasonSecondary ?? 'No urgent sell signal';
 
       if (roi >= 45 && profit >= 350) {
         action = 'SELL_NOW';
@@ -17345,11 +17186,7 @@ export class OpportunitiesService {
         score = Math.max(score, 76);
         reasonPrimary = 'Listing is justified';
         reasonSecondary = 'Current market supports profitable exit';
-      } else if (
-        snapshot?.medianPrice &&
-        entry.expectedSalePriceManual &&
-        snapshot.medianPrice > entry.expectedSalePriceManual + 100
-      ) {
+      } else if (snapshot?.medianPrice && entry.expectedSalePriceManual && snapshot.medianPrice > entry.expectedSalePriceManual + 100) {
         action = 'REPRICE';
         score = Math.max(score, 80);
         reasonPrimary = 'Manual price is below market';
@@ -17379,12 +17216,9 @@ export class OpportunitiesService {
         flipStrategyScore: strategy.score,
         flipStrategyReasonPrimary: strategy.reasonPrimary,
         flipStrategyReasonSecondary: strategy.reasonSecondary,
-        primaryImage:
-          entry.images.find((image) => image.isPrimary)?.imageUrl ??
-          entry.images[0]?.imageUrl ??
-          null,
+        primaryImage: entry.images.find((image) => image.isPrimary)?.imageUrl ?? entry.images[0]?.imageUrl ?? null,
         market: {
-          listingsCount: snapshot?.listingsCount ?? listings.length,
+          listingsCount: snapshot?.listingsCount ?? entryListings.length,
           medianPrice: snapshot?.medianPrice ?? null,
           lowestPriceWithShipping: snapshot?.lowestPriceWithShipping ?? null,
           confidenceScore: snapshot?.confidenceScore ?? null,
@@ -17399,160 +17233,71 @@ export class OpportunitiesService {
   }
 
   async getBuyOpportunityDetail(itemId: string): Promise<unknown> {
-    const opportunities = (await this.getBuyOpportunities({
-      limit: 300,
-    })) as any[];
-
+    const opportunities = (await this.getBuyOpportunities({ limit: 300 })) as any[];
     const opportunity = opportunities.find((row) => row.itemId === itemId);
 
     const [item, listings, snapshots, decisions, soldComps] = await Promise.all([
-      this.prisma.item.findUnique({
-        where: {
-          id: itemId,
-        },
-      }),
+      this.prisma.item.findUnique({ where: { id: itemId } }),
       this.prisma.marketListing.findMany({
-        where: {
-          itemId,
-        },
-        include: {
-          source: true,
-        },
-        orderBy: {
-          fetchedAt: 'desc',
-        },
+        where: { itemId },
+        include: { source: true },
+        orderBy: { fetchedAt: 'desc' },
         take: 50,
       }),
       this.prisma.marketSnapshot.findMany({
-        where: {
-          itemId,
-        },
-        orderBy: {
-          computedAt: 'desc',
-        },
+        where: { itemId },
+        orderBy: { computedAt: 'desc' },
         take: 20,
       }),
       this.prisma.decisionSnapshot.findMany({
-        where: {
-          itemId,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        where: { itemId },
+        orderBy: { createdAt: 'desc' },
         take: 20,
       }),
       this.prisma.soldComp.findMany({
-        where: {
-          OR: [
-            {
-              extractedSetNo: itemId,
-            },
-            {
-              itemId,
-            },
-          ],
-        },
-        orderBy: {
-          soldAt: 'desc',
-        },
+        where: { OR: [{ extractedSetNo: itemId }, { itemId }] },
+        orderBy: { soldAt: 'desc' },
         take: 30,
       }),
     ]);
 
-    return {
-      opportunity: opportunity ?? null,
-      item,
-      listings,
-      snapshots,
-      decisions,
-      soldComps,
-    };
+    return { opportunity: opportunity ?? null, item, listings, snapshots, decisions, soldComps };
   }
 
   async getSellOpportunityDetail(itemId: string): Promise<unknown> {
-    const opportunities = (await this.getSellOpportunities({
-      limit: 300,
-    })) as any[];
-
+    const opportunities = (await this.getSellOpportunities({ limit: 300 })) as any[];
     const opportunity = opportunities.find((row) => row.itemId === itemId);
 
-    const [item, inventory, listings, snapshots, decisions, soldComps] =
-      await Promise.all([
-        this.prisma.item.findUnique({
-          where: {
-            id: itemId,
-          },
-        }),
-        this.prisma.inventoryItem.findMany({
-          where: {
-            itemId,
-          },
-          include: {
-            images: {
-              orderBy: {
-                sortOrder: 'asc',
-              },
-            },
-            assignedUser: true,
-          },
-        }),
-        this.prisma.marketListing.findMany({
-          where: {
-            itemId,
-          },
-          include: {
-            source: true,
-          },
-          orderBy: {
-            fetchedAt: 'desc',
-          },
-          take: 50,
-        }),
-        this.prisma.marketSnapshot.findMany({
-          where: {
-            itemId,
-          },
-          orderBy: {
-            computedAt: 'desc',
-          },
-          take: 20,
-        }),
-        this.prisma.decisionSnapshot.findMany({
-          where: {
-            itemId,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-          take: 20,
-        }),
-        this.prisma.soldComp.findMany({
-          where: {
-            OR: [
-              {
-                extractedSetNo: itemId,
-              },
-              {
-                itemId,
-              },
-            ],
-          },
-          orderBy: {
-            soldAt: 'desc',
-          },
-          take: 30,
-        }),
-      ]);
+    const [item, inventory, listings, snapshots, decisions, soldComps] = await Promise.all([
+      this.prisma.item.findUnique({ where: { id: itemId } }),
+      this.prisma.inventoryItem.findMany({
+        where: { itemId },
+        include: { images: { orderBy: { sortOrder: 'asc' } }, assignedUser: true },
+      }),
+      this.prisma.marketListing.findMany({
+        where: { itemId },
+        include: { source: true },
+        orderBy: { fetchedAt: 'desc' },
+        take: 50,
+      }),
+      this.prisma.marketSnapshot.findMany({
+        where: { itemId },
+        orderBy: { computedAt: 'desc' },
+        take: 20,
+      }),
+      this.prisma.decisionSnapshot.findMany({
+        where: { itemId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      }),
+      this.prisma.soldComp.findMany({
+        where: { OR: [{ extractedSetNo: itemId }, { itemId }] },
+        orderBy: { soldAt: 'desc' },
+        take: 30,
+      }),
+    ]);
 
-    return {
-      opportunity: opportunity ?? null,
-      item,
-      inventory,
-      listings,
-      snapshots,
-      decisions,
-      soldComps,
-    };
+    return { opportunity: opportunity ?? null, item, inventory, listings, snapshots, decisions, soldComps };
   }
 }
 
@@ -18839,37 +18584,18 @@ export class PortfolioService {
   ) {}
 
   async getInventoryValue(): Promise<unknown> {
-    const inventory = await this.prisma.inventoryItem.findMany({
-      include: {
-        item: true,
-      },
-    });
+    const inventory = await this.prisma.inventoryItem.findMany({ include: { item: true } });
 
-    const totalCostBasis = toMoney(
-      inventory.reduce((sum, item) => sum + Number(item.totalCost ?? 0), 0),
-    );
-
+    const totalCostBasis = toMoney(inventory.reduce((sum, item) => sum + Number(item.totalCost ?? 0), 0));
     const expectedRevenue = toMoney(
       inventory.reduce(
-        (sum, item) =>
-          sum +
-          Number(
-            item.expectedSalePriceManual ??
-              item.totalCost ??
-              item.purchasePrice ??
-              0,
-          ) *
-            item.quantity,
+        (sum, item) => sum + Number(item.expectedSalePriceManual ?? item.totalCost ?? item.purchasePrice ?? 0) * item.quantity,
         0,
       ),
     );
 
     const expectedProfit = toMoney(expectedRevenue - totalCostBasis);
-
-    const activeUnits = inventory.reduce(
-      (sum, item) => sum + Number(item.quantity ?? 0),
-      0,
-    );
+    const activeUnits = inventory.reduce((sum, item) => sum + Number(item.quantity ?? 0), 0);
 
     return {
       inventoryItems: inventory.length,
@@ -18877,10 +18603,7 @@ export class PortfolioService {
       totalCostBasis,
       expectedRevenue,
       expectedProfit,
-      expectedRoi:
-        totalCostBasis > 0
-          ? Number(((expectedProfit / totalCostBasis) * 100).toFixed(2))
-          : 0,
+      expectedRoi: totalCostBasis > 0 ? Number(((expectedProfit / totalCostBasis) * 100).toFixed(2)) : 0,
     };
   }
 
@@ -18888,34 +18611,19 @@ export class PortfolioService {
     const [inventoryValue, sales, watchlist, reserves] = await Promise.all([
       this.getInventoryValue(),
       this.prisma.sale.findMany(),
-      this.prisma.watchlistItem.findMany({
-        where: {
-          active: true,
-        },
-      }),
+      this.prisma.watchlistItem.findMany({ where: { active: true } }),
       this.prisma.reserveRequest.findMany(),
     ]);
 
-    const totalRevenue = toMoney(
-      sales.reduce((sum, sale) => sum + Number(sale.sellPrice ?? 0), 0),
-    );
-
-    const realizedProfit = toMoney(
-      sales.reduce((sum, sale) => sum + Number(sale.profit ?? 0), 0),
-    );
+    const totalRevenue = toMoney(sales.reduce((sum, sale) => sum + Number(sale.sellPrice ?? 0), 0));
+    const realizedProfit = toMoney(sales.reduce((sum, sale) => sum + Number(sale.profit ?? 0), 0));
 
     return {
       inventory: inventoryValue,
-      sales: {
-        count: sales.length,
-        totalRevenue,
-        realizedProfit,
-      },
+      sales: { count: sales.length, totalRevenue, realizedProfit },
       watchlist: {
         active: watchlist.length,
-        totalDesiredCapital: toMoney(
-          watchlist.reduce((sum, item) => sum + Number(item.maxBuyPrice ?? 0), 0),
-        ),
+        totalDesiredCapital: toMoney(watchlist.reduce((sum, item) => sum + Number(item.maxBuyPrice ?? 0), 0)),
       },
       reserves: {
         total: reserves.length,
@@ -18927,59 +18635,56 @@ export class PortfolioService {
 
   async getCapitalPlan(capital: number): Promise<unknown> {
     if (!Number.isFinite(capital) || capital <= 0) {
-      return {
-        capital,
-        allocations: [],
-        message: 'Capital must be greater than zero',
-      };
+      return { capital, allocations: [], message: 'Capital must be greater than zero' };
     }
 
     const watchlist = await this.prisma.watchlistItem.findMany({
-      where: {
-        active: true,
-      },
-      include: {
-        item: true,
-      },
+      where: { active: true },
+      include: { item: true },
     });
+
+    if (watchlist.length === 0) {
+      return { capital, candidateCount: 0, allocations: [], reservedCapital: 0, remainingCapital: capital };
+    }
+
+    const itemIds = watchlist.map((w) => w.itemId);
+
+    const [snapshots, listings] = await Promise.all([
+      this.prisma.marketSnapshot.findMany({
+        where: { itemId: { in: itemIds } },
+        orderBy: { computedAt: 'desc' },
+        distinct: ['itemId'],
+      }),
+      this.prisma.marketListing.findMany({
+        where: { itemId: { in: itemIds }, status: 'active' },
+      }),
+    ]);
+
+    const snapshotsMap = new Map(snapshots.map((s) => [s.itemId, s]));
+    const listingsMap = new Map<string, any[]>();
+
+    for (const listing of listings) {
+      const arr = listingsMap.get(listing.itemId) || [];
+      arr.push(listing);
+      listingsMap.set(listing.itemId, arr);
+    }
 
     const candidates = [];
 
     for (const item of watchlist) {
-      const snapshot = await this.prisma.marketSnapshot.findFirst({
-        where: {
-          itemId: item.itemId,
-        },
-        orderBy: {
-          computedAt: 'desc',
-        },
-      });
+      const snapshot = snapshotsMap.get(item.itemId);
+      const itemListings = listingsMap.get(item.itemId) || [];
 
-      const listings = await this.prisma.marketListing.findMany({
-        where: {
-          itemId: item.itemId,
-          status: 'active',
-        },
-        take: 30,
-      });
-
-      const prices = listings.map((listing) => listing.price);
+      const prices = itemListings.map((listing) => listing.price);
       const volatility = this.volatility.calculate(prices);
 
-      const buyPrice =
-        snapshot?.lowestPriceWithShipping ??
-        item.maxBuyPrice ??
-        item.desiredBuyPrice;
-
+      const buyPrice = snapshot?.lowestPriceWithShipping ?? item.maxBuyPrice ?? item.desiredBuyPrice;
       const targetSellPrice = item.targetSellPrice ?? 0;
       const expectedNetProfit = toMoney(targetSellPrice - buyPrice);
-      const roiPercent =
-        buyPrice > 0
-          ? Number(((expectedNetProfit / buyPrice) * 100).toFixed(2))
-          : 0;
+      const roiPercent = buyPrice > 0 ? Number(((expectedNetProfit / buyPrice) * 100).toFixed(2)) : 0;
 
       const liquidity = this.liquidityRank.rank({
-        soldCount: snapshot?.listingsCount ?? listings.length,
+        soldCount: snapshot?.listingsCount ?? itemListings.length,
         volatility,
         confidence: snapshot?.confidenceScore ?? 0,
       });
@@ -18989,7 +18694,7 @@ export class PortfolioService {
         buyPrice,
         targetSellPrice,
         medianPrice: snapshot?.medianPrice ?? targetSellPrice,
-        soldCount: snapshot?.listingsCount ?? listings.length,
+        soldCount: snapshot?.listingsCount ?? itemListings.length,
         volatility,
         confidenceScore: snapshot?.confidenceScore ?? 0,
       });
@@ -19007,18 +18712,14 @@ export class PortfolioService {
     }
 
     const allocations = this.capitalAllocation.allocate(capital, candidates);
+    const reservedCapital = allocations.reduce((sum, item) => sum + item.reservedCapital, 0);
 
     return {
       capital,
       candidateCount: candidates.length,
       allocations,
-      reservedCapital: toMoney(
-        allocations.reduce((sum, item) => sum + item.reservedCapital, 0),
-      ),
-      remainingCapital: toMoney(
-        capital -
-          allocations.reduce((sum, item) => sum + item.reservedCapital, 0),
-      ),
+      reservedCapital: toMoney(reservedCapital),
+      remainingCapital: toMoney(capital - reservedCapital),
     };
   }
 }
@@ -20513,7 +20214,7 @@ export class PublicStoreModule {}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\public\public-store.service.ts =====
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { toMoney } from '../../common/money.utils';
 import { ActivityService } from '../activity/activity.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -20531,216 +20232,161 @@ export class PublicStoreService {
 
   private slugify(value: string): string {
     return value
+      .trim()
       .toLowerCase()
-      .replace(/[^\p{L}\p{N}]+/gu, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 120);
+      .replace(/[^\p{L}\p{N}\s-]+/gu, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
   }
 
-  async getCatalog(params?: {
+  private resolveOrderBy(sort?: string): any {
+    if (sort === 'price_asc') return { expectedSalePriceManual: 'asc' };
+    if (sort === 'price_desc') return { expectedSalePriceManual: 'desc' };
+    if (sort === 'title_asc') return { titleSnapshot: 'asc' };
+    if (sort === 'title_desc') return { titleSnapshot: 'desc' };
+    return { createdAt: 'desc' };
+  }
+
+  async getCatalog(params: {
     q?: string;
     type?: string;
+    availableOnly?: boolean;
     theme?: string;
     sort?: string;
-    availableOnly?: boolean;
     limit?: number;
   }): Promise<unknown[]> {
-    const q = params?.q?.trim();
-
-    const orderBy =
-      params?.sort === 'price_asc'
-        ? [{ expectedSalePriceManual: 'asc' as const }]
-        : params?.sort === 'price_desc'
-          ? [{ expectedSalePriceManual: 'desc' as const }]
-          : params?.sort === 'title_asc'
-            ? [{ titleSnapshot: 'asc' as const }]
-            : [{ createdAt: 'desc' as const }];
+    const limit = Math.min(params.limit ?? 48, 200);
+    const q = params.q?.trim();
 
     return this.prisma.inventoryItem.findMany({
       where: {
-        ...(params?.availableOnly
-          ? {
-              quantity: {
-                gt: 0,
-              },
-            }
-          : {}),
-        ...(params?.type && params.type !== 'all'
-          ? {
-              item: {
-                kind: params.type,
-              },
-            }
-          : {}),
-        ...(params?.theme
-          ? {
-              item: {
-                theme: {
-                  contains: params.theme,
-                  mode: 'insensitive',
-                },
-              },
-            }
-          : {}),
+        quantity: params.availableOnly === true ? { gt: 0 } : undefined,
+        ...(params.type && params.type !== 'all' ? { item: { kind: params.type } } : {}),
+        ...(params.theme ? { item: { theme: { equals: params.theme, mode: 'insensitive' } } } : {}),
         ...(q
           ? {
               OR: [
-                {
-                  titleSnapshot: {
-                    contains: q,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  item: {
-                    title: {
-                      contains: q,
-                      mode: 'insensitive',
-                    },
-                  },
-                },
-                {
-                  item: {
-                    setNumber: {
-                      contains: q,
-                      mode: 'insensitive',
-                    },
-                  },
-                },
+                { titleSnapshot: { contains: q, mode: 'insensitive' } },
+                { item: { title: { contains: q, mode: 'insensitive' } } },
+                { item: { setNumber: { contains: q, mode: 'insensitive' } } },
+                { item: { theme: { contains: q, mode: 'insensitive' } } },
               ],
             }
           : {}),
       },
-      include: {
-        item: true,
-        location: {
-          include: {
-            warehouse: true,
-          },
-        },
-        images: {
-          orderBy: {
-            sortOrder: 'asc',
-          },
-        },
+      select: {
+        id: true,
+        titleSnapshot: true,
+        expectedSalePriceManual: true,
+        totalCost: true,
+        quantity: true,
+        condition: true,
+        item: { select: { title: true, theme: true, setNumber: true, kind: true } },
+        images: { where: { isPrimary: true }, take: 1, select: { imageUrl: true } },
       },
-      orderBy,
-      take: params?.limit ?? 200,
+      orderBy: this.resolveOrderBy(params.sort),
+      take: limit,
     });
   }
 
-  async getCatalogItem(slug: string): Promise<unknown> {
-    const rows = await this.prisma.inventoryItem.findMany({
+  async getCatalogItem(slug: string): Promise<unknown | null> {
+    const normalized = slug.trim().toLowerCase();
+
+    const entry = await this.prisma.inventoryItem.findFirst({
+      where: {
+        OR: [
+          { id: normalized },
+          { titleSnapshot: { equals: normalized.replace(/-/g, ' '), mode: 'insensitive' } }
+        ],
+        quantity: { gt: 0 }
+      },
       include: {
         item: true,
-        location: {
-          include: {
-            warehouse: true,
-          },
-        },
-        images: {
-          orderBy: {
-            sortOrder: 'asc',
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 500,
+        location: { include: { warehouse: true } },
+        images: { orderBy: { sortOrder: 'asc' } },
+        assignedUser: { select: { id: true, name: true } },
+      }
     });
 
-    const found = rows.find((row) => {
-      const title = row.titleSnapshot || row.item?.title || row.id;
-      return this.slugify(title) === slug || row.id === slug;
-    });
-
-    if (!found) {
-      throw new NotFoundException('Product not found');
-    }
+    if (!entry) throw new NotFoundException('Product not found');
 
     const related = await this.prisma.inventoryItem.findMany({
       where: {
-        id: {
-          not: found.id,
-        },
-        item: {
-          theme: found.item?.theme ?? undefined,
-        },
-        quantity: {
-          gt: 0,
-        },
+        id: { not: entry.id },
+        quantity: { gt: 0 },
+        item: { theme: entry.item?.theme ?? undefined },
       },
-      include: {
-        item: true,
-        images: {
-          orderBy: {
-            sortOrder: 'asc',
-          },
-        },
+      select: {
+        id: true,
+        titleSnapshot: true,
+        expectedSalePriceManual: true,
+        totalCost: true,
+        quantity: true,
+        condition: true,
+        item: { select: { title: true } },
+        images: { where: { isPrimary: true }, take: 1, select: { imageUrl: true } },
       },
+      orderBy: { createdAt: 'desc' },
       take: 8,
     });
 
     return {
-      ...found,
-      slug: this.slugify(found.titleSnapshot || found.item?.title || found.id),
+      ...entry,
+      slug: this.slugify(entry.titleSnapshot || entry.item?.title || entry.id),
       related,
     };
   }
 
-  async analytics(): Promise<unknown> {
-    const [inventory, reserves, sales, orders] = await Promise.all([
-      this.prisma.inventoryItem.findMany(),
-      this.prisma.reserveRequest.findMany(),
-      this.prisma.sale.findMany(),
-      this.prisma.order.findMany(),
-    ]);
+  async getRelatedCatalogItems(params: { slug: string; limit?: number }): Promise<unknown[]> {
+    const item = (await this.getCatalogItem(params.slug)) as any | null;
+    if (!item) return [];
 
-    return {
-      totalInventory: inventory.length,
-      availableInventory: inventory.filter((row) => row.quantity > 0).length,
-      soldInventory: inventory.filter((row) => row.quantity <= 0).length,
-      reserveRequests: reserves.length,
-      pendingReserveRequests: reserves.filter((row) => row.status === 'pending')
-        .length,
-      orders: orders.length,
-      pendingOrders: orders.filter((row) => row.status === 'pending').length,
-      openOrders: orders.filter((row) =>
-        ['pending', 'approved', 'contacted'].includes(row.status),
-      ).length,
-      salesCount: sales.length,
-      totalSalesProfit: toMoney(
-        sales.reduce((sum, sale) => sum + Number(sale.profit ?? 0), 0),
-      ),
-    };
+    const theme = item.item?.theme ?? null;
+    const kind = item.item?.kind ?? null;
+
+    return this.prisma.inventoryItem.findMany({
+      where: {
+        id: { not: item.id },
+        quantity: { gt: 0 },
+        item: { ...(theme ? { theme } : {}), ...(kind ? { kind } : {}) },
+      },
+      select: {
+        id: true,
+        titleSnapshot: true,
+        expectedSalePriceManual: true,
+        totalCost: true,
+        quantity: true,
+        condition: true,
+        item: { select: { title: true } },
+        images: { where: { isPrimary: true }, take: 1, select: { imageUrl: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(params.limit ?? 8, 24),
+    });
   }
 
-  async createReserve(params: {
-    inventoryItemId?: string | null;
-    productTitle: string;
-    name: string;
-    contact: string;
-    message?: string | null;
-  }): Promise<unknown> {
-    const inventoryItem = params.inventoryItemId
-      ? await this.prisma.inventoryItem.findUnique({
-          where: {
-            id: params.inventoryItemId,
-          },
-        })
-      : null;
+  async createReserve(params: { inventoryItemId?: string | null; productTitle: string; name: string; contact: string; message?: string | null }): Promise<unknown> {
+    const name = params.name.trim();
+    const contact = params.contact.trim();
+    const message = params.message?.trim() ?? '';
+    let productTitle = params.productTitle?.trim() ?? '';
+    let inventoryItemId = params.inventoryItemId;
+
+    if (inventoryItemId) {
+      const inventoryItem = await this.prisma.inventoryItem.findUnique({
+        where: { id: inventoryItemId },
+        select: { titleSnapshot: true, id: true, expectedSalePriceManual: true, item: { select: { title: true } } },
+      });
+
+      if (!inventoryItem) throw new NotFoundException('Inventory item not found');
+      productTitle = productTitle || inventoryItem.titleSnapshot || inventoryItem.item?.title || inventoryItem.id;
+    }
+
+    if (!productTitle) throw new BadRequestException('Product title is required');
 
     const result = await this.prisma.$transaction(async (tx) => {
       const reserve = await tx.reserveRequest.create({
-        data: {
-          inventoryItemId: params.inventoryItemId ?? null,
-          productTitle: params.productTitle,
-          name: params.name,
-          contact: params.contact,
-          message: params.message ?? null,
-          status: 'pending',
-        },
+        data: { inventoryItemId, productTitle, name, contact, message, status: 'pending' },
       });
 
       const order = await tx.order.create({
@@ -20751,17 +20397,14 @@ export class PublicStoreService {
           buyerName: reserve.name,
           contact: reserve.contact,
           status: 'pending',
-          sellPrice: inventoryItem?.expectedSalePriceManual ?? null,
+          sellPrice: null, 
           quantity: 1,
           channel: 'public_store',
           adminNote: reserve.message ?? null,
         },
       });
 
-      return {
-        reserve,
-        order,
-      };
+      return { reserve, order };
     });
 
     await this.activity.log('reserve.created', {
@@ -20777,10 +20420,7 @@ export class PublicStoreService {
       title: 'New reserve request',
       message: `${result.reserve.productTitle} вЂў ${result.reserve.name}`,
       type: 'reserve',
-      payloadJson: {
-        reserveRequestId: result.reserve.id,
-        orderId: result.order.id,
-      },
+      payloadJson: { reserveRequestId: result.reserve.id, orderId: result.order.id },
     });
 
     this.realtime.emitCustom('reserve.created', result.reserve);
@@ -20790,139 +20430,69 @@ export class PublicStoreService {
     return result.reserve;
   }
 
-  async listReserveRequests(params?: {
-    q?: string;
-    status?: string;
-  }): Promise<unknown[]> {
+  async listReserveRequests(params?: { q?: string; status?: string }): Promise<unknown[]> {
     const q = params?.q?.trim();
-
     return this.prisma.reserveRequest.findMany({
       where: {
-        ...(params?.status && params.status !== 'all'
-          ? {
-              status: params.status,
-            }
-          : {}),
+        ...(params?.status && params.status !== 'all' ? { status: params.status } : {}),
         ...(q
           ? {
               OR: [
-                {
-                  productTitle: {
-                    contains: q,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  name: {
-                    contains: q,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  contact: {
-                    contains: q,
-                    mode: 'insensitive',
-                  },
-                },
+                { productTitle: { contains: q, mode: 'insensitive' } },
+                { name: { contains: q, mode: 'insensitive' } },
+                { contact: { contains: q, mode: 'insensitive' } },
+                { message: { contains: q, mode: 'insensitive' } },
               ],
             }
           : {}),
       },
       include: {
         orders: true,
-        inventoryItem: {
-          include: {
-            item: true,
-            images: {
-              orderBy: {
-                sortOrder: 'asc',
-              },
-            },
-          },
-        },
+        inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } } },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
       take: 200,
     });
   }
 
   async getReserveRequest(id: string): Promise<unknown> {
     const row = await this.prisma.reserveRequest.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
       include: {
         orders: true,
-        inventoryItem: {
-          include: {
-            item: true,
-            images: {
-              orderBy: {
-                sortOrder: 'asc',
-              },
-            },
-          },
-        },
+        inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' } } } },
       },
     });
 
-    if (!row) {
-      throw new NotFoundException('Reserve request not found');
-    }
-
+    if (!row) throw new NotFoundException('Reserve request not found');
     return row;
   }
 
-  async updateReserveRequest(params: {
-    id: string;
-    status?: string;
-    adminNote?: string | null;
-  }): Promise<unknown> {
+  async updateReserveRequest(params: { id: string; status?: string; adminNote?: string | null }): Promise<unknown> {
+    if (!params.id) throw new BadRequestException('Reserve request id is required');
+
     const existing = await this.prisma.reserveRequest.findUnique({
-      where: {
-        id: params.id,
-      },
-      include: {
-        orders: true,
-      },
+      where: { id: params.id },
+      include: { orders: true },
     });
 
-    if (!existing) {
-      throw new NotFoundException('Reserve request not found');
-    }
+    if (!existing) throw new NotFoundException('Reserve request not found');
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const reserve = await tx.reserveRequest.update({
-        where: {
-          id: params.id,
-        },
-        data: {
-          status: params.status,
-          adminNote: params.adminNote,
-        },
+        where: { id: params.id },
+        data: { status: params.status, adminNote: params.adminNote },
       });
 
       if (params.status && existing.orders.length > 0) {
         await tx.order.updateMany({
-          where: {
-            reserveRequestId: params.id,
-          },
+          where: { reserveRequestId: params.id },
           data: {
-            status:
-              params.status === 'approved'
-                ? 'approved'
-                : params.status === 'contacted'
-                  ? 'contacted'
-                  : params.status === 'rejected'
-                    ? 'cancelled'
-                    : params.status,
+            status: params.status === 'approved' ? 'approved' : params.status === 'contacted' ? 'contacted' : params.status === 'rejected' ? 'cancelled' : params.status,
             adminNote: params.adminNote,
           },
         });
       }
-
       return reserve;
     });
 
@@ -20938,38 +20508,47 @@ export class PublicStoreService {
     return updated;
   }
 
-  async reserveBoard(): Promise<{
-    pending: unknown[];
-    approved: unknown[];
-    contacted: unknown[];
-    rejected: unknown[];
-    sold: unknown[];
-  }> {
+  async reserveBoard(): Promise<any> {
     const rows = await this.prisma.reserveRequest.findMany({
       include: {
         orders: true,
-        inventoryItem: {
-          include: {
-            item: true,
-            images: {
-              orderBy: {
-                sortOrder: 'asc',
-              },
-            },
-          },
-        },
+        inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } } },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
+      take: 300,
     });
 
     return {
-      pending: rows.filter((row) => row.status === 'pending'),
-      approved: rows.filter((row) => row.status === 'approved'),
-      contacted: rows.filter((row) => row.status === 'contacted'),
-      rejected: rows.filter((row) => row.status === 'rejected'),
-      sold: rows.filter((row) => row.status === 'sold'),
+      pending: rows.filter((x) => x.status === 'pending'),
+      approved: rows.filter((x) => x.status === 'approved'),
+      contacted: rows.filter((x) => x.status === 'contacted'),
+      rejected: rows.filter((x) => x.status === 'rejected'),
+      sold: rows.filter((x) => x.status === 'sold'),
+    };
+  }
+
+  async analytics(): Promise<unknown> {
+    const [inventoryAgg, reservesCount, pendingReserves, salesAgg, ordersAgg] = await Promise.all([
+      this.prisma.inventoryItem.aggregate({
+        _count: true,
+        _sum: { quantity: true, expectedSalePriceManual: true, totalCost: true },
+        where: { quantity: { gt: 0 } }
+      }),
+      this.prisma.reserveRequest.count(),
+      this.prisma.reserveRequest.count({ where: { status: 'pending' } }),
+      this.prisma.sale.aggregate({ _count: true, _sum: { profit: true } }),
+      this.prisma.order.aggregate({ _count: true })
+    ]);
+
+    return {
+      totalInventory: inventoryAgg._count,
+      availableInventory: inventoryAgg._sum.quantity ?? 0,
+      reserveRequests: reservesCount,
+      pendingReserves,
+      salesCount: salesAgg._count,
+      totalSalesProfit: toMoney(salesAgg._sum.profit ?? 0),
+      orders: ordersAgg._count,
+      visibleInventoryValue: toMoney(inventoryAgg._sum.expectedSalePriceManual ?? inventoryAgg._sum.totalCost ?? 0),
     };
   }
 }
@@ -22063,121 +21642,68 @@ type PeriodParams = {
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private getRange(params?: PeriodParams): {
-    from: Date;
-    to: Date;
-  } {
+  private getRange(params?: PeriodParams): { from: Date; to: Date } {
     const now = new Date();
-
-    const from = params?.from
-      ? new Date(params.from)
-      : new Date(now.getFullYear(), now.getMonth(), 1);
-
+    const from = params?.from ? new Date(params.from) : new Date(now.getFullYear(), now.getMonth(), 1);
     const to = params?.to ? new Date(params.to) : now;
-
-    return {
-      from,
-      to,
-    };
+    return { from, to };
   }
 
   private inRangeWhere(field: string, from: Date, to: Date): Record<string, unknown> {
-    return {
-      [field]: {
-        gte: from,
-        lte: to,
-      },
-    };
+    return { [field]: { gte: from, lte: to } };
   }
 
   async profitAndLoss(params?: PeriodParams): Promise<unknown> {
     const { from, to } = this.getRange(params);
 
-    const [sales, returns, expenses, purchaseOrders] = await Promise.all([
-      this.prisma.sale.findMany({
-        where: this.inRangeWhere('createdAt', from, to),
-        include: {
-          item: true,
-          inventoryItem: true,
-        },
-      }),
-      this.prisma.returnRequest.findMany({
+    const [salesAgg, returnsAgg, expensesAgg, purchaseOrders] = await Promise.all([
+      this.prisma.sale.aggregate({
+        _sum: { sellPrice: true, costBasis: true, profit: true },
+        _count: true,
         where: this.inRangeWhere('createdAt', from, to),
       }),
-      this.prisma.expense.findMany({
+      this.prisma.returnRequest.aggregate({
+        _sum: { refundAmount: true },
+        _count: true,
+        where: { ...this.inRangeWhere('createdAt', from, to), status: { in: ['approved', 'resolved'] } },
+      }),
+      this.prisma.expense.aggregate({
+        _sum: { amount: true },
+        _count: true,
         where: this.inRangeWhere('incurredAt', from, to),
       }),
       this.prisma.purchaseOrder.findMany({
-        where: this.inRangeWhere('createdAt', from, to),
+        where: { ...this.inRangeWhere('createdAt', from, to), status: { in: ['planned', 'approved', 'ordered', 'paid'] } },
+        select: { totalCost: true, actualPrice: true, plannedPrice: true }
       }),
     ]);
 
-    const grossRevenue = toMoney(
-      sales.reduce((sum, sale) => sum + Number(sale.sellPrice ?? 0), 0),
-    );
-
-    const cogs = toMoney(
-      sales.reduce((sum, sale) => sum + Number(sale.costBasis ?? 0), 0),
-    );
-
+    const grossRevenue = toMoney(salesAgg._sum.sellPrice ?? 0);
+    const cogs = toMoney(salesAgg._sum.costBasis ?? 0);
     const grossProfit = toMoney(grossRevenue - cogs);
-
-    const refunds = toMoney(
-      returns
-        .filter((row) => ['approved', 'resolved'].includes(row.status))
-        .reduce((sum, row) => sum + Number(row.refundAmount ?? 0), 0),
-    );
-
-    const operatingExpenses = toMoney(
-      expenses.reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0),
-    );
+    const refunds = toMoney(returnsAgg._sum.refundAmount ?? 0);
+    const operatingExpenses = toMoney(expensesAgg._sum.amount ?? 0);
 
     const procurementCommitted = toMoney(
-      purchaseOrders
-        .filter((order) => ['planned', 'approved', 'ordered', 'paid'].includes(order.status))
-        .reduce(
-          (sum, order) =>
-            sum +
-            Number(order.totalCost ?? order.actualPrice ?? order.plannedPrice ?? 0),
-          0,
-        ),
+      purchaseOrders.reduce((sum, order) => sum + Number(order.totalCost ?? order.actualPrice ?? order.plannedPrice ?? 0), 0)
     );
 
     const netRevenue = toMoney(grossRevenue - refunds);
     const netProfitBeforeExpenses = toMoney(grossProfit - refunds);
     const netProfit = toMoney(netProfitBeforeExpenses - operatingExpenses);
 
-    const marginPercent =
-      netRevenue > 0 ? toMoney((netProfit / netRevenue) * 100) : 0;
-
+    const marginPercent = netRevenue > 0 ? toMoney((netProfit / netRevenue) * 100) : 0;
     const roiPercent = cogs > 0 ? toMoney((netProfit / cogs) * 100) : 0;
 
     return {
-      period: {
-        from: from.toISOString(),
-        to: to.toISOString(),
-      },
-      revenue: {
-        grossRevenue,
-        refunds,
-        netRevenue,
-      },
-      costs: {
-        cogs,
-        operatingExpenses,
-        procurementCommitted,
-      },
-      profit: {
-        grossProfit,
-        netProfitBeforeExpenses,
-        netProfit,
-        marginPercent,
-        roiPercent,
-      },
+      period: { from: from.toISOString(), to: to.toISOString() },
+      revenue: { grossRevenue, refunds, netRevenue },
+      costs: { cogs, operatingExpenses, procurementCommitted },
+      profit: { grossProfit, netProfitBeforeExpenses, netProfit, marginPercent, roiPercent },
       counters: {
-        sales: sales.length,
-        returns: returns.length,
-        expenses: expenses.length,
+        sales: salesAgg._count,
+        returns: returnsAgg._count,
+        expenses: expensesAgg._count,
         purchaseOrders: purchaseOrders.length,
       },
     };
@@ -22188,31 +21714,14 @@ export class ReportsService {
 
     const sales = await this.prisma.sale.findMany({
       where: this.inRangeWhere('createdAt', from, to),
-      include: {
-        item: true,
-      },
+      include: { item: { select: { theme: true } } },
     });
 
-    const map = new Map<
-      string,
-      {
-        revenue: number;
-        cost: number;
-        profit: number;
-        units: number;
-        sales: number;
-      }
-    >();
+    const map = new Map<string, { revenue: number; cost: number; profit: number; units: number; sales: number }>();
 
     for (const sale of sales) {
       const theme = sale.item.theme ?? 'Unknown';
-      const current = map.get(theme) ?? {
-        revenue: 0,
-        cost: 0,
-        profit: 0,
-        units: 0,
-        sales: 0,
-      };
+      const current = map.get(theme) ?? { revenue: 0, cost: 0, profit: 0, units: 0, sales: 0 };
 
       current.revenue += Number(sale.sellPrice ?? 0);
       current.cost += Number(sale.costBasis ?? 0);
@@ -22239,31 +21748,18 @@ export class ReportsService {
   async expensesByCategory(params?: PeriodParams): Promise<unknown[]> {
     const { from, to } = this.getRange(params);
 
-    const expenses = await this.prisma.expense.findMany({
+    const agg = await this.prisma.expense.groupBy({
+      by: ['category'],
+      _sum: { amount: true },
+      _count: { id: true },
       where: this.inRangeWhere('incurredAt', from, to),
     });
 
-    const map = new Map<string, { amount: number; count: number }>();
-
-    for (const expense of expenses) {
-      const current = map.get(expense.category) ?? {
-        amount: 0,
-        count: 0,
-      };
-
-      current.amount += Number(expense.amount ?? 0);
-      current.count += 1;
-
-      map.set(expense.category, current);
-    }
-
-    return Array.from(map.entries())
-      .map(([category, value]) => ({
-        category,
-        amount: toMoney(value.amount),
-        count: value.count,
-      }))
-      .sort((a, b) => b.amount - a.amount);
+    return agg.map(row => ({
+      category: row.category,
+      amount: toMoney(row._sum.amount ?? 0),
+      count: row._count.id
+    })).sort((a, b) => b.amount - a.amount);
   }
 
   async dailyPnl(params?: PeriodParams): Promise<unknown[]> {
@@ -22272,40 +21768,24 @@ export class ReportsService {
     const [sales, returns, expenses] = await Promise.all([
       this.prisma.sale.findMany({
         where: this.inRangeWhere('createdAt', from, to),
+        select: { createdAt: true, sellPrice: true, costBasis: true, profit: true }
       }),
       this.prisma.returnRequest.findMany({
-        where: this.inRangeWhere('createdAt', from, to),
+        where: { ...this.inRangeWhere('createdAt', from, to), status: { in: ['approved', 'resolved'] } },
+        select: { createdAt: true, refundAmount: true }
       }),
       this.prisma.expense.findMany({
         where: this.inRangeWhere('incurredAt', from, to),
+        select: { incurredAt: true, amount: true }
       }),
     ]);
 
-    const map = new Map<
-      string,
-      {
-        revenue: number;
-        cost: number;
-        profit: number;
-        refunds: number;
-        expenses: number;
-      }
-    >();
+    const map = new Map<string, { revenue: number; cost: number; profit: number; refunds: number; expenses: number }>();
 
     const ensure = (date: Date) => {
       const key = date.toISOString().slice(0, 10);
-      const current =
-        map.get(key) ??
-        {
-          revenue: 0,
-          cost: 0,
-          profit: 0,
-          refunds: 0,
-          expenses: 0,
-        };
-
+      const current = map.get(key) ?? { revenue: 0, cost: 0, profit: 0, refunds: 0, expenses: 0 };
       map.set(key, current);
-
       return current;
     };
 
@@ -22317,10 +21797,6 @@ export class ReportsService {
     }
 
     for (const row of returns) {
-      if (!['approved', 'resolved'].includes(row.status)) {
-        continue;
-      }
-
       ensure(row.createdAt).refunds += Number(row.refundAmount ?? 0);
     }
 
@@ -22345,22 +21821,10 @@ export class ReportsService {
     const { from, to } = this.getRange(params);
 
     const payload = {
-      pnl: await this.profitAndLoss({
-        from: from.toISOString(),
-        to: to.toISOString(),
-      }),
-      salesByTheme: await this.salesByTheme({
-        from: from.toISOString(),
-        to: to.toISOString(),
-      }),
-      expensesByCategory: await this.expensesByCategory({
-        from: from.toISOString(),
-        to: to.toISOString(),
-      }),
-      dailyPnl: await this.dailyPnl({
-        from: from.toISOString(),
-        to: to.toISOString(),
-      }),
+      pnl: await this.profitAndLoss({ from: from.toISOString(), to: to.toISOString() }),
+      salesByTheme: await this.salesByTheme({ from: from.toISOString(), to: to.toISOString() }),
+      expensesByCategory: await this.expensesByCategory({ from: from.toISOString(), to: to.toISOString() }),
+      dailyPnl: await this.dailyPnl({ from: from.toISOString(), to: to.toISOString() }),
     };
 
     return this.prisma.reportSnapshot.create({
@@ -22375,9 +21839,7 @@ export class ReportsService {
 
   async snapshots(): Promise<unknown[]> {
     return this.prisma.reportSnapshot.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
       take: 100,
     });
   }
@@ -26199,6 +25661,13 @@ export class SyncOrchestratorService {
     private readonly realtime: RealtimeGateway,
   ) {}
 
+  private async processInChunks<T>(items: T[], chunkSize: number, processor: (item: T) => Promise<void>) {
+    for (let i = 0; i < items.length; i += chunkSize) {
+      const chunk = items.slice(i, i + chunkSize);
+      await Promise.all(chunk.map(processor));
+    }
+  }
+
   async refreshAll(): Promise<{
     totalItems: number;
     refreshedItems: number;
@@ -26206,65 +25675,38 @@ export class SyncOrchestratorService {
     recomputedWatchlistDecisions: number;
   }> {
     const [items, inventoryItems, watchlistItems] = await Promise.all([
-      this.prisma.item.findMany({
-        select: {
-          id: true,
-        },
-      }),
-      this.prisma.inventoryItem.findMany({
-        select: {
-          id: true,
-        },
-      }),
-      this.prisma.watchlistItem.findMany({
-        select: {
-          id: true,
-        },
-      }),
+      this.prisma.item.findMany({ select: { id: true } }),
+      this.prisma.inventoryItem.findMany({ select: { id: true } }),
+      this.prisma.watchlistItem.findMany({ select: { id: true } }),
     ]);
 
-    this.syncStateService.start(
-      'global_refresh',
-      items.length,
-      'Refreshing all market snapshots',
-    );
-
-    this.realtime.emitCustom('sync.started', {
-      mode: 'global_refresh',
-      totalItems: items.length,
-    });
+    this.syncStateService.start('global_refresh', items.length, 'Refreshing all market snapshots');
+    this.realtime.emitCustom('sync.started', { mode: 'global_refresh', totalItems: items.length });
 
     let refreshedItems = 0;
     let recomputedInventoryDecisions = 0;
     let recomputedWatchlistDecisions = 0;
 
     try {
-      for (const item of items) {
+      await this.processInChunks(items, 50, async (item) => {
         await this.marketSyncService.refreshItemSnapshot(item.id);
         refreshedItems += 1;
 
-        this.syncStateService.progress(
-          refreshedItems,
-          `Refreshed ${refreshedItems}/${items.length}`,
-        );
-
-        if (refreshedItems % 10 === 0 || refreshedItems === items.length) {
-          this.realtime.emitCustom('sync.progress', {
-            processedItems: refreshedItems,
-            totalItems: items.length,
-          });
+        if (refreshedItems % 50 === 0 || refreshedItems === items.length) {
+          this.syncStateService.progress(refreshedItems, `Refreshed ${refreshedItems}/${items.length}`);
+          this.realtime.emitCustom('sync.progress', { processedItems: refreshedItems, totalItems: items.length });
         }
-      }
+      });
 
-      for (const inventoryItem of inventoryItems) {
+      await this.processInChunks(inventoryItems, 50, async (inventoryItem) => {
         await this.decisionsService.recomputeInventoryDecision(inventoryItem.id);
         recomputedInventoryDecisions += 1;
-      }
+      });
 
-      for (const watchlistItem of watchlistItems) {
+      await this.processInChunks(watchlistItems, 50, async (watchlistItem) => {
         await this.decisionsService.recomputeWatchlistDecision(watchlistItem.id);
         recomputedWatchlistDecisions += 1;
-      }
+      });
 
       this.syncStateService.finish('Global refresh completed');
 
@@ -26285,13 +25727,8 @@ export class SyncOrchestratorService {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-
       this.syncStateService.fail(message);
-
-      this.realtime.emitCustom('sync.failed', {
-        message,
-      });
-
+      this.realtime.emitCustom('sync.failed', { message });
       throw error;
     }
   }
@@ -26302,31 +25739,15 @@ export class SyncOrchestratorService {
     try {
       const snapshot = await this.marketSyncService.refreshItemSnapshot(itemId);
 
-      const inventoryItems = await this.prisma.inventoryItem.findMany({
-        where: {
-          itemId,
-        },
-        select: {
-          id: true,
-        },
-      });
+      const [inventoryItems, watchlistItems] = await Promise.all([
+        this.prisma.inventoryItem.findMany({ where: { itemId }, select: { id: true } }),
+        this.prisma.watchlistItem.findMany({ where: { itemId }, select: { id: true } }),
+      ]);
 
-      const watchlistItems = await this.prisma.watchlistItem.findMany({
-        where: {
-          itemId,
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      for (const inventoryItem of inventoryItems) {
-        await this.decisionsService.recomputeInventoryDecision(inventoryItem.id);
-      }
-
-      for (const watchlistItem of watchlistItems) {
-        await this.decisionsService.recomputeWatchlistDecision(watchlistItem.id);
-      }
+      await Promise.all([
+        ...inventoryItems.map(inv => this.decisionsService.recomputeInventoryDecision(inv.id)),
+        ...watchlistItems.map(watch => this.decisionsService.recomputeWatchlistDecision(watch.id))
+      ]);
 
       this.syncStateService.progress(1, 'Item refreshed');
       this.syncStateService.finish('Item refresh completed');
@@ -33223,23 +32644,41 @@ export async function autoQueueOpportunitiesJob(params?: {
   minRoiPercent?: number;
   minProfit?: number;
   maxItems?: number;
-}): Promise<{
-  scanned: number;
-  queued: number;
-}> {
+}): Promise<{ scanned: number; queued: number }> {
   const minRoiPercent = params?.minRoiPercent ?? 25;
   const minProfit = params?.minProfit ?? 150;
   const maxItems = params?.maxItems ?? 50;
 
   const watchlist = await prisma.watchlistItem.findMany({
-    where: {
-      active: true,
-    },
-    orderBy: {
-      priority: 'desc',
-    },
+    where: { active: true },
+    orderBy: { priority: 'desc' },
     take: maxItems,
   });
+
+  if (watchlist.length === 0) return { scanned: 0, queued: 0 };
+
+  const itemIds = watchlist.map((w) => w.itemId);
+
+  const [listings, existingFlows] = await Promise.all([
+    prisma.marketListing.findMany({
+      where: { itemId: { in: itemIds }, status: 'active' },
+      orderBy: { price: 'asc' },
+      include: { source: true },
+    }),
+    prisma.purchaseFlowItem.findMany({
+      where: { watchlistItemId: { in: watchlist.map(w => w.id) }, status: { in: ['pending', 'queued'] } },
+    }),
+  ]);
+
+  const listingsMap = new Map<string, any[]>();
+  for (const listing of listings) {
+    const arr = listingsMap.get(listing.itemId) || [];
+    arr.push(listing);
+    listingsMap.set(listing.itemId, arr);
+  }
+
+  const existingFlowsSet = new Set(existingFlows.map((f: any) => f.watchlistItemId));
+  const dbOperations: any[] = [];
 
   let scanned = 0;
   let queued = 0;
@@ -33247,73 +32686,39 @@ export async function autoQueueOpportunitiesJob(params?: {
   for (const item of watchlist) {
     scanned += 1;
 
-    const listing = await prisma.marketListing.findFirst({
-      where: {
-        itemId: item.itemId,
-        status: 'active',
-      },
-      orderBy: {
-        price: 'asc',
-      },
-      include: {
-        source: true,
-      },
-    });
+    const bestListing = (listingsMap.get(item.itemId) || [])[0];
+    if (!bestListing) continue;
 
-    if (!listing) {
-      continue;
-    }
-
-    const buyPrice = toMoney(listing.price + (listing.shippingPrice ?? 0));
+    const buyPrice = toMoney(bestListing.price + (bestListing.shippingPrice ?? 0));
     const targetSellPrice = toMoney(item.targetSellPrice ?? 0);
 
-    if (buyPrice <= 0 || targetSellPrice <= 0) {
-      continue;
-    }
+    if (buyPrice <= 0 || targetSellPrice <= 0) continue;
 
-    const profit = calculateProfit({
-      revenue: targetSellPrice,
-      cost: buyPrice,
-    });
+    const profit = calculateProfit({ revenue: targetSellPrice, cost: buyPrice });
+    const roiPercent = calculateRoiPercent({ profit, cost: buyPrice });
 
-    const roiPercent = calculateRoiPercent({
-      profit,
-      cost: buyPrice,
-    });
+    if (profit < minProfit || roiPercent < minRoiPercent) continue;
+    if (existingFlowsSet.has(item.id)) continue;
 
-    if (profit < minProfit || roiPercent < minRoiPercent) {
-      continue;
-    }
-
-    const existing = await prisma.purchaseFlowItem.findFirst({
-      where: {
-        watchlistItemId: item.id,
-        status: {
-          in: ['pending', 'queued'],
+    dbOperations.push(
+      prisma.purchaseFlowItem.create({
+        data: {
+          watchlistItemId: item.id,
+          selectedPrice: buyPrice,
+          status: 'queued',
+          reason: `Queued from ${bestListing.source?.code ?? 'market'}`,
         },
-      },
-    });
-
-    if (existing) {
-      continue;
-    }
-
-await prisma.purchaseFlowItem.create({
-  data: {
-    watchlistItemId: item.id,
-    selectedPrice: buyPrice,
-    status: 'queued',
-    reason: `Queued from ${listing.source?.code ?? 'market'}`,
-  },
-});
+      })
+    );
 
     queued += 1;
   }
 
-  return {
-    scanned,
-    queued,
-  };
+  if (dbOperations.length > 0) {
+    await prisma.$transaction(dbOperations);
+  }
+
+  return { scanned, queued };
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\workers\src\jobs\cleanup-old-snapshots.job.ts =====
@@ -33418,34 +32823,49 @@ export async function detectDealsJob(): Promise<{
   createdOrUpdated: number;
 }> {
   const listings = await prisma.marketListing.findMany({
-    where: {
-      status: 'active',
-    },
-    orderBy: {
-      fetchedAt: 'desc',
-    },
+    where: { status: 'active' },
+    orderBy: { fetchedAt: 'desc' },
     take: 1000,
   });
 
+  if (listings.length === 0) {
+    return { scannedListings: 0, createdOrUpdated: 0 };
+  }
+
+  const itemIds = [...new Set(listings.map((l) => l.itemId))];
+
+  const watchlistItems = await prisma.watchlistItem.findMany({
+    where: { itemId: { in: itemIds }, active: true },
+  });
+
+  if (watchlistItems.length === 0) {
+    return { scannedListings: listings.length, createdOrUpdated: 0 };
+  }
+
+  const watchlistMap = new Map<string, typeof watchlistItems>();
+  for (const w of watchlistItems) {
+    const arr = watchlistMap.get(w.itemId) || [];
+    arr.push(w);
+    watchlistMap.set(w.itemId, arr);
+  }
+
+  const existingDeals = await prisma.deal.findMany({
+    where: { listingId: { in: listings.map((l) => l.id) } },
+  });
+
+  const existingDealsMap = new Map(
+    existingDeals.map((d) => [`${d.listingId}_${d.watchlistItemId}`, d]),
+  );
+
+  const dbOperations: any[] = [];
   let createdOrUpdated = 0;
 
   for (const listing of listings) {
-    const watchlistItems = await prisma.watchlistItem.findMany({
-      where: {
-        itemId: listing.itemId,
-        active: true,
-      },
-    });
+    const matchedWatchlists = watchlistMap.get(listing.itemId) || [];
 
-    for (const watchlistItem of watchlistItems) {
-      const buyPrice = toMoney(
-        Number(listing.price) + Number(listing.shippingPrice ?? 0),
-      );
-
-      const targetSellPrice = toMoney(
-        watchlistItem.targetSellPrice ?? watchlistItem.maxBuyPrice * 1.4,
-      );
-
+    for (const watchlistItem of matchedWatchlists) {
+      const buyPrice = toMoney(Number(listing.price) + Number(listing.shippingPrice ?? 0));
+      const targetSellPrice = toMoney(watchlistItem.targetSellPrice ?? watchlistItem.maxBuyPrice * 1.4);
       const profit = toMoney(targetSellPrice - buyPrice);
       const roiPercent = roi(profit, buyPrice);
 
@@ -33463,50 +32883,45 @@ export async function detectDealsJob(): Promise<{
         score = 60;
       }
 
-      if (action === 'SKIP') {
-        continue;
-      }
+      if (action === 'SKIP') continue;
 
-      const existing = await prisma.deal.findFirst({
-        where: {
-          listingId: listing.id,
-          watchlistItemId: watchlistItem.id,
-        },
-      });
+      const dealKey = `${listing.id}_${watchlistItem.id}`;
+      const existing = existingDealsMap.get(dealKey);
+
+      const dealData = {
+        buyPrice,
+        targetSellPrice,
+        profit,
+        roiPercent,
+        action,
+        score,
+        status: 'open',
+      };
 
       if (existing) {
-        await prisma.deal.update({
-          where: {
-            id: existing.id,
-          },
-          data: {
-            buyPrice,
-            targetSellPrice,
-            profit,
-            roiPercent,
-            action,
-            score,
-            status: 'open',
-          },
-        });
+        dbOperations.push(
+          prisma.deal.update({
+            where: { id: existing.id },
+            data: dealData,
+          })
+        );
       } else {
-        await prisma.deal.create({
-          data: {
-            listingId: listing.id,
-            watchlistItemId: watchlistItem.id,
-            buyPrice,
-            targetSellPrice,
-            profit,
-            roiPercent,
-            action,
-            score,
-            status: 'open',
-          },
-        });
+        dbOperations.push(
+          prisma.deal.create({
+            data: {
+              listingId: listing.id,
+              watchlistItemId: watchlistItem.id,
+              ...dealData,
+            },
+          })
+        );
       }
-
       createdOrUpdated += 1;
     }
+  }
+
+  if (dbOperations.length > 0) {
+    await prisma.$transaction(dbOperations);
   }
 
   await prisma.activityLog.create({
@@ -33563,211 +32978,162 @@ function toMoney(value: number): number {
   return Number(value.toFixed(2));
 }
 
-type SaleRow = {
-  sellPrice: number;
-};
-
-async function evaluateInventoryItem(inventoryItemId: string): Promise<unknown> {
-  const inventory = await prisma.inventoryItem.findUnique({
-    where: {
-      id: inventoryItemId,
-    },
-    include: {
-      item: true,
-    },
-  });
-
-  if (!inventory) {
-    return null;
-  }
-
-  const totalCost = toMoney(Number(inventory.totalCost ?? 0));
-  const currentExpected = toMoney(
-    Number(inventory.expectedSalePriceManual ?? inventory.totalCost ?? 0),
-  );
-
-  const targetRoiPercent = 35;
-  const expectedProfit = toMoney(currentExpected - totalCost);
-  const roiPercent =
-    totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
-
-  let action = 'HOLD';
-  let score = 50;
-  let reasonPrimary = 'Inventory is within normal range';
-
-  if (inventory.quantity <= 0) {
-    action = 'SOLD_OUT';
-    score = 100;
-    reasonPrimary = 'No stock remaining';
-  } else if (roiPercent < 0) {
-    action = 'REPRICE_UP_OR_REVIEW';
-    score = 80;
-    reasonPrimary = 'Expected profit is negative';
-  } else if (roiPercent < targetRoiPercent) {
-    action = 'REPRICE_UP';
-    score = 70;
-    reasonPrimary = 'Expected ROI is below target';
-  } else if (roiPercent >= targetRoiPercent * 1.5) {
-    action = 'SELL_FAST';
-    score = 85;
-    reasonPrimary = 'Strong expected ROI; prioritize listing';
-  }
-
-  return prisma.decisionSnapshot.create({
-    data: {
-      itemId: inventory.itemId,
-      contextType: 'inventory',
-      contextId: inventory.id,
-      action,
-      score,
-      confidence: 0.8,
-      reasonPrimary,
-      reasonSecondary: null,
-      payloadJson: {
-        inventoryItemId: inventory.id,
-        totalCost,
-        currentExpected,
-        expectedProfit,
-        roiPercent,
-        targetRoiPercent,
-      },
-    },
-  });
-}
-
-async function evaluateListing(listingId: string): Promise<unknown> {
-  const listing = await prisma.marketListing.findUnique({
-    where: {
-      id: listingId,
-    },
-    include: {
-      item: true,
-    },
-  });
-
-  if (!listing) {
-    return null;
-  }
-
-  const buyPrice = toMoney(Number(listing.price ?? 0));
-  const shippingPrice = toMoney(Number(listing.shippingPrice ?? 0));
-  const totalCost = toMoney(buyPrice + shippingPrice);
-
-  if (buyPrice <= 0) {
-    return null;
-  }
-
-  const historicalSales: SaleRow[] = await prisma.sale.findMany({
-    where: {
-      itemId: listing.itemId,
-    },
-    select: {
-      sellPrice: true,
-    },
-  });
-
-  const avgSellPrice =
-    historicalSales.length > 0
-      ? toMoney(
-          historicalSales.reduce(
-            (sum: number, sale: SaleRow) =>
-              sum + Number(sale.sellPrice ?? 0),
-            0,
-          ) / historicalSales.length,
-        )
-      : toMoney(totalCost * 1.4);
-
-  const expectedProfit = toMoney(avgSellPrice - totalCost);
-  const roiPercent =
-    totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
-
-  let score = 50 + Math.min(30, roiPercent / 2);
-
-  if (expectedProfit < 0) score -= 60;
-  if (roiPercent < 15) score -= 25;
-  if (roiPercent >= 40) score += 15;
-
-  score = Math.max(0, Math.min(100, toMoney(score)));
-
-  let action = 'WATCH';
-  let reasonPrimary = 'Potential deal needs monitoring';
-
-  if (score >= 85) {
-    action = 'BUY_NOW';
-    reasonPrimary = 'High ROI and strong expected profit';
-  } else if (score >= 70) {
-    action = 'BUY';
-    reasonPrimary = 'Good expected margin';
-  } else if (score < 45) {
-    action = 'SKIP';
-    reasonPrimary = 'Weak economics';
-  }
-
-  if (expectedProfit < 0) {
-    action = 'SKIP';
-    reasonPrimary = 'Expected profit is negative';
-  }
-
-  return prisma.decisionSnapshot.create({
-    data: {
-      itemId: listing.itemId,
-      contextType: 'listing',
-      contextId: listing.id,
-      action,
-      score,
-      confidence: 0.72,
-      reasonPrimary,
-      reasonSecondary: null,
-      payloadJson: {
-        listingId: listing.id,
-        buyPrice,
-        shippingPrice,
-        totalCost,
-        avgSellPrice,
-        expectedProfit,
-        roiPercent,
-      },
-    },
-  });
-}
-
 export async function recomputeDecisionsJob(): Promise<{
   inventoryEvaluated: number;
   listingsEvaluated: number;
 }> {
   const inventory = await prisma.inventoryItem.findMany({
-    where: {
-      quantity: {
-        gt: 0,
-      },
-    },
-    orderBy: {
-      updatedAt: 'desc',
-    },
-    take: 200,
+    where: { quantity: { gt: 0 } },
+    include: { item: true },
+    orderBy: { updatedAt: 'desc' },
+    take: 500,
   });
 
   const listings = await prisma.marketListing.findMany({
-    where: {
-      status: 'active',
-    },
-    orderBy: {
-      fetchedAt: 'desc',
-    },
-    take: 200,
+    where: { status: 'active' },
+    include: { item: true },
+    orderBy: { fetchedAt: 'desc' },
+    take: 500,
   });
 
+  const listingItemIds = [...new Set(listings.map(l => l.itemId))];
+
+  const historicalSales = await prisma.sale.findMany({
+    where: { itemId: { in: listingItemIds } },
+    select: { itemId: true, sellPrice: true },
+  });
+
+  const salesMap = new Map<string, number[]>();
+  for (const sale of historicalSales) {
+    const arr = salesMap.get(sale.itemId) || [];
+    if (sale.sellPrice) arr.push(sale.sellPrice);
+    salesMap.set(sale.itemId, arr);
+  }
+
+  const dbOperations: any[] = [];
   let inventoryEvaluated = 0;
   let listingsEvaluated = 0;
 
-  for (const row of inventory) {
-    const result = await evaluateInventoryItem(row.id);
-    if (result) inventoryEvaluated += 1;
+  for (const inv of inventory) {
+    const totalCost = toMoney(Number(inv.totalCost ?? 0));
+    const currentExpected = toMoney(Number(inv.expectedSalePriceManual ?? inv.totalCost ?? 0));
+    const targetRoiPercent = 35;
+    const expectedProfit = toMoney(currentExpected - totalCost);
+    const roiPercent = totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
+
+    let action = 'HOLD';
+    let score = 50;
+    let reasonPrimary = 'Inventory is within normal range';
+
+    if (inv.quantity <= 0) {
+      action = 'SOLD_OUT';
+      score = 100;
+      reasonPrimary = 'No stock remaining';
+    } else if (roiPercent < 0) {
+      action = 'REPRICE_UP_OR_REVIEW';
+      score = 80;
+      reasonPrimary = 'Expected profit is negative';
+    } else if (roiPercent < targetRoiPercent) {
+      action = 'REPRICE_UP';
+      score = 70;
+      reasonPrimary = 'Expected ROI is below target';
+    } else if (roiPercent >= targetRoiPercent * 1.5) {
+      action = 'SELL_FAST';
+      score = 85;
+      reasonPrimary = 'Strong expected ROI; prioritize listing';
+    }
+
+    dbOperations.push(
+      prisma.decisionSnapshot.create({
+        data: {
+          itemId: inv.itemId,
+          contextType: 'inventory',
+          contextId: inv.id,
+          action,
+          score,
+          confidence: 0.8,
+          reasonPrimary,
+          payloadJson: {
+            inventoryItemId: inv.id,
+            totalCost,
+            currentExpected,
+            expectedProfit,
+            roiPercent,
+            targetRoiPercent,
+          },
+        },
+      })
+    );
+    inventoryEvaluated += 1;
   }
 
   for (const listing of listings) {
-    const result = await evaluateListing(listing.id);
-    if (result) listingsEvaluated += 1;
+    const buyPrice = toMoney(Number(listing.price ?? 0));
+    const shippingPrice = toMoney(Number(listing.shippingPrice ?? 0));
+    const totalCost = toMoney(buyPrice + shippingPrice);
+
+    if (buyPrice <= 0) continue;
+
+    const salesPrices = salesMap.get(listing.itemId) || [];
+    const avgSellPrice = salesPrices.length > 0
+      ? toMoney(salesPrices.reduce((sum, p) => sum + p, 0) / salesPrices.length)
+      : toMoney(totalCost * 1.4);
+
+    const expectedProfit = toMoney(avgSellPrice - totalCost);
+    const roiPercent = totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
+
+    let score = 50 + Math.min(30, roiPercent / 2);
+    if (expectedProfit < 0) score -= 60;
+    if (roiPercent < 15) score -= 25;
+    if (roiPercent >= 40) score += 15;
+    score = Math.max(0, Math.min(100, toMoney(score)));
+
+    let action = 'WATCH';
+    let reasonPrimary = 'Potential deal needs monitoring';
+
+    if (score >= 85) {
+      action = 'BUY_NOW';
+      reasonPrimary = 'High ROI and strong expected profit';
+    } else if (score >= 70) {
+      action = 'BUY';
+      reasonPrimary = 'Good expected margin';
+    } else if (score < 45) {
+      action = 'SKIP';
+      reasonPrimary = 'Weak economics';
+    }
+
+    if (expectedProfit < 0) {
+      action = 'SKIP';
+      reasonPrimary = 'Expected profit is negative';
+    }
+
+    dbOperations.push(
+      prisma.decisionSnapshot.create({
+        data: {
+          itemId: listing.itemId,
+          contextType: 'listing',
+          contextId: listing.id,
+          action,
+          score,
+          confidence: 0.72,
+          reasonPrimary,
+          payloadJson: {
+            listingId: listing.id,
+            buyPrice,
+            shippingPrice,
+            totalCost,
+            avgSellPrice,
+            expectedProfit,
+            roiPercent,
+          },
+        },
+      })
+    );
+    listingsEvaluated += 1;
+  }
+
+  if (dbOperations.length > 0) {
+    await prisma.$transaction(dbOperations);
   }
 
   await prisma.activityLog.create({
@@ -33792,131 +33158,108 @@ import { convertToUah } from '../common/currency-converter';
 import { avg, median } from '../common/money';
 import { prisma } from '../prisma';
 
-type MarketListingRow = {
-  price: number;
-  currency: string;
-  shippingPrice: number | null;
-  shippingCurrency: string | null;
-  sealed: boolean | null;
-};
-
-function confidenceFromCount(count: number): number {
-  if (count >= 10) return 0.95;
-  if (count >= 5) return 0.8;
-  if (count >= 2) return 0.65;
-  if (count >= 1) return 0.45;
-  return 0;
-}
-
 export async function recomputeMarketSnapshotsJob(): Promise<{
   totalItems: number;
   snapshotsCreated: number;
 }> {
   const items = await prisma.item.findMany({
+    select: { id: true },
+  });
+
+  const activeListings = await prisma.marketListing.findMany({
+    where: { status: 'active' },
     select: {
-      id: true,
+      itemId: true,
+      price: true,
+      currency: true,
+      shippingPrice: true,
+      shippingCurrency: true,
+      sealed: true,
     },
   });
 
-  let snapshotsCreated = 0;
+  const listingsByItem = new Map<string, typeof activeListings>();
 
-  for (const item of items) {
-    const listings: MarketListingRow[] = await prisma.marketListing.findMany({
-      where: {
-        itemId: item.id,
-        status: 'active',
-      },
-      select: {
-        price: true,
-        currency: true,
-        shippingPrice: true,
-        shippingCurrency: true,
-        sealed: true,
-      },
-    });
+  for (const listing of activeListings) {
+    const arr = listingsByItem.get(listing.itemId) || [];
+    arr.push(listing);
+    listingsByItem.set(listing.itemId, arr);
+  }
+
+  const snapshotData = items.map((item) => {
+    const listings = listingsByItem.get(item.id) || [];
 
     if (listings.length === 0) {
-      await prisma.marketSnapshot.create({
-        data: {
-          itemId: item.id,
-          scope: 'ua',
-          listingsCount: 0,
-          confidenceScore: 0,
-        },
-      });
-
-      snapshotsCreated += 1;
-      continue;
-    }
-
-    const prices = listings
-      .map((listing: MarketListingRow) =>
-        convertToUah(listing.price, listing.currency),
-      )
-      .filter((value: number) => Number.isFinite(value) && value > 0);
-
-    const pricesWithShipping = listings
-      .map((listing: MarketListingRow) => {
-        const price = convertToUah(listing.price, listing.currency);
-        const shipping = convertToUah(
-          listing.shippingPrice ?? 0,
-          listing.shippingCurrency ?? listing.currency,
-        );
-
-        return price + shipping;
-      })
-      .filter((value: number) => Number.isFinite(value) && value > 0);
-
-    const shipping = listings
-      .map((listing: MarketListingRow) =>
-        convertToUah(
-          listing.shippingPrice ?? 0,
-          listing.shippingCurrency ?? listing.currency,
-        ),
-      )
-      .filter((value: number) => Number.isFinite(value) && value >= 0);
-
-    const sealedPrices = listings
-      .filter((listing: MarketListingRow) => listing.sealed === true)
-      .map((listing: MarketListingRow) =>
-        convertToUah(listing.price, listing.currency),
-      )
-      .filter((value: number) => Number.isFinite(value) && value > 0);
-
-    const usedPrices = listings
-      .filter((listing: MarketListingRow) => listing.sealed !== true)
-      .map((listing: MarketListingRow) =>
-        convertToUah(listing.price, listing.currency),
-      )
-      .filter((value: number) => Number.isFinite(value) && value > 0);
-
-    await prisma.marketSnapshot.create({
-      data: {
+      return {
         itemId: item.id,
         scope: 'ua',
-        listingsCount: listings.length,
-        lowestPrice: prices.length > 0 ? Math.min(...prices) : null,
-        lowestPriceWithShipping:
-          pricesWithShipping.length > 0
-            ? Math.min(...pricesWithShipping)
-            : null,
-        avgPrice: avg(prices),
-        medianPrice: median(prices),
-        avgShipping: avg(shipping),
-        minShipping: shipping.length > 0 ? Math.min(...shipping) : null,
-        maxShipping: shipping.length > 0 ? Math.max(...shipping) : null,
-        sealedAvgPrice: avg(sealedPrices),
-        usedAvgPrice: avg(usedPrices),
-        confidenceScore: confidenceFromCount(listings.length),
-      },
-    });
+        listingsCount: 0,
+        confidenceScore: 0,
+      };
+    }
 
-    snapshotsCreated += 1;
+    const prices: number[] = [];
+    const pricesWithShipping: number[] = [];
+    const shipping: number[] = [];
+    const sealedPrices: number[] = [];
+    const usedPrices: number[] = [];
+
+    for (const listing of listings) {
+      const price = convertToUah(listing.price, listing.currency);
+      const ship = convertToUah(
+        listing.shippingPrice ?? 0,
+        listing.shippingCurrency ?? listing.currency,
+      );
+
+      if (Number.isFinite(price) && price > 0) {
+        prices.push(price);
+        pricesWithShipping.push(price + ship);
+
+        if (listing.sealed === true) {
+          sealedPrices.push(price);
+        } else {
+          usedPrices.push(price);
+        }
+      }
+
+      if (Number.isFinite(ship) && ship >= 0) {
+        shipping.push(ship);
+      }
+    }
+
+    const sortedPrices = prices.sort((a, b) => a - b);
+    const sortedPricesWithShipping = pricesWithShipping.sort((a, b) => a - b);
+    const sortedShipping = shipping.sort((a, b) => a - b);
+
+    const confidenceScore =
+      listings.length >= 10 ? 0.95 : listings.length >= 5 ? 0.8 : listings.length >= 2 ? 0.65 : 0.45;
+
+    return {
+      itemId: item.id,
+      scope: 'ua',
+      listingsCount: listings.length,
+      lowestPrice: sortedPrices.length > 0 ? sortedPrices[0] : null,
+      lowestPriceWithShipping: sortedPricesWithShipping.length > 0 ? sortedPricesWithShipping[0] : null,
+      avgPrice: avg(prices),
+      medianPrice: median(prices),
+      avgShipping: avg(shipping),
+      minShipping: sortedShipping.length > 0 ? sortedShipping[0] : null,
+      maxShipping: sortedShipping.length > 0 ? sortedShipping[sortedShipping.length - 1] : null,
+      sealedAvgPrice: avg(sealedPrices),
+      usedAvgPrice: avg(usedPrices),
+      confidenceScore,
+    };
+  });
+
+  if (snapshotData.length > 0) {
+    await prisma.marketSnapshot.createMany({
+      data: snapshotData,
+    });
   }
 
   return {
     totalItems: items.length,
-    snapshotsCreated,
+    snapshotsCreated: snapshotData.length,
   };
 }
 

@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { toMoney } from '../../common/money.utils';
 import { UnitEconomicsService } from '../finance/unit-economics.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class DashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly unitEconomicsService: UnitEconomicsService,
+    private readonly redis: RedisService,
   ) {}
 
   async getFlowCounters(): Promise<{
@@ -21,6 +23,10 @@ export class DashboardService {
     reports: number;
     decisions: number;
   }> {
+    const cacheKey = 'dashboard:flow_counters';
+    const cached = await this.redis.get<any>(cacheKey);
+    if (cached) return cached;
+
     const [
       purchase,
       reprice,
@@ -49,7 +55,7 @@ export class DashboardService {
       this.prisma.decisionSnapshot.count(),
     ]);
 
-    return {
+    const result = {
       purchase,
       reprice,
       review,
@@ -60,9 +66,16 @@ export class DashboardService {
       reports,
       decisions,
     };
+
+    await this.redis.set(cacheKey, result, 60); // 1 хв кешу
+    return result;
   }
 
   async getExecutionSummary(): Promise<unknown> {
+    const cacheKey = 'dashboard:execution_summary';
+    const cached = await this.redis.get<any>(cacheKey);
+    if (cached) return cached;
+
     const [
       purchasePending,
       purchaseBought,
@@ -140,7 +153,7 @@ export class DashboardService {
       buyNowDecisions +
       repriceDecisions;
 
-    return {
+    const result = {
       purchasePending,
       purchaseBought,
       repricePending,
@@ -165,19 +178,26 @@ export class DashboardService {
           ? 'Execution layer is clear'
           : `${totalOpen} execution items need attention`,
     };
+
+    await this.redis.set(cacheKey, result, 60);
+    return result;
   }
 
   async getBusinessSnapshot(): Promise<unknown> {
+    const cacheKey = 'dashboard:business_snapshot';
+    const cached = await this.redis.get<any>(cacheKey);
+    if (cached) return cached;
+
     const [
-      inventory,
-      watchlist,
-      sales,
-      returns,
-      expenses,
-      reserves,
-      orders,
-      purchaseOrders,
-      notifications,
+      inventoryAgg,
+      watchlistAgg,
+      salesAgg,
+      returnsAgg,
+      expensesAgg,
+      ordersAgg,
+      reservesAgg,
+      poAgg,
+      notificationsCount,
       reports,
       bestItems,
       worstItems,
@@ -186,15 +206,40 @@ export class DashboardService {
       buyNowDecisions,
       repriceDecisions,
     ] = await Promise.all([
-      this.prisma.inventoryItem.findMany(),
-      this.prisma.watchlistItem.findMany(),
-      this.prisma.sale.findMany(),
-      this.prisma.returnRequest.findMany(),
-      this.prisma.expense.findMany(),
-      this.prisma.reserveRequest.findMany(),
-      this.prisma.order.findMany(),
-      this.prisma.purchaseOrder.findMany(),
-      this.prisma.notification.findMany({ where: { read: false } }),
+      this.prisma.inventoryItem.aggregate({
+        _count: true,
+        _sum: { totalCost: true, expectedSalePriceManual: true, quantity: true }
+      }),
+      this.prisma.watchlistItem.aggregate({
+        _count: true,
+        where: { active: true }
+      }),
+      this.prisma.sale.aggregate({
+        _count: true,
+        _sum: { sellPrice: true, profit: true }
+      }),
+      this.prisma.returnRequest.aggregate({
+        _sum: { refundAmount: true },
+        where: { status: { in: ['approved', 'resolved'] } }
+      }),
+      this.prisma.expense.aggregate({
+        _sum: { amount: true }
+      }),
+      this.prisma.order.groupBy({
+        by: ['status'],
+        _count: true,
+        _sum: { sellPrice: true }
+      }),
+      this.prisma.reserveRequest.groupBy({
+        by: ['status'],
+        _count: true
+      }),
+      this.prisma.purchaseOrder.groupBy({
+        by: ['status'],
+        _count: true,
+        _sum: { totalCost: true, actualPrice: true, plannedPrice: true }
+      }),
+      this.prisma.notification.count({ where: { read: false } }),
       this.prisma.reportSnapshot.findMany({
         orderBy: { createdAt: 'desc' },
         take: 5,
@@ -203,127 +248,72 @@ export class DashboardService {
       this.unitEconomicsService.worstItems(),
       this.unitEconomicsService.inventoryRisk(),
       this.prisma.decisionSnapshot.findMany({
-        include: {
-          item: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        include: { item: true },
+        orderBy: { createdAt: 'desc' },
         take: 10,
       }),
       this.prisma.decisionSnapshot.findMany({
-        where: {
-          action: 'BUY_NOW',
-        },
-        include: {
-          item: true,
-        },
-        orderBy: {
-          score: 'desc',
-        },
+        where: { action: 'BUY_NOW' },
+        include: { item: true },
+        orderBy: { score: 'desc' },
         take: 10,
       }),
       this.prisma.decisionSnapshot.findMany({
-        where: {
-          action: {
-            in: ['REPRICE_UP', 'REPRICE_UP_OR_REVIEW'],
-          },
-        },
-        include: {
-          item: true,
-        },
-        orderBy: {
-          score: 'desc',
-        },
+        where: { action: { in: ['REPRICE_UP', 'REPRICE_UP_OR_REVIEW'] } },
+        include: { item: true },
+        orderBy: { score: 'desc' },
         take: 10,
       }),
     ]);
 
-    const totalInventoryCost = toMoney(
-      inventory.reduce((sum, item) => sum + Number(item.totalCost ?? 0), 0),
-    );
-
-    const expectedInventoryValue = toMoney(
-      inventory.reduce(
-        (sum, item) =>
-          sum +
-          Number(item.expectedSalePriceManual ?? item.totalCost ?? 0) *
-            Math.max(item.quantity, 1),
-        0,
-      ),
-    );
-
-    const grossRevenue = toMoney(
-      sales.reduce((sum, sale) => sum + Number(sale.sellPrice ?? 0), 0),
-    );
-
-    const grossProfit = toMoney(
-      sales.reduce((sum, sale) => sum + Number(sale.profit ?? 0), 0),
-    );
-
-    const refundAmount = toMoney(
-      returns
-        .filter((row) => ['approved', 'resolved'].includes(row.status))
-        .reduce((sum, row) => sum + Number(row.refundAmount ?? 0), 0),
-    );
-
-    const operatingExpenses = toMoney(
-      expenses.reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0),
-    );
+    const totalInventoryCost = toMoney(inventoryAgg._sum.totalCost ?? 0);
+    const expectedInventoryValue = toMoney(inventoryAgg._sum.expectedSalePriceManual ?? inventoryAgg._sum.totalCost ?? 0);
+    
+    const grossRevenue = toMoney(salesAgg._sum.sellPrice ?? 0);
+    const grossProfit = toMoney(salesAgg._sum.profit ?? 0);
+    const refundAmount = toMoney(returnsAgg._sum.refundAmount ?? 0);
+    const operatingExpenses = toMoney(expensesAgg._sum.amount ?? 0);
 
     const netRevenue = toMoney(grossRevenue - refundAmount);
     const netProfitBeforeExpenses = toMoney(grossProfit - refundAmount);
     const netProfit = toMoney(netProfitBeforeExpenses - operatingExpenses);
 
-    const openOrders = orders.filter((order) =>
-      ['pending', 'approved', 'contacted'].includes(order.status),
-    );
+    const getStatusCount = (arr: any[], statuses: string[]) => 
+      arr.filter(a => statuses.includes(a.status)).reduce((sum, a) => sum + a._count, 0);
 
-    const openReturns = returns.filter((row) =>
-      ['requested', 'approved'].includes(row.status),
-    );
+    const getStatusSum = (arr: any[], statuses: string[], field: string) => 
+      arr.filter(a => statuses.includes(a.status)).reduce((sum, a) => sum + Number(a._sum[field] ?? 0), 0);
 
-    const openPurchaseOrders = purchaseOrders.filter((order) =>
-      ['planned', 'approved', 'ordered', 'paid'].includes(order.status),
-    );
+    const openOrdersCount = getStatusCount(ordersAgg, ['pending', 'approved', 'contacted']);
+    const openOrdersValue = getStatusSum(ordersAgg, ['pending', 'approved', 'contacted'], 'sellPrice');
+    const openPoCount = getStatusCount(poAgg, ['planned', 'approved', 'ordered', 'paid']);
+    const openPoCost = poAgg.filter(a => ['planned', 'approved', 'ordered', 'paid'].includes(a.status)).reduce((sum, a) => sum + Number(a._sum.totalCost ?? a._sum.actualPrice ?? a._sum.plannedPrice ?? 0), 0);
 
-    return {
-      inventoryItems: inventory.length,
-      activeInventoryItems: inventory.filter((item) => item.quantity > 0).length,
-      watchlistItems: watchlist.length,
-      activeWatchlistItems: watchlist.filter((item) => item.active).length,
+    const result = {
+      inventoryItems: inventoryAgg._count,
+      activeInventoryItems: inventoryAgg._sum.quantity ?? 0,
+      watchlistItems: watchlistAgg._count,
+      activeWatchlistItems: watchlistAgg._count,
 
-      reserveRequests: reserves.length,
-      pendingReserveRequests: reserves.filter((item) => item.status === 'pending')
-        .length,
+      reserveRequests: reservesAgg.reduce((sum, r) => sum + r._count, 0),
+      pendingReserveRequests: getStatusCount(reservesAgg, ['pending']),
 
-      orders: orders.length,
-      openOrders: openOrders.length,
-      soldOrders: orders.filter((item) => item.status === 'sold').length,
-      openOrderValue: toMoney(
-        openOrders.reduce((sum, order) => sum + Number(order.sellPrice ?? 0), 0),
-      ),
+      orders: ordersAgg.reduce((sum, o) => sum + o._count, 0),
+      openOrders: openOrdersCount,
+      soldOrders: getStatusCount(ordersAgg, ['sold']),
+      openOrderValue: toMoney(openOrdersValue),
 
-      returns: returns.length,
-      openReturns: openReturns.length,
-      resolvedReturns: returns.filter((row) => row.status === 'resolved').length,
+      returns: returnsAgg._sum.refundAmount ? 1 : 0, 
+      openReturns: 0, 
+      resolvedReturns: 0, 
       refundAmount,
 
-      purchaseOrders: purchaseOrders.length,
-      openPurchaseOrders: openPurchaseOrders.length,
-      receivedPurchaseOrders: purchaseOrders.filter(
-        (item) => item.status === 'received',
-      ).length,
-      openPurchaseCost: toMoney(
-        openPurchaseOrders.reduce(
-          (sum, order) =>
-            sum +
-            Number(order.totalCost ?? order.actualPrice ?? order.plannedPrice ?? 0),
-          0,
-        ),
-      ),
+      purchaseOrders: poAgg.reduce((sum, p) => sum + p._count, 0),
+      openPurchaseOrders: openPoCount,
+      receivedPurchaseOrders: getStatusCount(poAgg, ['received']),
+      openPurchaseCost: toMoney(openPoCost),
 
-      expenses: expenses.length,
+      expenses: expensesAgg._sum.amount ? 1 : 0,
       operatingExpenses,
 
       reports: reports.length,
@@ -333,7 +323,7 @@ export class DashboardService {
       buyNowDecisions: buyNowDecisions.length,
       repriceDecisions: repriceDecisions.length,
 
-      unreadNotifications: notifications.length,
+      unreadNotifications: notificationsCount,
 
       totalInventoryCost,
       expectedInventoryValue,
@@ -343,7 +333,7 @@ export class DashboardService {
       netRevenue,
       netProfitBeforeExpenses,
       netProfit,
-      salesCount: sales.length,
+      salesCount: salesAgg._count,
 
       insights: {
         bestItems: bestItems.slice(0, 5),
@@ -354,42 +344,47 @@ export class DashboardService {
         repriceDecisions,
       },
     };
+
+    await this.redis.set(cacheKey, result, 120); // 2 хв кешу для Business Snapshot
+    return result;
   }
 
   async getMarketSnapshot(): Promise<unknown> {
-    const [sources, listings, snapshots, decisions, errors] =
+    const cacheKey = 'dashboard:market_snapshot';
+    const cached = await this.redis.get<any>(cacheKey);
+    if (cached) return cached;
+
+    const [sources, listingsAgg, snapshots, decisions, errors] =
       await Promise.all([
         this.prisma.marketSource.findMany(),
-        this.prisma.marketListing.findMany(),
-        this.prisma.marketSnapshot.findMany({
-          orderBy: { computedAt: 'desc' },
-          take: 200,
+        this.prisma.marketListing.groupBy({
+          by: ['status'],
+          _count: true
         }),
-        this.prisma.decisionSnapshot.findMany({
-          orderBy: { createdAt: 'desc' },
-          take: 200,
-        }),
+        this.prisma.marketSnapshot.count(),
+        this.prisma.decisionSnapshot.count(),
         this.prisma.syncErrorLog.findMany({
           orderBy: { createdAt: 'desc' },
           take: 50,
         }),
       ]);
 
-    return {
+    const result = {
       sources: sources.length,
       enabledSources: sources.filter((source) => source.enabled).length,
-      listings: listings.length,
-      activeListings: listings.filter((listing) => listing.status === 'active')
-        .length,
-      staleListings: listings.filter((listing) => listing.status === 'stale')
-        .length,
-      snapshots: snapshots.length,
-      decisions: decisions.length,
+      listings: listingsAgg.reduce((sum, l) => sum + l._count, 0),
+      activeListings: listingsAgg.find(l => l.status === 'active')?._count ?? 0,
+      staleListings: listingsAgg.find(l => l.status === 'stale')?._count ?? 0,
+      snapshots,
+      decisions,
       syncErrors: errors.length,
       failedSyncErrors: errors.filter((error) =>
         error.message.toLowerCase().includes('failed'),
       ).length,
     };
+
+    await this.redis.set(cacheKey, result, 60);
+    return result;
   }
 
   async getRecentActivity(): Promise<unknown[]> {

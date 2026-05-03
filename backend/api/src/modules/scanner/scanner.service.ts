@@ -240,6 +240,13 @@ export class ScannerService {
 
     const rows: unknown[] = [];
     let unresolved = 0;
+    
+    // БАТЧИНГ УСІХ ЗАПИСІВ У ЄДИНУ ТРАНЗАКЦІЮ (Pipelined Atomic Operation)
+    // Жодних N+1, Prisma згортає це в один масивний пакет (batch)
+    const upsertOperations = [];
+    const unresolvedOperations = [];
+    
+    const now = new Date();
 
     for (const listing of body.listings) {
       if (!listing.externalId || !listing.title || !Number.isFinite(listing.price)) {
@@ -248,76 +255,78 @@ export class ScannerService {
 
       const id = this.createListingId(body.sourceCode, listing.externalId);
       const resolved = await this.resolveItemId(listing.title);
-      const now = new Date();
 
-      const upserted = await this.prisma.marketListing.upsert({
-        where: {
-          id,
-        },
-        update: {
-          sourceCode: source.code,
-          itemId: resolved.itemId,
-          externalListingId: listing.externalId,
-          externalId: listing.externalId,
-          titleRaw: listing.title,
-          title: listing.title,
-          url: listing.url ?? '',
-          imageUrl: listing.imageUrl,
-          price: listing.price,
-          currency: listing.currency ?? 'UAH',
-          shippingPrice: listing.shippingPrice ?? null,
-          shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'UAH',
-          country: listing.country ?? 'UA',
-          condition: listing.condition,
-          sealed: listing.sealed,
-          completenessPercent: listing.completenessPercent,
-          quantityAvailable: listing.quantityAvailable ?? 1,
-          status: 'active',
-          fetchedAt: now,
-          lastSeenAt: now,
-        },
-        create: {
-          id,
-          sourceId: source.id,
-          sourceCode: source.code,
-          itemId: resolved.itemId,
-          externalListingId: listing.externalId,
-          externalId: listing.externalId,
-          titleRaw: listing.title,
-          title: listing.title,
-          url: listing.url ?? '',
-          imageUrl: listing.imageUrl,
-          price: listing.price,
-          currency: listing.currency ?? 'UAH',
-          shippingPrice: listing.shippingPrice ?? null,
-          shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'UAH',
-          country: listing.country ?? 'UA',
-          condition: listing.condition,
-          sealed: listing.sealed,
-          completenessPercent: listing.completenessPercent,
-          quantityAvailable: listing.quantityAvailable ?? 1,
-          status: 'active',
-          fetchedAt: now,
-          firstSeenAt: now,
-          lastSeenAt: now,
-        },
-        include: {
-          source: true,
-          item: true,
-        },
-      });
+      upsertOperations.push(
+        this.prisma.marketListing.upsert({
+          where: { id },
+          update: {
+            sourceCode: source.code,
+            itemId: resolved.itemId,
+            externalListingId: listing.externalId,
+            externalId: listing.externalId,
+            titleRaw: listing.title,
+            title: listing.title,
+            url: listing.url ?? '',
+            imageUrl: listing.imageUrl,
+            price: listing.price,
+            currency: listing.currency ?? 'UAH',
+            shippingPrice: listing.shippingPrice ?? null,
+            shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'UAH',
+            country: listing.country ?? 'UA',
+            condition: listing.condition,
+            sealed: listing.sealed,
+            completenessPercent: listing.completenessPercent,
+            quantityAvailable: listing.quantityAvailable ?? 1,
+            status: 'active',
+            fetchedAt: now,
+            lastSeenAt: now,
+          },
+          create: {
+            id,
+            sourceId: source.id,
+            sourceCode: source.code,
+            itemId: resolved.itemId,
+            externalListingId: listing.externalId,
+            externalId: listing.externalId,
+            titleRaw: listing.title,
+            title: listing.title,
+            url: listing.url ?? '',
+            imageUrl: listing.imageUrl,
+            price: listing.price,
+            currency: listing.currency ?? 'UAH',
+            shippingPrice: listing.shippingPrice ?? null,
+            shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'UAH',
+            country: listing.country ?? 'UA',
+            condition: listing.condition,
+            sealed: listing.sealed,
+            completenessPercent: listing.completenessPercent,
+            quantityAvailable: listing.quantityAvailable ?? 1,
+            status: 'active',
+            fetchedAt: now,
+            firstSeenAt: now,
+            lastSeenAt: now,
+          },
+        })
+      );
 
       if (!resolved.resolved) {
         unresolved += 1;
-
-        await this.enqueueUnresolvedMatch({
+        unresolvedOperations.push({
           listingId: id,
           sourceCode: body.sourceCode,
           titleRaw: listing.title,
         });
       }
+    }
 
-      rows.push(upserted);
+    if (upsertOperations.length > 0) {
+      const results = await this.prisma.$transaction(upsertOperations);
+      rows.push(...results);
+    }
+    
+    // Process unresolved asynchronously after primary transaction to avoid locking
+    for(const u of unresolvedOperations) {
+        await this.enqueueUnresolvedMatch(u);
     }
 
     this.realtime.emitListingsRefresh({
