@@ -27,7 +27,6 @@ import 'package:lego_trading_manager/features/analytics/application/analytics_re
 import 'package:lego_trading_manager/features/analytics/application/analytics_rule_execution_history_entry_model.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_rule_execution_history_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_rule_leaderboard_polish_provider.dart';
-import 'package:lego_trading_manager/features/analytics/application/analytics_rule_preset_model.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_rule_presets_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_rule_schedule_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_rule_stack_summary_provider.dart';
@@ -184,8 +183,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final approved = await _confirm(
       context,
       title: 'Apply selected repricing?',
-      subtitle:
-          'Apply repricing for ${selectedSummary.count} selected items with total delta ${selectedSummary.delta.toStringAsFixed(2)}?',
+      subtitle: 'Apply repricing for ${selectedSummary.count} selected items with total delta ${selectedSummary.delta.toStringAsFixed(2)}?',
     );
     if (!approved) return;
 
@@ -295,12 +293,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final bestPresetHint = ref.watch(analyticsBestPresetHintProvider);
     final autoRuleHealth = ref.watch(analyticsAutoRuleHealthProvider);
     final automationMaturity = ref.watch(analyticsAutomationMaturityProvider);
-    final automationPressure =
-        ref.watch(analyticsAutomationPressureSummaryProvider);
-    final automationStability =
-        ref.watch(analyticsAutomationStabilityProvider);
-    final automationConfidence =
-        ref.watch(analyticsAutomationConfidenceProvider);
+    final automationPressure = ref.watch(analyticsAutomationPressureSummaryProvider);
+    final automationStability = ref.watch(analyticsAutomationStabilityProvider);
+    final automationConfidence = ref.watch(analyticsAutomationConfidenceProvider);
     final ruleStackSummary = ref.watch(analyticsRuleStackSummaryProvider);
     final stackReadiness = ref.watch(analyticsStackReadinessProvider);
     final stackPressure = ref.watch(analyticsStackPressureProvider);
@@ -309,8 +304,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final stackEquilibrium = ref.watch(analyticsStackEquilibriumProvider);
     final stackDurability = ref.watch(analyticsStackDurabilityProvider);
     final stackHealthIndex = ref.watch(analyticsStackHealthIndexProvider);
-    final polishedRuleLeaderboard =
-        ref.watch(analyticsRuleLeaderboardPolishProvider);
+    final polishedRuleLeaderboard = ref.watch(analyticsRuleLeaderboardPolishProvider);
     final usageLeaderboard = ref.watch(analyticsRuleUsageLeaderboardProvider);
     final ruleSchedule = ref.watch(analyticsRuleScheduleProvider);
     final ruleHistory = ref.watch(analyticsRuleExecutionHistoryProvider);
@@ -421,10 +415,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   ) {
     final repriceSuggestions = ref.watch(marketInventoryRepriceSuggestionProvider);
     final repriceDiffTotals = ref.watch(analyticsRepriceDiffTotalsProvider);
-    final selectedRepricePreview =
-        ref.watch(analyticsSelectedRepricePreviewProvider);
-    final selectedRepriceSummary =
-        ref.watch(analyticsSelectedRepriceSummaryProvider);
+    final selectedRepricePreview = ref.watch(analyticsSelectedRepricePreviewProvider);
+    final selectedRepriceSummary = ref.watch(analyticsSelectedRepriceSummaryProvider);
     final selectedIds = ref.watch(analyticsRepriceSelectionProvider);
     final previewMode = ref.watch(analyticsRepricePreviewModeProvider);
 
@@ -437,13 +429,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             final approved = await _confirm(
               context,
               title: 'Apply bulk repricing?',
-              subtitle:
-                  'This will set expected sale price to 98% of market average for all eligible items.',
+              subtitle: 'This will set expected sale price to 98% of market average for all eligible items.',
             );
             if (!approved) return;
 
-            final affected =
-                await ref.read(analyticsBulkRepriceProvider).applyAllMarket98();
+            final affected = await ref.read(analyticsBulkRepriceProvider).applyAllMarket98();
 
             if (!mounted) return;
 
@@ -482,7 +472,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         AnalyticsRepricePreviewModeBar(
           value: previewMode,
           onChanged: (value) {
-            ref.read(analyticsRepricePreviewModeProvider.notifier).state = value;
+            ref.read(analyticsRepricePreviewModeProvider.notifier).set(value);
           },
         ),
         const SizedBox(height: 12),
@@ -501,8 +491,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               final approved = await _confirm(
                 context,
                 title: 'Apply repricing?',
-                subtitle:
-                    'Update "${item.title}" from ${item.currentExpected.toStringAsFixed(2)} to ${item.suggestedPrice.toStringAsFixed(2)}?',
+                subtitle: 'Update "${item.title}" from ${item.currentExpected.toStringAsFixed(2)} to ${item.suggestedPrice.toStringAsFixed(2)}?',
               );
               if (!approved) return;
 
@@ -529,22 +518,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     model: item,
                     selected: selectedIds.contains(item.itemId),
                     onSelect: (_) {
-                      ref
-                          .read(analyticsRepriceSelectionProvider.notifier)
-                          .toggle(item.itemId);
+                      ref.read(analyticsRepriceSelectionProvider.notifier).toggle(item.itemId);
                     },
                     onApply: () async {
                       final approved = await _confirm(
                         context,
                         title: 'Apply repricing?',
-                        subtitle:
-                            'Update "${item.title}" from ${item.currentExpected.toStringAsFixed(2)} to ${item.suggestedPrice.toStringAsFixed(2)}?',
+                        subtitle: 'Update "${item.title}" from ${item.currentExpected.toStringAsFixed(2)} to ${item.suggestedPrice.toStringAsFixed(2)}?',
                       );
                       if (!approved) return;
 
-                      await ref
-                          .read(analyticsRepriceApplyProvider)
-                          .applySuggestedPrice(
+                      await ref.read(analyticsRepriceApplyProvider).applySuggestedPrice(
                             itemId: item.itemId,
                             suggestedPrice: item.suggestedPrice,
                             title: item.title,

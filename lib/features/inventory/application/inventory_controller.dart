@@ -6,54 +6,45 @@ import 'package:lego_trading_manager/features/inventory/application/inventory_fi
 import 'package:lego_trading_manager/features/inventory/application/inventory_sort_option.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_state.dart';
 
-class InventoryController extends StateNotifier<InventoryState> {
-  final InventoryRepository repository;
+class InventoryController extends Notifier<InventoryState> {
+  InventoryRepository get _repository => ref.read(inventoryRepositoryProvider);
 
-  InventoryController(this.repository) : super(InventoryState.initial()) {
-    loadItems();
+  @override
+  InventoryState build() {
+    Future.microtask(() => loadItems());
+    return InventoryState.initial();
   }
 
   void loadItems() {
-    final items = repository.getAllItems();
+    final items = _repository.getAllItems();
     _rebuildState(allItems: items);
   }
 
-  void search(String query) {
-    _rebuildState(query: query);
-  }
+  void search(String query) => _rebuildState(query: query);
+  
+  void setSort(InventorySortOption sortOption) => _rebuildState(sortOption: sortOption);
+  
+  void setFilter(InventoryFilterModel filter) => _rebuildState(filter: filter);
+  
+  void clearFilters() => _rebuildState(filter: InventoryFilterModel.empty, query: '');
 
-  void setSort(InventorySortOption sortOption) {
-    _rebuildState(sortOption: sortOption);
-  }
-
-  void setFilter(InventoryFilterModel filter) {
-    _rebuildState(filter: filter);
-  }
-
-  void clearFilters() {
-    _rebuildState(filter: InventoryFilterModel.empty, query: '');
-  }
-
-  void addItem(ItemModel item) {
-    repository.addItem(item);
+  Future<void> addItem(ItemModel item) async {
+    await _repository.addItem(item);
     loadItems();
   }
 
-  void updateItem(ItemModel item) {
-    repository.updateItem(item);
+  Future<void> updateItem(ItemModel item) async {
+    await _repository.updateItem(item);
     loadItems();
   }
 
-  void deleteItem(String id) {
-    repository.deleteItem(id);
+  Future<void> deleteItem(String id) async {
+    await _repository.deleteItem(id);
     loadItems();
   }
 
   ItemModel? getById(String id) {
-    for (final item in state.allItems) {
-      if (item.id == id) return item;
-    }
-    return null;
+    return _repository.getById(id);
   }
 
   void _rebuildState({
@@ -63,61 +54,40 @@ class InventoryController extends StateNotifier<InventoryState> {
     InventorySortOption? sortOption,
   }) {
     final nextAllItems = allItems ?? state.allItems;
-    final nextQuery = query ?? state.query;
+    final nextQuery = (query ?? state.query).trim().toLowerCase();
     final nextFilter = filter ?? state.filter;
     final nextSort = sortOption ?? state.sortOption;
 
-    var items = [...nextAllItems];
+    final themeQ = nextFilter.themeContains?.trim().toLowerCase() ?? '';
 
-    final normalizedQuery = nextQuery.trim().toLowerCase();
-    if (normalizedQuery.isNotEmpty) {
-      items = items.where((item) {
-        return item.title.toLowerCase().contains(normalizedQuery) ||
-            (item.theme ?? '').toLowerCase().contains(normalizedQuery) ||
-            (item.subtheme ?? '').toLowerCase().contains(normalizedQuery) ||
-            (item.legoNumber ?? '').toLowerCase().contains(normalizedQuery) ||
-            (item.minifigId ?? '').toLowerCase().contains(normalizedQuery) ||
-            (item.notes ?? '').toLowerCase().contains(normalizedQuery) ||
-            item.tags.any(
-              (tag) => tag.toString().toLowerCase().contains(normalizedQuery),
-            );
-      }).toList();
-    }
+    var items = nextAllItems.where((item) {
+      if (nextQuery.isNotEmpty) {
+        final matchesQuery = item.title.toLowerCase().contains(nextQuery) ||
+            (item.theme ?? '').toLowerCase().contains(nextQuery) ||
+            (item.subtheme ?? '').toLowerCase().contains(nextQuery) ||
+            (item.legoNumber ?? '').toLowerCase().contains(nextQuery) ||
+            (item.minifigId ?? '').toLowerCase().contains(nextQuery) ||
+            (item.notes ?? '').toLowerCase().contains(nextQuery) ||
+            item.tags.any((tag) => tag.toString().toLowerCase().contains(nextQuery));
+        if (!matchesQuery) return false;
+      }
 
-    if (nextFilter.status != null) {
-      items = items.where((item) => item.status == nextFilter.status).toList();
-    }
+      if (nextFilter.status != null && item.status != nextFilter.status) return false;
+      if (nextFilter.trackedOnly && !item.isTracked) return false;
+      if (themeQ.isNotEmpty && !(item.theme ?? '').toLowerCase().contains(themeQ)) return false;
 
-    if (nextFilter.trackedOnly) {
-      items = items.where((item) => item.isTracked).toList();
-    }
-
-    if ((nextFilter.themeContains ?? '').trim().isNotEmpty) {
-      final theme = nextFilter.themeContains!.trim().toLowerCase();
-      items = items
-          .where((item) => (item.theme ?? '').toLowerCase().contains(theme))
-          .toList();
-    }
+      return true;
+    }).toList();
 
     switch (nextSort) {
       case InventorySortOption.newest:
-        items.sort((a, b) {
-          final aDate = a.purchaseDate ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final bDate = b.purchaseDate ?? DateTime.fromMillisecondsSinceEpoch(0);
-          return bDate.compareTo(aDate);
-        });
+        items.sort((a, b) => (b.purchaseDate ?? DateTime(2000)).compareTo(a.purchaseDate ?? DateTime(2000)));
         break;
       case InventorySortOption.oldest:
-        items.sort((a, b) {
-          final aDate = a.purchaseDate ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final bDate = b.purchaseDate ?? DateTime.fromMillisecondsSinceEpoch(0);
-          return aDate.compareTo(bDate);
-        });
+        items.sort((a, b) => (a.purchaseDate ?? DateTime(2000)).compareTo(b.purchaseDate ?? DateTime(2000)));
         break;
       case InventorySortOption.titleAsc:
-        items.sort(
-          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-        );
+        items.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
         break;
       case InventorySortOption.costHighToLow:
         items.sort((a, b) => b.totalCost.compareTo(a.totalCost));
@@ -133,9 +103,7 @@ class InventoryController extends StateNotifier<InventoryState> {
         });
         break;
       case InventorySortOption.daysInInventoryHighToLow:
-        items.sort(
-          (a, b) => (b.daysInInventory ?? 0).compareTo(a.daysInInventory ?? 0),
-        );
+        items.sort((a, b) => (b.daysInInventory ?? 0).compareTo(a.daysInInventory ?? 0));
         break;
     }
 
@@ -149,7 +117,6 @@ class InventoryController extends StateNotifier<InventoryState> {
   }
 }
 
-final inventoryControllerProvider =
-    StateNotifierProvider<InventoryController, InventoryState>((ref) {
-  return InventoryController(ref.read(inventoryRepositoryProvider));
-});
+final inventoryControllerProvider = NotifierProvider<InventoryController, InventoryState>(
+  InventoryController.new,
+);

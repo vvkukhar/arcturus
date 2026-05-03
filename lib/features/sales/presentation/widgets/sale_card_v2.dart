@@ -73,7 +73,7 @@ class SaleCardV2 extends StatelessWidget {
               children: [
                 Text('Price: ${sale.salePrice.toStringAsFixed(2)}'),
                 Text('Fee: ${sale.platformFee.toStringAsFixed(2)}'),
-                Text('Ship: ${sale.shippingByMe.toStringAsFixed(2)}'),
+                Text('Ship: ${sale.shippingPaidByMe.toStringAsFixed(2)}'),
                 Text('Qty: ${sale.quantity}'),
                 Text('Date: $date'),
               ],

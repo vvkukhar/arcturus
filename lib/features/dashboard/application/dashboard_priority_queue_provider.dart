@@ -18,46 +18,19 @@ class DashboardPriorityQueueItemModel {
   });
 }
 
-final dashboardPriorityQueueProvider =
-    Provider<List<DashboardPriorityQueueItemModel>>((ref) {
+final dashboardPriorityQueueProvider = Provider<List<DashboardPriorityQueueItemModel>>((ref) {
   final buy = ref.watch(watchlistTopBuyCandidatesProvider);
   final sell = ref.watch(inventoryTopSellCandidatesProvider);
   final reprice = ref.watch(inventoryTopRepriceCandidatesProvider);
   final review = ref.watch(inventoryTopReviewCandidatesProvider);
+  
   final result = <DashboardPriorityQueueItemModel>[
-    ...buy.map(
-      (e) => DashboardPriorityQueueItemModel(
-        title: e.title,
-        type: 'buy',
-        score: e.score,
-        reason: e.reason,
-      ),
-    ),
-    ...sell.map(
-      (e) => DashboardPriorityQueueItemModel(
-        title: e.title,
-        type: 'sell',
-        score: e.score,
-        reason: e.reason,
-      ),
-    ),
-    ...reprice.map(
-      (e) => DashboardPriorityQueueItemModel(
-        title: e.title,
-        type: 'reprice',
-        score: e.score,
-        reason: e.reason,
-      ),
-    ),
-    ...review.map(
-      (e) => DashboardPriorityQueueItemModel(
-        title: e.title,
-        type: 'review',
-        score: e.score,
-        reason: e.reason,
-      ),
-    ),
+    ...buy.map((e) => DashboardPriorityQueueItemModel(title: e.title, type: 'buy', score: e.score, reason: e.reason)),
+    ...sell.map((e) => DashboardPriorityQueueItemModel(title: e.title, type: 'sell', score: e.score, reason: e.reason)),
+    ...reprice.map((e) => DashboardPriorityQueueItemModel(title: e.title, type: 'reprice', score: e.score, reason: e.reason)),
+    ...review.map((e) => DashboardPriorityQueueItemModel(title: e.title, type: 'review', score: e.score, reason: e.reason)),
   ];
+  
   result.sort((a, b) => b.score.compareTo(a.score));
   return result.take(12).toList();
 });

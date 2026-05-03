@@ -3,7 +3,7 @@ import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/features/sales/application/sales_metrics_provider.dart';
 
 class SalesSummaryCard extends StatelessWidget {
-  final SalesMetrics metrics;
+  final SalesMetricsModel metrics;
   final String currency;
 
   const SalesSummaryCard({
@@ -34,18 +34,18 @@ class SalesSummaryCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            row('Total Sales', metrics.totalSales.toString()),
+            row('Total Sales', metrics.totalCount.toString()),
             row(
               'Revenue',
-              CurrencyFormatter.format(metrics.revenue, currency: currency),
+              CurrencyFormatter.format(metrics.visibleRevenue, currency: currency),
             ),
             row(
               'Fees',
-              CurrencyFormatter.format(metrics.fees, currency: currency),
+              CurrencyFormatter.format(metrics.totalFees, currency: currency),
             ),
             row(
               'Net',
-              CurrencyFormatter.format(metrics.net, currency: currency),
+              CurrencyFormatter.format(metrics.totalNet, currency: currency),
             ),
           ],
         ),

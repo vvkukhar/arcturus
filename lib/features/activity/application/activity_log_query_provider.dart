@@ -1,4 +1,13 @@
-// lib/features/activity/application/activity_log_query_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final activityLogQueryProvider = StateProvider<String>((ref) => '');
+class ActivityLogQueryNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void set(String value) {
+    state = value;
+  }
+}
+
+final activityLogQueryProvider =
+    NotifierProvider<ActivityLogQueryNotifier, String>(ActivityLogQueryNotifier.new);

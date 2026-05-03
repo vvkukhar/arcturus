@@ -6,8 +6,7 @@ class ConflictQueueScreen extends ConsumerStatefulWidget {
   const ConflictQueueScreen({super.key});
 
   @override
-  ConsumerState<ConflictQueueScreen> createState() =>
-      _ConflictQueueScreenState();
+  ConsumerState<ConflictQueueScreen> createState() => _ConflictQueueScreenState();
 }
 
 class _ConflictQueueScreenState extends ConsumerState<ConflictQueueScreen> {
@@ -89,9 +88,7 @@ class _ConflictQueueScreenState extends ConsumerState<ConflictQueueScreen> {
                             await repository.resolve(item['id'] as String);
                             await _reload();
 
-                            if (!mounted) {
-                              return;
-                            }
+                            if (!mounted) return;
 
                             scaffoldMessenger.showSnackBar(
                               const SnackBar(

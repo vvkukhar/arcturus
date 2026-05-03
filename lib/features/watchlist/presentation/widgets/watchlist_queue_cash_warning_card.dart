@@ -1,27 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:lego_trading_manager/features/watchlist/application/watchlist_queue_commit_hint_model.dart';
+import 'package:lego_trading_manager/features/watchlist/application/watchlist_queue_cash_warning_model.dart';
 
-class WatchlistQueueCommitHintBanner extends StatelessWidget {
-  final WatchlistQueueCommitHintModel model;
+class WatchlistQueueCashWarningCard extends StatelessWidget {
+  final WatchlistQueueCashWarningModel model;
 
-  const WatchlistQueueCommitHintBanner({
+  const WatchlistQueueCashWarningCard({
     super.key,
     required this.model,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        model.label,
-        style: const TextStyle(
-          fontWeight: FontWeight.w800,
+    if (!model.hasWarning) {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      color: Colors.redAccent.withValues(alpha: 0.1),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            const Icon(Icons.warning_amber_outlined, color: Colors.redAccent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Warning: Cash shortage of ${model.shortage.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

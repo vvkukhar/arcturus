@@ -5,14 +5,14 @@ class DashboardPriorityQueueCachedItemModel {
   final String action;
   final String reasonPrimary;
   final double score;
+  
   const DashboardPriorityQueueCachedItemModel({
     required this.action,
     required this.reasonPrimary,
     required this.score,
   });
-  factory DashboardPriorityQueueCachedItemModel.fromJson(
-    Map<String, dynamic> json,
-  ) {
+  
+  factory DashboardPriorityQueueCachedItemModel.fromJson(Map<String, dynamic> json) {
     return DashboardPriorityQueueCachedItemModel(
       action: json['action'] as String? ?? '',
       reasonPrimary: json['reasonPrimary'] as String? ?? '',
@@ -21,8 +21,7 @@ class DashboardPriorityQueueCachedItemModel {
   }
 }
 
-final dashboardPriorityQueueCachedProvider =
-    FutureProvider<List<DashboardPriorityQueueCachedItemModel>>((ref) async {
+final dashboardPriorityQueueCachedProvider = FutureProvider<List<DashboardPriorityQueueCachedItemModel>>((ref) async {
   final repository = ref.watch(dashboardCachedRepositoryProvider);
   final json = await repository.getPriorityQueue();
   return json.map(DashboardPriorityQueueCachedItemModel.fromJson).toList();

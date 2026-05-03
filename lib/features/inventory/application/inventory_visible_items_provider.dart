@@ -11,59 +11,40 @@ final inventoryVisibleItemsProvider = Provider<List<ItemModel>>((ref) {
   final ui = ref.watch(inventoryUiControllerProvider);
   final showArchived = ref.watch(inventoryShowArchivedProvider);
 
-  var result = [...allItems];
   final q = ui.query.trim().toLowerCase();
+  final filter = ui.filter;
+  final themeQ = filter.themeContains?.trim().toLowerCase() ?? '';
 
-  if (!showArchived) {
-    result = result.where((e) => e.status != ItemStatus.archived).toList();
-  }
+  var result = allItems.where((item) {
+    if (!showArchived && item.status == ItemStatus.archived) return false;
 
-  if (q.isNotEmpty) {
-    result = result.where((item) {
-      return item.title.toLowerCase().contains(q) ||
+    if (q.isNotEmpty) {
+      final matchesQuery = item.title.toLowerCase().contains(q) ||
           (item.theme ?? '').toLowerCase().contains(q) ||
           (item.subtheme ?? '').toLowerCase().contains(q) ||
           (item.legoNumber ?? '').toLowerCase().contains(q) ||
           (item.minifigId ?? '').toLowerCase().contains(q) ||
           (item.notes ?? '').toLowerCase().contains(q) ||
           item.tags.any((tag) => tag.toLowerCase().contains(q));
-    }).toList();
-  }
+      if (!matchesQuery) return false;
+    }
 
-  final filter = ui.filter;
+    if (filter.status != null && item.status != filter.status) return false;
+    if (filter.trackedOnly && !item.isTracked) return false;
+    if (themeQ.isNotEmpty && !(item.theme ?? '').toLowerCase().contains(themeQ)) return false;
 
-  if (filter.status != null) {
-    result = result.where((e) => e.status == filter.status).toList();
-  }
-
-  if (filter.trackedOnly) {
-    result = result.where((e) => e.isTracked).toList();
-  }
-
-  if ((filter.themeContains ?? '').trim().isNotEmpty) {
-    final themeQ = filter.themeContains!.trim().toLowerCase();
-    result = result
-        .where((e) => (e.theme ?? '').toLowerCase().contains(themeQ))
-        .toList();
-  }
+    return true;
+  }).toList();
 
   switch (ui.sort) {
     case InventorySortOption.newest:
-      result.sort(
-        (a, b) => (b.purchaseDate ?? DateTime(2000))
-            .compareTo(a.purchaseDate ?? DateTime(2000)),
-      );
+      result.sort((a, b) => (b.purchaseDate ?? DateTime(2000)).compareTo(a.purchaseDate ?? DateTime(2000)));
       break;
     case InventorySortOption.oldest:
-      result.sort(
-        (a, b) => (a.purchaseDate ?? DateTime(2000))
-            .compareTo(b.purchaseDate ?? DateTime(2000)),
-      );
+      result.sort((a, b) => (a.purchaseDate ?? DateTime(2000)).compareTo(b.purchaseDate ?? DateTime(2000)));
       break;
     case InventorySortOption.titleAsc:
-      result.sort(
-        (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-      );
+      result.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
       break;
     case InventorySortOption.costHighToLow:
       result.sort((a, b) => b.totalCost.compareTo(a.totalCost));
@@ -72,19 +53,10 @@ final inventoryVisibleItemsProvider = Provider<List<ItemModel>>((ref) {
       result.sort((a, b) => a.totalCost.compareTo(b.totalCost));
       break;
     case InventorySortOption.expectedProfitHighToLow:
-      result.sort(
-        (a, b) => ((b.expectedSalePrice ?? 0) - b.totalCost).compareTo(
-          (a.expectedSalePrice ?? 0) - a.totalCost,
-        ),
-      );
+      result.sort((a, b) => ((b.expectedSalePrice ?? 0) - b.totalCost).compareTo((a.expectedSalePrice ?? 0) - a.totalCost));
       break;
     case InventorySortOption.daysInInventoryHighToLow:
-      int days(ItemModel item) {
-        final date = item.purchaseDate ?? DateTime.now();
-        return DateTime.now().difference(date).inDays;
-      }
-
-      result.sort((a, b) => days(b).compareTo(days(a)));
+      result.sort((a, b) => (b.daysInInventory ?? 0).compareTo(a.daysInInventory ?? 0));
       break;
   }
 

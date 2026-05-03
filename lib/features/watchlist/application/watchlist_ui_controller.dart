@@ -3,8 +3,11 @@ import 'package:lego_trading_manager/features/watchlist/application/watchlist_fi
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_sort_option.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_ui_state.dart';
 
-class WatchlistUiController extends StateNotifier<WatchlistUiState> {
-  WatchlistUiController() : super(WatchlistUiState.initial());
+class WatchlistUiController extends Notifier<WatchlistUiState> {
+  @override
+  WatchlistUiState build() {
+    return WatchlistUiState.initial();
+  }
 
   void search(String value) {
     state = state.copyWith(query: value);
@@ -24,6 +27,6 @@ class WatchlistUiController extends StateNotifier<WatchlistUiState> {
 }
 
 final watchlistUiControllerProvider =
-    StateNotifierProvider<WatchlistUiController, WatchlistUiState>(
-  (ref) => WatchlistUiController(),
+    NotifierProvider<WatchlistUiController, WatchlistUiState>(
+  WatchlistUiController.new,
 );

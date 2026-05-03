@@ -1,5 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final globalSearchQueryProvider = StateProvider<String>((ref) {
-  return '';
-});
+class GlobalSearchQueryNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void set(String value) => state = value;
+  void clear() => state = '';
+}
+
+final globalSearchQueryProvider =
+    NotifierProvider<GlobalSearchQueryNotifier, String>(
+  GlobalSearchQueryNotifier.new,
+);

@@ -22,9 +22,7 @@ class _RepriceFlowScreenState extends ConsumerState<RepriceFlowScreen> {
     final repo = ref.watch(flowsApiRepositoryProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reprice Flow'),
-      ),
+      appBar: AppBar(title: const Text('Reprice Flow')),
       body: flow.when(
         data: (items) {
           if (items.isEmpty) {
@@ -55,9 +53,7 @@ class _RepriceFlowScreenState extends ConsumerState<RepriceFlowScreen> {
                       children: [
                         Text(
                           item.inventoryItemId,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 6),
                         Text('Status: ${item.status}'),
@@ -66,8 +62,7 @@ class _RepriceFlowScreenState extends ConsumerState<RepriceFlowScreen> {
                           onPressed: item.status == 'listed'
                               ? null
                               : () async {
-                                  final priceController =
-                                      TextEditingController();
+                                  final priceController = TextEditingController();
 
                                   await showDialog<void>(
                                     context: context,
@@ -76,46 +71,30 @@ class _RepriceFlowScreenState extends ConsumerState<RepriceFlowScreen> {
                                         title: const Text('Mark Listed'),
                                         content: TextField(
                                           controller: priceController,
-                                          keyboardType: const TextInputType
-                                              .numberWithOptions(
-                                            decimal: true,
-                                          ),
-                                          decoration: const InputDecoration(
-                                            labelText: 'Listing price',
-                                          ),
+                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          decoration: const InputDecoration(labelText: 'Listing price'),
                                         ),
                                         actions: [
                                           TextButton(
-                                            onPressed: () {
-                                              Navigator.of(dialogContext).pop();
-                                            },
+                                            onPressed: () => Navigator.of(dialogContext).pop(),
                                             child: const Text('Cancel'),
                                           ),
                                           FilledButton(
                                             onPressed: () async {
-                                              final navigator =
-                                                  Navigator.of(dialogContext);
-                                              final messenger =
-                                                  ScaffoldMessenger.of(context);
-
+                                              final navigator = Navigator.of(dialogContext);
+                                              final messenger = ScaffoldMessenger.of(context);
                                               navigator.pop();
 
                                               await repo.markListed(
                                                 id: item.id,
-                                                price: double.parse(
-                                                  priceController.text,
-                                                ),
+                                                price: double.tryParse(priceController.text) ?? 0.0,
                                               );
 
                                               await _reload();
-                                              if (!mounted) {
-                                                return;
-                                              }
+                                              if (!mounted) return;
 
                                               messenger.showSnackBar(
-                                                const SnackBar(
-                                                  content: Text('Marked listed'),
-                                                ),
+                                                const SnackBar(content: Text('Marked listed')),
                                               );
                                             },
                                             child: const Text('Confirm'),
@@ -135,12 +114,8 @@ class _RepriceFlowScreenState extends ConsumerState<RepriceFlowScreen> {
             ),
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
-        ),
-        error: (error, _) => Center(
-          child: Text('Error: $error'),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(child: Text('Error: $error')),
       ),
     );
   }

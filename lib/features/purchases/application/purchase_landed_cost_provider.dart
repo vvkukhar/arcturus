@@ -6,8 +6,8 @@ final purchaseLandedCostProvider =
     Provider.family<PurchaseLandedCostModel, PurchaseModel>((ref, purchase) {
   final total = purchase.finalTotal;
 
-  final shippingShare = total <= 0 ? 0 : purchase.shippingCost / total * 100;
-  final extraShare = total <= 0 ? 0 : purchase.additionalCosts / total * 100;
+  final shippingShare = total <= 0 ? 0.0 : purchase.shippingCost / total * 100;
+  final extraShare = total <= 0 ? 0.0 : purchase.additionalCosts / total * 100;
 
   return PurchaseLandedCostModel(
     purchasePrice: purchase.purchasePrice,

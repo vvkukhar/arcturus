@@ -42,19 +42,18 @@ class PartOutLineCard extends StatelessWidget {
                       runSpacing: 8,
                       children: [
                         Text('Qty: ${line.quantity}'),
-                        Text(
-                            'Expected: ${line.expectedTotalPrice.toStringAsFixed(2)}'),
-                        Text(
-                            'Actual: ${line.actualTotalPrice.toStringAsFixed(2)}'),
+                        Text('Expected: ${line.expectedTotalPrice.toStringAsFixed(2)}'),
+                        Text('Actual: ${line.actualTotalPrice.toStringAsFixed(2)}'),
                       ],
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline),
-              ),
+              if (onDelete != null)
+                IconButton(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline),
+                ),
             ],
           ),
         ),

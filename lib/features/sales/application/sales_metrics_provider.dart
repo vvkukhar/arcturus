@@ -45,32 +45,32 @@ final salesMetricsProvider = Provider<SalesMetricsModel>((ref) {
   );
 
   final grossRevenue = all.fold<double>(
-    0,
+    0.0,
     (sum, item) => sum + item.salePrice,
   );
 
   final visibleRevenue = visible.fold<double>(
-    0,
+    0.0,
     (sum, item) => sum + item.salePrice,
   );
 
   final totalFees = visible.fold<double>(
-    0,
+    0.0,
     (sum, item) => sum + item.platformFee,
   );
 
   final totalShippingByMe = visible.fold<double>(
-    0,
-    (sum, item) => sum + item.shippingByMe,
+    0.0,
+    (sum, item) => sum + item.shippingPaidByMe,
   );
 
   final totalNet = visible.fold<double>(
-    0,
+    0.0,
     (sum, item) => sum + item.finalNet,
   );
 
-  final averageNet = visible.isEmpty ? 0 : totalNet / visible.length;
-  final averageUnitNet = visibleUnits <= 0 ? 0 : totalNet / visibleUnits;
+  final averageNet = visible.isEmpty ? 0.0 : totalNet / visible.length;
+  final averageUnitNet = visibleUnits <= 0 ? 0.0 : totalNet / visibleUnits;
 
   return SalesMetricsModel(
     totalCount: all.length,

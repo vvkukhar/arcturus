@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class InventoryPresetPersistence extends StateNotifier<String?> {
-  InventoryPresetPersistence() : super(null);
+class InventoryPresetPersistenceNotifier extends Notifier<String?> {
+  @override
+  String? build() {
+    return null;
+  }
 
   void save(String id) {
     state = id;
@@ -13,6 +16,6 @@ class InventoryPresetPersistence extends StateNotifier<String?> {
 }
 
 final inventoryPresetPersistenceProvider =
-    StateNotifierProvider<InventoryPresetPersistence, String?>(
-  (ref) => InventoryPresetPersistence(),
+    NotifierProvider<InventoryPresetPersistenceNotifier, String?>(
+  InventoryPresetPersistenceNotifier.new,
 );

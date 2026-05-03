@@ -2,78 +2,56 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/partout_line_model.dart';
 import 'package:lego_trading_manager/data/models/partout_project_model.dart';
-import 'package:lego_trading_manager/data/repositories/partout_repository.dart';
+import 'package:lego_trading_manager/features/partout/application/partout_state.dart';
 
-class PartOutState {
-  final List<PartOutProjectModel> projects;
-
-  const PartOutState({
-    required this.projects,
-  });
-
-  factory PartOutState.initial() => const PartOutState(projects: []);
-
-  PartOutState copyWith({
-    List<PartOutProjectModel>? projects,
-  }) {
-    return PartOutState(
-      projects: projects ?? this.projects,
-    );
-  }
-}
-
-class PartOutController extends StateNotifier<PartOutState> {
-  final PartOutRepository repository;
-
-  PartOutController(this.repository) : super(PartOutState.initial()) {
-    load();
+class PartOutController extends Notifier<PartOutState> {
+  @override
+  PartOutState build() {
+    Future.microtask(() => load());
+    return PartOutState.initial();
   }
 
   void load() {
-    state = state.copyWith(
-      projects: repository.getAllProjects(),
-    );
+    final repository = ref.read(partOutRepositoryProvider);
+    state = state.copyWith(projects: repository.getAllProjects());
   }
 
   List<PartOutLineModel> getLines(String projectId) {
-    return repository.getLinesByProjectId(projectId);
+    return ref.read(partOutRepositoryProvider).getLinesByProjectId(projectId);
   }
 
-  void addProject(PartOutProjectModel project) {
-    repository.addProject(project);
+  Future<void> addProject(PartOutProjectModel project) async {
+    await ref.read(partOutRepositoryProvider).addProject(project);
     load();
   }
 
-  void updateProject(PartOutProjectModel project) {
-    repository.updateProject(project);
+  Future<void> updateProject(PartOutProjectModel project) async {
+    await ref.read(partOutRepositoryProvider).updateProject(project);
     load();
   }
 
-  void deleteProject(String id) {
-    repository.deleteProject(id);
+  Future<void> deleteProject(String id) async {
+    await ref.read(partOutRepositoryProvider).deleteProject(id);
     load();
   }
 
-  void addLine(PartOutLineModel line) {
-    repository.addLine(line);
+  Future<void> addLine(PartOutLineModel line) async {
+    await ref.read(partOutRepositoryProvider).addLine(line);
     load();
   }
 
-  void updateLine(PartOutLineModel line) {
-    repository.updateLine(line);
+  Future<void> updateLine(PartOutLineModel line) async {
+    await ref.read(partOutRepositoryProvider).updateLine(line);
     load();
   }
 
-  void deleteLine({
-    required String lineId,
-    required String projectId,
-  }) {
-    repository.deleteLine(lineId, projectId);
+  Future<void> deleteLine({required String lineId, required String projectId}) async {
+    await ref.read(partOutRepositoryProvider).deleteLine(lineId);
     load();
   }
 }
 
 final partOutControllerProvider =
-    StateNotifierProvider<PartOutController, PartOutState>((ref) {
-  return PartOutController(ref.read(partOutRepositoryProvider));
-});
+    NotifierProvider<PartOutController, PartOutState>(
+  PartOutController.new,
+);

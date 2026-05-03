@@ -16,18 +16,18 @@ class PurchasesSummaryModel {
 }
 
 final purchasesSummaryProvider = Provider<PurchasesSummaryModel>((ref) {
-  final purchases = ref.watch(purchasesControllerProvider).allPurchases;
+  final purchases = ref.watch(purchasesControllerProvider);
 
   if (purchases.isEmpty) {
     return const PurchasesSummaryModel(
       total: 0,
-      totalSpend: 0,
-      averageSpend: 0,
+      totalSpend: 0.0,
+      averageSpend: 0.0,
       topCurrency: '-',
     );
   }
 
-  double totalSpend = 0;
+  double totalSpend = 0.0;
   final currencyCounts = <String, int>{};
 
   for (final purchase in purchases) {
@@ -44,7 +44,6 @@ final purchasesSummaryProvider = Provider<PurchasesSummaryModel>((ref) {
     total: purchases.length,
     totalSpend: totalSpend,
     averageSpend: totalSpend / purchases.length,
-    topCurrency:
-        sortedCurrencies.isEmpty ? '-' : sortedCurrencies.first.key,
+    topCurrency: sortedCurrencies.isEmpty ? '-' : sortedCurrencies.first.key,
   );
 });

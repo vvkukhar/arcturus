@@ -5,7 +5,16 @@ enum GlobalSearchDensityMode {
   compact,
 }
 
+class GlobalSearchDensityModeNotifier extends Notifier<GlobalSearchDensityMode> {
+  @override
+  GlobalSearchDensityMode build() => GlobalSearchDensityMode.comfortable;
+
+  void set(GlobalSearchDensityMode value) {
+    state = value;
+  }
+}
+
 final globalSearchDensityModeProvider =
-    StateProvider<GlobalSearchDensityMode>((ref) {
-  return GlobalSearchDensityMode.comfortable;
-});
+    NotifierProvider<GlobalSearchDensityModeNotifier, GlobalSearchDensityMode>(
+  GlobalSearchDensityModeNotifier.new,
+);

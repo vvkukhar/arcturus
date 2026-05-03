@@ -1,12 +1,9 @@
-// lib/features/dashboard/application/dashboard_action_recommendations_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_action_recommendation_model.dart';
 import 'package:lego_trading_manager/features/inventory/application/dead_stock_detector_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_opportunities_provider.dart';
 
-final dashboardActionRecommendationsProvider =
-    Provider<List<DashboardActionRecommendationModel>>((ref) {
+final dashboardActionRecommendationsProvider = Provider<List<DashboardActionRecommendationModel>>((ref) {
   final deadStock = ref.watch(deadStockEntriesProvider);
   final opportunities = ref.watch(watchlistOpportunitiesProvider);
 

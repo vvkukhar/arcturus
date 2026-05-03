@@ -1,5 +1,3 @@
-// lib/data/models/watchlist_item_model.dart
-
 import 'package:lego_trading_manager/core/enums/item_type.dart';
 
 class WatchlistItemModel {
@@ -28,6 +26,9 @@ class WatchlistItemModel {
     required this.createdAt,
     this.isActive = true,
   });
+
+  bool get underDesired => marketPrice != null && marketPrice! <= desiredBuyPrice;
+  bool get underMax => marketPrice != null && marketPrice! <= maxBuyPrice;
 
   WatchlistItemModel copyWith({
     String? id,
@@ -82,9 +83,7 @@ class WatchlistItemModel {
       refId: map['refId'] as String?,
       desiredBuyPrice: (map['desiredBuyPrice'] as num).toDouble(),
       maxBuyPrice: (map['maxBuyPrice'] as num).toDouble(),
-      marketPrice: map['marketPrice'] != null
-          ? (map['marketPrice'] as num).toDouble()
-          : null,
+      marketPrice: map['marketPrice'] != null ? (map['marketPrice'] as num).toDouble() : null,
       comment: map['comment'] as String?,
       createdAt: DateTime.parse(map['createdAt'] as String),
       isActive: map['isActive'] as bool? ?? true,

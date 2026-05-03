@@ -1,4 +1,15 @@
-// lib/features/market/application/market_snapshot_note_query_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final marketSnapshotNoteQueryProvider = StateProvider<String>((ref) => '');
+class MarketSnapshotNoteQueryNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void set(String value) {
+    state = value;
+  }
+}
+
+final marketSnapshotNoteQueryProvider =
+    NotifierProvider<MarketSnapshotNoteQueryNotifier, String>(
+  MarketSnapshotNoteQueryNotifier.new,
+);

@@ -1,7 +1,4 @@
-// lib/core/utils/import_service.dart
-
-import 'dart:convert';
-
+import 'package:lego_trading_manager/core/utils/isolate_json_helper.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
 import 'package:lego_trading_manager/data/models/market_snapshot_model.dart';
 import 'package:lego_trading_manager/data/models/partout_line_model.dart';
@@ -26,7 +23,7 @@ class ImportReport {
 
 class ImportService {
   static Future<ImportReport> importFromJsonText(String raw) async {
-    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    final decoded = await IsolateJsonHelper.decode(raw) as Map<String, dynamic>;
 
     final inventory = ((decoded['inventory'] ?? []) as List)
         .map((e) => ItemModel.fromMap(Map<String, dynamic>.from(e as Map)))
@@ -41,23 +38,19 @@ class ImportService {
         .toList();
 
     final watchlist = ((decoded['watchlist'] ?? []) as List)
-        .map((e) =>
-            WatchlistItemModel.fromMap(Map<String, dynamic>.from(e as Map)))
+        .map((e) => WatchlistItemModel.fromMap(Map<String, dynamic>.from(e as Map)))
         .toList();
 
     final market = ((decoded['market'] ?? []) as List)
-        .map((e) =>
-            MarketSnapshotModel.fromMap(Map<String, dynamic>.from(e as Map)))
+        .map((e) => MarketSnapshotModel.fromMap(Map<String, dynamic>.from(e as Map)))
         .toList();
 
     final projects = ((decoded['partoutProjects'] ?? []) as List)
-        .map((e) =>
-            PartOutProjectModel.fromMap(Map<String, dynamic>.from(e as Map)))
+        .map((e) => PartOutProjectModel.fromMap(Map<String, dynamic>.from(e as Map)))
         .toList();
 
     final lines = ((decoded['partoutLines'] ?? []) as List)
-        .map((e) =>
-            PartOutLineModel.fromMap(Map<String, dynamic>.from(e as Map)))
+        .map((e) => PartOutLineModel.fromMap(Map<String, dynamic>.from(e as Map)))
         .toList();
 
     InventoryMemoryStore.replaceAll(inventory);

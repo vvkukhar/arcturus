@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/search/application/global_search_pinned_result_model.dart';
 
-class GlobalSearchPinnedResultsController
-    extends StateNotifier<List<GlobalSearchPinnedResultModel>> {
-  GlobalSearchPinnedResultsController() : super(const []);
+class GlobalSearchPinnedResultsController extends Notifier<List<GlobalSearchPinnedResultModel>> {
+  @override
+  List<GlobalSearchPinnedResultModel> build() {
+    return const [];
+  }
 
   void pin(GlobalSearchPinnedResultModel item) {
     final next = [
@@ -26,7 +28,7 @@ class GlobalSearchPinnedResultsController
   }
 }
 
-final globalSearchPinnedResultsProvider = StateNotifierProvider<
-    GlobalSearchPinnedResultsController, List<GlobalSearchPinnedResultModel>>(
-  (ref) => GlobalSearchPinnedResultsController(),
+final globalSearchPinnedResultsProvider =
+    NotifierProvider<GlobalSearchPinnedResultsController, List<GlobalSearchPinnedResultModel>>(
+  GlobalSearchPinnedResultsController.new,
 );

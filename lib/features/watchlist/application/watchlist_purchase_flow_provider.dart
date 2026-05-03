@@ -14,14 +14,14 @@ class WatchlistPurchaseFlowItemModel {
   });
 }
 
-class WatchlistPurchaseFlowController
-    extends StateNotifier<List<WatchlistPurchaseFlowItemModel>> {
-  WatchlistPurchaseFlowController() : super(const []);
+class WatchlistPurchaseFlowController extends Notifier<List<WatchlistPurchaseFlowItemModel>> {
+  @override
+  List<WatchlistPurchaseFlowItemModel> build() {
+    return const [];
+  }
 
   void addItem(WatchlistPurchaseFlowItemModel item) {
-    final exists = state.any((e) => e.id == item.id);
-    if (exists) return;
-
+    if (state.any((e) => e.id == item.id)) return;
     state = [...state, item];
   }
 
@@ -34,7 +34,7 @@ class WatchlistPurchaseFlowController
   }
 }
 
-final watchlistPurchaseFlowProvider = StateNotifierProvider<
-    WatchlistPurchaseFlowController, List<WatchlistPurchaseFlowItemModel>>(
-  (ref) => WatchlistPurchaseFlowController(),
+final watchlistPurchaseFlowProvider =
+    NotifierProvider<WatchlistPurchaseFlowController, List<WatchlistPurchaseFlowItemModel>>(
+  WatchlistPurchaseFlowController.new,
 );

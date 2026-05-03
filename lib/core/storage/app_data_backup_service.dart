@@ -1,8 +1,7 @@
-import 'dart:convert';
-
 import 'package:lego_trading_manager/core/storage/app_data_snapshot.dart';
 import 'package:lego_trading_manager/core/storage/local_json_storage.dart';
 import 'package:lego_trading_manager/core/storage/storage_keys.dart';
+import 'package:lego_trading_manager/core/utils/isolate_json_helper.dart';
 
 class AppDataBackupService {
   final LocalJsonStorage storage;
@@ -21,7 +20,7 @@ class AppDataBackupService {
 
   Future<String> exportJsonString() async {
     final snapshot = await exportSnapshot();
-    return const JsonEncoder.withIndent('  ').convert(snapshot.toJson());
+    return await IsolateJsonHelper.encodePretty(snapshot.toJson());
   }
 
   Future<void> importSnapshot(AppDataSnapshot snapshot) async {
@@ -38,7 +37,7 @@ class AppDataBackupService {
   }
 
   Future<void> importJsonString(String raw) async {
-    final decoded = jsonDecode(raw);
+    final decoded = await IsolateJsonHelper.decode(raw);
 
     if (decoded is! Map) {
       throw const FormatException('Backup JSON must be an object');

@@ -1,4 +1,3 @@
-// lib/features/activity/presentation/activity_log_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_entry_model.dart';
@@ -90,19 +89,18 @@ class _ActivityLogScreenState extends ConsumerState<ActivityLogScreen> {
                   ActivityLogSearchField(
                     controller: _searchController,
                     onChanged: (value) {
-                      ref.read(activityLogQueryProvider.notifier).state = value;
+                      ref.read(activityLogQueryProvider.notifier).set(value);
                     },
                     onClear: () {
                       _searchController.clear();
-                      ref.read(activityLogQueryProvider.notifier).state = '';
+                      ref.read(activityLogQueryProvider.notifier).set('');
                     },
                   ),
                   const SizedBox(height: 12),
                   ActivityLogTypeDropdown(
                     value: typeFilter,
                     onChanged: (value) {
-                      ref.read(activityLogTypeFilterProvider.notifier).state =
-                          value;
+                      ref.read(activityLogTypeFilterProvider.notifier).set(value);
                     },
                   ),
                   const SizedBox(height: 12),

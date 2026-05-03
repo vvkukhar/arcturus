@@ -2,11 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/sales/application/sale_purchase_link_model.dart';
 import 'package:lego_trading_manager/features/sales/data/sale_purchase_links_local_storage_provider.dart';
 
-class SalePurchaseLinkController
-    extends StateNotifier<List<SalePurchaseLinkModel>> {
-  final Ref ref;
-
-  SalePurchaseLinkController(this.ref) : super(const []);
+class SalePurchaseLinkController extends Notifier<List<SalePurchaseLinkModel>> {
+  @override
+  List<SalePurchaseLinkModel> build() {
+    return const [];
+  }
 
   Future<void> load() async {
     final storage = ref.read(salePurchaseLinksLocalStorageProvider);
@@ -22,23 +22,13 @@ class SalePurchaseLinkController
     for (final link in state) {
       if (link.saleId == saleId) return link.purchaseId;
     }
-
     return null;
   }
 
-  Future<void> link({
-    required String saleId,
-    required String purchaseId,
-  }) async {
+  Future<void> link({required String saleId, required String purchaseId}) async {
     final next = state.where((link) => link.saleId != saleId).toList();
-
-    next.add(
-      SalePurchaseLinkModel(
-        saleId: saleId,
-        purchaseId: purchaseId,
-      ),
-    );
-
+    next.add(SalePurchaseLinkModel(saleId: saleId, purchaseId: purchaseId));
+    
     state = next;
     await _save();
   }
@@ -64,8 +54,7 @@ class SalePurchaseLinkController
   }
 }
 
-final salePurchaseLinkControllerProvider = StateNotifierProvider<
-    SalePurchaseLinkController,
-    List<SalePurchaseLinkModel>>((ref) {
-  return SalePurchaseLinkController(ref);
-});
+final salePurchaseLinkControllerProvider =
+    NotifierProvider<SalePurchaseLinkController, List<SalePurchaseLinkModel>>(
+  SalePurchaseLinkController.new,
+);

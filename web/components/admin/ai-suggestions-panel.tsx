@@ -1,14 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/client-api';
 
 export function AiSuggestionsPanel() {
   const [rows, setRows] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch('/api/ai/suggestions')
-      .then((r) => r.json())
-      .then(setRows);
+    let mounted = true;
+
+    apiFetch<any[]>('/api/ai/suggestions')
+      .then((data) => {
+        if (mounted) setRows(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (mounted) setRows([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (

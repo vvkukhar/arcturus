@@ -21,7 +21,7 @@ class _AddSaleScreenState extends ConsumerState<AddSaleScreen> {
   final _buyerNameController = TextEditingController();
   final _salePriceController = TextEditingController(text: '0');
   final _platformFeeController = TextEditingController(text: '0');
-  final _shippingByMeController = TextEditingController(text: '0');
+  final _shippingPaidByMeController = TextEditingController(text: '0');
   final _quantityController = TextEditingController(text: '1');
   late final TextEditingController _currencyController;
   final _noteController = TextEditingController();
@@ -56,7 +56,7 @@ class _AddSaleScreenState extends ConsumerState<AddSaleScreen> {
     return ref.read(saleNetProvider).calculate(
           salePrice: _parseDouble(_salePriceController.text),
           platformFee: _parseDouble(_platformFeeController.text),
-          shippingByMe: _parseDouble(_shippingByMeController.text),
+          shippingByMe: _parseDouble(_shippingPaidByMeController.text),
         );
   }
 
@@ -107,7 +107,7 @@ class _AddSaleScreenState extends ConsumerState<AddSaleScreen> {
           : _buyerNameController.text.trim(),
       salePrice: _parseDouble(_salePriceController.text),
       platformFee: _parseDouble(_platformFeeController.text),
-      shippingByMe: _parseDouble(_shippingByMeController.text),
+      shippingPaidByMe: _parseDouble(_shippingPaidByMeController.text),
       finalNet: _finalNet,
       currency: _currencyController.text.trim().toUpperCase(),
       saleDate: _saleDate,
@@ -127,7 +127,7 @@ class _AddSaleScreenState extends ConsumerState<AddSaleScreen> {
     _buyerNameController.dispose();
     _salePriceController.dispose();
     _platformFeeController.dispose();
-    _shippingByMeController.dispose();
+    _shippingPaidByMeController.dispose();
     _quantityController.dispose();
     _currencyController.dispose();
     _noteController.dispose();
@@ -194,7 +194,7 @@ class _AddSaleScreenState extends ConsumerState<AddSaleScreen> {
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _shippingByMeController,
+              controller: _shippingPaidByMeController,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),

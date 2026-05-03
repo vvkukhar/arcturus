@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class GlobalSearchRecentQueriesController extends StateNotifier<List<String>> {
-  GlobalSearchRecentQueriesController() : super(const []);
+class GlobalSearchRecentQueriesController extends Notifier<List<String>> {
+  @override
+  List<String> build() {
+    return const [];
+  }
 
   void add(String query) {
     final trimmed = query.trim();
@@ -24,6 +27,6 @@ class GlobalSearchRecentQueriesController extends StateNotifier<List<String>> {
 }
 
 final globalSearchRecentQueriesProvider =
-    StateNotifierProvider<GlobalSearchRecentQueriesController, List<String>>(
-  (ref) => GlobalSearchRecentQueriesController(),
+    NotifierProvider<GlobalSearchRecentQueriesController, List<String>>(
+  GlobalSearchRecentQueriesController.new,
 );

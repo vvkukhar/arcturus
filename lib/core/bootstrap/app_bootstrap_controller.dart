@@ -1,17 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/bootstrap/app_reload_service.dart';
 
-class AppBootstrapController extends StateNotifier<AsyncValue<void>> {
-  final Ref ref;
-
-  AppBootstrapController(this.ref) : super(const AsyncValue.loading());
+class AppBootstrapController extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() {
+    return const AsyncValue.loading();
+  }
 
   Future<void> load() async {
     state = const AsyncValue.loading();
 
     try {
       await ref.read(appReloadServiceProvider).reloadPersistentData();
-
       state = const AsyncValue.data(null);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -20,6 +20,6 @@ class AppBootstrapController extends StateNotifier<AsyncValue<void>> {
 }
 
 final appBootstrapControllerProvider =
-    StateNotifierProvider<AppBootstrapController, AsyncValue<void>>((ref) {
-  return AppBootstrapController(ref);
-});
+    NotifierProvider<AppBootstrapController, AsyncValue<void>>(
+  AppBootstrapController.new,
+);

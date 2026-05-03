@@ -1,17 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/client-api';
 
 export function AuthStatus() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then(async (r) => {
-        if (!r.ok) return null;
-        return r.json();
+    let mounted = true;
+
+    apiFetch<any>('/api/auth/me')
+      .then((data) => {
+        if (mounted) setUser(data);
       })
-      .then(setUser);
+      .catch(() => {
+        if (mounted) setUser(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (

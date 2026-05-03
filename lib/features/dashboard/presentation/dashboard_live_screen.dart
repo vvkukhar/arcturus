@@ -7,6 +7,7 @@ import 'package:lego_trading_manager/features/dashboard/application/dashboard_ma
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_offline_banner_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_opportunities_block_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_priority_queue_api_provider.dart';
+import 'package:lego_trading_manager/features/dashboard/application/dashboard_priority_queue_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_realtime_bridge_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_execution_summary_card.dart';
 import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_flow_shortcuts_card.dart';
@@ -28,12 +29,15 @@ import 'package:lego_trading_manager/features/sync/data/sync_api_repository_prov
 import 'package:lego_trading_manager/features/sync/presentation/widgets/dashboard_sync_status_card.dart';
 import 'package:lego_trading_manager/features/sync/presentation/widgets/global_sync_action_card.dart';
 import 'package:lego_trading_manager/features/sync/presentation/widgets/sync_health_center_card.dart';
+import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_priority_queue_card.dart';
 
 class DashboardLiveScreen extends ConsumerWidget {
   const DashboardLiveScreen({super.key});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(dashboardRealtimeBridgeProvider);
+
     final executionSummary = ref.watch(dashboardExecutionSummaryProvider);
     final flowCounters = ref.watch(dashboardFlowCountersApiProvider);
     final priorityQueue = ref.watch(dashboardPriorityQueueApiProvider);
@@ -47,6 +51,7 @@ class DashboardLiveScreen extends ConsumerWidget {
     final offlineBanner = ref.watch(dashboardOfflineBannerProvider);
     final syncHealthCenter = ref.watch(syncHealthCenterProvider);
     final syncRepository = ref.watch(syncApiRepositoryProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard Live'),
@@ -65,41 +70,23 @@ class DashboardLiveScreen extends ConsumerWidget {
             error: (_, __) => const SizedBox.shrink(),
           ),
           DashboardFlowShortcutsCard(
-            onOpenPurchase: () {
-              Navigator.of(context).pushNamed(AppRouter.purchaseFlow);
-            },
-            onOpenReprice: () {
-              Navigator.of(context).pushNamed(AppRouter.repriceFlow);
-            },
-            onOpenReview: () {
-              Navigator.of(context).pushNamed(AppRouter.reviewFlow);
-            },
+            onOpenPurchase: () => Navigator.of(context).pushNamed(AppRouter.purchaseFlow),
+            onOpenReprice: () => Navigator.of(context).pushNamed(AppRouter.repriceFlow),
+            onOpenReview: () => Navigator.of(context).pushNamed(AppRouter.reviewFlow),
           ),
           const SizedBox(height: 16),
           DashboardOperatorShortcutsCard(
-            onOpenUnresolved: () {
-              Navigator.of(context).pushNamed(AppRouter.unresolvedMatches);
-            },
-            onOpenSourceRuns: () {
-              Navigator.of(context).pushNamed(AppRouter.sourceRuns);
-            },
-            onOpenSourceHealth: () {
-              Navigator.of(context).pushNamed(AppRouter.sourceHealthDetails);
-            },
-            onOpenSyncErrors: () {
-              Navigator.of(context).pushNamed(AppRouter.syncErrors);
-            },
+            onOpenUnresolved: () => Navigator.of(context).pushNamed(AppRouter.unresolvedMatches),
+            onOpenSourceRuns: () => Navigator.of(context).pushNamed(AppRouter.sourceRuns),
+            onOpenSourceHealth: () => Navigator.of(context).pushNamed(AppRouter.sourceHealthDetails),
+            onOpenSyncErrors: () => Navigator.of(context).pushNamed(AppRouter.syncErrors),
           ),
           const SizedBox(height: 16),
           syncHealthCenter.when(
             data: (data) => SyncHealthCenterCard(
               model: data,
-              onOpenSyncQueue: () {
-                Navigator.of(context).pushNamed(AppRouter.manualSyncQueue);
-              },
-              onOpenConflicts: () {
-                Navigator.of(context).pushNamed(AppRouter.conflictQueue);
-              },
+              onOpenSyncQueue: () => Navigator.of(context).pushNamed(AppRouter.manualSyncQueue),
+              onOpenConflicts: () => Navigator.of(context).pushNamed(AppRouter.conflictQueue),
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => Text('Sync health error: $error'),
@@ -160,18 +147,10 @@ class DashboardLiveScreen extends ConsumerWidget {
           marketPulse.when(
             data: (data) => DashboardMarketPulseCard(
               model: data,
-              onOpenBuy: () {
-                Navigator.of(context).pushNamed(AppRouter.bestBuy);
-              },
-              onOpenSell: () {
-                Navigator.of(context).pushNamed(AppRouter.bestSell);
-              },
-              onOpenReprice: () {
-                Navigator.of(context).pushNamed(AppRouter.bestReprice);
-              },
-              onOpenReview: () {
-                Navigator.of(context).pushNamed(AppRouter.bestReview);
-              },
+              onOpenBuy: () => Navigator.of(context).pushNamed(AppRouter.bestBuy),
+              onOpenSell: () => Navigator.of(context).pushNamed(AppRouter.bestSell),
+              onOpenReprice: () => Navigator.of(context).pushNamed(AppRouter.bestReprice),
+              onOpenReview: () => Navigator.of(context).pushNamed(AppRouter.bestReview),
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => Text('Market pulse error: $error'),
@@ -180,12 +159,8 @@ class DashboardLiveScreen extends ConsumerWidget {
           opportunitiesBlock.when(
             data: (data) => DashboardOpportunitiesBlockCard(
               model: data,
-              onOpenBuy: () {
-                Navigator.of(context).pushNamed(AppRouter.bestBuy);
-              },
-              onOpenSell: () {
-                Navigator.of(context).pushNamed(AppRouter.bestSell);
-              },
+              onOpenBuy: () => Navigator.of(context).pushNamed(AppRouter.bestBuy),
+              onOpenSell: () => Navigator.of(context).pushNamed(AppRouter.bestSell),
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => Text('Opportunities error: $error'),
@@ -198,54 +173,14 @@ class DashboardLiveScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           priorityQueue.when(
-            data: (items) {
-              if (items.isEmpty) {
-                return const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(14),
-                    child: Text('No backend priority items'),
-                  ),
-                );
-              }
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Backend Priority Queue',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ...items.take(10).map(
-                            (item) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '${item.action} • ${item.reasonPrimary}',
-                                    ),
-                                  ),
-                                  Text(
-                                    item.score.toStringAsFixed(0),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                    ],
-                  ),
-                ),
-              );
-            },
+            data: (items) => DashboardPriorityQueueCard(
+              items: items.map((e) => DashboardPriorityQueueItemModel(
+                title: e.reasonPrimary,
+                type: e.action,
+                score: e.score,
+                reason: e.reasonPrimary,
+              )).toList(),
+            ),
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => Text('Priority queue error: $error'),
           ),

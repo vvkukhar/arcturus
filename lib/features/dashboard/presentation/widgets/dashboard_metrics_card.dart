@@ -1,5 +1,3 @@
-// lib/features/dashboard/presentation/widgets/dashboard_metrics_card.dart
-
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_deep_metrics_model.dart';

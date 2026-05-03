@@ -1,99 +1,60 @@
-import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { SectionCard } from '@/components/admin/section-card';
 import { AddToRepriceFlowButton } from '@/components/admin/add-to-reprice-flow-button';
 import { OpportunityStrategyBlock } from '@/components/admin/opportunity-strategy-block';
-import { SectionCard } from '@/components/admin/section-card';
-import { StatusPill } from '@/components/admin/status-pill';
 import { api } from '@/lib/api';
-import { formatMoney, formatPercent } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
 
 type Props = {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 };
 
-async function getOpportunity(id: string): Promise<any | null> {
-  try {
-    return await api.get(`/opportunities/sell/${id}`);
-  } catch {
-    return null;
-  }
-}
-
-export default async function SellOpportunityDetailsPage({ params }: Props) {
+export default async function SellOpportunityPage({ params }: Props) {
   const { id } = await params;
-  const item = await getOpportunity(id);
 
-  if (!item) {
-    return (
-      <SectionCard title="Sell Opportunity">
-        <div className="text-sm text-slate-500">Opportunity not found.</div>
-      </SectionCard>
-    );
+  let opp: any;
+  try {
+    opp = await api.get(`/opportunities/sell/${id}`);
+  } catch {
+    notFound();
   }
 
   return (
     <div className="space-y-6">
-      <SectionCard title={item.title ?? 'Sell Opportunity'}>
-        <div className="space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="space-y-1">
-              <div className="text-sm text-slate-500">{item.itemId ?? id}</div>
-              <StatusPill value={item.action ?? 'unknown'} />
-            </div>
-
-            {item.inventoryItemId ? (
-              <AddToRepriceFlowButton inventoryItemId={item.inventoryItemId} />
-            ) : null}
+      <div className="flex items-center justify-between rounded-3xl border border-border bg-white p-6 shadow-sm">
+        <div>
+          <div className="text-sm font-bold uppercase tracking-widest text-slate-500">Sell Opportunity</div>
+          <h1 className="mt-1 text-3xl font-black">{opp.title}</h1>
+          <div className="mt-2 text-sm font-semibold text-slate-600">Item ID: {opp.itemId} • Inventory ID: {opp.inventoryItemId}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-4xl font-black text-blue-600">Score {opp.score}</div>
+          <div className="mt-2">
+            <AddToRepriceFlowButton inventoryItemId={opp.inventoryItemId} />
           </div>
+        </div>
+      </div>
 
-          <div className="grid gap-3 md:grid-cols-5">
-            <div className="rounded-2xl border border-border bg-slate-50 p-4">
-              <div className="text-xs font-bold uppercase text-slate-500">Score</div>
-              <div className="mt-1 text-lg font-black">{item.score ?? '—'}</div>
-            </div>
+      <OpportunityStrategyBlock item={opp} />
 
-            <div className="rounded-2xl border border-border bg-slate-50 p-4">
-              <div className="text-xs font-bold uppercase text-slate-500">Cost Basis</div>
-              <div className="mt-1 text-lg font-black">{formatMoney(item.totalCostBasis)}</div>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-slate-50 p-4">
-              <div className="text-xs font-bold uppercase text-slate-500">Target Sell</div>
-              <div className="mt-1 text-lg font-black">{formatMoney(item.targetSellPrice)}</div>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-slate-50 p-4">
-              <div className="text-xs font-bold uppercase text-slate-500">Profit</div>
-              <div className="mt-1 text-lg font-black">{formatMoney(item.profit)}</div>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-slate-50 p-4">
-              <div className="text-xs font-bold uppercase text-slate-500">ROI</div>
-              <div className="mt-1 text-lg font-black">{formatPercent(item.roi)}</div>
-            </div>
+      <SectionCard title="Financial Breakdown">
+        <div className="grid gap-4 md:grid-cols-4">
+          <div className="rounded-xl border border-border bg-slate-50 p-4 text-center">
+            <div className="text-xs font-bold uppercase text-slate-500">Cost Basis</div>
+            <div className="mt-1 text-xl font-black">{formatMoney(opp.totalCostBasis)}</div>
           </div>
-
-          <OpportunityStrategyBlock item={item} />
-
-          <div className="rounded-2xl border border-border bg-white p-4">
-            <div className="text-sm font-bold text-slate-500">Reason</div>
-            <div className="mt-2 text-sm text-slate-700">
-              {item.actionReasonPrimary ?? '—'}
-            </div>
-            {item.actionReasonSecondary ? (
-              <div className="mt-1 text-sm text-slate-500">
-                {item.actionReasonSecondary}
-              </div>
-            ) : null}
+          <div className="rounded-xl border border-border bg-slate-50 p-4 text-center">
+            <div className="text-xs font-bold uppercase text-slate-500">Est. Profit</div>
+            <div className="mt-1 text-xl font-black text-emerald-600">{formatMoney(opp.profit)}</div>
           </div>
-
-          <Link
-            href="/admin/opportunities/sell"
-            className="inline-flex rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
-          >
-            Back to Sell Opportunities
-          </Link>
+          <div className="rounded-xl border border-border bg-slate-50 p-4 text-center">
+            <div className="text-xs font-bold uppercase text-slate-500">Target Sell</div>
+            <div className="mt-1 text-xl font-black">{formatMoney(opp.targetSellPrice)}</div>
+          </div>
+          <div className="rounded-xl border border-border bg-slate-50 p-4 text-center">
+            <div className="text-xs font-bold uppercase text-slate-500">Current Market</div>
+            <div className="mt-1 text-xl font-black">{formatMoney(opp.marketAverage)}</div>
+          </div>
         </div>
       </SectionCard>
     </div>

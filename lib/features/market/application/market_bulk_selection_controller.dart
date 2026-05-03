@@ -1,17 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class MarketBulkSelectionController extends StateNotifier<Set<String>> {
-  MarketBulkSelectionController() : super(<String>{});
+class MarketBulkSelectionController extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    return <String>{};
+  }
 
   void toggle(String id) {
     final next = <String>{...state};
-
     if (next.contains(id)) {
       next.remove(id);
     } else {
       next.add(id);
     }
-
     state = next;
   }
 
@@ -29,13 +30,11 @@ class MarketBulkSelectionController extends StateNotifier<Set<String>> {
   }
 
   bool isSelected(String id) => state.contains(id);
-
   int get selectedCount => state.length;
-
   bool get hasSelection => state.isNotEmpty;
 }
 
 final marketBulkSelectionProvider =
-    StateNotifierProvider<MarketBulkSelectionController, Set<String>>(
-  (ref) => MarketBulkSelectionController(),
+    NotifierProvider<MarketBulkSelectionController, Set<String>>(
+  MarketBulkSelectionController.new,
 );

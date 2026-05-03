@@ -1,31 +1,26 @@
-// lib/features/settings/application/currency_rates_controller.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/currency_repositories_provider.dart';
 import 'package:lego_trading_manager/features/settings/application/currency_rate_source.dart';
 import 'package:lego_trading_manager/features/settings/application/currency_rate_state.dart';
 
-class CurrencyRatesController extends StateNotifier<CurrencyRateState> {
-  final Ref ref;
-
-  CurrencyRatesController(this.ref) : super(CurrencyRateState.initial());
+class CurrencyRatesController extends Notifier<CurrencyRateState> {
+  @override
+  CurrencyRateState build() {
+    return CurrencyRateState.initial();
+  }
 
   Future<void> loadLatest() async {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final rates =
-          await ref.read(currencyRatesRepositoryProvider).fetchLatestAndCache();
-
+      final rates = await ref.read(currencyRatesRepositoryProvider).fetchLatestAndCache();
       state = state.copyWith(
         isLoading: false,
         rates: rates,
         source: CurrencyRateSource.nbuOfficial,
       );
     } catch (e) {
-      final cached =
-          await ref.read(currencyRatesRepositoryProvider).loadCache();
-
+      final cached = await ref.read(currencyRatesRepositoryProvider).loadCache();
       state = state.copyWith(
         isLoading: false,
         rates: cached?.rates ?? const [],
@@ -39,19 +34,14 @@ class CurrencyRatesController extends StateNotifier<CurrencyRateState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final rates =
-          await ref.read(currencyRatesRepositoryProvider).fetchByDate(date);
-
+      final rates = await ref.read(currencyRatesRepositoryProvider).fetchByDate(date);
       state = state.copyWith(
         isLoading: false,
         rates: rates,
         source: CurrencyRateSource.nbuOfficial,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -61,6 +51,6 @@ class CurrencyRatesController extends StateNotifier<CurrencyRateState> {
 }
 
 final currencyRatesControllerProvider =
-    StateNotifierProvider<CurrencyRatesController, CurrencyRateState>((ref) {
-  return CurrencyRatesController(ref);
-});
+    NotifierProvider<CurrencyRatesController, CurrencyRateState>(
+  CurrencyRatesController.new,
+);

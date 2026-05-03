@@ -9,14 +9,19 @@ final salesUnmatchedProvider = Provider<List<SaleModel>>((ref) {
   final purchases = ref.watch(purchasesControllerProvider);
   final links = ref.watch(salePurchaseLinkControllerProvider);
 
-  final purchaseIds = purchases.map((purchase) => purchase.id).toSet();
-  final purchaseItemIds = purchases.map((purchase) => purchase.itemId).toSet();
+  // ОПТИМІЗАЦІЯ: Формуємо хеш-сети один раз
+  final purchaseItemIds = <String>{};
+  final linkedSaleIds = <String>{};
 
-  final linkedSaleIds = links
-      .where((link) => purchaseIds.contains(link.purchaseId))
-      .map((link) => link.saleId)
-      .toSet();
+  for (final p in purchases) {
+    purchaseItemIds.add(p.itemId);
+  }
 
+  for (final link in links) {
+    linkedSaleIds.add(link.saleId);
+  }
+
+  // ОПТИМІЗАЦІЯ: Один прохід замість каскаду where
   final unmatched = sales.where((sale) {
     final hasManualLink = linkedSaleIds.contains(sale.id);
     final hasItemMatch = purchaseItemIds.contains(sale.itemId);

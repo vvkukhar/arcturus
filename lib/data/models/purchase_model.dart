@@ -51,6 +51,12 @@ class PurchaseModel {
     return finalTotal / quantity;
   }
 
+  factory PurchaseModel.fromMap(Map<String, dynamic> map) {
+    return PurchaseModel.fromJson(map);
+  }
+
+  Map<String, dynamic> toMap() => toJson();
+
   factory PurchaseModel.fromJson(Map<String, dynamic> json) {
     return PurchaseModel(
       id: json['id'] as String? ?? '',
@@ -59,18 +65,17 @@ class PurchaseModel {
       sourceUrl: json['sourceUrl'] as String?,
       sellerName: json['sellerName'] as String?,
       sellerContact: json['sellerContact'] as String?,
-      purchasePrice: (json['purchasePrice'] as num?)?.toDouble() ?? 0,
-      shippingCost: (json['shippingCost'] as num?)?.toDouble() ?? 0,
-      additionalCosts: (json['additionalCosts'] as num?)?.toDouble() ?? 0,
-      finalTotal: (json['finalTotal'] as num?)?.toDouble() ?? 0,
+      purchasePrice: (json['purchasePrice'] as num?)?.toDouble() ?? 0.0,
+      shippingCost: (json['shippingCost'] as num?)?.toDouble() ?? 0.0,
+      additionalCosts: (json['additionalCosts'] as num?)?.toDouble() ?? 0.0,
+      finalTotal: (json['finalTotal'] as num?)?.toDouble() ?? 0.0,
       currency: json['currency'] as String? ?? 'UAH',
-      exchangeRate: (json['exchangeRate'] as num?)?.toDouble() ?? 1,
+      exchangeRate: (json['exchangeRate'] as num?)?.toDouble() ?? 1.0,
       paymentMethod: PurchasePaymentMethod.values.firstWhere(
         (method) => method.name == json['paymentMethod'],
         orElse: () => PurchasePaymentMethod.cash,
       ),
-      purchaseDate: DateTime.tryParse(json['purchaseDate'] as String? ?? '') ??
-          DateTime.now(),
+      purchaseDate: DateTime.tryParse(json['purchaseDate'] as String? ?? '') ?? DateTime.now(),
       note: json['note'] as String?,
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       soldQuantity: (json['soldQuantity'] as num?)?.toInt() ?? 0,

@@ -14,8 +14,8 @@ class DashboardScreen extends StatelessWidget {
       ),
       drawer: const AppDrawer(),
       floatingActionButton: const GlobalQuickAddFab(),
-      body: const ListView(
-        padding: EdgeInsets.all(16),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
           InventoryFlowDashboardCard(),
         ],

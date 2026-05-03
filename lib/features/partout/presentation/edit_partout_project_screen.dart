@@ -155,7 +155,7 @@ class _EditPartOutProjectScreenState extends State<EditPartOutProjectScreen> {
               maxLines: 4,
               decoration: const InputDecoration(labelText: 'Notes'),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             FilledButton(
               onPressed: _save,
               child: const Text('Save Changes'),

@@ -1,25 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
-import 'package:lego_trading_manager/data/repositories/watchlist_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_kpi_v2_model.dart';
 import 'package:lego_trading_manager/features/inventory/application/dead_stock_detector_provider.dart';
 
 final dashboardKpiV2Provider = Provider<List<DashboardKpiV2Model>>((ref) {
-  final inventory = InventoryRepository().getAllItems();
-  final watchlist = WatchlistRepository().getAll();
+  final inventory = ref.watch(inventoryRepositoryProvider).getAllItems();
+  final watchlist = ref.watch(watchlistRepositoryProvider).getAll();
   final deadStock = ref.watch(deadStockEntriesProvider);
 
-  final totalCapital = inventory.fold<double>(
-    0,
-    (sum, item) => sum + item.totalCost,
-  );
+  double totalCapital = 0;
+  double expectedProfit = 0;
+  int trackedCount = 0;
 
-  final expectedProfit = inventory.fold<double>(
-    0,
-    (sum, item) => sum + ((item.expectedSalePrice ?? 0) - item.totalCost),
-  );
-
-  final trackedCount = inventory.where((e) => e.isTracked).length;
+  for (final item in inventory) {
+    totalCapital += item.totalCost;
+    expectedProfit += ((item.expectedSalePrice ?? 0) - item.totalCost);
+    if (item.isTracked) trackedCount++;
+  }
 
   return [
     DashboardKpiV2Model(

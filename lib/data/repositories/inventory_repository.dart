@@ -1,91 +1,59 @@
+import 'package:lego_trading_manager/data/datasources/local/inventory_local_datasource.dart';
+import 'package:lego_trading_manager/data/models/item_model.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/store/inventory_memory_store.dart';
 
 class InventoryRepository {
+  final InventoryLocalDatasource _localDatasource;
+  List<ItemModel> _memoryCache = [];
+  bool _isLoaded = false;
+
+  InventoryRepository(this._localDatasource);
+
+  Future<void> loadCache() async {
+    _memoryCache = await _localDatasource.getAll();
+    _isLoaded = true;
+  }
+
   List<ItemModel> getAllItems() {
-    return List<ItemModel>.from(InventoryMemoryStore.items);
-  }
-
-  List<ItemModel> getResaleItems() {
-    return InventoryMemoryStore.items
-        .where((item) => item.ownershipType == OwnershipType.resale)
-        .toList();
-  }
-
-  List<ItemModel> getCollectionItems() {
-    return InventoryMemoryStore.items
-        .where((item) => item.ownershipType == OwnershipType.collection)
-        .toList();
-  }
-
-  List<ItemModel> getActiveItems() {
-    return InventoryMemoryStore.items.where((item) => item.isActive).toList();
-  }
-
-  List<ItemModel> getListedItems() {
-    return InventoryMemoryStore.items
-        .where((item) => item.status == ItemStatus.listed)
-        .toList();
-  }
-
-  List<ItemModel> getSoldItems() {
-    return InventoryMemoryStore.items
-        .where((item) => item.status == ItemStatus.sold)
-        .toList();
-  }
-
-  List<ItemModel> searchItems(String query) {
-    final normalized = query.trim().toLowerCase();
-
-    if (normalized.isEmpty) {
-      return getAllItems();
+    if (!_isLoaded) {
+      throw StateError('InventoryRepository cache accessed before loading. Call loadCache() during bootstrap.');
     }
-
-    return InventoryMemoryStore.items.where((item) {
-      final titleMatch = item.title.toLowerCase().contains(normalized);
-      final themeMatch = (item.theme ?? '').toLowerCase().contains(normalized);
-      final subthemeMatch =
-          (item.subtheme ?? '').toLowerCase().contains(normalized);
-      final legoNumberMatch =
-          (item.legoNumber ?? '').toLowerCase().contains(normalized);
-      final minifigIdMatch =
-          (item.minifigId ?? '').toLowerCase().contains(normalized);
-      final tagsMatch = item.tags.any(
-        (tag) => tag.toString().toLowerCase().contains(normalized),
-      );
-      final notesMatch = (item.notes ?? '').toLowerCase().contains(normalized);
-
-      return titleMatch ||
-          themeMatch ||
-          subthemeMatch ||
-          legoNumberMatch ||
-          minifigIdMatch ||
-          tagsMatch ||
-          notesMatch;
-    }).toList();
+    return List<ItemModel>.from(_memoryCache);
   }
 
   ItemModel? getById(String id) {
-    return InventoryMemoryStore.getById(id);
+    try {
+      return _memoryCache.firstWhere((item) => item.id == id);
+    } catch (_) {
+      return null;
+    }
   }
 
-  void addItem(ItemModel item) {
-    InventoryMemoryStore.addItem(item);
+  Future<void> addItem(ItemModel item) async {
+    await _localDatasource.add(item);
+    _memoryCache.insert(0, item);
   }
 
-  void updateItem(ItemModel item) {
-    InventoryMemoryStore.updateItem(item);
+  Future<void> updateItem(ItemModel item) async {
+    await _localDatasource.update(item);
+    final index = _memoryCache.indexWhere((e) => e.id == item.id);
+    if (index != -1) {
+      _memoryCache[index] = item;
+    }
   }
 
-  void deleteItem(String id) {
-    InventoryMemoryStore.deleteItem(id);
+  Future<void> deleteItem(String id) async {
+    await _localDatasource.delete(id);
+    _memoryCache.removeWhere((item) => item.id == id);
   }
 
-  void replaceAll(List<ItemModel> items) {
-    InventoryMemoryStore.items
-      ..clear()
-      ..addAll(items);
+  Future<void> replaceAll(List<ItemModel> items) async {
+    await _localDatasource.replaceAll(items);
+    _memoryCache = List.from(items);
+  }
+
+  List<ItemModel> getSoldItems() {
+    return _memoryCache.where((item) => item.status == ItemStatus.sold).toList();
   }
 }

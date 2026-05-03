@@ -1,29 +1,30 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_auto_rule_model.dart';
 
-class AnalyticsAutoRulesController
-    extends StateNotifier<List<AnalyticsAutoRuleModel>> {
-  AnalyticsAutoRulesController()
-      : super(const [
-          AnalyticsAutoRuleModel(
-            id: 'market_98',
-            title: 'Market 98% repricing',
-            description: 'When applied manually, use 98% of market average.',
-            enabled: true,
-          ),
-          AnalyticsAutoRuleModel(
-            id: 'old_stock_attention',
-            title: 'Old stock attention',
-            description: 'Highlight older held stock for review.',
-            enabled: true,
-          ),
-          AnalyticsAutoRuleModel(
-            id: 'profit_priority',
-            title: 'Profit priority sorting',
-            description: 'Prefer higher expected profit candidates.',
-            enabled: false,
-          ),
-        ]);
+class AnalyticsAutoRulesController extends Notifier<List<AnalyticsAutoRuleModel>> {
+  @override
+  List<AnalyticsAutoRuleModel> build() {
+    return const [
+      AnalyticsAutoRuleModel(
+        id: 'market_98',
+        title: 'Market 98% repricing',
+        description: 'When applied manually, use 98% of market average.',
+        enabled: true,
+      ),
+      AnalyticsAutoRuleModel(
+        id: 'old_stock_attention',
+        title: 'Old stock attention',
+        description: 'Highlight older held stock for review.',
+        enabled: true,
+      ),
+      AnalyticsAutoRuleModel(
+        id: 'profit_priority',
+        title: 'Profit priority sorting',
+        description: 'Prefer higher expected profit candidates.',
+        enabled: false,
+      ),
+    ];
+  }
 
   void toggle(String id) {
     state = [
@@ -37,7 +38,7 @@ class AnalyticsAutoRulesController
   }
 }
 
-final analyticsAutoRulesProvider = StateNotifierProvider<
+final analyticsAutoRulesProvider = NotifierProvider<
     AnalyticsAutoRulesController, List<AnalyticsAutoRuleModel>>(
-  (ref) => AnalyticsAutoRulesController(),
+  AnalyticsAutoRulesController.new,
 );

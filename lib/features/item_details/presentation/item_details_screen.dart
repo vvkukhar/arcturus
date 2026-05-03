@@ -93,8 +93,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Delete item'),
-          content:
-              Text('Delete "${item.title}"? This action cannot be undone.'),
+          content: Text('Delete "${item.title}"? This action cannot be undone.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -125,8 +124,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
   }
 
   void _duplicate() {
-    final duplicate =
-        ref.read(inventoryDuplicateServiceProvider).duplicate(item);
+    final duplicate = ref.read(inventoryDuplicateServiceProvider).duplicate(item);
     Navigator.of(context).pop({'duplicated': duplicate});
   }
 
@@ -173,8 +171,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
         .where((project) => project.sourceSetId == item.id)
         .toList();
     final nextStatus = ref.read(itemStatusTransitionProvider).next(item.status);
-    final prevStatus =
-        ref.read(itemStatusTransitionProvider).previous(item.status);
+    final prevStatus = ref.read(itemStatusTransitionProvider).previous(item.status);
 
     return Scaffold(
       appBar: AppBar(
@@ -358,7 +355,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    _infoRow('Platform', sale.platform.name),
+                    _infoRow('Platform', sale.platform),
                     _infoRow('Buyer', _formatNullable(sale.buyerName)),
                     _infoRow(
                       'Sale Price',

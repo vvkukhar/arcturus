@@ -1,5 +1,3 @@
-// lib/data/repositories/analytics_repository.dart
-
 import 'package:lego_trading_manager/core/utils/profit_calculator.dart';
 import 'package:lego_trading_manager/data/models/analytics_summary_model.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
@@ -17,8 +15,7 @@ class AnalyticsRepository {
     final activeItems = items.where((item) => item.isActive).toList();
 
     final totalInvested = items.fold(0.0, (sum, item) => sum + item.totalCost);
-    final totalSoldRevenue =
-        sales.fold(0.0, (sum, sale) => sum + sale.salePrice);
+    final totalSoldRevenue = sales.fold(0.0, (sum, sale) => sum + sale.salePrice);
 
     double totalNetProfit = 0;
     final List<double> roiList = [];
@@ -47,25 +44,18 @@ class AnalyticsRepository {
       }
     }
 
-    final frozenCapital =
-        activeItems.fold(0.0, (sum, item) => sum + item.totalCost);
+    final frozenCapital = activeItems.fold(0.0, (sum, item) => sum + item.totalCost);
 
     final inventoryValue = activeItems.fold(
       0.0,
       (sum, item) => sum + (item.marketAverage ?? 0.0),
     );
 
-    final avgRoi = roiList.isEmpty
-        ? 0.0
-        : roiList.reduce((a, b) => a + b) / roiList.length;
+    final avgRoi = roiList.isEmpty ? 0.0 : roiList.reduce((a, b) => a + b) / roiList.length;
 
-    final avgMargin = marginList.isEmpty
-        ? 0.0
-        : marginList.reduce((a, b) => a + b) / marginList.length;
+    final avgMargin = marginList.isEmpty ? 0.0 : marginList.reduce((a, b) => a + b) / marginList.length;
 
-    final avgDaysToSell = daysToSellList.isEmpty
-        ? 0.0
-        : daysToSellList.reduce((a, b) => a + b) / daysToSellList.length;
+    final avgDaysToSell = daysToSellList.isEmpty ? 0.0 : daysToSellList.reduce((a, b) => a + b) / daysToSellList.length;
 
     final deadStockCount = activeItems.where((item) {
       final days = item.daysInInventory ?? 0;

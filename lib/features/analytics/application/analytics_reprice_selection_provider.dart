@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class RepriceSelectionController extends StateNotifier<Set<String>> {
-  RepriceSelectionController() : super({});
+class RepriceSelectionController extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    return const {};
+  }
 
   void toggle(String id) {
     if (state.contains(id)) {
@@ -16,11 +19,11 @@ class RepriceSelectionController extends StateNotifier<Set<String>> {
   }
 
   void clear() {
-    state = {};
+    state = const {};
   }
 }
 
 final analyticsRepriceSelectionProvider =
-    StateNotifierProvider<RepriceSelectionController, Set<String>>(
-  (ref) => RepriceSelectionController(),
+    NotifierProvider<RepriceSelectionController, Set<String>>(
+  RepriceSelectionController.new,
 );

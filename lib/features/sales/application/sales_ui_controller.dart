@@ -3,8 +3,11 @@ import 'package:lego_trading_manager/features/sales/application/sales_filter_mod
 import 'package:lego_trading_manager/features/sales/application/sales_sort_option.dart';
 import 'package:lego_trading_manager/features/sales/application/sales_ui_state.dart';
 
-class SalesUiController extends StateNotifier<SalesUiState> {
-  SalesUiController() : super(SalesUiState.initial());
+class SalesUiController extends Notifier<SalesUiState> {
+  @override
+  SalesUiState build() {
+    return SalesUiState.initial();
+  }
 
   void search(String value) {
     state = state.copyWith(query: value);
@@ -24,6 +27,6 @@ class SalesUiController extends StateNotifier<SalesUiState> {
 }
 
 final salesUiControllerProvider =
-    StateNotifierProvider<SalesUiController, SalesUiState>((ref) {
-  return SalesUiController();
-});
+    NotifierProvider<SalesUiController, SalesUiState>(
+  SalesUiController.new,
+);

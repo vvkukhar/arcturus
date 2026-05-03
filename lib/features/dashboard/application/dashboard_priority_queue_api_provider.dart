@@ -5,6 +5,7 @@ class DashboardPriorityQueueApiItemModel {
   final String action;
   final String reasonPrimary;
   final double score;
+  
   const DashboardPriorityQueueApiItemModel({
     required this.action,
     required this.reasonPrimary,
@@ -12,8 +13,7 @@ class DashboardPriorityQueueApiItemModel {
   });
 }
 
-final dashboardPriorityQueueApiProvider =
-    FutureProvider<List<DashboardPriorityQueueApiItemModel>>((ref) async {
+final dashboardPriorityQueueApiProvider = FutureProvider<List<DashboardPriorityQueueApiItemModel>>((ref) async {
   final cached = await ref.watch(dashboardPriorityQueueCachedProvider.future);
   return cached
       .map(

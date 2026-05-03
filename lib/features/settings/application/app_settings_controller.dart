@@ -3,11 +3,10 @@ import 'package:lego_trading_manager/app/providers/app_settings_repository_provi
 import 'package:lego_trading_manager/features/settings/application/app_settings_model.dart';
 import 'package:lego_trading_manager/features/settings/application/app_theme_mode.dart';
 
-class AppSettingsController extends StateNotifier<AppSettingsModel> {
-  final Ref ref;
-
-  AppSettingsController(this.ref) : super(AppSettingsModel.initial()) {
-    load();
+class AppSettingsController extends Notifier<AppSettingsModel> {
+  @override
+  AppSettingsModel build() {
+    return AppSettingsModel.initial();
   }
 
   Future<void> load() async {
@@ -49,6 +48,6 @@ class AppSettingsController extends StateNotifier<AppSettingsModel> {
 }
 
 final appSettingsControllerProvider =
-    StateNotifierProvider<AppSettingsController, AppSettingsModel>((ref) {
-  return AppSettingsController(ref);
-});
+    NotifierProvider<AppSettingsController, AppSettingsModel>(
+  AppSettingsController.new,
+);

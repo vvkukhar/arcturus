@@ -2,10 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/data/models/purchase_model.dart';
 import 'package:lego_trading_manager/features/purchases/data/purchases_local_storage_provider.dart';
 
-class PurchasesController extends StateNotifier<List<PurchaseModel>> {
-  final Ref ref;
-
-  PurchasesController(this.ref) : super(const []);
+// 1. Переходимо зі StateNotifier на сучасний Notifier
+class PurchasesController extends Notifier<List<PurchaseModel>> {
+  
+  @override
+  List<PurchaseModel> build() {
+    // Початковий стан. З Notifier ми маємо нативний доступ до ref.
+    return const [];
+  }
 
   Future<void> load() async {
     final storage = ref.read(purchasesLocalStorageProvider);
@@ -23,11 +27,10 @@ class PurchasesController extends StateNotifier<List<PurchaseModel>> {
   }
 
   Future<void> updatePurchase(PurchaseModel updated) async {
-    state = state.map((purchase) {
-      if (purchase.id == updated.id) return updated;
-      return purchase;
-    }).toList();
-
+    state = [
+      for (final purchase in state)
+        if (purchase.id == updated.id) updated else purchase,
+    ];
     await _save();
   }
 
@@ -47,7 +50,8 @@ class PurchasesController extends StateNotifier<List<PurchaseModel>> {
   }
 }
 
+// Провайдер тепер теж NotifierProvider
 final purchasesControllerProvider =
-    StateNotifierProvider<PurchasesController, List<PurchaseModel>>((ref) {
-  return PurchasesController(ref);
-});
+    NotifierProvider<PurchasesController, List<PurchaseModel>>(
+  PurchasesController.new,
+);

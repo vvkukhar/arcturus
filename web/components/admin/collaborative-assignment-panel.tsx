@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/client-api';
 
 type UserRow = {
   id: string;
@@ -17,16 +18,24 @@ export function CollaborativeAssignmentPanel() {
   const [loading, setLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/collaboration/users')
-      .then((r) => r.json())
+    let mounted = true;
+
+    apiFetch<UserRow[]>('/api/collaboration/users')
       .then((data) => {
+        if (!mounted) return;
         const rows = Array.isArray(data) ? data : [];
         setUsers(rows);
-
         if (rows[0]?.id) {
           setUserId(rows[0].id);
         }
+      })
+      .catch(() => {
+        if (mounted) setUsers([]);
       });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
@@ -52,21 +61,23 @@ export function CollaborativeAssignmentPanel() {
           className="w-full rounded-xl border border-border px-4 py-3 text-sm"
         />
         <button
-          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          disabled={loading === 'inventory'}
           onClick={async () => {
             if (!inventoryItemId || !userId) return;
 
             try {
               setLoading('inventory');
-              await fetch('/api/collaboration/assign/inventory', {
+              await apiFetch('/api/collaboration/assign/inventory', {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   inventoryItemId,
                   userId,
                 }),
               });
               setInventoryItemId('');
+            } catch (e) {
+              console.error(e);
             } finally {
               setLoading(null);
             }
@@ -83,21 +94,23 @@ export function CollaborativeAssignmentPanel() {
           className="w-full rounded-xl border border-border px-4 py-3 text-sm"
         />
         <button
-          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          disabled={loading === 'watchlist'}
           onClick={async () => {
             if (!watchlistItemId || !userId) return;
 
             try {
               setLoading('watchlist');
-              await fetch('/api/collaboration/assign/watchlist', {
+              await apiFetch('/api/collaboration/assign/watchlist', {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   watchlistItemId,
                   userId,
                 }),
               });
               setWatchlistItemId('');
+            } catch (e) {
+              console.error(e);
             } finally {
               setLoading(null);
             }

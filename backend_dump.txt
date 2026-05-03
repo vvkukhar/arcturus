@@ -1,28 +1,4 @@
 ﻿
-===== FILE: C:\Users\Vlad\lego_trading_manager\backend\.env.production =====
-
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=CHANGE_ME_STRONG_PASSWORD
-POSTGRES_DB=arcturus
-
-DATABASE_URL=postgresql://postgres:CHANGE_ME_STRONG_PASSWORD@postgres:5432/arcturus
-
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_PASSWORD=
-
-PORT=4000
-NODE_ENV=production
-
-CORS_ORIGIN=https://arcturus.example.com,https://admin.arcturus.example.com
-
-ADMIN_TOKEN=CHANGE_ME_LONG_RANDOM_TOKEN
-
-WORKER_CONCURRENCY=3
-WORKER_INTERVAL_MINUTES=15
-
-BACKUP_DIR=/backups/arcturus
-
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\.env.production.example =====
 
 POSTGRES_USER=postgres
@@ -270,224 +246,6 @@ npm install
 npm run db:reset
 npm run start:dev
 
-===== FILE: C:\Users\Vlad\lego_trading_manager\backend\.github\workflows\backend-ci.yml =====
-
-name: Backend CI
-
-on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - main
-      - develop
-
-jobs:
-  api:
-    name: API build
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: arcturus_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d arcturus_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-
-    defaults:
-      run:
-        working-directory: backend/api
-
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/arcturus_test
-      ADMIN_TOKEN: supersecret
-      REDIS_HOST: localhost
-      REDIS_PORT: 6379
-      CORS_ORIGIN: http://localhost:3000
-      NODE_ENV: test
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: backend/api/package-lock.json
-
-      - name: Install
-        run: npm ci
-
-      - name: Prisma generate
-        run: npx prisma generate
-
-      - name: Push schema
-        run: npx prisma db push
-
-      - name: Seed
-        run: npm run seed
-
-      - name: Build
-        run: npm run build
-
-      - name: Export OpenAPI
-        run: npm run openapi:export
-
-  workers:
-    name: Workers build
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: backend/workers
-
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/arcturus_test
-      REDIS_HOST: localhost
-      REDIS_PORT: 6379
-      NODE_ENV: test
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: backend/workers/package-lock.json
-
-      - name: Install
-        run: npm ci
-
-      - name: Prisma generate
-        run: npx prisma generate
-
-      - name: Build
-        run: npm run build
-
-===== FILE: C:\Users\Vlad\lego_trading_manager\backend\.github\workflows\backend-smoke.yml =====
-
-name: Backend Smoke
-
-on:
-  workflow_dispatch:
-
-jobs:
-  smoke:
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: arcturus_smoke
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d arcturus_smoke"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-
-    defaults:
-      run:
-        working-directory: backend/api
-
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/arcturus_smoke
-      ADMIN_TOKEN: supersecret
-      REDIS_HOST: localhost
-      REDIS_PORT: 6379
-      CORS_ORIGIN: http://localhost:3000
-      API_BASE: http://localhost:4000/api
-      NODE_ENV: test
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: backend/api/package-lock.json
-
-      - name: Install
-        run: npm ci
-
-      - name: Prisma setup
-        run: |
-          npx prisma generate
-          npx prisma db push
-          npm run seed
-
-      - name: Build
-        run: npm run build
-
-      - name: Start API
-        run: |
-          npm run start > api.log 2>&1 &
-          sleep 8
-
-      - name: Smoke test
-        run: npm run smoke
-
-      - name: Print API logs on failure
-        if: failure()
-        run: cat api.log
-
-===== FILE: C:\Users\Vlad\lego_trading_manager\backend\.github\workflows\docker-build.yml =====
-
-name: Docker Build
-
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-
-jobs:
-  docker:
-    name: Build Docker images
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build API image
-        run: docker build -t arcturus-api:ci ./backend/api
-
-      - name: Build Workers image
-        run: docker build -t arcturus-workers:ci ./backend/workers
-
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\.dockerignore =====
 
 node_modules
@@ -500,27 +258,6 @@ npm-debug.log
 .DS_Store
 test
 *.local
-
-===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\.env =====
-
-NODE_ENV=development
-PORT=4000
-
-DATABASE_URL=postgresql://arcturus:arcturus_password@localhost:5432/arcturus?schema=public
-
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-
-JWT_SECRET=change_me_super_secret
-ADMIN_BOOTSTRAP_TOKEN=supersecret
-INTERNAL_API_KEY=
-
-CORS_ORIGINS=http://localhost:3000,http://localhost:5173
-
-PUBLIC_STORE_BASE_URL=http://localhost:3000
-API_BASE=http://localhost:4000/api
-ADMIN_TOKEN=supersecret
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\.env.example =====
 
@@ -700,7 +437,6 @@ FROM node:22-alpine AS deps
 
 WORKDIR /app
 
-# рџ”§ FIX Prisma (openssl)
 RUN apk add --no-cache openssl
 
 COPY package.json package-lock.json* ./
@@ -739,8 +475,7 @@ COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 4000
 
-# рџ”Ґ Р·Р°РїСѓСЃРєР°С”РјРѕ РјС–РіСЂР°С†С–С— + СЃРµСЂРІРµСЂ
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+CMD ["node", "dist/src/main.js"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\nest-cli.json =====
 
@@ -785,7 +520,7 @@ CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
     "@nestjs/websockets": "^10.4.0",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
-    "bullmq": "^5.21.2",
+    "bullmq": "^5.76.4",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "ioredis": "^5.4.1",
@@ -793,7 +528,8 @@ CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.8",
@@ -802,7 +538,8 @@ CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.10.2",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^22.19.17",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
@@ -882,23 +619,25 @@ services:
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\tsconfig.json =====
 
+// backend/api/tsconfig.json
 {
   "compilerOptions": {
     "module": "commonjs",
+    "target": "ES2021",
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
     "strict": true,
-    "strictPropertyInitialization": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node", "jest"]
   },
+  "include": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
 
@@ -3252,6 +2991,7 @@ function main(): void {
 }
 
 main();
+export {};
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\scripts\db-backup.sh =====
 
@@ -3402,6 +3142,7 @@ main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
+export {};
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\scripts\prod-migrate.sh =====
 
@@ -3822,6 +3563,7 @@ main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
+export {};
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\app.module.ts =====
 
@@ -4117,12 +3859,18 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\common\money.utils.ts =====
 
-export function toMoney(value: number | null | undefined): number {
-  if (value == null || !Number.isFinite(value)) {
+export function toMoney(value: number): number {
+  if (!Number.isFinite(value)) {
     return 0;
   }
 
   return Number(value.toFixed(2));
+}
+
+export function addMoney(...values: number[]): number {
+  return toMoney(
+    values.reduce((sum, value) => sum + Number(value ?? 0), 0),
+  );
 }
 
 export function calculateProfit(params: {
@@ -4144,22 +3892,14 @@ export function calculateRoiPercent(params: {
 }
 
 export function calculateMarginPercent(params: {
+  profit: number;
   revenue: number;
-  cost: number;
 }): number {
   if (!Number.isFinite(params.revenue) || params.revenue <= 0) {
     return 0;
   }
 
-  return toMoney(((params.revenue - params.cost) / params.revenue) * 100);
-}
-
-export function clampMoney(value: number, min = 0): number {
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-
-  return toMoney(Math.max(value, min));
+  return toMoney((params.profit / params.revenue) * 100);
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\common\request-context.util.ts =====
@@ -4548,6 +4288,49 @@ import {
 @Injectable()
 export class AiSuggestionsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  explainDeal(params: {
+    title?: string;
+    buyPrice?: number;
+    targetSellPrice?: number;
+    roiPercent?: number;
+    profit?: number;
+    score?: number;
+  }): unknown {
+    const roi = Number(params.roiPercent ?? 0);
+    const profit = Number(params.profit ?? 0);
+    const score = Number(params.score ?? 0);
+
+    const strengths: string[] = [];
+    const risks: string[] = [];
+
+    if (roi >= 35) strengths.push('Strong ROI profile');
+    else risks.push('ROI is below strong-flip threshold');
+
+    if (profit >= 300) strengths.push('Good absolute profit');
+    else risks.push('Profit may be too small after time and overhead');
+
+    if (score >= 80) strengths.push('High engine score');
+    else risks.push('Engine score is not decisive');
+
+    return {
+      title: params.title ?? 'Deal',
+      verdict:
+        score >= 85 || (roi >= 35 && profit >= 300)
+          ? 'strong_candidate'
+          : roi >= 20 && profit >= 150
+            ? 'watch_or_negotiate'
+            : 'weak_candidate',
+      strengths,
+      risks,
+      summary:
+        score >= 85 || (roi >= 35 && profit >= 300)
+          ? 'This looks like a strong resale candidate.'
+          : roi >= 20 && profit >= 150
+            ? 'This may work, but negotiation or manual review is recommended.'
+            : 'This deal is weak unless there is missing context.',
+    };
+  }
 
   async getSuggestions(): Promise<unknown[]> {
     const [inventory, watchlist, unresolved, staleSources] = await Promise.all([
@@ -5622,18 +5405,64 @@ import {
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
+export type AuthUser = {
+  id: string;
+  name: string;
+  email: string | null;
+  role: string;
+};
+
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
+  extractBearerToken(authorization?: string | null): string | null {
+    if (!authorization) {
+      return null;
+    }
+
+    const [type, token] = authorization.split(' ');
+
+    if (type !== 'Bearer' || !token) {
+      return null;
+    }
+
+    return token;
+  }
+
+  async validateToken(token: string): Promise<AuthUser> {
+    return this.verifyToken(token);
+  }
+
+  async verifyToken(token: string): Promise<AuthUser> {
+    const session = await this.prisma.userSession.findUnique({
+      where: {
+        token,
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!session || !session.user || !session.user.active) {
+      throw new UnauthorizedException('Invalid session');
+    }
+
+    if (session.expiresAt && session.expiresAt.getTime() < Date.now()) {
+      throw new UnauthorizedException('Session expired');
+    }
+
+    return {
+      id: session.user.id,
+      name: session.user.name,
+      email: session.user.email,
+      role: session.user.role,
+    };
+  }
+
   async loginWithToken(token: string): Promise<{
     token: string;
-    user: {
-      id: string;
-      name: string;
-      email: string | null;
-      role: string;
-    };
+    user: AuthUser;
   }> {
     const adminToken = process.env.ADMIN_TOKEN;
 
@@ -8662,12 +8491,13 @@ export class DecisionEngineService {
 
     const buyPrice = toMoney(dto.buyPrice ?? listing?.price ?? 0);
     const shippingPrice = toMoney(dto.shippingPrice ?? listing?.shippingPrice ?? 0);
-    const targetSellPrice = toMoney(
-      dto.targetSellPrice ??
-        economics.avgSellPrice ??
-        Number(listing?.price ?? 0) * 1.4 ??
-        buyPrice * 1.4,
-    );
+const fallbackSellPrice = Number(listing?.price ?? 0) * 1.4;
+
+const targetSellPrice = toMoney(
+  dto.targetSellPrice ??
+    economics.avgSellPrice ??
+    (fallbackSellPrice || buyPrice * 1.4),
+);
 
     if (buyPrice <= 0) {
       throw new BadRequestException('buyPrice is required');
@@ -11039,7 +10869,7 @@ export class PurchaseFlowService {
       id: row.id,
       status: row.status,
       selectedPrice: row.selectedPrice,
-      selectedSource: row.selectedSource,
+      selectedSource: row.reason,
       watchlistItemId: row.watchlistItemId,
       itemId: row.watchlistItem.itemId,
       title: row.watchlistItem.titleSnapshot,
@@ -11101,7 +10931,9 @@ export class PurchaseFlowService {
       data: {
         watchlistItemId: body.watchlistItemId,
         selectedPrice,
-        selectedSource: body.selectedSource ?? 'manual',
+        reason: body.selectedSource
+          ? `Selected source: ${body.selectedSource}`
+          : 'Selected source: manual',
         status: 'pending',
       },
       include: {
@@ -11220,11 +11052,9 @@ export class PurchaseFlowService {
           itemId: flowItem.watchlistItem.itemId,
           titleSnapshot: flowItem.watchlistItem.titleSnapshot,
           purchasePrice: body.purchasePrice,
-          extraCosts,
           totalCost,
           quantity: body.quantity,
           condition: body.condition ?? 'used',
-          completenessPercent,
           sealed: body.sealed ?? false,
           expectedSalePriceManual: flowItem.watchlistItem.targetSellPrice ?? null,
           notes: body.notes,
@@ -13308,15 +13138,18 @@ export class InventoryBulkService {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\inventory\inventory-export.controller.ts =====
 
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '../auth/auth.guard';
-import { InventoryService } from './inventory.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
+import { InventoryExportService } from './inventory-export.service';
 
-@Controller('inventory')
-@UseGuards(AuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin', 'operator')
+@Controller('inventory-export')
 export class InventoryExportController {
-  constructor(private readonly service: InventoryService) {}
+  constructor(private readonly service: InventoryExportService) {}
 
-  @Get('export')
+  @Get()
   exportInventory(): Promise<unknown[]> {
     return this.service.exportInventory();
   }
@@ -13331,7 +13164,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class InventoryExportService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async exportRows(): Promise<unknown[]> {
+  async exportInventory(): Promise<unknown[]> {
     const rows = await this.prisma.inventoryItem.findMany({
       include: {
         item: true,
@@ -13347,35 +13180,39 @@ export class InventoryExportService {
       },
     });
 
-    return rows.map((row) => ({
-      id: row.id,
-      itemId: row.itemId,
-      setNumber: row.item?.setNumber ?? '',
-      theme: row.item?.theme ?? '',
-      kind: row.item?.kind ?? '',
-      title: row.titleSnapshot,
-      condition: row.condition,
-      sealed: row.sealed,
-      completenessPercent: row.completenessPercent,
-      boxState: row.boxState ?? '',
-      instructionsState: row.instructionsState ?? '',
-      quantity: row.quantity,
-      purchasePrice: row.purchasePrice,
-      extraCosts: row.extraCosts,
-      totalCost: row.totalCost,
-      expectedSalePriceManual: row.expectedSalePriceManual ?? '',
-      assignedUserId: row.assignedUserId ?? '',
-      assignedUserName: row.assignedUser?.name ?? '',
-      imageCount: row.images.length,
-      primaryImage:
-        row.images.find((image) => image.isPrimary)?.imageUrl ??
-        row.images[0]?.imageUrl ??
-        '',
-      notes: row.notes ?? '',
-      acquiredAt: row.acquiredAt?.toISOString() ?? '',
-      createdAt: row.createdAt.toISOString(),
-      updatedAt: row.updatedAt.toISOString(),
-    }));
+    return rows.map((row) => {
+      const safe = row as any;
+
+      return {
+        id: row.id,
+        itemId: row.itemId,
+        setNumber: row.item?.setNumber ?? '',
+        theme: row.item?.theme ?? '',
+        kind: row.item?.kind ?? '',
+        title: row.titleSnapshot,
+        purchasePrice: row.purchasePrice,
+        totalCost: row.totalCost,
+        quantity: row.quantity,
+        condition: row.condition,
+        sealed: row.sealed,
+        completenessPercent: safe.completenessPercent ?? '',
+        boxState: safe.boxState ?? '',
+        instructionsState: safe.instructionsState ?? '',
+        expectedSalePriceManual: row.expectedSalePriceManual ?? '',
+        extraCosts: safe.extraCosts ?? '',
+        source: row.source ?? '',
+        purchaseUrl: row.purchaseUrl ?? '',
+        storageLocation: row.storageLocation ?? '',
+        priority: row.priority,
+        assignedUserId: row.assignedUserId ?? '',
+        assignedUserName: row.assignedUser?.name ?? '',
+        notes: row.notes ?? '',
+        primaryImageUrl: row.images.find((image) => image.isPrimary)?.imageUrl ?? row.images[0]?.imageUrl ?? '',
+        acquiredAt: safe.acquiredAt?.toISOString?.() ?? '',
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
+      };
+    });
   }
 }
 
@@ -13651,12 +13488,14 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { InventoryController } from './inventory.controller';
 import { InventoryService } from './inventory.service';
+import { InventoryExportController } from './inventory-export.controller';
+import { InventoryExportService } from './inventory-export.service';
 
 @Module({
   imports: [AuthModule, RealtimeModule, ActivityModule, NotificationsModule],
-  controllers: [InventoryController],
-  providers: [InventoryService],
-  exports: [InventoryService],
+  controllers: [InventoryController, InventoryExportController],
+  providers: [InventoryService, InventoryExportService],
+  exports: [InventoryService, InventoryExportService],
 })
 export class InventoryModule {}
 
@@ -15926,6 +15765,7 @@ export class StaleListingPenaltyService {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\media\media.controller.ts =====
 
+// backend/api/src/modules/media/media.controller.ts
 import {
   Body,
   Controller,
@@ -15942,7 +15782,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-import { MediaService } from './media.service';
+import { MediaService, UploadedInventoryImageFile } from './media.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'operator')
@@ -15953,7 +15793,7 @@ export class MediaController {
   @Post('inventory-image')
   @UseInterceptors(FileInterceptor('file'))
   addInventoryImage(
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFile() file: UploadedInventoryImageFile | undefined,
     @Body()
     body: {
       inventoryItemId: string;
@@ -15970,22 +15810,12 @@ export class MediaController {
   }
 
   @Delete('inventory-image')
-  deleteInventoryImage(
-    @Body()
-    body: {
-      imageId: string;
-    },
-  ): Promise<unknown> {
+  deleteInventoryImage(@Body() body: { imageId: string }): Promise<unknown> {
     return this.mediaService.deleteInventoryImage(body.imageId);
   }
 
   @Patch('inventory-image/primary')
-  setPrimaryInventoryImage(
-    @Body()
-    body: {
-      imageId: string;
-    },
-  ): Promise<unknown> {
+  setPrimaryInventoryImage(@Body() body: { imageId: string }): Promise<unknown> {
     return this.mediaService.setPrimaryInventoryImage(body.imageId);
   }
 
@@ -16027,14 +15857,20 @@ export class MediaModule {}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\media\media.service.ts =====
 
+// backend/api/src/modules/media/media.service.ts
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ActivityService } from '../activity/activity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import { ActivityService } from '../activity/activity.service';
+
+export type UploadedInventoryImageFile = {
+  buffer: Buffer;
+  mimetype: string;
+};
 
 @Injectable()
 export class MediaService {
@@ -16044,7 +15880,7 @@ export class MediaService {
     private readonly activity: ActivityService,
   ) {}
 
-  private buildDataUrl(file: Express.Multer.File): string {
+  private buildDataUrl(file: UploadedInventoryImageFile): string {
     if (!file?.buffer || !file?.mimetype) {
       throw new BadRequestException('Invalid file');
     }
@@ -16054,7 +15890,7 @@ export class MediaService {
 
   async addInventoryImage(params: {
     inventoryItemId: string;
-    file?: Express.Multer.File;
+    file?: UploadedInventoryImageFile;
     imageUrl?: string;
     altText?: string | null;
   }): Promise<unknown> {
@@ -16107,9 +15943,7 @@ export class MediaService {
 
   async deleteInventoryImage(imageId: string): Promise<unknown> {
     const existing = await this.prisma.inventoryImage.findUnique({
-      where: {
-        id: imageId,
-      },
+      where: { id: imageId },
     });
 
     if (!existing) {
@@ -16117,9 +15951,7 @@ export class MediaService {
     }
 
     const deleted = await this.prisma.inventoryImage.delete({
-      where: {
-        id: imageId,
-      },
+      where: { id: imageId },
     });
 
     if (existing.isPrimary) {
@@ -16134,12 +15966,8 @@ export class MediaService {
 
       if (next) {
         await this.prisma.inventoryImage.update({
-          where: {
-            id: next.id,
-          },
-          data: {
-            isPrimary: true,
-          },
+          where: { id: next.id },
+          data: { isPrimary: true },
         });
       }
     }
@@ -16160,9 +15988,7 @@ export class MediaService {
 
   async setPrimaryInventoryImage(imageId: string): Promise<unknown> {
     const image = await this.prisma.inventoryImage.findUnique({
-      where: {
-        id: imageId,
-      },
+      where: { id: imageId },
     });
 
     if (!image) {
@@ -16179,12 +16005,8 @@ export class MediaService {
     });
 
     const updated = await this.prisma.inventoryImage.update({
-      where: {
-        id: imageId,
-      },
-      data: {
-        isPrimary: true,
-      },
+      where: { id: imageId },
+      data: { isPrimary: true },
     });
 
     await this.activity.log('inventory.image_primary_set', {
@@ -16222,12 +16044,8 @@ export class MediaService {
     await this.prisma.$transaction(
       imageIds.map((imageId, index) =>
         this.prisma.inventoryImage.update({
-          where: {
-            id: imageId,
-          },
-          data: {
-            sortOrder: index,
-          },
+          where: { id: imageId },
+          data: { sortOrder: index },
         }),
       ),
     );
@@ -16319,14 +16137,24 @@ export class MetricsModule {}
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\metrics\metrics.service.ts =====
 
 import { Injectable } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { Queue, type ConnectionOptions } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 
-function redisConnection() {
+function redisConnection(): ConnectionOptions {
+  const redisUrl = process.env.REDIS_URL?.trim();
+
+  if (redisUrl) {
+    return {
+      url: redisUrl,
+      maxRetriesPerRequest: null,
+    };
+  }
+
   return {
     host: process.env.REDIS_HOST ?? 'localhost',
     port: Number(process.env.REDIS_PORT ?? 6379),
     password: process.env.REDIS_PASSWORD || undefined,
+    maxRetriesPerRequest: null,
   };
 }
 
@@ -16467,12 +16295,13 @@ export class MetricsService {
 
   async getQueueHealth(): Promise<unknown[]> {
     const queueNames = ['market', 'decisions', 'scraper', 'maintenance'];
+    const connection = redisConnection();
 
     const result = [];
 
     for (const name of queueNames) {
       const queue = new Queue(name, {
-        connection: redisConnection(),
+        connection,
       });
 
       const [waiting, active, completed, failed, delayed] = await Promise.all([
@@ -16907,6 +16736,7 @@ export class OperatorModule {}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\operator\operator.service.ts =====
 
+// backend/api/src/modules/operator/operator.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
@@ -16918,24 +16748,29 @@ export class OperatorService {
     private readonly realtime: RealtimeGateway,
   ) {}
 
-  async getUnresolvedMatches(status = 'pending', limit = 50): Promise<unknown[]> {
-    return this.prisma.unresolvedMatchQueue.findMany({
-      where: {
-        status,
-      },
+  private async attachListing(queueItem: any): Promise<any> {
+    const listing = await this.prisma.marketListing.findUnique({
+      where: { id: queueItem.listingId },
       include: {
-        listing: {
-          include: {
-            source: true,
-            item: true,
-          },
-        },
+        source: true,
+        item: true,
       },
-      orderBy: {
-        createdAt: 'asc',
-      },
+    });
+
+    return {
+      ...queueItem,
+      listing,
+    };
+  }
+
+  async getUnresolvedMatches(status = 'pending', limit = 50): Promise<unknown[]> {
+    const rows = await this.prisma.unresolvedMatchQueue.findMany({
+      where: { status },
+      orderBy: { createdAt: 'asc' },
       take: limit,
     });
+
+    return Promise.all(rows.map((row) => this.attachListing(row)));
   }
 
   async resolveMatch(params: {
@@ -16944,22 +16779,15 @@ export class OperatorService {
     operatorNote?: string;
   }): Promise<unknown> {
     const queueItem = await this.prisma.unresolvedMatchQueue.findUnique({
-      where: {
-        id: params.queueId,
-      },
-      include: {
-        listing: true,
-      },
+      where: { id: params.queueId },
     });
 
-    if (queueItem == null) {
+    if (!queueItem) {
       throw new NotFoundException('Queue item not found');
     }
 
     const targetItem = await this.prisma.item.findUnique({
-      where: {
-        id: params.itemId,
-      },
+      where: { id: params.itemId },
     });
 
     if (!targetItem) {
@@ -16968,25 +16796,17 @@ export class OperatorService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.marketListing.update({
-        where: {
-          id: queueItem.listingId,
-        },
-        data: {
-          itemId: params.itemId,
-        },
+        where: { id: queueItem.listingId },
+        data: { itemId: params.itemId },
       });
 
       return tx.unresolvedMatchQueue.update({
-        where: {
-          id: params.queueId,
-        },
+        where: { id: params.queueId },
         data: {
           suggestedItemId: params.itemId,
-          operatorNote: params.operatorNote,
+          resolvedItemId: params.itemId,
+          resolutionNote: params.operatorNote ?? null,
           status: 'resolved',
-        },
-        include: {
-          listing: true,
         },
       });
     });
@@ -17004,7 +16824,7 @@ export class OperatorService {
     this.realtime.emitItemRefresh(params.itemId, 'operator_match_resolved');
     this.realtime.emitOpportunityRefresh('operator_match_resolved');
 
-    return result;
+    return this.attachListing(result);
   }
 
   async dismissMatch(params: {
@@ -17012,21 +16832,17 @@ export class OperatorService {
     operatorNote?: string;
   }): Promise<unknown> {
     const queueItem = await this.prisma.unresolvedMatchQueue.findUnique({
-      where: {
-        id: params.queueId,
-      },
+      where: { id: params.queueId },
     });
 
-    if (queueItem == null) {
+    if (!queueItem) {
       throw new NotFoundException('Queue item not found');
     }
 
     const updated = await this.prisma.unresolvedMatchQueue.update({
-      where: {
-        id: params.queueId,
-      },
+      where: { id: params.queueId },
       data: {
-        operatorNote: params.operatorNote,
+        resolutionNote: params.operatorNote ?? null,
         status: 'dismissed',
       },
     });
@@ -17035,7 +16851,7 @@ export class OperatorService {
       queueId: params.queueId,
     });
 
-    return updated;
+    return this.attachListing(updated);
   }
 
   async updateOperatorNote(params: {
@@ -17043,23 +16859,21 @@ export class OperatorService {
     operatorNote: string;
   }): Promise<unknown> {
     const queueItem = await this.prisma.unresolvedMatchQueue.findUnique({
-      where: {
-        id: params.queueId,
-      },
+      where: { id: params.queueId },
     });
 
-    if (queueItem == null) {
+    if (!queueItem) {
       throw new NotFoundException('Queue item not found');
     }
 
-    return this.prisma.unresolvedMatchQueue.update({
-      where: {
-        id: params.queueId,
-      },
+    const updated = await this.prisma.unresolvedMatchQueue.update({
+      where: { id: params.queueId },
       data: {
-        operatorNote: params.operatorNote,
+        resolutionNote: params.operatorNote,
       },
     });
+
+    return this.attachListing(updated);
   }
 
   async getUnresolvedSummary(): Promise<{
@@ -17069,21 +16883,9 @@ export class OperatorService {
     total: number;
   }> {
     const [pending, resolved, dismissed] = await Promise.all([
-      this.prisma.unresolvedMatchQueue.count({
-        where: {
-          status: 'pending',
-        },
-      }),
-      this.prisma.unresolvedMatchQueue.count({
-        where: {
-          status: 'resolved',
-        },
-      }),
-      this.prisma.unresolvedMatchQueue.count({
-        where: {
-          status: 'dismissed',
-        },
-      }),
+      this.prisma.unresolvedMatchQueue.count({ where: { status: 'pending' } }),
+      this.prisma.unresolvedMatchQueue.count({ where: { status: 'resolved' } }),
+      this.prisma.unresolvedMatchQueue.count({ where: { status: 'dismissed' } }),
     ]);
 
     return {
@@ -17095,36 +16897,23 @@ export class OperatorService {
   }
 
   async getOperatorDashboard(): Promise<unknown> {
-    const [summary, oldestPending, recentResolved] = await Promise.all([
+    const [summary, oldestPendingRaw, recentResolvedRaw] = await Promise.all([
       this.getUnresolvedSummary(),
       this.prisma.unresolvedMatchQueue.findMany({
-        where: {
-          status: 'pending',
-        },
-        orderBy: {
-          createdAt: 'asc',
-        },
+        where: { status: 'pending' },
+        orderBy: { createdAt: 'asc' },
         take: 10,
-        include: {
-          listing: {
-            include: {
-              source: true,
-            },
-          },
-        },
       }),
       this.prisma.unresolvedMatchQueue.findMany({
-        where: {
-          status: 'resolved',
-        },
-        orderBy: {
-          updatedAt: 'desc',
-        },
+        where: { status: 'resolved' },
+        orderBy: { updatedAt: 'desc' },
         take: 10,
-        include: {
-          listing: true,
-        },
       }),
+    ]);
+
+    const [oldestPending, recentResolved] = await Promise.all([
+      Promise.all(oldestPendingRaw.map((row) => this.attachListing(row))),
+      Promise.all(recentResolvedRaw.map((row) => this.attachListing(row))),
     ]);
 
     return {
@@ -18029,8 +17818,8 @@ export class OpportunityEngineService {
               data: {
                 watchlistItemId: watch.id,
                 selectedPrice: buyPrice,
-                selectedSource: listing.source?.code ?? 'market',
                 status: 'queued',
+                reason: `Queued from ${listing.source?.code ?? 'market'}`,
               },
             });
 
@@ -19292,6 +19081,24 @@ import { SmartPricingService } from '../strategy/smart-pricing.service';
 @Injectable()
 export class PricingService {
   constructor(private readonly smartPricing: SmartPricingService) {}
+
+  calculateROI(params: {
+    buyPrice: number;
+    sellPrice: number;
+  }): number {
+    const buyPrice = toMoney(params.buyPrice);
+    const sellPrice = toMoney(params.sellPrice);
+
+    const profit = calculateProfit({
+      revenue: sellPrice,
+      cost: buyPrice,
+    });
+
+    return calculateRoiPercent({
+      profit,
+      cost: buyPrice,
+    });
+  }
 
   analyze(params: {
     buyPrice: number;
@@ -21769,61 +21576,89 @@ export class QueueModule {}
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\queue\queue.service.ts =====
 
 import { Injectable } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { Queue, type ConnectionOptions } from 'bullmq';
 import { QUEUE_NAMES, JOB_NAMES } from './queue.constants';
 
-function redisConnection() {
+function redisConnection(): ConnectionOptions {
+  const redisUrl = process.env.REDIS_URL?.trim();
+
+  if (redisUrl) {
+    return {
+      url: redisUrl,
+      maxRetriesPerRequest: null,
+    };
+  }
+
   return {
     host: process.env.REDIS_HOST ?? 'localhost',
     port: Number(process.env.REDIS_PORT ?? 6379),
     password: process.env.REDIS_PASSWORD || undefined,
+    maxRetriesPerRequest: null,
   };
 }
 
 @Injectable()
 export class QueueService {
+  private readonly connection = redisConnection();
+
   private readonly marketQueue = new Queue(QUEUE_NAMES.MARKET, {
-    connection: redisConnection(),
+    connection: this.connection,
   });
 
   private readonly decisionsQueue = new Queue(QUEUE_NAMES.DECISIONS, {
-    connection: redisConnection(),
+    connection: this.connection,
   });
 
   private readonly scraperQueue = new Queue(QUEUE_NAMES.SCRAPER, {
-    connection: redisConnection(),
+    connection: this.connection,
   });
 
   private readonly maintenanceQueue = new Queue(QUEUE_NAMES.MAINTENANCE, {
-    connection: redisConnection(),
+    connection: this.connection,
   });
 
   async enqueueMarketSnapshots(): Promise<unknown> {
-    return this.marketQueue.add(JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS, {}, {
-      removeOnComplete: 100,
-      removeOnFail: 500,
-    });
+    return this.marketQueue.add(
+      JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS,
+      {},
+      {
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    );
   }
 
   async enqueueDecisions(): Promise<unknown> {
-    return this.decisionsQueue.add(JOB_NAMES.RECOMPUTE_DECISIONS, {}, {
-      removeOnComplete: 100,
-      removeOnFail: 500,
-    });
+    return this.decisionsQueue.add(
+      JOB_NAMES.RECOMPUTE_DECISIONS,
+      {},
+      {
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    );
   }
 
   async enqueueDealDetection(): Promise<unknown> {
-    return this.decisionsQueue.add(JOB_NAMES.DETECT_DEALS, {}, {
-      removeOnComplete: 100,
-      removeOnFail: 500,
-    });
+    return this.decisionsQueue.add(
+      JOB_NAMES.DETECT_DEALS,
+      {},
+      {
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    );
   }
 
   async enqueueScheduledRefresh(): Promise<unknown> {
-    return this.maintenanceQueue.add(JOB_NAMES.SCHEDULED_REFRESH, {}, {
-      removeOnComplete: 100,
-      removeOnFail: 500,
-    });
+    return this.maintenanceQueue.add(
+      JOB_NAMES.SCHEDULED_REFRESH,
+      {},
+      {
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    );
   }
 
   async enqueueScannerJob(jobId: string): Promise<unknown> {
@@ -21929,7 +21764,7 @@ export class RateLimitModule {}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\rate-limit\rate-limit.service.ts =====
 
-import { Injectable, TooManyRequestsException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 
 type Bucket = {
   count: number;
@@ -21960,7 +21795,7 @@ export class RateLimitService {
     current.count += 1;
 
     if (current.count > params.limit) {
-      throw new TooManyRequestsException('Too many requests');
+      throw new HttpException('Too many requests', HttpStatus.TOO_MANY_REQUESTS);
     }
   }
 
@@ -22215,6 +22050,7 @@ export class ReportsModule {}
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\reports\reports.service.ts =====
 
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { toMoney } from '../../common/money.utils';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -22532,7 +22368,7 @@ export class ReportsService {
         type: 'financial',
         periodStart: from,
         periodEnd: to,
-        payloadJson: payload,
+        payloadJson: payload as Prisma.InputJsonValue,
       },
     });
   }
@@ -22709,7 +22545,7 @@ export class RepricerV2Service {
             ? 0.68
             : 0.45;
 
-    let mode = params.mode ?? 'balanced';
+    let mode: RepriceV2Result['mode'] = params.mode ?? 'balanced';
     let suggested = median;
 
     if (mode === 'fast_sale') {
@@ -26158,25 +25994,51 @@ export class StrategyController {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\strategy\strategy.module.ts =====
 
 import { Module } from '@nestjs/common';
+import { BundleBreakupEstimatorService } from './bundle-breakup-estimator.service';
 import { BundleDetectionService } from './bundle-detection.service';
+import { CapitalAllocationService } from './capital-allocation.service';
 import { DailyPlanService } from './daily-plan.service';
 import { FlipStrategyService } from './flip-strategy.service';
+import { HoldTimeEstimatorService } from './hold-time-estimator.service';
+import { LiquidityRankService } from './liquidity-rank.service';
 import { MinifigureArbitrageService } from './minifigure-arbitrage.service';
+import { MinifigurePricingService } from './minifigure-pricing.service';
+import { PartOutEstimatorService } from './part-out-estimator.service';
+import { ProfitTrackerService } from './profit-tracker.service';
+import { RiskManagementService } from './risk-management.service';
 import { SmartPricingService } from './smart-pricing.service';
+import { StrategyController } from './strategy.controller';
 
 @Module({
+  controllers: [StrategyController],
   providers: [
+    BundleBreakupEstimatorService,
     BundleDetectionService,
+    CapitalAllocationService,
     DailyPlanService,
     FlipStrategyService,
+    HoldTimeEstimatorService,
+    LiquidityRankService,
     MinifigureArbitrageService,
+    MinifigurePricingService,
+    PartOutEstimatorService,
+    ProfitTrackerService,
+    RiskManagementService,
     SmartPricingService,
   ],
   exports: [
+    BundleBreakupEstimatorService,
     BundleDetectionService,
+    CapitalAllocationService,
     DailyPlanService,
     FlipStrategyService,
+    HoldTimeEstimatorService,
+    LiquidityRankService,
     MinifigureArbitrageService,
+    MinifigurePricingService,
+    PartOutEstimatorService,
+    ProfitTrackerService,
+    RiskManagementService,
     SmartPricingService,
   ],
 })
@@ -28887,10 +28749,6 @@ server {
         proxy_send_timeout 3600s;
     }
 }
-
-===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\.env =====
-
-DATABASE_URL=postgresql://postgres:postgres@db.yourproject.supabase.co:5432/postgres?schema=public&sslmode=require
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\.env.example =====
 
@@ -31991,10 +31849,6 @@ coverage
 .gitignore
 README.md
 
-===== FILE: C:\Users\Vlad\lego_trading_manager\backend\workers\.env =====
-
-DATABASE_URL=postgresql://postgres:postgres@db.yourproject.supabase.co:5432/postgres?schema=public&sslmode=require
-
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\workers\.env.example =====
 
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arcturus?schema=public
@@ -32087,16 +31941,18 @@ CMD ["node", "dist/main.js"]
     "eslint": "^9.17.0",
     "prisma": "^5.22.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.9.3"
   }
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\workers\tsconfig.json =====
 
+// backend/workers/tsconfig.json
 {
   "compilerOptions": {
     "module": "commonjs",
     "target": "es2021",
+    "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,
     "moduleResolution": "node",
@@ -32194,12 +32050,13 @@ model InventoryItem {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  item         Item              @relation(fields: [itemId], references: [id])
-  assignedUser User?            @relation(fields: [assignedUserId], references: [id])
-  images       InventoryImage[]
-  sales        Sale[]
-  repriceFlows RepriceFlowItem[]
-  reviewFlows  ReviewFlowItem[]
+  item            Item              @relation(fields: [itemId], references: [id])
+  assignedUser    User?             @relation(fields: [assignedUserId], references: [id])
+  images          InventoryImage[]
+  sales           Sale[]
+  repriceFlows    RepriceFlowItem[]
+  reviewFlows     ReviewFlowItem[]
+  reserveRequests ReserveRequest[]
 
   @@index([itemId])
   @@index([assignedUserId])
@@ -33298,6 +33155,13 @@ export async function enqueueUnresolvedMatch(params: {
     },
   });
 
+  const resolutionNote =
+    params.reason || params.confidence != null
+      ? `Auto match: ${params.reason ?? 'unresolved'} / confidence ${
+          params.confidence ?? 0
+        }`
+      : undefined;
+
   if (existing) {
     await prisma.unresolvedMatchQueue.update({
       where: {
@@ -33307,12 +33171,7 @@ export async function enqueueUnresolvedMatch(params: {
         normalizedTitle,
         extractedSetNo,
         suggestedItemId: params.suggestedItemId ?? existing.suggestedItemId,
-        operatorNote:
-          params.reason || params.confidence != null
-            ? `Auto match: ${params.reason ?? 'unresolved'} / confidence ${
-                params.confidence ?? 0
-              }`
-            : existing.operatorNote,
+        resolutionNote: resolutionNote ?? existing.resolutionNote,
       },
     });
 
@@ -33327,12 +33186,7 @@ export async function enqueueUnresolvedMatch(params: {
       normalizedTitle,
       extractedSetNo,
       suggestedItemId: params.suggestedItemId ?? null,
-      operatorNote:
-        params.reason || params.confidence != null
-          ? `Auto match: ${params.reason ?? 'unresolved'} / confidence ${
-              params.confidence ?? 0
-            }`
-          : null,
+      resolutionNote: resolutionNote ?? null,
       status: 'pending',
     },
   });
@@ -33444,14 +33298,14 @@ export async function autoQueueOpportunitiesJob(params?: {
       continue;
     }
 
-    await prisma.purchaseFlowItem.create({
-      data: {
-        watchlistItemId: item.id,
-        selectedPrice: buyPrice,
-        selectedSource: listing.source?.code ?? 'market',
-        status: 'queued',
-      },
-    });
+await prisma.purchaseFlowItem.create({
+  data: {
+    watchlistItemId: item.id,
+    selectedPrice: buyPrice,
+    status: 'queued',
+    reason: `Queued from ${listing.source?.code ?? 'market'}`,
+  },
+});
 
     queued += 1;
   }
@@ -33465,6 +33319,10 @@ export async function autoQueueOpportunitiesJob(params?: {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\workers\src\jobs\cleanup-old-snapshots.job.ts =====
 
 import { prisma } from '../prisma';
+
+type IdRow = {
+  id: string;
+};
 
 export async function cleanupOldSnapshotsJob(params?: {
   keepPerItem?: number;
@@ -33484,7 +33342,7 @@ export async function cleanupOldSnapshotsJob(params?: {
   let deletedDecisions = 0;
 
   for (const item of items) {
-    const snapshots = await prisma.marketSnapshot.findMany({
+    const snapshots: IdRow[] = await prisma.marketSnapshot.findMany({
       where: {
         itemId: item.id,
       },
@@ -33501,7 +33359,7 @@ export async function cleanupOldSnapshotsJob(params?: {
       const result = await prisma.marketSnapshot.deleteMany({
         where: {
           id: {
-            in: snapshots.map((snapshot) => snapshot.id),
+            in: snapshots.map((snapshot: IdRow) => snapshot.id),
           },
         },
       });
@@ -33509,7 +33367,7 @@ export async function cleanupOldSnapshotsJob(params?: {
       deletedSnapshots += result.count;
     }
 
-    const decisions = await prisma.decisionSnapshot.findMany({
+    const decisions: IdRow[] = await prisma.decisionSnapshot.findMany({
       where: {
         itemId: item.id,
       },
@@ -33526,7 +33384,7 @@ export async function cleanupOldSnapshotsJob(params?: {
       const result = await prisma.decisionSnapshot.deleteMany({
         where: {
           id: {
-            in: decisions.map((decision) => decision.id),
+            in: decisions.map((decision: IdRow) => decision.id),
           },
         },
       });
@@ -33705,6 +33563,10 @@ function toMoney(value: number): number {
   return Number(value.toFixed(2));
 }
 
+type SaleRow = {
+  sellPrice: number;
+};
+
 async function evaluateInventoryItem(inventoryItemId: string): Promise<unknown> {
   const inventory = await prisma.inventoryItem.findUnique({
     where: {
@@ -33712,7 +33574,6 @@ async function evaluateInventoryItem(inventoryItemId: string): Promise<unknown> 
     },
     include: {
       item: true,
-      expenses: true,
     },
   });
 
@@ -33720,18 +33581,15 @@ async function evaluateInventoryItem(inventoryItemId: string): Promise<unknown> 
     return null;
   }
 
-  const expenses = toMoney(
-    inventory.expenses.reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0),
-  );
-
-  const totalCost = toMoney(Number(inventory.totalCost ?? 0) + expenses);
+  const totalCost = toMoney(Number(inventory.totalCost ?? 0));
   const currentExpected = toMoney(
     Number(inventory.expectedSalePriceManual ?? inventory.totalCost ?? 0),
   );
 
   const targetRoiPercent = 35;
   const expectedProfit = toMoney(currentExpected - totalCost);
-  const roiPercent = totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
+  const roiPercent =
+    totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
 
   let action = 'HOLD';
   let score = 50;
@@ -33768,7 +33626,6 @@ async function evaluateInventoryItem(inventoryItemId: string): Promise<unknown> 
       payloadJson: {
         inventoryItemId: inventory.id,
         totalCost,
-        expenses,
         currentExpected,
         expectedProfit,
         roiPercent,
@@ -33800,36 +33657,35 @@ async function evaluateListing(listingId: string): Promise<unknown> {
     return null;
   }
 
-  const historicalSales = await prisma.sale.findMany({
+  const historicalSales: SaleRow[] = await prisma.sale.findMany({
     where: {
       itemId: listing.itemId,
+    },
+    select: {
+      sellPrice: true,
     },
   });
 
   const avgSellPrice =
     historicalSales.length > 0
       ? toMoney(
-          historicalSales.reduce((sum, sale) => sum + Number(sale.sellPrice ?? 0), 0) /
-            historicalSales.length,
+          historicalSales.reduce(
+            (sum: number, sale: SaleRow) =>
+              sum + Number(sale.sellPrice ?? 0),
+            0,
+          ) / historicalSales.length,
         )
       : toMoney(totalCost * 1.4);
 
   const expectedProfit = toMoney(avgSellPrice - totalCost);
-  const roiPercent = totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
+  const roiPercent =
+    totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
 
   let score = 50 + Math.min(30, roiPercent / 2);
 
-  if (expectedProfit < 0) {
-    score -= 60;
-  }
-
-  if (roiPercent < 15) {
-    score -= 25;
-  }
-
-  if (roiPercent >= 40) {
-    score += 15;
-  }
+  if (expectedProfit < 0) score -= 60;
+  if (roiPercent < 15) score -= 25;
+  if (roiPercent >= 40) score += 15;
 
   score = Math.max(0, Math.min(100, toMoney(score)));
 
@@ -33906,18 +33762,12 @@ export async function recomputeDecisionsJob(): Promise<{
 
   for (const row of inventory) {
     const result = await evaluateInventoryItem(row.id);
-
-    if (result) {
-      inventoryEvaluated += 1;
-    }
+    if (result) inventoryEvaluated += 1;
   }
 
   for (const listing of listings) {
     const result = await evaluateListing(listing.id);
-
-    if (result) {
-      listingsEvaluated += 1;
-    }
+    if (result) listingsEvaluated += 1;
   }
 
   await prisma.activityLog.create({
@@ -33942,6 +33792,14 @@ import { convertToUah } from '../common/currency-converter';
 import { avg, median } from '../common/money';
 import { prisma } from '../prisma';
 
+type MarketListingRow = {
+  price: number;
+  currency: string;
+  shippingPrice: number | null;
+  shippingCurrency: string | null;
+  sealed: boolean | null;
+};
+
 function confidenceFromCount(count: number): number {
   if (count >= 10) return 0.95;
   if (count >= 5) return 0.8;
@@ -33963,10 +33821,17 @@ export async function recomputeMarketSnapshotsJob(): Promise<{
   let snapshotsCreated = 0;
 
   for (const item of items) {
-    const listings = await prisma.marketListing.findMany({
+    const listings: MarketListingRow[] = await prisma.marketListing.findMany({
       where: {
         itemId: item.id,
         status: 'active',
+      },
+      select: {
+        price: true,
+        currency: true,
+        shippingPrice: true,
+        shippingCurrency: true,
+        sealed: true,
       },
     });
 
@@ -33985,11 +33850,13 @@ export async function recomputeMarketSnapshotsJob(): Promise<{
     }
 
     const prices = listings
-      .map((listing) => convertToUah(listing.price, listing.currency))
-      .filter((value) => Number.isFinite(value) && value > 0);
+      .map((listing: MarketListingRow) =>
+        convertToUah(listing.price, listing.currency),
+      )
+      .filter((value: number) => Number.isFinite(value) && value > 0);
 
     const pricesWithShipping = listings
-      .map((listing) => {
+      .map((listing: MarketListingRow) => {
         const price = convertToUah(listing.price, listing.currency);
         const shipping = convertToUah(
           listing.shippingPrice ?? 0,
@@ -33998,26 +33865,30 @@ export async function recomputeMarketSnapshotsJob(): Promise<{
 
         return price + shipping;
       })
-      .filter((value) => Number.isFinite(value) && value > 0);
+      .filter((value: number) => Number.isFinite(value) && value > 0);
 
     const shipping = listings
-      .map((listing) =>
+      .map((listing: MarketListingRow) =>
         convertToUah(
           listing.shippingPrice ?? 0,
           listing.shippingCurrency ?? listing.currency,
         ),
       )
-      .filter((value) => Number.isFinite(value) && value >= 0);
+      .filter((value: number) => Number.isFinite(value) && value >= 0);
 
     const sealedPrices = listings
-      .filter((listing) => listing.sealed === true)
-      .map((listing) => convertToUah(listing.price, listing.currency))
-      .filter((value) => Number.isFinite(value) && value > 0);
+      .filter((listing: MarketListingRow) => listing.sealed === true)
+      .map((listing: MarketListingRow) =>
+        convertToUah(listing.price, listing.currency),
+      )
+      .filter((value: number) => Number.isFinite(value) && value > 0);
 
     const usedPrices = listings
-      .filter((listing) => listing.sealed !== true)
-      .map((listing) => convertToUah(listing.price, listing.currency))
-      .filter((value) => Number.isFinite(value) && value > 0);
+      .filter((listing: MarketListingRow) => listing.sealed !== true)
+      .map((listing: MarketListingRow) =>
+        convertToUah(listing.price, listing.currency),
+      )
+      .filter((value: number) => Number.isFinite(value) && value > 0);
 
     await prisma.marketSnapshot.create({
       data: {
@@ -34153,8 +34024,8 @@ export async function scheduledRefreshJob(): Promise<{
     snapshotsCreated: number;
   };
   decisions?: {
-    inventoryDecisions: number;
-    watchlistDecisions: number;
+    inventoryEvaluated: number;
+    listingsEvaluated: number;
   };
   stale?: {
     markedStale: number;
@@ -34398,6 +34269,14 @@ export const JOB_NAMES = {
 import IORedis from 'ioredis';
 
 export function createRedisConnection(): IORedis {
+  const redisUrl = process.env.REDIS_URL?.trim();
+
+  if (redisUrl) {
+    return new IORedis(redisUrl, {
+      maxRetriesPerRequest: null,
+    });
+  }
+
   return new IORedis({
     host: process.env.REDIS_HOST ?? 'localhost',
     port: Number(process.env.REDIS_PORT ?? 6379),

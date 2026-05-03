@@ -2,15 +2,26 @@
 
 import { useEffect, useState } from 'react';
 import { ActivityFilters } from '@/components/admin/activity-filters';
+import { apiFetch } from '@/lib/client-api';
 
 export default function ActivityPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    fetch('/api/activity')
-      .then((r) => r.json())
-      .then(setRows);
+    let mounted = true;
+    
+    apiFetch<any[]>('/api/activity')
+      .then((data) => {
+        if (mounted) setRows(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (mounted) setRows([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const filtered =

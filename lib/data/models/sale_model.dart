@@ -5,7 +5,8 @@ class SaleModel {
   final String? buyerName;
   final double salePrice;
   final double platformFee;
-  final double shippingByMe;
+  final double shippingPaidByMe;
+  final double shippingPaidByBuyer;
   final double finalNet;
   final String currency;
   final DateTime saleDate;
@@ -19,7 +20,8 @@ class SaleModel {
     this.buyerName,
     required this.salePrice,
     required this.platformFee,
-    required this.shippingByMe,
+    required this.shippingPaidByMe,
+    this.shippingPaidByBuyer = 0.0,
     required this.finalNet,
     required this.currency,
     required this.saleDate,
@@ -32,19 +34,25 @@ class SaleModel {
     return finalNet / quantity;
   }
 
+  factory SaleModel.fromMap(Map<String, dynamic> map) {
+    return SaleModel.fromJson(map);
+  }
+
+  Map<String, dynamic> toMap() => toJson();
+
   factory SaleModel.fromJson(Map<String, dynamic> json) {
     return SaleModel(
       id: json['id'] as String? ?? '',
       itemId: json['itemId'] as String? ?? '',
       platform: json['platform'] as String? ?? '',
       buyerName: json['buyerName'] as String?,
-      salePrice: (json['salePrice'] as num?)?.toDouble() ?? 0,
-      platformFee: (json['platformFee'] as num?)?.toDouble() ?? 0,
-      shippingByMe: (json['shippingByMe'] as num?)?.toDouble() ?? 0,
-      finalNet: (json['finalNet'] as num?)?.toDouble() ?? 0,
+      salePrice: (json['salePrice'] as num?)?.toDouble() ?? 0.0,
+      platformFee: (json['platformFee'] as num?)?.toDouble() ?? 0.0,
+      shippingPaidByMe: (json['shippingPaidByMe'] ?? json['shippingByMe'] as num?)?.toDouble() ?? 0.0,
+      shippingPaidByBuyer: (json['shippingPaidByBuyer'] as num?)?.toDouble() ?? 0.0,
+      finalNet: (json['finalNet'] as num?)?.toDouble() ?? 0.0,
       currency: json['currency'] as String? ?? 'UAH',
-      saleDate:
-          DateTime.tryParse(json['saleDate'] as String? ?? '') ?? DateTime.now(),
+      saleDate: DateTime.tryParse(json['saleDate'] as String? ?? '') ?? DateTime.now(),
       note: json['note'] as String?,
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
     );
@@ -58,7 +66,8 @@ class SaleModel {
       'buyerName': buyerName,
       'salePrice': salePrice,
       'platformFee': platformFee,
-      'shippingByMe': shippingByMe,
+      'shippingPaidByMe': shippingPaidByMe,
+      'shippingPaidByBuyer': shippingPaidByBuyer,
       'finalNet': finalNet,
       'currency': currency,
       'saleDate': saleDate.toIso8601String(),
@@ -74,7 +83,8 @@ class SaleModel {
     String? buyerName,
     double? salePrice,
     double? platformFee,
-    double? shippingByMe,
+    double? shippingPaidByMe,
+    double? shippingPaidByBuyer,
     double? finalNet,
     String? currency,
     DateTime? saleDate,
@@ -88,7 +98,8 @@ class SaleModel {
       buyerName: buyerName ?? this.buyerName,
       salePrice: salePrice ?? this.salePrice,
       platformFee: platformFee ?? this.platformFee,
-      shippingByMe: shippingByMe ?? this.shippingByMe,
+      shippingPaidByMe: shippingPaidByMe ?? this.shippingPaidByMe,
+      shippingPaidByBuyer: shippingPaidByBuyer ?? this.shippingPaidByBuyer,
       finalNet: finalNet ?? this.finalNet,
       currency: currency ?? this.currency,
       saleDate: saleDate ?? this.saleDate,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lego_trading_manager/features/inventory/application/inventory_execution_confidence_provider.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_execution_confidence_model.dart';
 
 class InventoryExecutionConfidenceCard extends StatelessWidget {
   final InventoryExecutionConfidenceModel model;

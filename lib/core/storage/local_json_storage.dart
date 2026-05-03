@@ -1,6 +1,5 @@
-import 'dart:convert';
-
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lego_trading_manager/core/utils/isolate_json_helper.dart';
 
 class LocalJsonStorage {
   const LocalJsonStorage();
@@ -13,7 +12,7 @@ class LocalJsonStorage {
       return const [];
     }
 
-    final decoded = jsonDecode(raw);
+    final decoded = await IsolateJsonHelper.decode(raw);
 
     if (decoded is! List) {
       return const [];
@@ -30,7 +29,8 @@ class LocalJsonStorage {
     List<Map<String, dynamic>> values,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(key, jsonEncode(values));
+    final raw = await IsolateJsonHelper.encode(values);
+    await prefs.setString(key, raw);
   }
 
   Future<void> remove(String key) async {

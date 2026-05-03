@@ -1,5 +1,3 @@
-// lib/features/partout/presentation/widgets/partout_search_field.dart
-
 import 'package:flutter/material.dart';
 
 class PartOutSearchField extends StatelessWidget {

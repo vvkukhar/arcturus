@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class RepriceFlowDoneController extends StateNotifier<Set<String>> {
-  RepriceFlowDoneController() : super(const {});
+class RepriceFlowDoneController extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    return const {};
+  }
 
   void markDone(String id) {
     state = {...state, id};
@@ -14,6 +17,6 @@ class RepriceFlowDoneController extends StateNotifier<Set<String>> {
 }
 
 final repriceFlowDoneProvider =
-    StateNotifierProvider<RepriceFlowDoneController, Set<String>>(
-  (ref) => RepriceFlowDoneController(),
+    NotifierProvider<RepriceFlowDoneController, Set<String>>(
+  RepriceFlowDoneController.new,
 );

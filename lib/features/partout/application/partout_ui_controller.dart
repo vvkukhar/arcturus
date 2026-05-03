@@ -1,12 +1,13 @@
-// lib/features/partout/application/partout_ui_controller.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/partout/application/partout_filter_model.dart';
 import 'package:lego_trading_manager/features/partout/application/partout_sort_option.dart';
 import 'package:lego_trading_manager/features/partout/application/partout_ui_state.dart';
 
-class PartOutUiController extends StateNotifier<PartOutUiState> {
-  PartOutUiController() : super(PartOutUiState.initial());
+class PartOutUiController extends Notifier<PartOutUiState> {
+  @override
+  PartOutUiState build() {
+    return PartOutUiState.initial();
+  }
 
   void search(String value) {
     state = state.copyWith(query: value);
@@ -26,6 +27,6 @@ class PartOutUiController extends StateNotifier<PartOutUiState> {
 }
 
 final partOutUiControllerProvider =
-    StateNotifierProvider<PartOutUiController, PartOutUiState>(
-  (ref) => PartOutUiController(),
+    NotifierProvider<PartOutUiController, PartOutUiState>(
+  PartOutUiController.new,
 );

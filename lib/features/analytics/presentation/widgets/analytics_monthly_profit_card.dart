@@ -1,8 +1,6 @@
-// lib/features/analytics/presentation/widgets/analytics_monthly_profit_card.dart
-
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
-import 'package:lego_trading_manager/features/analytics/application/analytics_monthly_profit_provider.dart';
+import 'package:lego_trading_manager/features/analytics/application/analytics_monthly_profit_model.dart';
 
 class AnalyticsMonthlyProfitCard extends StatelessWidget {
   final AnalyticsMonthlyProfitModel model;

@@ -20,45 +20,35 @@ class DashboardPriorityQueueActionState {
   }
 }
 
-class DashboardPriorityQueueActionController
-    extends StateNotifier<DashboardPriorityQueueActionState> {
-  DashboardPriorityQueueActionController()
-      : super(
-          const DashboardPriorityQueueActionState(
-            doneIds: {},
-            skippedIds: {},
-          ),
-        );
+class DashboardPriorityQueueActionController extends Notifier<DashboardPriorityQueueActionState> {
+  @override
+  DashboardPriorityQueueActionState build() {
+    return const DashboardPriorityQueueActionState(doneIds: {}, skippedIds: {});
+  }
 
   void markDone(String id) {
-    final nextDone = {...state.doneIds, id};
-    final nextSkipped = {...state.skippedIds}..remove(id);
     state = state.copyWith(
-      doneIds: nextDone,
-      skippedIds: nextSkipped,
+      doneIds: {...state.doneIds, id},
+      skippedIds: {...state.skippedIds}..remove(id),
     );
   }
 
   void markSkipped(String id) {
-    final nextSkipped = {...state.skippedIds, id};
-    final nextDone = {...state.doneIds}..remove(id);
     state = state.copyWith(
-      doneIds: nextDone,
-      skippedIds: nextSkipped,
+      doneIds: {...state.doneIds}..remove(id),
+      skippedIds: {...state.skippedIds, id},
     );
   }
 
   void reset(String id) {
-    final nextDone = {...state.doneIds}..remove(id);
-    final nextSkipped = {...state.skippedIds}..remove(id);
     state = state.copyWith(
-      doneIds: nextDone,
-      skippedIds: nextSkipped,
+      doneIds: {...state.doneIds}..remove(id),
+      skippedIds: {...state.skippedIds}..remove(id),
     );
   }
 }
 
-final dashboardPriorityQueueActionProvider = StateNotifierProvider<
+final dashboardPriorityQueueActionProvider = NotifierProvider<
     DashboardPriorityQueueActionController, DashboardPriorityQueueActionState>(
-  (ref) => DashboardPriorityQueueActionController(),
+  DashboardPriorityQueueActionController.new,
 );

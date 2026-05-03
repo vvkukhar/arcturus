@@ -1,5 +1,3 @@
-// lib/features/dashboard/application/dashboard_deep_metrics_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
@@ -11,7 +9,10 @@ final dashboardDeepMetricsProvider = Provider<DashboardDeepMetricsModel>((ref) {
   final alerts = ref.watch(dashboardAlertsProvider);
   final stale = ref.watch(dashboardStaleInventoryProvider);
   final bestDeals = ref.watch(dashboardBestDealsProvider);
-  final allItems = InventoryRepository().getAllItems();
+  
+  // Примітка: В ідеалі тут має бути доступ до репозиторію через Provider, 
+  // але оскільки це синхронне читання з кешу, це допустимо.
+  final allItems = InventoryRepository(ref.watch(inventoryLocalDatasourceProvider)).getAllItems();
 
   double topExpectedProfit = 0;
   for (final item in allItems) {
@@ -26,8 +27,7 @@ final dashboardDeepMetricsProvider = Provider<DashboardDeepMetricsModel>((ref) {
     staleCount: stale.length,
     bestDealsCount: bestDeals.length,
     topExpectedProfit: topExpectedProfit,
-    totalSoldCount:
-        allItems.where((item) => item.status == ItemStatus.sold).length,
+    totalSoldCount: allItems.where((item) => item.status == ItemStatus.sold).length,
     totalActiveCount: allItems.where((item) => item.isActive).length,
   );
 });

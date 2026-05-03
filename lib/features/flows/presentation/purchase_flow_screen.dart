@@ -55,9 +55,7 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
                       children: [
                         Text(
                           item.watchlistItemId,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 6),
                         Text('Status: ${item.status}'),
@@ -66,10 +64,8 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
                           onPressed: item.status == 'bought'
                               ? null
                               : () async {
-                                  final priceController =
-                                      TextEditingController();
-                                  final qtyController =
-                                      TextEditingController(text: '1');
+                                  final priceController = TextEditingController();
+                                  final qtyController = TextEditingController(text: '1');
 
                                   await showDialog<void>(
                                     context: context,
@@ -81,59 +77,39 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
                                           children: [
                                             TextField(
                                               controller: priceController,
-                                              keyboardType: const TextInputType
-                                                  .numberWithOptions(
-                                                decimal: true,
-                                              ),
-                                              decoration: const InputDecoration(
-                                                labelText: 'Purchase price',
-                                              ),
+                                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                              decoration: const InputDecoration(labelText: 'Purchase price'),
                                             ),
+                                            const SizedBox(height: 12),
                                             TextField(
                                               controller: qtyController,
-                                              keyboardType:
-                                                  TextInputType.number,
-                                              decoration: const InputDecoration(
-                                                labelText: 'Quantity',
-                                              ),
+                                              keyboardType: TextInputType.number,
+                                              decoration: const InputDecoration(labelText: 'Quantity'),
                                             ),
                                           ],
                                         ),
                                         actions: [
                                           TextButton(
-                                            onPressed: () {
-                                              Navigator.of(dialogContext).pop();
-                                            },
+                                            onPressed: () => Navigator.of(dialogContext).pop(),
                                             child: const Text('Cancel'),
                                           ),
                                           FilledButton(
                                             onPressed: () async {
-                                              final navigator =
-                                                  Navigator.of(dialogContext);
-                                              final messenger =
-                                                  ScaffoldMessenger.of(context);
-
+                                              final navigator = Navigator.of(dialogContext);
+                                              final messenger = ScaffoldMessenger.of(context);
                                               navigator.pop();
 
                                               await repo.markBought(
                                                 id: item.id,
-                                                price: double.parse(
-                                                  priceController.text,
-                                                ),
-                                                qty: int.parse(
-                                                  qtyController.text,
-                                                ),
+                                                price: double.tryParse(priceController.text) ?? 0.0,
+                                                qty: int.tryParse(qtyController.text) ?? 1,
                                               );
 
                                               await _reload();
-                                              if (!mounted) {
-                                                return;
-                                              }
+                                              if (!mounted) return;
 
                                               messenger.showSnackBar(
-                                                const SnackBar(
-                                                  content: Text('Marked bought'),
-                                                ),
+                                                const SnackBar(content: Text('Marked bought')),
                                               );
                                             },
                                             child: const Text('Confirm'),
@@ -153,12 +129,8 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
             ),
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
-        ),
-        error: (error, _) => Center(
-          child: Text('Error: $error'),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(child: Text('Error: $error')),
       ),
     );
   }

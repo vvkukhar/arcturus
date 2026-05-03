@@ -14,7 +14,7 @@ final inventoryRestorePresetProvider = Provider<void Function()>((ref) {
 
       ref.read(inventoryUiControllerProvider.notifier).setFilter(preset.filter);
       ref.read(inventoryUiControllerProvider.notifier).setSort(preset.sort);
-      ref.read(inventorySelectedPresetProvider.notifier).state = preset.id;
+      ref.read(inventorySelectedPresetProvider.notifier).set(preset.id);
       break;
     }
   };

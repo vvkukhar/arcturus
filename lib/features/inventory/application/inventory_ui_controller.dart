@@ -3,8 +3,11 @@ import 'package:lego_trading_manager/features/inventory/application/inventory_fi
 import 'package:lego_trading_manager/features/inventory/application/inventory_sort_option.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_ui_state.dart';
 
-class InventoryUiController extends StateNotifier<InventoryUiState> {
-  InventoryUiController() : super(InventoryUiState.initial());
+class InventoryUiController extends Notifier<InventoryUiState> {
+  @override
+  InventoryUiState build() {
+    return InventoryUiState.initial();
+  }
 
   void search(String value) {
     state = state.copyWith(query: value);
@@ -24,6 +27,6 @@ class InventoryUiController extends StateNotifier<InventoryUiState> {
 }
 
 final inventoryUiControllerProvider =
-    StateNotifierProvider<InventoryUiController, InventoryUiState>(
-  (ref) => InventoryUiController(),
+    NotifierProvider<InventoryUiController, InventoryUiState>(
+  InventoryUiController.new,
 );

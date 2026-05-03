@@ -1,4 +1,3 @@
-// lib/features/command_center/presentation/command_center_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
@@ -14,8 +13,7 @@ class CommandCenterScreen extends ConsumerStatefulWidget {
   const CommandCenterScreen({super.key});
 
   @override
-  ConsumerState<CommandCenterScreen> createState() =>
-      _CommandCenterScreenState();
+  ConsumerState<CommandCenterScreen> createState() => _CommandCenterScreenState();
 }
 
 class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
@@ -60,11 +58,11 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
           CommandCenterSearchField(
             controller: _searchController,
             onChanged: (value) {
-              ref.read(commandCenterSearchProvider.notifier).state = value;
+              ref.read(commandCenterSearchProvider.notifier).set(value);
             },
             onClear: () {
               _searchController.clear();
-              ref.read(commandCenterSearchProvider.notifier).state = '';
+              ref.read(commandCenterSearchProvider.notifier).set('');
             },
           ),
           const SizedBox(height: 16),
@@ -86,8 +84,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                     child: CommandCenterActionCard(
                       action: action,
                       badgeText: badgeFor(action.route),
-                      onTap: () =>
-                          Navigator.of(context).pushNamed(action.route),
+                      onTap: () => Navigator.of(context).pushNamed(action.route),
                     ),
                   ),
                 ),

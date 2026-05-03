@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/data/models/manual_currency_rate_model.dart';
 
-class ManualRatesController
-    extends StateNotifier<List<ManualCurrencyRateModel>> {
-  ManualRatesController() : super(const []);
+class ManualRatesController extends Notifier<List<ManualCurrencyRateModel>> {
+  @override
+  List<ManualCurrencyRateModel> build() {
+    return const [];
+  }
 
   void load() {
     state = [...state];
@@ -36,6 +38,6 @@ class ManualRatesController
 }
 
 final manualRatesControllerProvider =
-    StateNotifierProvider<ManualRatesController, List<ManualCurrencyRateModel>>(
-  (ref) => ManualRatesController(),
+    NotifierProvider<ManualRatesController, List<ManualCurrencyRateModel>>(
+  ManualRatesController.new,
 );

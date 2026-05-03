@@ -1,36 +1,59 @@
+import 'package:lego_trading_manager/data/datasources/local/market_local_datasource.dart';
 import 'package:lego_trading_manager/data/models/market_snapshot_model.dart';
-import 'package:lego_trading_manager/data/store/market_memory_store.dart';
 
 class MarketRepository {
+  final MarketLocalDatasource _localDatasource;
+  List<MarketSnapshotModel> _memoryCache = [];
+  bool _isLoaded = false;
+
+  MarketRepository(this._localDatasource);
+
+  Future<void> loadCache() async {
+    _memoryCache = await _localDatasource.getAll();
+    _isLoaded = true;
+  }
+
   List<MarketSnapshotModel> getAll() {
-    return List<MarketSnapshotModel>.from(MarketMemoryStore.snapshots);
+    if (!_isLoaded) throw StateError('MarketRepository accessed before loadCache()');
+    return List<MarketSnapshotModel>.from(_memoryCache);
   }
 
   MarketSnapshotModel? getById(String id) {
-    return MarketMemoryStore.getById(id);
+    if (!_isLoaded) throw StateError('MarketRepository accessed before loadCache()');
+    try {
+      return _memoryCache.firstWhere((s) => s.id == id);
+    } catch (_) {
+      return null;
+    }
   }
 
   List<MarketSnapshotModel> getByItemRef(String itemRef) {
-    final items = MarketMemoryStore.getByItemRef(itemRef);
+    if (!_isLoaded) throw StateError('MarketRepository accessed before loadCache()');
+    final items = _memoryCache.where((s) => s.itemRef == itemRef).toList();
     items.sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
     return items;
   }
 
-  void add(MarketSnapshotModel snapshot) {
-    MarketMemoryStore.add(snapshot);
+  Future<void> add(MarketSnapshotModel snapshot) async {
+    await _localDatasource.add(snapshot);
+    _memoryCache.insert(0, snapshot);
   }
 
-  void update(MarketSnapshotModel snapshot) {
-    MarketMemoryStore.update(snapshot);
+  Future<void> update(MarketSnapshotModel snapshot) async {
+    await _localDatasource.update(snapshot);
+    final index = _memoryCache.indexWhere((e) => e.id == snapshot.id);
+    if (index != -1) {
+      _memoryCache[index] = snapshot;
+    }
   }
 
-  void delete(String id) {
-    MarketMemoryStore.delete(id);
+  Future<void> delete(String id) async {
+    await _localDatasource.delete(id);
+    _memoryCache.removeWhere((e) => e.id == id);
   }
 
-  void replaceAll(List<MarketSnapshotModel> snapshots) {
-    MarketMemoryStore.snapshots
-      ..clear()
-      ..addAll(snapshots);
+  Future<void> replaceAll(List<MarketSnapshotModel> snapshots) async {
+    await _localDatasource.replaceAll(snapshots);
+    _memoryCache = List.from(snapshots);
   }
 }

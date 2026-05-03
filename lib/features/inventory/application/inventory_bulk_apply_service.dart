@@ -1,9 +1,9 @@
-// lib/features/inventory/application/inventory_bulk_apply_service.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_helper_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_bulk_action_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_bulk_action_type.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_controller.dart';
 
 class InventoryBulkApplyService {
   final Ref ref;
@@ -14,7 +14,7 @@ class InventoryBulkApplyService {
     required Set<String> selectedIds,
     required InventoryBulkActionType action,
   }) async {
-    final repo = InventoryRepository();
+    final repo = ref.read(inventoryRepositoryProvider);
     final items = repo.getAllItems();
 
     final next = ref.read(inventoryBulkActionProvider).apply(
@@ -23,7 +23,8 @@ class InventoryBulkApplyService {
           action: action,
         );
 
-    repo.replaceAll(next);
+    await repo.replaceAll(next);
+    ref.read(inventoryControllerProvider.notifier).loadItems();
 
     await ref.read(activityLogHelperProvider).inventoryAction(
           title: 'Inventory bulk action',

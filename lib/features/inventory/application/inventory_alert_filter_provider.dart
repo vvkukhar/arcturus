@@ -7,6 +7,16 @@ enum InventoryAlertFilter {
   repricing,
 }
 
-final inventoryAlertFilterProvider = StateProvider<InventoryAlertFilter>((ref) {
-  return InventoryAlertFilter.all;
-});
+class InventoryAlertFilterNotifier extends Notifier<InventoryAlertFilter> {
+  @override
+  InventoryAlertFilter build() => InventoryAlertFilter.all;
+
+  void set(InventoryAlertFilter value) {
+    state = value;
+  }
+}
+
+final inventoryAlertFilterProvider =
+    NotifierProvider<InventoryAlertFilterNotifier, InventoryAlertFilter>(
+  InventoryAlertFilterNotifier.new,
+);

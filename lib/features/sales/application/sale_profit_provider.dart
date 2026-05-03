@@ -19,7 +19,7 @@ final saleProfitProvider = Provider.family<SaleProfitModel, SaleModel>((ref, sal
   final purchaseCost = hasAllocatedCost
       ? allocation.allocatedCost
       : linkedPurchase == null
-          ? 0
+          ? 0.0
           : linkedPurchase.unitCost * sale.quantity;
 
   final hasPurchaseCost = hasAllocatedCost || linkedPurchase != null;
@@ -40,14 +40,14 @@ final saleProfitProvider = Provider.family<SaleProfitModel, SaleModel>((ref, sal
     unitNet: sale.unitNet,
     purchaseCost: purchaseCost,
     unitCost: unitCost,
-    profit: hasPurchaseCost ? profit : 0,
-    unitProfit: hasPurchaseCost ? unitProfit : 0,
+    profit: hasPurchaseCost ? profit : 0.0,
+    unitProfit: hasPurchaseCost ? unitProfit : 0.0,
     roiPercent: hasPurchaseCost
         ? service.roiPercent(
             profit: profit,
             purchaseCost: purchaseCost,
           )
-        : 0,
+        : 0.0,
     hasPurchaseCost: hasPurchaseCost,
   );
 });

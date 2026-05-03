@@ -13,10 +13,10 @@ final salesProfitSummaryProvider = Provider<SalesProfitSummaryModel>((ref) {
   int totalUnits = 0;
   int matchedUnits = 0;
 
-  double totalNet = 0;
-  double totalPurchaseCost = 0;
-  double totalProfit = 0;
-  double totalRoi = 0;
+  double totalNet = 0.0;
+  double totalPurchaseCost = 0.0;
+  double totalProfit = 0.0;
+  double totalRoi = 0.0;
 
   for (final sale in sales) {
     totalUnits += sale.quantity;
@@ -32,11 +32,11 @@ final salesProfitSummaryProvider = Provider<SalesProfitSummaryModel>((ref) {
 
     final manualMatches = linkedPurchaseId == null
         ? const []
-        : purchases.where((purchase) => purchase.id == linkedPurchaseId);
+        : purchases.where((purchase) => purchase.id == linkedPurchaseId).toList();
 
     final itemMatches = purchases.where(
       (purchase) => purchase.itemId == sale.itemId,
-    );
+    ).toList();
 
     final purchase = manualMatches.isNotEmpty
         ? manualMatches.first
@@ -53,7 +53,7 @@ final salesProfitSummaryProvider = Provider<SalesProfitSummaryModel>((ref) {
 
     final cost = purchase.unitCost * sale.quantity;
     final profit = sale.finalNet - cost;
-    final roi = cost <= 0 ? 0 : profit / cost * 100;
+    final roi = cost <= 0 ? 0.0 : profit / cost * 100;
 
     totalPurchaseCost += cost;
     totalProfit += profit;
@@ -70,7 +70,7 @@ final salesProfitSummaryProvider = Provider<SalesProfitSummaryModel>((ref) {
     totalNet: totalNet,
     totalPurchaseCost: totalPurchaseCost,
     totalProfit: totalProfit,
-    averageRoiPercent: matched == 0 ? 0 : totalRoi / matched,
-    averageUnitProfit: matchedUnits <= 0 ? 0 : totalProfit / matchedUnits,
+    averageRoiPercent: matched == 0 ? 0.0 : totalRoi / matched,
+    averageUnitProfit: matchedUnits <= 0 ? 0.0 : totalProfit / matchedUnits,
   );
 });

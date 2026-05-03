@@ -16,14 +16,14 @@ class OpportunityActionState {
   }
 }
 
-class OpportunityActionNotifier extends StateNotifier<OpportunityActionState> {
-  OpportunityActionNotifier()
-      : super(const OpportunityActionState(loadingIds: {}));
+class OpportunityActionNotifier extends Notifier<OpportunityActionState> {
+  @override
+  OpportunityActionState build() {
+    return const OpportunityActionState(loadingIds: {});
+  }
 
   void start(String id) {
-    state = state.copyWith(
-      loadingIds: {...state.loadingIds, id},
-    );
+    state = state.copyWith(loadingIds: {...state.loadingIds, id});
   }
 
   void stop(String id) {
@@ -35,7 +35,6 @@ class OpportunityActionNotifier extends StateNotifier<OpportunityActionState> {
 }
 
 final opportunityActionProvider =
-    StateNotifierProvider<OpportunityActionNotifier, OpportunityActionState>(
-        (ref) {
-  return OpportunityActionNotifier();
-});
+    NotifierProvider<OpportunityActionNotifier, OpportunityActionState>(
+  OpportunityActionNotifier.new,
+);

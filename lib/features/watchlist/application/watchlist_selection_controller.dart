@@ -1,20 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_selection_state.dart';
 
-class WatchlistSelectionController
-    extends StateNotifier<WatchlistSelectionState> {
-  WatchlistSelectionController()
-      : super(WatchlistSelectionState.initial());
+class WatchlistSelectionController extends Notifier<WatchlistSelectionState> {
+  @override
+  WatchlistSelectionState build() {
+    return WatchlistSelectionState.initial();
+  }
 
   void toggle(String id) {
     final next = {...state.selectedIds};
-
     if (next.contains(id)) {
       next.remove(id);
     } else {
       next.add(id);
     }
-
     state = state.copyWith(selectedIds: next);
   }
 
@@ -32,7 +31,6 @@ class WatchlistSelectionController
 }
 
 final watchlistSelectionControllerProvider =
-    StateNotifierProvider<WatchlistSelectionController,
-        WatchlistSelectionState>((ref) {
-  return WatchlistSelectionController();
-});
+    NotifierProvider<WatchlistSelectionController, WatchlistSelectionState>(
+  WatchlistSelectionController.new,
+);

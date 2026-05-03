@@ -24,7 +24,7 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
   late final TextEditingController _buyerNameController;
   late final TextEditingController _salePriceController;
   late final TextEditingController _platformFeeController;
-  late final TextEditingController _shippingByMeController;
+  late final TextEditingController _shippingPaidByMeController;
   late final TextEditingController _quantityController;
   late final TextEditingController _currencyController;
   late final TextEditingController _noteController;
@@ -46,8 +46,8 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
     _platformFeeController = TextEditingController(
       text: sale.platformFee.toString(),
     );
-    _shippingByMeController = TextEditingController(
-      text: sale.shippingByMe.toString(),
+    _shippingPaidByMeController = TextEditingController(
+      text: sale.shippingPaidByMe.toString(),
     );
     _quantityController = TextEditingController(text: sale.quantity.toString());
     _currencyController = TextEditingController(text: sale.currency);
@@ -69,7 +69,7 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
     return ref.read(saleNetProvider).calculate(
           salePrice: _parseDouble(_salePriceController.text),
           platformFee: _parseDouble(_platformFeeController.text),
-          shippingByMe: _parseDouble(_shippingByMeController.text),
+          shippingByMe: _parseDouble(_shippingPaidByMeController.text),
         );
   }
 
@@ -119,7 +119,7 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
           : _buyerNameController.text.trim(),
       salePrice: _parseDouble(_salePriceController.text),
       platformFee: _parseDouble(_platformFeeController.text),
-      shippingByMe: _parseDouble(_shippingByMeController.text),
+      shippingPaidByMe: _parseDouble(_shippingPaidByMeController.text),
       finalNet: _finalNet,
       currency: _currencyController.text.trim().toUpperCase(),
       saleDate: _saleDate,
@@ -139,7 +139,7 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
     _buyerNameController.dispose();
     _salePriceController.dispose();
     _platformFeeController.dispose();
-    _shippingByMeController.dispose();
+    _shippingPaidByMeController.dispose();
     _quantityController.dispose();
     _currencyController.dispose();
     _noteController.dispose();
@@ -206,7 +206,7 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _shippingByMeController,
+              controller: _shippingPaidByMeController,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),

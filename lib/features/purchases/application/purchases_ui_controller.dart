@@ -3,8 +3,13 @@ import 'package:lego_trading_manager/features/purchases/application/purchases_fi
 import 'package:lego_trading_manager/features/purchases/application/purchases_sort_option.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchases_ui_state.dart';
 
-class PurchasesUiController extends StateNotifier<PurchasesUiState> {
-  PurchasesUiController() : super(PurchasesUiState.initial());
+// Теж переводимо на Notifier
+class PurchasesUiController extends Notifier<PurchasesUiState> {
+  
+  @override
+  PurchasesUiState build() {
+    return PurchasesUiState.initial();
+  }
 
   void search(String value) {
     state = state.copyWith(query: value);
@@ -24,6 +29,6 @@ class PurchasesUiController extends StateNotifier<PurchasesUiState> {
 }
 
 final purchasesUiControllerProvider =
-    StateNotifierProvider<PurchasesUiController, PurchasesUiState>((ref) {
-  return PurchasesUiController();
-});
+    NotifierProvider<PurchasesUiController, PurchasesUiState>(
+  PurchasesUiController.new,
+);

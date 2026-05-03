@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class InventoryBulkSelectionController extends StateNotifier<Set<String>> {
-  InventoryBulkSelectionController() : super(<String>{});
+class InventoryBulkSelectionController extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    return const {};
+  }
 
   void toggle(String id) {
     final next = <String>{...state};
@@ -14,7 +17,7 @@ class InventoryBulkSelectionController extends StateNotifier<Set<String>> {
   }
 
   void clear() {
-    state = <String>{};
+    state = const {};
   }
 
   void selectAll(Iterable<String> ids) {
@@ -25,6 +28,6 @@ class InventoryBulkSelectionController extends StateNotifier<Set<String>> {
 }
 
 final inventoryBulkSelectionProvider =
-    StateNotifierProvider<InventoryBulkSelectionController, Set<String>>(
-  (ref) => InventoryBulkSelectionController(),
+    NotifierProvider<InventoryBulkSelectionController, Set<String>>(
+  InventoryBulkSelectionController.new,
 );

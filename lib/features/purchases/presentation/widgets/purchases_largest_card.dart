@@ -35,7 +35,7 @@ class PurchasesLargestCard extends StatelessWidget {
               (item) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(item.source),
-                subtitle: Text(item.note.isEmpty ? item.itemId : item.note),
+                subtitle: Text((item.note ?? '').isEmpty ? item.itemId : item.note!),
                 trailing: Text(
                   '${item.finalTotal.toStringAsFixed(2)} ${item.currency}',
                   style: const TextStyle(fontWeight: FontWeight.w800),

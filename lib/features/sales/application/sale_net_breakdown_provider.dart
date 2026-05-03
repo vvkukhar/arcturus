@@ -6,14 +6,14 @@ final saleNetBreakdownProvider =
     Provider.family<SaleNetBreakdownModel, SaleModel>((ref, sale) {
   final gross = sale.salePrice;
 
-  final feeShare = gross <= 0 ? 0 : sale.platformFee / gross * 100;
-  final shippingShare = gross <= 0 ? 0 : sale.shippingByMe / gross * 100;
-  final netShare = gross <= 0 ? 0 : sale.finalNet / gross * 100;
+  final feeShare = gross <= 0 ? 0.0 : sale.platformFee / gross * 100;
+  final shippingShare = gross <= 0 ? 0.0 : sale.shippingPaidByMe / gross * 100;
+  final netShare = gross <= 0 ? 0.0 : sale.finalNet / gross * 100;
 
   return SaleNetBreakdownModel(
     salePrice: sale.salePrice,
     platformFee: sale.platformFee,
-    shippingByMe: sale.shippingByMe,
+    shippingByMe: sale.shippingPaidByMe,
     finalNet: sale.finalNet,
     quantity: sale.quantity,
     unitNet: sale.unitNet,

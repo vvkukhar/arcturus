@@ -1,120 +1,91 @@
-import Link from 'next/link';
+import Image from 'next/image';
+import { notFound } from 'next/navigation';
 import { publicApi } from '@/lib/public-api';
 import { formatMoney } from '@/lib/format';
-import { OrderContactForm } from '@/components/store/order-contact-form';
 import { AvailabilityBadge } from '@/components/store/availability-badge';
+import { OrderContactForm } from '@/components/store/order-contact-form';
 import { RelatedProducts } from '@/components/store/related-products';
 
 type Props = {
-  params: Promise<{
-    slug: string;
-  }>;
+  params: Promise<{ slug: string }>;
 };
 
-export default async function StoreCatalogItemPage({ params }: Props) {
+export default async function CatalogItemPage({ params }: Props) {
   const { slug } = await params;
 
-  let item: any = null;
-
+  let product: any;
   try {
-    item = await publicApi.getCatalogItem<any>(slug);
+    product = await publicApi.getCatalogItem(slug);
   } catch {
-    item = null;
+    notFound();
   }
 
-  if (!item) {
-    return (
-      <div className="rounded-3xl border border-border bg-white p-10">
-        <div className="text-2xl font-black">Product not found</div>
-        <Link
-          href="/store/catalog"
-          className="mt-4 inline-flex rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white"
-        >
-          Back to catalog
-        </Link>
-      </div>
-    );
-  }
-
-  const title = item.titleSnapshot || item.item?.title || 'Product';
-  const price = item.expectedSalePriceManual ?? item.totalCost;
-  const images = Array.isArray(item.images) ? item.images : [];
-  const primaryImage =
-    images.find((image: any) => image.isPrimary)?.imageUrl ?? images[0]?.imageUrl ?? null;
+  const images = Array.isArray(product.images) ? product.images : [];
+  const primaryImage = images.find((x: any) => x.isPrimary) ?? images[0];
+  const price = product.expectedSalePriceManual ?? product.totalCost;
+  const title = product.titleSnapshot || product.item?.title || 'Unknown Product';
 
   return (
-    <div className="space-y-8">
-      <Link href="/store/catalog" className="text-sm font-semibold text-slate-500 hover:underline">
-        ← Back to catalog
-      </Link>
-
-      <div className="grid gap-8 lg:grid-cols-2">
-        <div className="rounded-3xl border border-border bg-white p-5">
-          <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-slate-100">
+    <div className="space-y-12">
+      <div className="grid gap-10 md:grid-cols-2">
+        <div className="space-y-4">
+          <div className="relative aspect-square overflow-hidden rounded-3xl border border-border bg-white shadow-sm">
             {primaryImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={primaryImage} alt={title} className="h-full w-full object-cover" />
+              <Image src={primaryImage.imageUrl} alt={title} fill className="object-cover" priority />
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-slate-400">
-                No image
+              <div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">
+                No Image
               </div>
             )}
           </div>
-
           {images.length > 1 ? (
-            <div className="mt-4 grid grid-cols-4 gap-3">
-              {images.slice(0, 8).map((image: any) => (
-                <div
-                  key={image.id ?? image.imageUrl}
-                  className="aspect-square overflow-hidden rounded-xl border border-border bg-slate-100"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image.imageUrl} alt="" className="h-full w-full object-cover" />
+            <div className="grid grid-cols-4 gap-4">
+              {images.map((img: any) => (
+                <div key={img.id} className="relative aspect-square overflow-hidden rounded-xl border border-border bg-white cursor-pointer hover:border-slate-400">
+                  <Image src={img.imageUrl} alt="" fill className="object-cover" />
                 </div>
               ))}
             </div>
           ) : null}
         </div>
 
-        <div className="space-y-5 rounded-3xl border border-border bg-white p-8">
+        <div className="flex flex-col justify-center space-y-6">
           <div>
-            <div className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
-              Arcturus Store
+            <div className="mb-3 flex items-center gap-3">
+              <AvailabilityBadge quantity={product.quantity} />
+              {product.condition ? (
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase text-slate-600">
+                  {product.condition}
+                </span>
+              ) : null}
             </div>
-            <h1 className="mt-3 text-4xl font-black tracking-tight">{title}</h1>
+            <h1 className="text-4xl font-black leading-tight tracking-tight text-slate-950">
+              {title}
+            </h1>
+            <div className="mt-2 text-sm font-semibold text-slate-500">
+              {product.item?.setNumber ? `Set #${product.item.setNumber} • ` : ''}
+              {product.item?.theme ?? 'Custom Build'}
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <AvailabilityBadge quantity={item.quantity} />
-            {item.condition ? (
-              <span className="inline-flex rounded-full border border-border bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                {item.condition}
-              </span>
-            ) : null}
-            {item.sealed ? (
-              <span className="inline-flex rounded-full border border-border bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                Sealed
-              </span>
-            ) : null}
+          <div className="text-5xl font-black text-slate-900">
+            {formatMoney(price)}
           </div>
 
-          <div className="text-3xl font-black">{formatMoney(price)}</div>
-
-          <div className="grid gap-3 rounded-2xl border border-border bg-slate-50 p-4 text-sm">
-            <div>Quantity: {item.quantity ?? 0}</div>
-            <div>Theme: {item.item?.theme ?? '—'}</div>
-            <div>Set Number: {item.item?.setNumber ?? '—'}</div>
-            <div>Item ID: {item.itemId ?? item.id}</div>
-          </div>
-
-          <div className="rounded-2xl border border-border p-4">
-            <div className="mb-3 text-lg font-black">Reserve this item</div>
-            <OrderContactForm inventoryItemId={item.id} productTitle={title} />
-          </div>
+          {product.quantity > 0 ? (
+            <div className="rounded-3xl border border-border bg-white p-6 shadow-sm">
+              <div className="mb-4 text-lg font-bold">Reserve this item</div>
+              <OrderContactForm inventoryItemId={product.id} productTitle={title} />
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-slate-100 p-6 text-center text-slate-600">
+              This item is currently out of stock. Check back later or view related items below.
+            </div>
+          )}
         </div>
       </div>
 
-      <RelatedProducts items={Array.isArray(item.related) ? item.related : []} />
+      <RelatedProducts items={product.related || []} />
     </div>
   );
 }

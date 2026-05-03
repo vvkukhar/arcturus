@@ -9,7 +9,7 @@ class SaleItemSyncService {
   }) {
     return item.copyWith(
       actualSalePrice: sale.salePrice,
-      platformSold: sale.platform.name,
+      platformSold: sale.platform,
       saleDate: sale.saleDate,
       status: ItemStatus.sold,
     );

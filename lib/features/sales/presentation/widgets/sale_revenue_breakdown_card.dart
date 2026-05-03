@@ -49,7 +49,7 @@ class SaleRevenueBreakdownCard extends StatelessWidget {
             _row(
               'Shipping By Me',
               CurrencyFormatter.format(
-                sale.shippingByMe,
+                sale.shippingPaidByMe,
                 currency: sale.currency,
               ),
             ),

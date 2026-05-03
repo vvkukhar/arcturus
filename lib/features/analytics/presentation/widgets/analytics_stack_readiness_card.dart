@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lego_trading_manager/features/analytics/application/analytics_stack_readiness_provider.dart';
+import 'package:lego_trading_manager/features/analytics/application/analytics_stack_readiness_model.dart';
 
 class AnalyticsStackReadinessCard extends StatelessWidget {
   final AnalyticsStackReadinessModel model;

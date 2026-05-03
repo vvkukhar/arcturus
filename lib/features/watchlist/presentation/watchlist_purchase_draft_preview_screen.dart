@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
-import 'package:lego_trading_manager/features/purchases/application/purchase_controller.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_controller.dart';
+import 'package:lego_trading_manager/features/purchases/application/purchases_controller.dart';
 import 'package:lego_trading_manager/features/settings/application/app_settings_controller.dart';
+import 'package:lego_trading_manager/features/watchlist/application/watchlist_controller.dart';
+import 'package:lego_trading_manager/features/watchlist/application/watchlist_purchase_create_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_purchase_draft_model.dart';
 
 class WatchlistPurchaseDraftPreviewScreen extends ConsumerWidget {
@@ -103,9 +106,13 @@ class WatchlistPurchaseDraftPreviewScreen extends ConsumerWidget {
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: () {
-              ref
-                  .read(purchaseControllerProvider.notifier)
-                  .createFromWatchlistDraft(draft);
+              final result = ref.read(watchlistPurchaseCreateProvider).build(sourceItem);
+
+              ref.read(inventoryControllerProvider.notifier).addItem(result.item);
+              ref.read(purchasesControllerProvider.notifier).addPurchase(result.purchase);
+              ref.read(watchlistControllerProvider.notifier).updateItem(
+                    sourceItem.copyWith(isActive: false),
+                  );
 
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(

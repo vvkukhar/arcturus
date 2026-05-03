@@ -14,9 +14,11 @@ class InventoryRepriceFlowItemModel {
   });
 }
 
-class InventoryRepriceFlowController
-    extends StateNotifier<List<InventoryRepriceFlowItemModel>> {
-  InventoryRepriceFlowController() : super(const []);
+class InventoryRepriceFlowController extends Notifier<List<InventoryRepriceFlowItemModel>> {
+  @override
+  List<InventoryRepriceFlowItemModel> build() {
+    return const [];
+  }
 
   void addItem(InventoryRepriceFlowItemModel item) {
     final exists = state.any((e) => e.itemId == item.itemId);
@@ -33,7 +35,7 @@ class InventoryRepriceFlowController
   }
 }
 
-final inventoryRepriceFlowProvider = StateNotifierProvider<
-    InventoryRepriceFlowController, List<InventoryRepriceFlowItemModel>>(
-  (ref) => InventoryRepriceFlowController(),
+final inventoryRepriceFlowProvider =
+    NotifierProvider<InventoryRepriceFlowController, List<InventoryRepriceFlowItemModel>>(
+  InventoryRepriceFlowController.new,
 );

@@ -5,6 +5,7 @@ class DashboardFlowCountersApiModel {
   final int purchase;
   final int reprice;
   final int review;
+  
   const DashboardFlowCountersApiModel({
     required this.purchase,
     required this.reprice,
@@ -12,8 +13,7 @@ class DashboardFlowCountersApiModel {
   });
 }
 
-final dashboardFlowCountersApiProvider =
-    FutureProvider<DashboardFlowCountersApiModel>((ref) async {
+final dashboardFlowCountersApiProvider = FutureProvider<DashboardFlowCountersApiModel>((ref) async {
   final cached = await ref.watch(dashboardFlowCountersCachedProvider.future);
   return DashboardFlowCountersApiModel(
     purchase: cached.purchase,

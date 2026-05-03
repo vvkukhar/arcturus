@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class InventoryReviewDoneController extends StateNotifier<Set<String>> {
-  InventoryReviewDoneController() : super(const {});
+class InventoryReviewDoneController extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    return const {};
+  }
 
   void markDone(String itemId) {
     state = {...state, itemId};
@@ -14,6 +17,6 @@ class InventoryReviewDoneController extends StateNotifier<Set<String>> {
 }
 
 final inventoryReviewDoneProvider =
-    StateNotifierProvider<InventoryReviewDoneController, Set<String>>(
-  (ref) => InventoryReviewDoneController(),
+    NotifierProvider<InventoryReviewDoneController, Set<String>>(
+  InventoryReviewDoneController.new,
 );

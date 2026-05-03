@@ -18,6 +18,6 @@ class AnalyticsRulePresetsService {
     ];
 
     ref.read(analyticsAutoRulesProvider.notifier).replaceAll(next);
-    ref.read(analyticsPresetPersistenceProvider.notifier).state = preset.id;
+    ref.read(analyticsPresetPersistenceProvider.notifier).set(preset.id);
   }
 }

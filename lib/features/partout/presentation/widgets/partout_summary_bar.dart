@@ -1,5 +1,3 @@
-// lib/features/partout/presentation/widgets/partout_summary_bar.dart
-
 import 'package:flutter/material.dart';
 
 class PartOutSummaryBar extends StatelessWidget {

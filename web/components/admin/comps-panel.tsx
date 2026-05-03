@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/client-api';
 
 function parseJsonArray(value: string): any[] {
   const parsed = JSON.parse(value);
@@ -28,16 +29,7 @@ export function CompsPanel() {
 
   const load = async () => {
     try {
-      const res = await fetch('/api/comps/sold', {
-        cache: 'no-store',
-      });
-
-      if (!res.ok) {
-        setRows([]);
-        return;
-      }
-
-      const data = await res.json();
+      const data = await apiFetch<any[]>('/api/comps/sold');
       setRows(Array.isArray(data) ? data : []);
     } catch {
       setRows([]);
@@ -86,22 +78,17 @@ export function CompsPanel() {
 
             const comps = parseJsonArray(payload);
 
-            const response = await fetch('/api/comps/ingest', {
+            await apiFetch('/api/comps/ingest', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 sourceCode,
                 comps,
               }),
             });
 
-            if (!response.ok) {
-              throw new Error(`Ingest failed: ${response.status}`);
-            }
-
             await load();
           } catch (err) {
-            setError(err instanceof Error ? err.message : 'Invalid payload');
+            setError(err instanceof Error ? err.message : 'Invalid payload or ingest failed');
           } finally {
             setLoading(false);
           }

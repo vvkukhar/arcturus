@@ -23,9 +23,7 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
     final repo = ref.watch(flowsApiRepositoryProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Review Flow'),
-      ),
+      appBar: AppBar(title: const Text('Review Flow')),
       body: flow.when(
         data: (items) {
           if (items.isEmpty) {
@@ -56,9 +54,7 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
                       children: [
                         Text(
                           item.inventoryItemId,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 6),
                         Text('Status: ${item.status}'),
@@ -67,8 +63,7 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
                           onPressed: item.status == 'reviewed'
                               ? null
                               : () async {
-                                  final noteController =
-                                      TextEditingController();
+                                  final noteController = TextEditingController();
 
                                   await showDialog<void>(
                                     context: context,
@@ -82,10 +77,7 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
                                               children: [
                                                 TextField(
                                                   controller: noteController,
-                                                  decoration:
-                                                      const InputDecoration(
-                                                    labelText: 'Note',
-                                                  ),
+                                                  decoration: const InputDecoration(labelText: 'Note'),
                                                 ),
                                                 const SizedBox(height: 12),
                                                 ReviewReasonPresetsBar(
@@ -100,35 +92,25 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
                                         ),
                                         actions: [
                                           TextButton(
-                                            onPressed: () {
-                                              Navigator.of(dialogContext).pop();
-                                            },
+                                            onPressed: () => Navigator.of(dialogContext).pop(),
                                             child: const Text('Cancel'),
                                           ),
                                           FilledButton(
                                             onPressed: () async {
-                                              final navigator =
-                                                  Navigator.of(dialogContext);
-                                              final messenger =
-                                                  ScaffoldMessenger.of(context);
-
+                                              final navigator = Navigator.of(dialogContext);
+                                              final messenger = ScaffoldMessenger.of(context);
                                               navigator.pop();
 
                                               await repo.markReviewed(
                                                 id: item.id,
-                                                note: noteController.text,
+                                                note: noteController.text.trim(),
                                               );
 
                                               await _reload();
-                                              if (!mounted) {
-                                                return;
-                                              }
+                                              if (!mounted) return;
 
                                               messenger.showSnackBar(
-                                                const SnackBar(
-                                                  content:
-                                                      Text('Marked reviewed'),
-                                                ),
+                                                const SnackBar(content: Text('Marked reviewed')),
                                               );
                                             },
                                             child: const Text('Confirm'),
@@ -148,12 +130,8 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
             ),
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
-        ),
-        error: (error, _) => Center(
-          child: Text('Error: $error'),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(child: Text('Error: $error')),
       ),
     );
   }

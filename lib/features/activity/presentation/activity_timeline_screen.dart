@@ -69,12 +69,10 @@ class ActivityTimelineScreen extends ConsumerStatefulWidget {
   const ActivityTimelineScreen({super.key});
 
   @override
-  ConsumerState<ActivityTimelineScreen> createState() =>
-      _ActivityTimelineScreenState();
+  ConsumerState<ActivityTimelineScreen> createState() => _ActivityTimelineScreenState();
 }
 
-class _ActivityTimelineScreenState
-    extends ConsumerState<ActivityTimelineScreen> {
+class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen> {
   final _controller = TextEditingController();
 
   @override
@@ -95,6 +93,7 @@ class _ActivityTimelineScreenState
     final query = ref.watch(activityTimelineQueryProvider).trim().toLowerCase();
     final type = ref.watch(activityTimelineTypeFilterProvider);
     final dateRangeFilter = ref.watch(activityDateRangeQuickFilterProvider);
+    
     final compactSummary = ref.watch(activityCompactSummaryProvider);
     final streak = ref.watch(activityStreakProvider);
     final streakInsight = ref.watch(activityStreakInsightProvider);
@@ -110,26 +109,20 @@ class _ActivityTimelineScreenState
     final weeklyRhythm = ref.watch(activityWeeklyRhythmProvider);
     final consistency = ref.watch(activityConsistencyProvider);
     final weeklyStability = ref.watch(activityWeeklyStabilityProvider);
-    final weeklyConsistencyRatio =
-        ref.watch(activityWeeklyConsistencyRatioProvider);
-    final rhythmMomentumCompare =
-        ref.watch(activityRhythmMomentumCompareProvider);
+    final weeklyConsistencyRatio = ref.watch(activityWeeklyConsistencyRatioProvider);
+    final rhythmMomentumCompare = ref.watch(activityRhythmMomentumCompareProvider);
     final discipline = ref.watch(activityDisciplineProvider);
     final operationalHealth = ref.watch(activityOperationalHealthProvider);
     final weeklyControlScore = ref.watch(activityWeeklyControlScoreProvider);
-    final controlMomentumCompare =
-        ref.watch(activityControlMomentumCompareProvider);
+    final controlMomentumCompare = ref.watch(activityControlMomentumCompareProvider);
     final operatingCadence = ref.watch(activityOperatingCadenceProvider);
     final cadenceStability = ref.watch(activityCadenceStabilityCompareProvider);
     final systemBalance = ref.watch(activitySystemBalanceProvider);
     final stabilityIndex = ref.watch(activityStabilityIndexProvider);
-    final disciplineStabilityMix =
-        ref.watch(activityDisciplineStabilityMixProvider);
+    final disciplineStabilityMix = ref.watch(activityDisciplineStabilityMixProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Activity Timeline'),
-      ),
+      appBar: AppBar(title: const Text('Activity Timeline')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -137,19 +130,18 @@ class _ActivityTimelineScreenState
             ActivityTimelineSearchField(
               controller: _controller,
               onChanged: (value) {
-                ref.read(activityTimelineQueryProvider.notifier).state = value;
+                ref.read(activityTimelineQueryProvider.notifier).set(value);
               },
               onClear: () {
                 _controller.clear();
-                ref.read(activityTimelineQueryProvider.notifier).state = '';
+                ref.read(activityTimelineQueryProvider.notifier).set('');
               },
             ),
             const SizedBox(height: 12),
             ActivityTimelineTypeDropdown(
               value: type,
               onChanged: (value) {
-                ref.read(activityTimelineTypeFilterProvider.notifier).state =
-                    value;
+                ref.read(activityTimelineTypeFilterProvider.notifier).set(value);
               },
             ),
             const SizedBox(height: 12),
@@ -157,8 +149,7 @@ class _ActivityTimelineScreenState
             const SizedBox(height: 12),
             ActivitySummaryHeroCard(
               title: 'Activity Pulse',
-              subtitle:
-                  'Best day: ${mostActiveDay?.dateLabel ?? '-'} • Weakest day: ${weakestDay?.dateLabel ?? '-'} • Top type: ${bestTypeInsight?.topType ?? '-'}',
+              subtitle: 'Best day: ${mostActiveDay?.dateLabel ?? '-'} • Weakest day: ${weakestDay?.dateLabel ?? '-'} • Top type: ${bestTypeInsight?.topType ?? '-'}',
             ),
             const SizedBox(height: 12),
             ActivityMomentumBanner(model: momentum),
@@ -221,41 +212,41 @@ class _ActivityTimelineScreenState
             ActivityDateRangeQuickChips(
               value: dateRangeFilter,
               onChanged: (value) {
-                ref.read(activityDateRangeQuickFilterProvider.notifier).state =
-                    value;
+                ref.read(activityDateRangeQuickFilterProvider.notifier).set(value);
               },
             ),
             const SizedBox(height: 12),
             Expanded(
               child: latest.when(
                 data: (items) {
+                  // ОПТИМІЗАЦІЯ O(N) з єдиним проходом
                   final visible = items.where((item) {
-                    final matchesQuery = query.isEmpty ||
-                        item.title.toLowerCase().contains(query) ||
-                        item.subtitle.toLowerCase().contains(query);
-                    final matchesType = type == null || item.type == type;
+                    if (query.isNotEmpty) {
+                      final matchesQuery = item.title.toLowerCase().contains(query) ||
+                          item.subtitle.toLowerCase().contains(query);
+                      if (!matchesQuery) return false;
+                    }
+                    
+                    if (type != null && item.type != type) return false;
+                    
                     final now = DateTime.now();
-                    final dayOnly = DateTime(
-                      item.createdAt.year,
-                      item.createdAt.month,
-                      item.createdAt.day,
-                    );
+                    final dayOnly = DateTime(item.createdAt.year, item.createdAt.month, item.createdAt.day);
                     final today = DateTime(now.year, now.month, now.day);
                     final diff = today.difference(dayOnly).inDays;
+                    
                     final matchesDate = switch (dateRangeFilter) {
                       ActivityDateRangeQuickFilter.all => true,
                       ActivityDateRangeQuickFilter.today => diff == 0,
-                      ActivityDateRangeQuickFilter.last3days =>
-                        diff >= 0 && diff < 3,
-                      ActivityDateRangeQuickFilter.last7days =>
-                        diff >= 0 && diff < 7,
+                      ActivityDateRangeQuickFilter.last3days => diff >= 0 && diff < 3,
+                      ActivityDateRangeQuickFilter.last7days => diff >= 0 && diff < 7,
                     };
-                    return matchesQuery && matchesType && matchesDate;
+                    
+                    if (!matchesDate) return false;
+                    return true;
                   }).toList();
 
                   if (visible.isEmpty) {
-                    return const Center(
-                        child: Text('No timeline entries found.'));
+                    return const Center(child: Text('No timeline entries found.'));
                   }
 
                   DateTime? lastDate;
@@ -295,8 +286,7 @@ class _ActivityTimelineScreenState
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, __) =>
-                    const Center(child: Text('Failed to load timeline.')),
+                error: (_, __) => const Center(child: Text('Failed to load timeline.')),
               ),
             ),
           ],

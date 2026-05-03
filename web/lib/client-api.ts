@@ -2,14 +2,15 @@ export async function apiFetch<T>(
   input: string,
   init?: RequestInit,
 ): Promise<T> {
+  const headers = new Headers(init?.headers);
+
+  if (!(init?.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
   const response = await fetch(input, {
     ...init,
-    headers: {
-      ...(init?.body instanceof FormData
-        ? {}
-        : { 'Content-Type': 'application/json' }),
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
 
   if (!response.ok) {
@@ -17,14 +18,12 @@ export async function apiFetch<T>(
 
     try {
       const data = await response.json();
-
       if (typeof data?.message === 'string') {
         message = data.message;
       } else if (typeof data?.error === 'string') {
         message = data.error;
       }
     } catch {
-      // ignore non-json error bodies
     }
 
     throw new Error(message);

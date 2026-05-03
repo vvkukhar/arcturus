@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { apiFetch } from '@/lib/client-api';
 
 export default function LoginPage() {
   const [value, setValue] = useState('');
@@ -42,16 +43,10 @@ export default function LoginPage() {
                 setLoading(true);
                 setError(null);
 
-                const response = await fetch('/api/auth/login', {
+                await apiFetch('/api/auth/login', {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ token: value }),
                 });
-
-                if (!response.ok) {
-                  const data = await response.json().catch(() => null);
-                  throw new Error(data?.error ?? 'Login failed');
-                }
 
                 window.location.href = '/admin/dashboard';
               } catch (err) {

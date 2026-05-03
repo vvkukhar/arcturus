@@ -1,4 +1,13 @@
-// lib/features/activity/application/activity_log_filter_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final activityLogTypeFilterProvider = StateProvider<String?>((ref) => null);
+class ActivityLogTypeFilterNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void set(String? value) {
+    state = value;
+  }
+}
+
+final activityLogTypeFilterProvider =
+    NotifierProvider<ActivityLogTypeFilterNotifier, String?>(ActivityLogTypeFilterNotifier.new);

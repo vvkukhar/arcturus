@@ -12,10 +12,10 @@ class DashboardLaunchReadinessModel {
   });
 }
 
-final dashboardLaunchReadinessProvider =
-    Provider<DashboardLaunchReadinessModel>((ref) {
+final dashboardLaunchReadinessProvider = Provider<DashboardLaunchReadinessModel>((ref) {
   final flows = ref.watch(dashboardFlowCountersProvider);
   final queues = ref.watch(dashboardQueueStatusSummaryProvider);
+  
   final ready = flows.purchaseFlow >= 0;
   final label = queues.buyQueue > 0
       ? 'Ready to execute buys'
@@ -24,6 +24,7 @@ final dashboardLaunchReadinessProvider =
           : queues.repriceQueue > 0
               ? 'Repricing available'
               : 'System idle but ready';
+              
   return DashboardLaunchReadinessModel(
     label: label,
     ready: ready,

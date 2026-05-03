@@ -9,31 +9,21 @@ class InventoryAlertQuickOpenService {
   InventoryAlertQuickOpenService(this.ref);
 
   void openRepricing() {
-    ref.read(inventoryAlertFilterProvider.notifier).state =
-        InventoryAlertFilter.repricing;
-    ref
-        .read(inventoryUiControllerProvider.notifier)
-        .setSort(InventorySortOption.expectedProfitHighToLow);
+    ref.read(inventoryAlertFilterProvider.notifier).set(InventoryAlertFilter.repricing);
+    ref.read(inventoryUiControllerProvider.notifier).setSort(InventorySortOption.expectedProfitHighToLow);
   }
 
   void openHeldTooLong() {
-    ref.read(inventoryAlertFilterProvider.notifier).state =
-        InventoryAlertFilter.heldTooLong;
-    ref
-        .read(inventoryUiControllerProvider.notifier)
-        .setSort(InventorySortOption.daysInInventoryHighToLow);
+    ref.read(inventoryAlertFilterProvider.notifier).set(InventoryAlertFilter.heldTooLong);
+    ref.read(inventoryUiControllerProvider.notifier).setSort(InventorySortOption.daysInInventoryHighToLow);
   }
 
   void openLowProfit() {
-    ref.read(inventoryAlertFilterProvider.notifier).state =
-        InventoryAlertFilter.lowProfit;
-    ref
-        .read(inventoryUiControllerProvider.notifier)
-        .setSort(InventorySortOption.costLowToHigh);
+    ref.read(inventoryAlertFilterProvider.notifier).set(InventoryAlertFilter.lowProfit);
+    ref.read(inventoryUiControllerProvider.notifier).setSort(InventorySortOption.costLowToHigh);
   }
 }
 
-final inventoryAlertQuickOpenProvider =
-    Provider<InventoryAlertQuickOpenService>((ref) {
+final inventoryAlertQuickOpenProvider = Provider<InventoryAlertQuickOpenService>((ref) {
   return InventoryAlertQuickOpenService(ref);
 });

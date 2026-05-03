@@ -1,14 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/client-api';
 
 export function CollaborationPanel() {
   const [assignments, setAssignments] = useState<any>(null);
 
   useEffect(() => {
-    fetch('/api/collaboration/assignments')
-      .then((r) => r.json())
-      .then(setAssignments);
+    let mounted = true;
+
+    apiFetch<any>('/api/collaboration/assignments')
+      .then((data) => {
+        if (mounted) setAssignments(data);
+      })
+      .catch(() => {
+        if (mounted) setAssignments({ inventory: [], watchlist: [] });
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (

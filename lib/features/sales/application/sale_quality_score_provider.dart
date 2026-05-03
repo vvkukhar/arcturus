@@ -7,9 +7,9 @@ final saleQualityScoreProvider =
   double score = 100;
 
   final gross = sale.salePrice;
-  final feeShare = gross <= 0 ? 0 : sale.platformFee / gross;
-  final shippingShare = gross <= 0 ? 0 : sale.shippingByMe / gross;
-  final netShare = gross <= 0 ? 0 : sale.finalNet / gross;
+  final feeShare = gross <= 0 ? 0.0 : sale.platformFee / gross;
+  final shippingShare = gross <= 0 ? 0.0 : sale.shippingPaidByMe / gross;
+  final netShare = gross <= 0 ? 0.0 : sale.finalNet / gross;
 
   if (gross <= 0) score -= 40;
   if (sale.quantity <= 0) score -= 30;

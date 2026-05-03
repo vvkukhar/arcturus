@@ -15,7 +15,7 @@ class PurchasesCurrencyBreakdownModel {
 
 final purchasesCurrencyBreakdownProvider =
     Provider<List<PurchasesCurrencyBreakdownModel>>((ref) {
-  final purchases = ref.watch(purchasesControllerProvider).allPurchases;
+  final purchases = ref.watch(purchasesControllerProvider);
 
   final counts = <String, int>{};
   final totals = <String, double>{};
@@ -31,7 +31,7 @@ final purchasesCurrencyBreakdownProvider =
     return PurchasesCurrencyBreakdownModel(
       currency: entry.key,
       count: entry.value,
-      totalSpend: totals[entry.key] ?? 0,
+      totalSpend: totals[entry.key] ?? 0.0,
     );
   }).toList();
 

@@ -3,7 +3,7 @@ import 'package:lego_trading_manager/features/watchlist/application/watchlist_co
 
 final watchlistCommitStabilityProvider =
     Provider<WatchlistCommitStabilityModel>((ref) {
-  const score = 72.0;
+  const double score = 72.0;
 
   final label = score >= 75
       ? 'stable commit'
@@ -11,7 +11,7 @@ final watchlistCommitStabilityProvider =
           ? 'partial commit stability'
           : 'unstable commit';
 
-  return const WatchlistCommitStabilityModel(
+  return WatchlistCommitStabilityModel(
     score: score,
     label: label,
   );

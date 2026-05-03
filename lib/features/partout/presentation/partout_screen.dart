@@ -1,5 +1,3 @@
-// lib/features/partout/presentation/partout_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';

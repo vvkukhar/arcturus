@@ -43,8 +43,7 @@ class PartOutProjectCard extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   Text('Cost: ${project.totalCost.toStringAsFixed(2)}'),
-                  Text(
-                      'Expected: ${project.expectedPartOutValue.toStringAsFixed(2)}'),
+                  Text('Expected: ${project.expectedPartOutValue.toStringAsFixed(2)}'),
                   Text('Profit: ${expectedProfit.toStringAsFixed(2)}'),
                 ],
               ),

@@ -1,4 +1,13 @@
-// lib/features/activity/application/activity_timeline_query_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final activityTimelineQueryProvider = StateProvider<String>((ref) => '');
+class ActivityTimelineQueryNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void set(String value) {
+    state = value;
+  }
+}
+
+final activityTimelineQueryProvider =
+    NotifierProvider<ActivityTimelineQueryNotifier, String>(ActivityTimelineQueryNotifier.new);

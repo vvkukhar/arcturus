@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/features/settings/application/backup_history_service.dart';
+import 'package:lego_trading_manager/features/settings/application/backup_history_provider.dart';
 import 'package:lego_trading_manager/features/settings/presentation/widgets/backup_history_card.dart';
 
 class BackupHistoryScreen extends ConsumerStatefulWidget {
@@ -13,7 +13,6 @@ class BackupHistoryScreen extends ConsumerStatefulWidget {
 
 class _BackupHistoryScreenState extends ConsumerState<BackupHistoryScreen> {
   bool _loading = true;
-  List<dynamic> _entries = const [];
 
   @override
   void initState() {
@@ -22,23 +21,16 @@ class _BackupHistoryScreenState extends ConsumerState<BackupHistoryScreen> {
   }
 
   Future<void> _load() async {
-    final data = await ref.read(backupHistoryServiceProvider).getAll();
+    await ref.read(backupHistoryProvider.notifier).load();
     if (!mounted) return;
-
     setState(() {
-      _entries = data;
       _loading = false;
     });
   }
 
   Future<void> _clear() async {
-    await ref.read(backupHistoryServiceProvider).clear();
+    await ref.read(backupHistoryProvider.notifier).clear();
     if (!mounted) return;
-
-    setState(() {
-      _entries = const [];
-    });
-
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Backup history cleared')),
     );
@@ -46,27 +38,29 @@ class _BackupHistoryScreenState extends ConsumerState<BackupHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final entries = ref.watch(backupHistoryProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Backup History'),
         actions: [
           IconButton(
-            onPressed: _entries.isEmpty ? null : _clear,
+            onPressed: entries.isEmpty ? null : _clear,
             icon: const Icon(Icons.delete_sweep_outlined),
           ),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _entries.isEmpty
+          : entries.isEmpty
               ? const Center(child: Text('No backup history yet.'))
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: _entries.length,
+                  itemCount: entries.length,
                   itemBuilder: (context, index) {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: BackupHistoryCard(entry: _entries[index]),
+                      child: BackupHistoryCard(entry: entries[index]),
                     );
                   },
                 ),

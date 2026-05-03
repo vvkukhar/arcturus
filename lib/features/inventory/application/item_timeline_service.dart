@@ -30,8 +30,7 @@ class ItemTimelineService {
       result.add(
         ItemTimelineEventModel(
           title: 'Purchased',
-          subtitle:
-              '${purchase.source} • ${purchase.finalTotal.toStringAsFixed(2)} ${purchase.currency}',
+          subtitle: '${purchase.source} • ${purchase.finalTotal.toStringAsFixed(2)} ${purchase.currency}',
           date: purchase.purchaseDate,
           type: 'purchase',
         ),
@@ -43,8 +42,7 @@ class ItemTimelineService {
       result.add(
         ItemTimelineEventModel(
           title: 'Market snapshot',
-          subtitle:
-              '${snapshot.source} • L ${snapshot.lowPrice.toStringAsFixed(0)} / A ${snapshot.averagePrice.toStringAsFixed(0)} / H ${snapshot.highPrice.toStringAsFixed(0)}',
+          subtitle: '${snapshot.source} • L ${snapshot.lowPrice.toStringAsFixed(0)} / A ${snapshot.averagePrice.toStringAsFixed(0)} / H ${snapshot.highPrice.toStringAsFixed(0)}',
           date: snapshot.capturedAt,
           type: 'market',
         ),
@@ -56,8 +54,7 @@ class ItemTimelineService {
       result.add(
         ItemTimelineEventModel(
           title: 'Sold',
-          subtitle:
-              '${sale.platform.name} • net ${sale.finalNet.toStringAsFixed(2)}',
+          subtitle: '${sale.platform} • net ${sale.finalNet.toStringAsFixed(2)}',
           date: sale.saleDate,
           type: 'sale',
         ),

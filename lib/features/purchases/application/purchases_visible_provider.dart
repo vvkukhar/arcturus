@@ -5,68 +5,62 @@ import 'package:lego_trading_manager/features/purchases/application/purchases_so
 import 'package:lego_trading_manager/features/purchases/application/purchases_ui_controller.dart';
 
 final purchasesVisibleProvider = Provider<List<PurchaseModel>>((ref) {
-  final state = ref.watch(purchasesControllerProvider);
+  final items = ref.watch(purchasesControllerProvider);
   final ui = ref.watch(purchasesUiControllerProvider);
 
-  var items = [...state];
-
   final query = ui.query.trim().toLowerCase();
-  if (query.isNotEmpty) {
-    items = items.where((item) {
-      return item.source.toLowerCase().contains(query) ||
+  final filter = ui.filter;
+  final filterSource = filter.sourceContains?.trim().toLowerCase() ?? '';
+  final filterCurrency = filter.currency?.trim().toUpperCase() ?? '';
+
+  // ОПТИМІЗАЦІЯ: Робимо лише ОДИН прохід по масиву (O(N)), замість каскаду з 4-5 where() 
+  var filteredItems = items.where((item) {
+    // 1. Перевірка пошуку
+    if (query.isNotEmpty) {
+      final matchesQuery = item.source.toLowerCase().contains(query) ||
           item.itemId.toLowerCase().contains(query) ||
           (item.sellerName ?? '').toLowerCase().contains(query) ||
           (item.note ?? '').toLowerCase().contains(query);
-    }).toList();
-  }
+      if (!matchesQuery) return false;
+    }
 
-  final filter = ui.filter;
+    // 2. Перевірка фільтрів
+    if (filterSource.isNotEmpty && !item.source.toLowerCase().contains(filterSource)) {
+      return false;
+    }
+    if (filterCurrency.isNotEmpty && item.currency.toUpperCase() != filterCurrency) {
+      return false;
+    }
+    if (filter.minTotal != null && item.finalTotal < filter.minTotal!) {
+      return false;
+    }
+    if (filter.maxTotal != null && item.finalTotal > filter.maxTotal!) {
+      return false;
+    }
 
-  if ((filter.sourceContains ?? '').trim().isNotEmpty) {
-    final source = filter.sourceContains!.trim().toLowerCase();
-    items = items.where((item) {
-      return item.source.toLowerCase().contains(source);
-    }).toList();
-  }
+    return true; // Якщо пройшов усі перевірки — залишаємо
+  }).toList();
 
-  if ((filter.currency ?? '').trim().isNotEmpty) {
-    final currency = filter.currency!.trim().toUpperCase();
-    items = items.where((item) {
-      return item.currency.toUpperCase() == currency;
-    }).toList();
-  }
-
-  if (filter.minTotal != null) {
-    items = items.where((item) {
-      return item.finalTotal >= filter.minTotal!;
-    }).toList();
-  }
-
-  if (filter.maxTotal != null) {
-    items = items.where((item) {
-      return item.finalTotal <= filter.maxTotal!;
-    }).toList();
-  }
-
+  // Сортування
   switch (ui.sort) {
     case PurchasesSortOption.newest:
-      items.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate));
+      filteredItems.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate));
       break;
     case PurchasesSortOption.oldest:
-      items.sort((a, b) => a.purchaseDate.compareTo(b.purchaseDate));
+      filteredItems.sort((a, b) => a.purchaseDate.compareTo(b.purchaseDate));
       break;
     case PurchasesSortOption.totalHighToLow:
-      items.sort((a, b) => b.finalTotal.compareTo(a.finalTotal));
+      filteredItems.sort((a, b) => b.finalTotal.compareTo(a.finalTotal));
       break;
     case PurchasesSortOption.totalLowToHigh:
-      items.sort((a, b) => a.finalTotal.compareTo(b.finalTotal));
+      filteredItems.sort((a, b) => a.finalTotal.compareTo(b.finalTotal));
       break;
     case PurchasesSortOption.sourceAsc:
-      items.sort(
+      filteredItems.sort(
         (a, b) => a.source.toLowerCase().compareTo(b.source.toLowerCase()),
       );
       break;
   }
 
-  return items;
+  return filteredItems;
 });

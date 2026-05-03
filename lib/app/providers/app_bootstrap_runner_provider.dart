@@ -1,14 +1,16 @@
-// lib/app/providers/app_bootstrap_runner_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/store/store_persistence_manager.dart';
+import 'package:lego_trading_manager/app/providers/persistence_provider.dart';
 
 class AppBootstrapRunner {
+  final Ref ref;
+  
+  AppBootstrapRunner(this.ref);
+
   Future<void> run() async {
-    await StorePersistenceManager().bootstrap();
+    await ref.read(storePersistenceManagerProvider).bootstrap();
   }
 }
 
 final appBootstrapRunnerProvider = Provider<AppBootstrapRunner>((ref) {
-  return AppBootstrapRunner();
+  return AppBootstrapRunner(ref);
 });

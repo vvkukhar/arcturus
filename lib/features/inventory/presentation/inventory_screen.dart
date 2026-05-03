@@ -229,8 +229,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     final summary = ref.watch(inventoryBulkSelectionSummaryProvider);
     final profitBuckets = ref.watch(inventoryProfitBucketProvider);
     final dangerSummary = ref.watch(inventoryDangerSummaryProvider);
-    final alertSeveritySummary =
-        ref.watch(inventoryAlertSeveritySummaryProvider);
+    final alertSeveritySummary = ref.watch(inventoryAlertSeveritySummaryProvider);
     final alertFilter = ref.watch(inventoryAlertFilterProvider);
     final filteredAlerts = ref.watch(inventoryFilteredAlertCenterProvider);
     final alertFilterCounts = ref.watch(inventoryAlertFilterCountsProvider);
@@ -246,8 +245,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     final executionPressure = ref.watch(inventoryExecutionPressureProvider);
     final reviewStability = ref.watch(inventoryReviewStabilityProvider);
     final actionReadiness = ref.watch(inventoryActionReadinessProvider);
-    final readinessVsPressure =
-        ref.watch(inventoryReadinessPressureCompareProvider);
+    final readinessVsPressure = ref.watch(inventoryReadinessPressureCompareProvider);
     final controlEquilibrium = ref.watch(inventoryControlEquilibriumProvider);
     final executionDurability = ref.watch(inventoryExecutionDurabilityProvider);
     final operationalBalance = ref.watch(inventoryOperationalBalanceProvider);
@@ -316,9 +314,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             totalCount: items.length,
             selectedCount: summary.count,
             onSelectAll: () {
-              ref
-                  .read(inventoryBulkSelectionProvider.notifier)
-                  .selectAll(items.map((e) => e.id));
+              ref.read(inventoryBulkSelectionProvider.notifier).selectAll(items.map((e) => e.id));
             },
             onClearSelection: () {
               ref.read(inventoryBulkSelectionProvider.notifier).clear();
@@ -336,14 +332,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           InventoryBulkQuickStatusBar(
             selectedCount: selected.length,
             onApplyStatus: (status) async {
-              final affected =
-                  await ref.read(inventoryBulkStatusProvider).apply(
-                        ids: selected,
-                        status: status,
-                      );
-
+              final affected = await ref.read(inventoryBulkStatusProvider).apply(
+                    ids: selected,
+                    status: status,
+                  );
               ref.read(inventoryBulkSelectionProvider.notifier).clear();
-
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Status applied to $affected items')),
@@ -355,11 +348,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           InventoryBulkReserveBar(
             selectedCount: selected.length,
             onReserve: () async {
-              final affected =
-                  await ref.read(inventoryBulkReserveProvider).reserve(selected);
-
+              final affected = await ref.read(inventoryBulkReserveProvider).reserve(selected);
               ref.read(inventoryBulkSelectionProvider.notifier).clear();
-
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Reserved $affected items')),
@@ -367,12 +357,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               }
             },
             onUnreserve: () async {
-              final affected = await ref
-                  .read(inventoryBulkReserveProvider)
-                  .unreserve(selected);
-
+              final affected = await ref.read(inventoryBulkReserveProvider).unreserve(selected);
               ref.read(inventoryBulkSelectionProvider.notifier).clear();
-
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Unreserved $affected items')),
@@ -421,7 +407,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             value: alertFilter,
             counts: alertFilterCounts,
             onChanged: (value) {
-              ref.read(inventoryAlertFilterProvider.notifier).state = value;
+              ref.read(inventoryAlertFilterProvider.notifier).set(value);
             },
           ),
           const SizedBox(height: 12),
@@ -458,9 +444,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             ...items.map(
               (item) {
                 final riskFlag = ref.watch(inventoryRiskFlagProvider(item.id));
-                final priceSuggestion = ref.watch(
-                  inventoryInlinePriceSuggestionProvider(item.id),
-                );
+                final priceSuggestion = ref.watch(inventoryInlinePriceSuggestionProvider(item.id));
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -470,22 +454,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                     riskFlag: riskFlag,
                     onTap: () => _openItemDetails(context, ref, item),
                     onToggleSelection: () {
-                      ref
-                          .read(inventoryBulkSelectionProvider.notifier)
-                          .toggle(item.id);
+                      ref.read(inventoryBulkSelectionProvider.notifier).toggle(item.id);
                     },
                     extraBottom: InventoryInlinePriceSuggestionBar(
                       model: priceSuggestion,
-                      onApply: priceSuggestion == null ||
-                              !priceSuggestion.hasSuggestion
+                      onApply: priceSuggestion == null || !priceSuggestion.hasSuggestion
                           ? null
                           : () async {
-                              await ref
-                                  .read(analyticsRepriceApplyProvider)
-                                  .applySuggestedPrice(
+                              await ref.read(analyticsRepriceApplyProvider).applySuggestedPrice(
                                     itemId: item.id,
-                                    suggestedPrice:
-                                        priceSuggestion.suggestedPrice,
+                                    suggestedPrice: priceSuggestion.suggestedPrice,
                                     title: item.title,
                                   );
                             },
@@ -497,54 +475,34 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           );
                     },
                     onMarkListed: () async {
-                      await ref
-                          .read(inventoryInlineActionProvider)
-                          .markListed(item.id);
-
+                      await ref.read(inventoryInlineActionProvider).markListed(item.id);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${item.title} marked listed'),
-                          ),
+                          SnackBar(content: Text('${item.title} marked listed')),
                         );
                       }
                     },
                     onMarkSold: () async {
-                      await ref
-                          .read(inventoryInlineActionProvider)
-                          .markSold(item.id);
-
+                      await ref.read(inventoryInlineActionProvider).markSold(item.id);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${item.title} marked sold'),
-                          ),
+                          SnackBar(content: Text('${item.title} marked sold')),
                         );
                       }
                     },
                     onArchive: () async {
-                      await ref
-                          .read(inventoryInlineActionProvider)
-                          .archive(item.id);
-
+                      await ref.read(inventoryInlineActionProvider).archive(item.id);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${item.title} archived'),
-                          ),
+                          SnackBar(content: Text('${item.title} archived')),
                         );
                       }
                     },
                     onReserveToggle: () async {
-                      await ref
-                          .read(inventoryReserveToggleProvider)
-                          .toggle(item.id);
-
+                      await ref.read(inventoryReserveToggleProvider).toggle(item.id);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${item.title} reserve toggled'),
-                          ),
+                          SnackBar(content: Text('${item.title} reserve toggled')),
                         );
                       }
                     },

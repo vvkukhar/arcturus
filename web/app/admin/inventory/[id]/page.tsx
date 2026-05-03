@@ -1,81 +1,75 @@
 import { notFound } from 'next/navigation';
+import { SectionCard } from '@/components/admin/section-card';
+import { InventoryInlineEditor } from '@/components/admin/inventory-inline-editor';
 import { ImageGalleryManager } from '@/components/admin/image-gallery-manager';
 import { ImageUploadForm } from '@/components/admin/image-upload-form';
-import { InventoryInlineEditor } from '@/components/admin/inventory-inline-editor';
-import { SectionCard } from '@/components/admin/section-card';
-import { StatusPill } from '@/components/admin/status-pill';
 import { api } from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 
 type Props = {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 };
 
-async function getInventoryItem(id: string): Promise<any | null> {
-  try {
-    return await api.get(`/inventory/${id}`);
-  } catch {
-    return null;
-  }
-}
-
-export default async function InventoryDetailsPage({ params }: Props) {
+export default async function InventoryItemPage({ params }: Props) {
   const { id } = await params;
-  const item = await getInventoryItem(id);
 
-  if (!item) {
+  let item: any;
+  try {
+    item = await api.get(`/inventory/${id}`);
+  } catch {
     notFound();
   }
 
-  const images = Array.isArray(item.images) ? item.images : [];
-
   return (
     <div className="space-y-6">
-      <SectionCard title={item.titleSnapshot || item.item?.title || 'Inventory Item'}>
-        <div className="grid gap-6 xl:grid-cols-3">
-          <div className="space-y-3 xl:col-span-2">
-            <div className="text-sm text-slate-500">{item.id}</div>
-
-            <div className="flex flex-wrap gap-2">
-              <StatusPill value={item.condition ?? 'unknown'} />
-              <StatusPill value={item.sealed ? 'sealed' : 'used'} />
-              <StatusPill value={(item.quantity ?? 0) > 0 ? 'available' : 'sold'} />
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-4">
-              <div className="rounded-2xl border border-border bg-slate-50 p-4">
-                <div className="text-xs font-bold uppercase text-slate-500">Purchase</div>
-                <div className="mt-1 text-lg font-black">{formatMoney(item.purchasePrice)}</div>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-slate-50 p-4">
-                <div className="text-xs font-bold uppercase text-slate-500">Cost Basis</div>
-                <div className="mt-1 text-lg font-black">{formatMoney(item.totalCost)}</div>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-slate-50 p-4">
-                <div className="text-xs font-bold uppercase text-slate-500">Manual Sell</div>
-                <div className="mt-1 text-lg font-black">
-                  {formatMoney(item.expectedSalePriceManual)}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-slate-50 p-4">
-                <div className="text-xs font-bold uppercase text-slate-500">Quantity</div>
-                <div className="mt-1 text-lg font-black">{item.quantity ?? 0}</div>
-              </div>
-            </div>
-
-            <InventoryInlineEditor item={item} />
-          </div>
-
-          <ImageUploadForm inventoryItemId={item.id} />
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black">{item.titleSnapshot || item.itemId}</h1>
+          <div className="text-sm text-slate-500">ID: {item.id} • Item ID: {item.itemId}</div>
         </div>
+      </div>
+
+      <SectionCard title="Quick Edit">
+        <InventoryInlineEditor item={item} />
       </SectionCard>
 
-      <ImageGalleryManager inventoryItemId={item.id} images={images} />
+      <div className="grid gap-6 xl:grid-cols-2">
+        <SectionCard title="Financials & Status">
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between border-b pb-2">
+              <span className="font-semibold text-slate-500">Purchase Price</span>
+              <span className="font-black">{formatMoney(item.purchasePrice)}</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="font-semibold text-slate-500">Total Cost</span>
+              <span className="font-black">{formatMoney(item.totalCost)}</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="font-semibold text-slate-500">Target Sell Price</span>
+              <span className="font-black">{formatMoney(item.expectedSalePriceManual)}</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="font-semibold text-slate-500">Quantity</span>
+              <span className="font-black">{item.quantity}</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="font-semibold text-slate-500">Condition</span>
+              <span className="font-black uppercase">{item.condition}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-semibold text-slate-500">Sealed</span>
+              <span className="font-black">{item.sealed ? 'YES' : 'NO'}</span>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Media Management">
+          <div className="space-y-6">
+            <ImageUploadForm inventoryItemId={item.id} />
+            <ImageGalleryManager inventoryItemId={item.id} images={item.images || []} />
+          </div>
+        </SectionCard>
+      </div>
     </div>
   );
 }

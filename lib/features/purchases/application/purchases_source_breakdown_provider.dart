@@ -15,7 +15,7 @@ class PurchasesSourceBreakdownModel {
 
 final purchasesSourceBreakdownProvider =
     Provider<List<PurchasesSourceBreakdownModel>>((ref) {
-  final purchases = ref.watch(purchasesControllerProvider).allPurchases;
+  final purchases = ref.watch(purchasesControllerProvider);
 
   final counts = <String, int>{};
   final totals = <String, double>{};
@@ -24,14 +24,14 @@ final purchasesSourceBreakdownProvider =
     final source = purchase.source.trim().isEmpty ? 'unknown' : purchase.source;
 
     counts[source] = (counts[source] ?? 0) + 1;
-    totals[source] = (totals[source] ?? 0) + purchase.finalTotal;
+    totals[source] = (totals[source] ?? 0.0) + purchase.finalTotal;
   }
 
   final result = counts.entries.map((entry) {
     return PurchasesSourceBreakdownModel(
       source: entry.key,
       count: entry.value,
-      totalSpend: totals[entry.key] ?? 0,
+      totalSpend: totals[entry.key] ?? 0.0,
     );
   }).toList();
 

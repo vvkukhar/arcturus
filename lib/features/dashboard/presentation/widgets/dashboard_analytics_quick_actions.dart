@@ -1,4 +1,3 @@
-// lib/features/dashboard/presentation/widgets/dashboard_analytics_quick_actions.dart
 import 'package:flutter/material.dart';
 
 class DashboardAnalyticsQuickActions extends StatelessWidget {

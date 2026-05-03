@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import 'package:lego_trading_manager/core/storage/json_store.dart';
 import 'package:lego_trading_manager/core/storage/storage_keys.dart';
+import 'package:lego_trading_manager/core/utils/isolate_json_helper.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
 import 'package:lego_trading_manager/data/models/market_snapshot_model.dart';
 import 'package:lego_trading_manager/data/models/partout_line_model.dart';
@@ -89,10 +88,8 @@ class StorePersistence {
     final raw = await _store.read(StorageKeys.inventory);
     if (raw == null || raw.trim().isEmpty) return;
 
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    final items = decoded
-        .map((e) => ItemModel.fromMap(Map<String, dynamic>.from(e as Map)))
-        .toList();
+    final decoded = await IsolateJsonHelper.decode(raw) as List<dynamic>;
+    final items = decoded.map((e) => ItemModel.fromMap(Map<String, dynamic>.from(e as Map))).toList();
 
     InventoryMemoryStore.replaceAll(items);
   }
@@ -101,10 +98,8 @@ class StorePersistence {
     final raw = await _store.read(StorageKeys.purchases);
     if (raw == null || raw.trim().isEmpty) return;
 
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    final items = decoded
-        .map((e) => PurchaseModel.fromMap(Map<String, dynamic>.from(e as Map)))
-        .toList();
+    final decoded = await IsolateJsonHelper.decode(raw) as List<dynamic>;
+    final items = decoded.map((e) => PurchaseModel.fromMap(Map<String, dynamic>.from(e as Map))).toList();
 
     PurchasesMemoryStore.replaceAll(items);
   }
@@ -113,10 +108,8 @@ class StorePersistence {
     final raw = await _store.read(StorageKeys.sales);
     if (raw == null || raw.trim().isEmpty) return;
 
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    final items = decoded
-        .map((e) => SaleModel.fromMap(Map<String, dynamic>.from(e as Map)))
-        .toList();
+    final decoded = await IsolateJsonHelper.decode(raw) as List<dynamic>;
+    final items = decoded.map((e) => SaleModel.fromMap(Map<String, dynamic>.from(e as Map))).toList();
 
     SalesMemoryStore.replaceAll(items);
   }
@@ -125,14 +118,8 @@ class StorePersistence {
     final raw = await _store.read(StorageKeys.marketSnapshots);
     if (raw == null || raw.trim().isEmpty) return;
 
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    final items = decoded
-        .map(
-          (e) => MarketSnapshotModel.fromMap(
-            Map<String, dynamic>.from(e as Map),
-          ),
-        )
-        .toList();
+    final decoded = await IsolateJsonHelper.decode(raw) as List<dynamic>;
+    final items = decoded.map((e) => MarketSnapshotModel.fromMap(Map<String, dynamic>.from(e as Map))).toList();
 
     MarketMemoryStore.replaceAll(items);
   }
@@ -141,14 +128,8 @@ class StorePersistence {
     final raw = await _store.read(StorageKeys.watchlist);
     if (raw == null || raw.trim().isEmpty) return;
 
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    final items = decoded
-        .map(
-          (e) => WatchlistItemModel.fromMap(
-            Map<String, dynamic>.from(e as Map),
-          ),
-        )
-        .toList();
+    final decoded = await IsolateJsonHelper.decode(raw) as List<dynamic>;
+    final items = decoded.map((e) => WatchlistItemModel.fromMap(Map<String, dynamic>.from(e as Map))).toList();
 
     WatchlistMemoryStore.replaceAll(items);
   }
@@ -159,22 +140,14 @@ class StorePersistence {
 
     final projects = (projectsRaw == null || projectsRaw.trim().isEmpty)
         ? <PartOutProjectModel>[]
-        : (jsonDecode(projectsRaw) as List<dynamic>)
-            .map(
-              (e) => PartOutProjectModel.fromMap(
-                Map<String, dynamic>.from(e as Map),
-              ),
-            )
+        : ((await IsolateJsonHelper.decode(projectsRaw)) as List<dynamic>)
+            .map((e) => PartOutProjectModel.fromMap(Map<String, dynamic>.from(e as Map)))
             .toList();
 
     final lines = (linesRaw == null || linesRaw.trim().isEmpty)
         ? <PartOutLineModel>[]
-        : (jsonDecode(linesRaw) as List<dynamic>)
-            .map(
-              (e) => PartOutLineModel.fromMap(
-                Map<String, dynamic>.from(e as Map),
-              ),
-            )
+        : ((await IsolateJsonHelper.decode(linesRaw)) as List<dynamic>)
+            .map((e) => PartOutLineModel.fromMap(Map<String, dynamic>.from(e as Map)))
             .toList();
 
     if (projects.isEmpty && lines.isEmpty) return;
@@ -186,7 +159,8 @@ class StorePersistence {
     required List<T> items,
     required Map<String, dynamic> Function(T item) mapper,
   }) async {
-    final raw = jsonEncode(items.map(mapper).toList());
+    final mappedData = items.map(mapper).toList();
+    final raw = await IsolateJsonHelper.encode(mappedData);
     await _store.write(key, raw);
   }
 }

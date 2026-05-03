@@ -47,51 +47,24 @@ import 'package:lego_trading_manager/features/watchlist/application/watchlist_sm
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_smart_rank_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_sort_option.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_ui_controller.dart';
+import 'package:lego_trading_manager/features/watchlist/application/watchlist_filter_model.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_visible_items_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/add_watchlist_item_screen.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/buy_queue_screen.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/purchase_flow_screen.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_item_details_screen.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_allocation_stability_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_auto_buy_cash_compare_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_auto_buy_simulation_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_available_cash_input_card.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_bulk_action_bar.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_capital_discipline_banner.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_card_v2.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_commit_durability_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_commit_stability_banner.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_empty_state.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_execution_balance_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_execution_discipline_banner.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_execution_maturity_card.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_filter_sheet.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_header_actions_card.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_opportunity_card_v2.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_priority_card.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_priority_explainer_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_action_confidence_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_actionable_summary_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_affordability_badge.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_affordability_summary_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_batch_summary_banner.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_buy_power_ratio_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_cash_warning_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_commit_hint_banner.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_execution_hint_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_execution_pressure_summary_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_next_best_action_banner.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_pressure_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_profitability_summary_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_readiness_score_card.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_risk_reward_banner.dart';
+import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_dashboard_section.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_select_all_bar.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_queue_summary_bar.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_review_queue_batch_bar.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_review_queue_card.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_search_field.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_section_title.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_smart_rank_card.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_sort_dropdown.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_summary_bar.dart';
 
@@ -235,19 +208,19 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
   }
 
   void _activateSelected() {
-    final selected = ref.read(watchlistSelectionControllerProvider);
+    final selected = ref.read(watchlistSelectionControllerProvider).selectedIds;
     ref.read(watchlistControllerProvider.notifier).activateMany(selected);
     ref.read(watchlistSelectionControllerProvider.notifier).clear();
   }
 
   void _deactivateSelected() {
-    final selected = ref.read(watchlistSelectionControllerProvider);
+    final selected = ref.read(watchlistSelectionControllerProvider).selectedIds;
     ref.read(watchlistControllerProvider.notifier).deactivateMany(selected);
     ref.read(watchlistSelectionControllerProvider.notifier).clear();
   }
 
   Future<void> _deleteSelected() async {
-    final selected = ref.read(watchlistSelectionControllerProvider);
+    final selected = ref.read(watchlistSelectionControllerProvider).selectedIds;
     if (selected.isEmpty) return;
 
     final confirmed = await showDialog<bool>(
@@ -279,7 +252,7 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
     final state = ref.watch(watchlistControllerProvider);
     final allItems = state.allItems;
     final items = ref.watch(watchlistVisibleItemsProvider);
-    final selected = ref.watch(watchlistSelectionControllerProvider);
+    final selected = ref.watch(watchlistSelectionControllerProvider).selectedIds;
 
     final opportunities = ref.watch(watchlistOpportunitiesProvider);
     final priorities = ref.watch(watchlistPriorityProvider);
@@ -379,84 +352,55 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                   : ListView(
                       children: [
                         WatchlistHeaderActionsCard(
-                          onOpenOpportunities: () {
+                          onOpenFilters: _openFilters,
+                          onOpenOpportunityCenter: () {
                             Navigator.of(context).pushNamed(
                               AppRouter.opportunityCenter,
                             );
                           },
-                          onOpenBuyQueue: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const BuyQueueScreen(),
-                              ),
-                            );
-                          },
-                          onOpenPurchaseFlow: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const PurchaseFlowScreen(),
-                              ),
-                            );
-                          },
+                          onAddItem: _openAdd,
                         ),
                         const SizedBox(height: 14),
-                        WatchlistAvailableCashInputCard(
-                          value: availableCash,
-                          onChanged: (value) {
-                            ref
-                                .read(watchlistAvailableCashProvider.notifier)
-                                .state = value;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        WatchlistSectionTitle(
+                        const WatchlistSectionTitle(
                           title: 'Queue Control',
                           subtitle: 'Cash pressure, readiness and execution state.',
                         ),
-                        WatchlistAutoBuySimulationCard(model: autoBuySimulation),
-                        const SizedBox(height: 12),
-                        WatchlistAutoBuyCashCompareCard(
-                          model: autoBuyCashCompare,
+                        WatchlistQueueDashboardSection(
+                          availableCash: availableCash,
+                          onAvailableCashChanged: (value) {
+                            ref
+                                .read(watchlistAvailableCashProvider.notifier)
+                                .set(value);
+                          },
+                          autoBuySimulation: autoBuySimulation,
+                          autoBuyCashCompare: autoBuyCashCompare,
+                          queueCashWarning: queueCashWarning,
+                          queueSummary: queueSummary,
+                          queueProfitability: queueProfitability,
+                          affordabilityBadge: affordabilityBadge,
+                          affordabilitySummary: affordabilitySummary,
+                          queueBuyPowerRatio: queueBuyPowerRatio,
+                          queuePressure: queuePressure,
+                          smartRank: smartRank,
+                          queueBatchSummary: queueBatchSummary,
+                          actionableQueueSummary: actionableQueueSummary,
+                          queueExecutionHint: queueExecutionHint,
+                          queueExecutionPressureSummary: queueExecutionPressureSummary,
+                          nextBestAction: nextBestAction,
+                          queueReadiness: queueReadiness,
+                          queueActionConfidence: queueActionConfidence,
+                          queueCommitHint: queueCommitHint,
+                          commitStability: commitStability,
+                          executionMaturity: executionMaturity,
+                          queueRiskReward: queueRiskReward,
+                          capitalDiscipline: capitalDiscipline,
+                          executionDiscipline: executionDiscipline,
+                          executionBalance: executionBalance,
+                          commitDurability: commitDurability,
+                          allocationStability: allocationStability,
                         ),
-                        const SizedBox(height: 12),
-                        WatchlistQueueCashWarningCard(model: queueCashWarning),
-                        const SizedBox(height: 12),
-                        WatchlistQueueSummaryBar(model: queueSummary),
-                        const SizedBox(height: 12),
-                        WatchlistQueueProfitabilitySummaryCard(
-                          model: queueProfitability,
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            const Text(
-                              'Queue affordability',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(width: 8),
-                            WatchlistQueueAffordabilityBadge(
-                              label: affordabilityBadge,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        WatchlistQueueAffordabilitySummaryCard(
-                          model: affordabilitySummary,
-                        ),
-                        const SizedBox(height: 12),
-                        WatchlistQueueBuyPowerRatioCard(
-                          model: queueBuyPowerRatio,
-                        ),
-                        const SizedBox(height: 12),
-                        WatchlistQueuePressureCard(model: queuePressure),
                         const SizedBox(height: 16),
-                        WatchlistSectionTitle(
-                          title: 'Smart Ranking',
-                          subtitle: 'Top targets ranked by gap, spread and activity.',
-                        ),
-                        WatchlistSmartRankCard(items: smartRank),
-                        const SizedBox(height: 16),
-                        WatchlistSectionTitle(
+                        const WatchlistSectionTitle(
                           title: 'Review Queue',
                           subtitle: 'Actionable items under max buy price.',
                         ),
@@ -479,36 +423,6 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                           },
                         ),
                         const SizedBox(height: 8),
-                        WatchlistQueueBatchSummaryBanner(
-                          model: queueBatchSummary,
-                        ),
-                        const SizedBox(height: 12),
-                        WatchlistQueueActionableSummaryCard(
-                          model: actionableQueueSummary,
-                        ),
-                        const SizedBox(height: 12),
-                        WatchlistQueueExecutionHintCard(
-                          model: queueExecutionHint,
-                        ),
-                        const SizedBox(height: 12),
-                        WatchlistQueueExecutionPressureSummaryCard(
-                          model: queueExecutionPressureSummary,
-                        ),
-                        const SizedBox(height: 12),
-                        WatchlistQueueNextBestActionBanner(
-                          model: nextBestAction,
-                        ),
-                        const SizedBox(height: 12),
-                        WatchlistQueueReadinessScoreCard(model: queueReadiness),
-                        const SizedBox(height: 12),
-                        WatchlistQueueActionConfidenceCard(
-                          model: queueActionConfidence,
-                        ),
-                        const SizedBox(height: 12),
-                        WatchlistQueueCommitHintBanner(model: queueCommitHint),
-                        const SizedBox(height: 12),
-                        WatchlistQueueRiskRewardBanner(model: queueRiskReward),
-                        const SizedBox(height: 12),
                         WatchlistReviewQueueBatchBar(
                           selectedCount: reviewQueueSelected.length,
                           onBuySelected: _buySelectedReviewQueue,
@@ -539,32 +453,6 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                           },
                           onOpen: _openDetails,
                           onQuickBuy: _createPurchaseFromWatchlist,
-                        ),
-                        const SizedBox(height: 16),
-                        WatchlistSectionTitle(
-                          title: 'Execution Quality',
-                          subtitle: 'Discipline, maturity and allocation stability.',
-                        ),
-                        WatchlistCommitStabilityBanner(model: commitStability),
-                        const SizedBox(height: 12),
-                        WatchlistExecutionMaturityCard(
-                          model: executionMaturity,
-                        ),
-                        const SizedBox(height: 12),
-                        WatchlistCapitalDisciplineBanner(
-                          model: capitalDiscipline,
-                        ),
-                        const SizedBox(height: 12),
-                        WatchlistExecutionDisciplineBanner(
-                          model: executionDiscipline,
-                        ),
-                        const SizedBox(height: 12),
-                        WatchlistExecutionBalanceCard(model: executionBalance),
-                        const SizedBox(height: 12),
-                        WatchlistCommitDurabilityCard(model: commitDurability),
-                        const SizedBox(height: 12),
-                        WatchlistAllocationStabilityCard(
-                          model: allocationStability,
                         ),
                         const SizedBox(height: 16),
                         if (priorities.isNotEmpty) ...[

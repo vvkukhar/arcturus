@@ -1,4 +1,3 @@
-// lib/features/deals/presentation/deal_evaluator_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_helper_provider.dart';
@@ -17,8 +16,7 @@ class DealEvaluatorScreen extends ConsumerStatefulWidget {
   const DealEvaluatorScreen({super.key});
 
   @override
-  ConsumerState<DealEvaluatorScreen> createState() =>
-      _DealEvaluatorScreenState();
+  ConsumerState<DealEvaluatorScreen> createState() => _DealEvaluatorScreenState();
 }
 
 class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
@@ -34,9 +32,7 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
 
   Future<void> _evaluate() async {
     final result = ref.read(dealEvaluatorProvider).evaluate(
-          title: _titleController.text.trim().isEmpty
-              ? 'Untitled Deal'
-              : _titleController.text.trim(),
+          title: _titleController.text.trim().isEmpty ? 'Untitled Deal' : _titleController.text.trim(),
           askingPrice: _parse(_askingController.text),
           marketPrice: _parse(_marketController.text),
         );
@@ -45,8 +41,7 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
 
     await ref.read(activityLogHelperProvider).inventoryAction(
           title: 'Deal evaluated',
-          subtitle:
-              '${result.title} | ${result.verdict} | ${result.marginPercent.toStringAsFixed(1)}%',
+          subtitle: '${result.title} | ${result.verdict} | ${result.marginPercent.toStringAsFixed(1)}%',
         );
 
     setState(() {
@@ -60,9 +55,7 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
     final draft = ref.read(dealToWatchlistDraftProvider).build(_result!);
 
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => DealToWatchlistPreviewScreen(draft: draft),
-      ),
+      MaterialPageRoute(builder: (_) => DealToWatchlistPreviewScreen(draft: draft)),
     );
   }
 
@@ -70,9 +63,7 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
     if (_result == null) return;
 
     final result = ref.read(dealWatchlistCreateProvider).build(_result!);
-    ref
-        .read(watchlistControllerProvider.notifier)
-        .addItem(result.watchlistItem);
+    ref.read(watchlistControllerProvider.notifier).addItem(result.watchlistItem);
 
     await ref.read(activityLogHelperProvider).inventoryAction(
           title: 'Watchlist item created from deal',
@@ -101,9 +92,7 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
         title: const Text('Deal Evaluator'),
         actions: [
           IconButton(
-            onPressed: () {
-              Navigator.of(context).pushNamed('/deals/history');
-            },
+            onPressed: () => Navigator.of(context).pushNamed('/deal-history'),
             icon: const Icon(Icons.history),
           ),
         ],
@@ -140,12 +129,8 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
               spacing: 10,
               runSpacing: 10,
               children: [
-                DealToWatchlistButton(
-                  onPressed: _openWatchlistDraft,
-                ),
-                DealCreateWatchlistButton(
-                  onPressed: _createWatchlistItem,
-                ),
+                DealToWatchlistButton(onPressed: _openWatchlistDraft),
+                DealCreateWatchlistButton(onPressed: _createWatchlistItem),
               ],
             ),
           ],

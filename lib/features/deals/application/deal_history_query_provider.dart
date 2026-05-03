@@ -1,4 +1,13 @@
-// lib/features/deals/application/deal_history_query_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final dealHistoryQueryProvider = StateProvider<String>((ref) => '');
+class DealHistoryQueryNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void set(String value) {
+    state = value;
+  }
+}
+
+final dealHistoryQueryProvider =
+    NotifierProvider<DealHistoryQueryNotifier, String>(DealHistoryQueryNotifier.new);

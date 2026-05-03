@@ -1,19 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class PurchasesSelectionController extends StateNotifier<Set<String>> {
-  PurchasesSelectionController() : super(<String>{});
+class PurchasesSelectionController extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    return const {};
+  }
 
   bool isSelected(String id) => state.contains(id);
 
   void toggle(String id) {
     final next = {...state};
-
     if (next.contains(id)) {
       next.remove(id);
     } else {
       next.add(id);
     }
-
     state = next;
   }
 
@@ -22,11 +23,11 @@ class PurchasesSelectionController extends StateNotifier<Set<String>> {
   }
 
   void clear() {
-    state = <String>{};
+    state = const {};
   }
 }
 
 final purchasesSelectionControllerProvider =
-    StateNotifierProvider<PurchasesSelectionController, Set<String>>((ref) {
-  return PurchasesSelectionController();
-});
+    NotifierProvider<PurchasesSelectionController, Set<String>>(
+  PurchasesSelectionController.new,
+);

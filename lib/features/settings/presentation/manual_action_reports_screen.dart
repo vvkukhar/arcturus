@@ -45,8 +45,7 @@ class _ManualActionReportsScreenState
 
   @override
   Widget build(BuildContext context) {
-    final query =
-        ref.watch(manualActionReportsQueryProvider).trim().toLowerCase();
+    final query = ref.watch(manualActionReportsQueryProvider).trim().toLowerCase();
 
     final visible = query.isEmpty
         ? _reports
@@ -68,15 +67,11 @@ class _ManualActionReportsScreenState
                   ManualActionReportsSearchField(
                     controller: _searchController,
                     onChanged: (value) {
-                      ref
-                          .read(manualActionReportsQueryProvider.notifier)
-                          .state = value;
+                      ref.read(manualActionReportsQueryProvider.notifier).set(value);
                     },
                     onClear: () {
                       _searchController.clear();
-                      ref
-                          .read(manualActionReportsQueryProvider.notifier)
-                          .state = '';
+                      ref.read(manualActionReportsQueryProvider.notifier).set('');
                     },
                   ),
                   const SizedBox(height: 12),

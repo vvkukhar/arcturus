@@ -1,3 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final globalSearchDefaultScopeProvider = StateProvider<String?>((ref) => null);
+class GlobalSearchDefaultScopeNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void set(String? value) {
+    state = value;
+  }
+}
+
+final globalSearchDefaultScopeProvider =
+    NotifierProvider<GlobalSearchDefaultScopeNotifier, String?>(
+  GlobalSearchDefaultScopeNotifier.new,
+);

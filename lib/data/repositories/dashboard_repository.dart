@@ -1,5 +1,3 @@
-// lib/data/repositories/dashboard_repository.dart
-
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
 import 'package:lego_trading_manager/core/utils/profit_calculator.dart';
@@ -41,8 +39,7 @@ class DashboardRepository {
 
     final soldItems = resaleItems.where((item) => item.isSold).toList();
     final unsoldItems = resaleItems.where((item) => !item.isSold).toList();
-    final listedItems =
-        resaleItems.where((item) => item.status == ItemStatus.listed).toList();
+    final listedItems = resaleItems.where((item) => item.status == ItemStatus.listed).toList();
 
     final totalInvested = resaleItems.fold(
       0.0,
@@ -79,9 +76,7 @@ class DashboardRepository {
       roiList.add(metrics.roi.toDouble());
     }
 
-    final avgRoi = roiList.isEmpty
-        ? 0.0
-        : roiList.reduce((a, b) => a + b) / roiList.length;
+    final avgRoi = roiList.isEmpty ? 0.0 : roiList.reduce((a, b) => a + b) / roiList.length;
 
     final now = DateTime.now();
     final soldThisMonth = soldItems.where((item) {

@@ -7,7 +7,16 @@ enum ActivityDateRangeQuickFilter {
   last7days,
 }
 
+class ActivityDateRangeQuickFilterNotifier extends Notifier<ActivityDateRangeQuickFilter> {
+  @override
+  ActivityDateRangeQuickFilter build() => ActivityDateRangeQuickFilter.all;
+
+  void set(ActivityDateRangeQuickFilter value) {
+    state = value;
+  }
+}
+
 final activityDateRangeQuickFilterProvider =
-    StateProvider<ActivityDateRangeQuickFilter>(
-  (ref) => ActivityDateRangeQuickFilter.all,
+    NotifierProvider<ActivityDateRangeQuickFilterNotifier, ActivityDateRangeQuickFilter>(
+  ActivityDateRangeQuickFilterNotifier.new,
 );

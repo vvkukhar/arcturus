@@ -8,7 +8,8 @@ final watchlistQueueBuyPowerRatioProvider =
   final spend = ref.watch(watchlistAutoBuySimulationProvider).totalSpend;
   final cash = ref.watch(watchlistAvailableCashProvider);
 
-  final ratio = cash <= 0 ? (spend > 0 ? double.infinity : 0) : spend / cash;
+  // Виправлено кастинг num -> double
+  final double ratio = cash <= 0 ? (spend > 0 ? double.infinity : 0.0) : spend / cash;
 
   return WatchlistQueueBuyPowerRatioModel(
     spend: spend,

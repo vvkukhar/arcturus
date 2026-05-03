@@ -5,8 +5,17 @@ import 'package:lego_trading_manager/features/watchlist/application/watchlist_fi
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_screen_state.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_sort_option.dart';
 
-class WatchlistScreenController extends StateNotifier<WatchlistScreenState> {
-  WatchlistScreenController() : super(WatchlistScreenState.initial());
+class WatchlistScreenController extends Notifier<WatchlistScreenState> {
+  @override
+  WatchlistScreenState build() {
+    // Автоматично синхронізуємо зі спільним стейтом
+    ref.listen(
+      watchlistControllerProvider.select((s) => s.allItems),
+      (_, next) => hydrate(next),
+      fireImmediately: true,
+    );
+    return WatchlistScreenState.initial();
+  }
 
   void hydrate(List<WatchlistItemModel> items) {
     state = state.copyWith(allItems: items);
@@ -35,13 +44,11 @@ class WatchlistScreenController extends StateNotifier<WatchlistScreenState> {
 
   void toggleSelected(String id) {
     final next = {...state.selectedIds};
-
     if (next.contains(id)) {
       next.remove(id);
     } else {
       next.add(id);
     }
-
     state = state.copyWith(selectedIds: next);
   }
 
@@ -56,45 +63,32 @@ class WatchlistScreenController extends StateNotifier<WatchlistScreenState> {
   }
 
   void _rebuild() {
-    var items = [...state.allItems];
-
     final query = state.query.trim().toLowerCase();
+    final filter = state.filter;
+    final themeQuery = filter.themeContains?.trim().toLowerCase() ?? '';
 
-    if (query.isNotEmpty) {
-      items = items.where((item) {
-        return item.title.toLowerCase().contains(query) ||
+    // ОПТИМІЗАЦІЯ: Один прохід для screen контролера
+    var items = state.allItems.where((item) {
+      if (query.isNotEmpty) {
+        final matchesQuery = item.title.toLowerCase().contains(query) ||
             (item.theme ?? '').toLowerCase().contains(query) ||
             (item.refId ?? '').toLowerCase().contains(query) ||
             (item.comment ?? '').toLowerCase().contains(query);
-      }).toList();
-    }
+        if (!matchesQuery) return false;
+      }
 
-    final filter = state.filter;
+      if (filter.activeOnly && !item.isActive) return false;
 
-    if (filter.activeOnly) {
-      items = items.where((item) => item.isActive).toList();
-    }
+      final market = item.marketPrice;
+      if (filter.targetHitOnly && (market == null || market > item.desiredBuyPrice)) return false;
+      if (filter.underMaxOnly && (market == null || market > item.maxBuyPrice)) return false;
 
-    if (filter.targetHitOnly) {
-      items = items.where((item) {
-        final market = item.marketPrice;
-        return market != null && market <= item.desiredBuyPrice;
-      }).toList();
-    }
+      if (themeQuery.isNotEmpty && !(item.theme ?? '').toLowerCase().contains(themeQuery)) {
+        return false;
+      }
 
-    if (filter.underMaxOnly) {
-      items = items.where((item) {
-        final market = item.marketPrice;
-        return market != null && market <= item.maxBuyPrice;
-      }).toList();
-    }
-
-    final theme = filter.themeContains?.trim().toLowerCase();
-    if (theme != null && theme.isNotEmpty) {
-      items = items.where((item) {
-        return (item.theme ?? '').toLowerCase().contains(theme);
-      }).toList();
-    }
+      return true;
+    }).toList();
 
     switch (state.sort) {
       case WatchlistSortOption.newest:
@@ -104,9 +98,7 @@ class WatchlistScreenController extends StateNotifier<WatchlistScreenState> {
         items.sort((a, b) => a.createdAt.compareTo(b.createdAt));
         break;
       case WatchlistSortOption.titleAsc:
-        items.sort(
-          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-        );
+        items.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
         break;
       case WatchlistSortOption.desiredLowToHigh:
         items.sort((a, b) => a.desiredBuyPrice.compareTo(b.desiredBuyPrice));
@@ -115,15 +107,10 @@ class WatchlistScreenController extends StateNotifier<WatchlistScreenState> {
         items.sort((a, b) => b.desiredBuyPrice.compareTo(a.desiredBuyPrice));
         break;
       case WatchlistSortOption.marketLowToHigh:
-        items.sort(
-          (a, b) => (a.marketPrice ?? double.infinity)
-              .compareTo(b.marketPrice ?? double.infinity),
-        );
+        items.sort((a, b) => (a.marketPrice ?? double.infinity).compareTo(b.marketPrice ?? double.infinity));
         break;
       case WatchlistSortOption.marketHighToLow:
-        items.sort(
-          (a, b) => (b.marketPrice ?? -1).compareTo(a.marketPrice ?? -1),
-        );
+        items.sort((a, b) => (b.marketPrice ?? -1).compareTo(a.marketPrice ?? -1));
         break;
     }
 
@@ -139,16 +126,6 @@ class WatchlistScreenController extends StateNotifier<WatchlistScreenState> {
 }
 
 final watchlistScreenControllerProvider =
-    StateNotifierProvider<WatchlistScreenController, WatchlistScreenState>(
-  (ref) {
-    final controller = WatchlistScreenController();
-
-    ref.listen(
-      watchlistControllerProvider.select((state) => state.allItems),
-      (_, next) => controller.hydrate(next),
-      fireImmediately: true,
-    );
-
-    return controller;
-  },
+    NotifierProvider<WatchlistScreenController, WatchlistScreenState>(
+  WatchlistScreenController.new,
 );

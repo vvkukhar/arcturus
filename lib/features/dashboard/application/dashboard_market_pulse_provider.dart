@@ -20,8 +20,7 @@ class DashboardMarketPulseModel {
   });
 }
 
-final dashboardMarketPulseProvider =
-    FutureProvider<DashboardMarketPulseModel>((ref) async {
+final dashboardMarketPulseProvider = FutureProvider<DashboardMarketPulseModel>((ref) async {
   final buy = await ref.watch(bestBuyOpportunitiesProvider.future);
   final sell = await ref.watch(bestSellOpportunitiesProvider.future);
   final reprice = await ref.watch(bestRepriceOpportunitiesProvider.future);

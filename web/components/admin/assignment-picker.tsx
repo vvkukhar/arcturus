@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/client-api';
 
 export function AssignmentPicker() {
   const [users, setUsers] = useState<any[]>([]);
@@ -9,8 +10,26 @@ export function AssignmentPicker() {
   const [selectedItem, setSelectedItem] = useState('');
 
   useEffect(() => {
-    fetch('/api/collaboration/users').then((r) => r.json()).then(setUsers);
-    fetch('/api/admin/inventory').then((r) => r.json()).then(setInventory);
+    let mounted = true;
+
+    Promise.all([
+      apiFetch<any[]>('/api/collaboration/users'),
+      apiFetch<any[]>('/api/admin/inventory')
+    ]).then(([usersData, inventoryData]) => {
+      if (mounted) {
+        setUsers(Array.isArray(usersData) ? usersData : []);
+        setInventory(Array.isArray(inventoryData) ? inventoryData : []);
+      }
+    }).catch(() => {
+      if (mounted) {
+        setUsers([]);
+        setInventory([]);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
@@ -44,16 +63,21 @@ export function AssignmentPicker() {
       </select>
 
       <button
-        className="w-full bg-black text-white rounded-xl py-2"
+        className="w-full bg-black text-white rounded-xl py-2 disabled:opacity-50"
+        disabled={!selectedItem || !selectedUser}
         onClick={async () => {
-          await fetch('/api/collaboration/assign/inventory', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              inventoryItemId: selectedItem,
-              userId: selectedUser,
-            }),
-          });
+          try {
+            await apiFetch('/api/collaboration/assign/inventory', {
+              method: 'PATCH',
+              body: JSON.stringify({
+                inventoryItemId: selectedItem,
+                userId: selectedUser,
+              }),
+            });
+            setSelectedItem('');
+          } catch (e) {
+            console.error('Assignment failed', e);
+          }
         }}
       >
         Assign

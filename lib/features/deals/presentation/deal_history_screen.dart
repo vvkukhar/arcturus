@@ -1,4 +1,3 @@
-// lib/features/deals/presentation/deal_history_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/deals/application/deal_history_provider.dart';
@@ -61,6 +60,7 @@ class _DealHistoryScreenState extends ConsumerState<DealHistoryScreen> {
             return e.title.toLowerCase().contains(query) ||
                 e.verdict.toLowerCase().contains(query);
           }).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Deal History'),
@@ -80,11 +80,11 @@ class _DealHistoryScreenState extends ConsumerState<DealHistoryScreen> {
                   DealHistorySearchField(
                     controller: _searchController,
                     onChanged: (value) {
-                      ref.read(dealHistoryQueryProvider.notifier).state = value;
+                      ref.read(dealHistoryQueryProvider.notifier).set(value);
                     },
                     onClear: () {
                       _searchController.clear();
-                      ref.read(dealHistoryQueryProvider.notifier).state = '';
+                      ref.read(dealHistoryQueryProvider.notifier).set('');
                     },
                   ),
                   const SizedBox(height: 12),

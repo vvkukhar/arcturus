@@ -15,6 +15,7 @@ import 'package:lego_trading_manager/features/inventory/presentation/inventory_a
 import 'package:lego_trading_manager/features/inventory/presentation/inventory_screen.dart';
 import 'package:lego_trading_manager/features/market/presentation/market_notes_center_screen.dart';
 import 'package:lego_trading_manager/features/market/presentation/market_screen.dart';
+import 'package:lego_trading_manager/features/market/presentation/market_notes_center_screen.dart';
 import 'package:lego_trading_manager/features/purchases/presentation/add_purchase_screen.dart';
 import 'package:lego_trading_manager/features/purchases/presentation/purchases_screen.dart';
 import 'package:lego_trading_manager/features/sales/presentation/add_sale_screen.dart';

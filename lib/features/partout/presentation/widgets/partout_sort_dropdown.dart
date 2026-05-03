@@ -1,5 +1,3 @@
-// lib/features/partout/presentation/widgets/partout_sort_dropdown.dart
-
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/features/partout/application/partout_sort_option.dart';
 

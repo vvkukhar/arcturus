@@ -5,7 +5,16 @@ enum ActivityTimelineViewMode {
   detailed,
 }
 
+class ActivityTimelineViewModeNotifier extends Notifier<ActivityTimelineViewMode> {
+  @override
+  ActivityTimelineViewMode build() => ActivityTimelineViewMode.detailed;
+
+  void set(ActivityTimelineViewMode value) {
+    state = value;
+  }
+}
+
 final activityTimelineViewModeProvider =
-    StateProvider<ActivityTimelineViewMode>(
-  (ref) => ActivityTimelineViewMode.detailed,
+    NotifierProvider<ActivityTimelineViewModeNotifier, ActivityTimelineViewMode>(
+  ActivityTimelineViewModeNotifier.new,
 );

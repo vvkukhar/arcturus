@@ -9,7 +9,7 @@ class PurchasesBulkActionsService {
     if (ids.isEmpty) return;
 
     for (final id in ids) {
-      repository.delete(id);
+      repository.deletePurchase(id);
     }
   }
 }

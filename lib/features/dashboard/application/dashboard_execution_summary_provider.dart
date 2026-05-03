@@ -23,19 +23,17 @@ class DashboardExecutionSummaryModel {
   });
 }
 
-final dashboardExecutionSummaryProvider =
-    FutureProvider<DashboardExecutionSummaryModel>((ref) async {
+final dashboardExecutionSummaryProvider = FutureProvider<DashboardExecutionSummaryModel>((ref) async {
   final purchase = await ref.watch(purchaseFlowProvider.future);
   final reprice = await ref.watch(repriceFlowProvider.future);
   final review = await ref.watch(reviewFlowProvider.future);
 
-  final purchasePending =
-      purchase.where((item) => item.status == 'pending').length;
-  final purchaseBought =
-      purchase.where((item) => item.status == 'bought').length;
-  final repricePending =
-      reprice.where((item) => item.status == 'pending').length;
+  final purchasePending = purchase.where((item) => item.status == 'pending').length;
+  final purchaseBought = purchase.where((item) => item.status == 'bought').length;
+  
+  final repricePending = reprice.where((item) => item.status == 'pending').length;
   final repriceListed = reprice.where((item) => item.status == 'listed').length;
+  
   final reviewPending = review.where((item) => item.status == 'pending').length;
   final reviewDone = review.where((item) => item.status == 'reviewed').length;
 

@@ -2,11 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/inventory_sale_allocation_model.dart';
 import 'package:lego_trading_manager/features/inventory_flow/data/inventory_allocations_local_storage_provider.dart';
 
-class InventorySaleAllocationController
-    extends StateNotifier<List<InventorySaleAllocationModel>> {
-  final Ref ref;
-
-  InventorySaleAllocationController(this.ref) : super(const []);
+class InventorySaleAllocationController extends Notifier<List<InventorySaleAllocationModel>> {
+  @override
+  List<InventorySaleAllocationModel> build() {
+    return const [];
+  }
 
   Future<void> load() async {
     final storage = ref.read(inventoryAllocationsLocalStorageProvider);
@@ -23,23 +23,15 @@ class InventorySaleAllocationController
   }
 
   List<InventorySaleAllocationModel> allocationsForPurchase(String purchaseId) {
-    return state
-        .where((allocation) => allocation.purchaseId == purchaseId)
-        .toList();
+    return state.where((allocation) => allocation.purchaseId == purchaseId).toList();
   }
 
   int allocatedQuantityForSale(String saleId) {
-    return allocationsForSale(saleId).fold<int>(
-      0,
-      (sum, allocation) => sum + allocation.quantity,
-    );
+    return allocationsForSale(saleId).fold<int>(0, (sum, allocation) => sum + allocation.quantity);
   }
 
   int soldFromPurchase(String purchaseId) {
-    return allocationsForPurchase(purchaseId).fold<int>(
-      0,
-      (sum, allocation) => sum + allocation.quantity,
-    );
+    return allocationsForPurchase(purchaseId).fold<int>(0, (sum, allocation) => sum + allocation.quantity);
   }
 
   Future<void> allocate({
@@ -50,10 +42,7 @@ class InventorySaleAllocationController
   }) async {
     if (quantity <= 0) return;
 
-    final next = state.where((allocation) {
-      return allocation.saleId != saleId;
-    }).toList();
-
+    final next = state.where((allocation) => allocation.saleId != saleId).toList();
     next.add(
       InventorySaleAllocationModel(
         saleId: saleId,
@@ -71,15 +60,8 @@ class InventorySaleAllocationController
     required String saleId,
     required List<InventorySaleAllocationModel> allocations,
   }) async {
-    final next = state.where((allocation) {
-      return allocation.saleId != saleId;
-    }).toList();
-
-    next.addAll(
-      allocations.where((allocation) {
-        return allocation.saleId == saleId && allocation.quantity > 0;
-      }),
-    );
+    final next = state.where((allocation) => allocation.saleId != saleId).toList();
+    next.addAll(allocations.where((a) => a.saleId == saleId && a.quantity > 0));
 
     state = next;
     await _save();
@@ -93,11 +75,7 @@ class InventorySaleAllocationController
   }) async {
     if (quantity <= 0) return;
 
-    final next = state.where((allocation) {
-      return !(allocation.saleId == saleId &&
-          allocation.purchaseId == purchaseId);
-    }).toList();
-
+    final next = state.where((a) => !(a.saleId == saleId && a.purchaseId == purchaseId)).toList();
     next.add(
       InventorySaleAllocationModel(
         saleId: saleId,
@@ -117,52 +95,37 @@ class InventorySaleAllocationController
     required int quantity,
   }) async {
     if (quantity <= 0) {
-      await removeLot(
-        saleId: saleId,
-        purchaseId: purchaseId,
-      );
+      await removeLot(saleId: saleId, purchaseId: purchaseId);
       return;
     }
 
-    state = state.map((allocation) {
-      final isTarget =
-          allocation.saleId == saleId && allocation.purchaseId == purchaseId;
-
-      if (!isTarget) return allocation;
-
-      return InventorySaleAllocationModel(
-        saleId: allocation.saleId,
-        purchaseId: allocation.purchaseId,
-        itemId: allocation.itemId,
-        quantity: quantity,
-      );
-    }).toList();
-
+    state = [
+      for (final a in state)
+        if (a.saleId == saleId && a.purchaseId == purchaseId)
+          InventorySaleAllocationModel(
+            saleId: a.saleId,
+            purchaseId: a.purchaseId,
+            itemId: a.itemId,
+            quantity: quantity,
+          )
+        else
+          a
+    ];
     await _save();
   }
 
-  Future<void> removeLot({
-    required String saleId,
-    required String purchaseId,
-  }) async {
-    state = state.where((allocation) {
-      return !(allocation.saleId == saleId &&
-          allocation.purchaseId == purchaseId);
-    }).toList();
-
+  Future<void> removeLot({required String saleId, required String purchaseId}) async {
+    state = state.where((a) => !(a.saleId == saleId && a.purchaseId == purchaseId)).toList();
     await _save();
   }
 
   Future<void> clearSale(String saleId) async {
-    state = state.where((allocation) => allocation.saleId != saleId).toList();
+    state = state.where((a) => a.saleId != saleId).toList();
     await _save();
   }
 
   Future<void> clearPurchase(String purchaseId) async {
-    state = state
-        .where((allocation) => allocation.purchaseId != purchaseId)
-        .toList();
-
+    state = state.where((a) => a.purchaseId != purchaseId).toList();
     await _save();
   }
 
@@ -177,8 +140,7 @@ class InventorySaleAllocationController
   }
 }
 
-final inventorySaleAllocationControllerProvider = StateNotifierProvider<
-    InventorySaleAllocationController,
-    List<InventorySaleAllocationModel>>((ref) {
-  return InventorySaleAllocationController(ref);
-});
+final inventorySaleAllocationControllerProvider =
+    NotifierProvider<InventorySaleAllocationController, List<InventorySaleAllocationModel>>(
+  InventorySaleAllocationController.new,
+);

@@ -16,8 +16,7 @@ class DashboardOpportunitiesBlockModel {
   });
 }
 
-final dashboardOpportunitiesBlockProvider =
-    FutureProvider<DashboardOpportunitiesBlockModel>((ref) async {
+final dashboardOpportunitiesBlockProvider = FutureProvider<DashboardOpportunitiesBlockModel>((ref) async {
   final buy = await ref.watch(bestBuyOpportunitiesProvider.future);
   final sell = await ref.watch(bestSellOpportunitiesProvider.future);
 
@@ -26,6 +25,7 @@ final dashboardOpportunitiesBlockProvider =
       : sell.isNotEmpty
           ? 'Sell opportunities found'
           : 'No strong opportunities yet';
+          
   final subline = 'Buy ${buy.length} • Sell ${sell.length}';
 
   return DashboardOpportunitiesBlockModel(

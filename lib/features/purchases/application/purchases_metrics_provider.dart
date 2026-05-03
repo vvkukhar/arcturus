@@ -25,23 +25,23 @@ final purchasesMetricsProvider = Provider<PurchasesMetricsModel>((ref) {
   final visible = ref.watch(purchasesVisibleProvider);
 
   final totalSpend = all.fold<double>(
-    0,
+    0.0,
     (sum, item) => sum + item.finalTotal,
   );
 
   final visibleSpend = visible.fold<double>(
-    0,
+    0.0,
     (sum, item) => sum + item.finalTotal,
   );
 
-  final averagePurchase = visible.isEmpty ? 0 : visibleSpend / visible.length;
+  final averagePurchase = visible.isEmpty ? 0.0 : visibleSpend / visible.length;
 
   final shippingTotal = visible.fold<double>(
-    0,
+    0.0,
     (sum, item) => sum + item.shippingCost,
   );
 
-  final averageShipping = visible.isEmpty ? 0 : shippingTotal / visible.length;
+  final averageShipping = visible.isEmpty ? 0.0 : shippingTotal / visible.length;
 
   return PurchasesMetricsModel(
     totalCount: all.length,

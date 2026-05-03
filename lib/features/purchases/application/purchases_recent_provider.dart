@@ -4,7 +4,7 @@ import 'package:lego_trading_manager/features/purchases/application/purchases_co
 
 final purchasesRecentProvider = Provider<List<PurchaseModel>>((ref) {
   final purchases = [
-    ...ref.watch(purchasesControllerProvider).allPurchases,
+    ...ref.watch(purchasesControllerProvider),
   ];
 
   purchases.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate));

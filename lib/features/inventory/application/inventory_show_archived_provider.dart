@@ -1,3 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final inventoryShowArchivedProvider = StateProvider<bool>((ref) => false);
+class InventoryShowArchivedNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void toggle() {
+    state = !state;
+  }
+  
+  void set(bool value) {
+    state = value;
+  }
+}
+
+final inventoryShowArchivedProvider =
+    NotifierProvider<InventoryShowArchivedNotifier, bool>(
+  InventoryShowArchivedNotifier.new,
+);

@@ -8,40 +8,33 @@ final purchasesVisibleWithStockProvider = Provider<List<PurchaseModel>>((ref) {
   final purchases = ref.watch(purchasesWithStockProvider);
   final ui = ref.watch(purchasesUiControllerProvider);
 
-  var items = [...purchases];
-
   final query = ui.query.trim().toLowerCase();
-  if (query.isNotEmpty) {
-    items = items.where((item) {
-      return item.itemId.toLowerCase().contains(query) ||
+  final filter = ui.filter;
+  final filterSource = filter.sourceContains?.trim().toLowerCase() ?? '';
+  final filterCurrency = filter.currency?.trim().toUpperCase() ?? '';
+
+  // ОПТИМІЗАЦІЯ: Всі умови в одному циклі
+  var items = purchases.where((item) {
+    if (query.isNotEmpty) {
+      final matchesQuery = item.itemId.toLowerCase().contains(query) ||
           item.source.toLowerCase().contains(query) ||
           (item.sellerName ?? '').toLowerCase().contains(query);
-    }).toList();
-  }
+      if (!matchesQuery) return false;
+    }
 
-  final filter = ui.filter;
+    if (filterSource.isNotEmpty && !item.source.toLowerCase().contains(filterSource)) {
+      return false;
+    }
 
-  if ((filter.sourceContains ?? '').trim().isNotEmpty) {
-    final source = filter.sourceContains!.trim().toLowerCase();
-    items = items.where((item) {
-      return item.source.toLowerCase().contains(source);
-    }).toList();
-  }
+    if (filterCurrency.isNotEmpty && item.currency.toUpperCase() != filterCurrency) {
+      return false;
+    }
 
-  if ((filter.currency ?? '').trim().isNotEmpty) {
-    final currency = filter.currency!.trim().toUpperCase();
-    items = items.where((item) {
-      return item.currency.toUpperCase() == currency;
-    }).toList();
-  }
+    if (filter.minTotal != null && item.finalTotal < filter.minTotal!) return false;
+    if (filter.maxTotal != null && item.finalTotal > filter.maxTotal!) return false;
 
-  if (filter.minTotal != null) {
-    items = items.where((item) => item.finalTotal >= filter.minTotal!).toList();
-  }
-
-  if (filter.maxTotal != null) {
-    items = items.where((item) => item.finalTotal <= filter.maxTotal!).toList();
-  }
+    return true;
+  }).toList();
 
   switch (ui.sort) {
     case PurchasesSortOption.newest:
@@ -57,9 +50,7 @@ final purchasesVisibleWithStockProvider = Provider<List<PurchaseModel>>((ref) {
       items.sort((a, b) => a.finalTotal.compareTo(b.finalTotal));
       break;
     case PurchasesSortOption.sourceAsc:
-      items.sort(
-        (a, b) => a.source.toLowerCase().compareTo(b.source.toLowerCase()),
-      );
+      items.sort((a, b) => a.source.toLowerCase().compareTo(b.source.toLowerCase()));
       break;
   }
 

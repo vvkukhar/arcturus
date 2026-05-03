@@ -42,8 +42,7 @@ class PartOutSummaryCard extends StatelessWidget {
             ),
             row(
               'Expected Value',
-              CurrencyFormatter.format(summary.expectedValue,
-                  currency: currency),
+              CurrencyFormatter.format(summary.expectedValue, currency: currency),
             ),
             row(
               'Actual Value',

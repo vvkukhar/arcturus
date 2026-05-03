@@ -1,54 +1,39 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
-import 'package:lego_trading_manager/data/repositories/watchlist_repository.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_filter_model.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_sort_option.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_state.dart';
 
-class WatchlistController extends StateNotifier<WatchlistState> {
-  final WatchlistRepository repository;
-
-  WatchlistController(this.repository) : super(WatchlistState.initial()) {
-    load();
+class WatchlistController extends Notifier<WatchlistState> {
+  @override
+  WatchlistState build() {
+    Future.microtask(() => load());
+    return WatchlistState.initial();
   }
 
   void load() {
-    final items = repository.getAll();
+    final items = ref.read(watchlistRepositoryProvider).getAll();
     _rebuildState(allItems: items);
   }
 
-  void search(String query) {
-    _rebuildState(query: query);
-  }
-
-  void setFilter(WatchlistFilterModel filter) {
-    _rebuildState(filter: filter);
-  }
-
-  void setSort(WatchlistSortOption sortOption) {
-    _rebuildState(sortOption: sortOption);
-  }
-
-  void clearFilters() {
-    _rebuildState(
-      query: '',
-      filter: WatchlistFilterModel.empty,
-    );
-  }
+  void search(String query) => _rebuildState(query: query);
+  void setFilter(WatchlistFilterModel filter) => _rebuildState(filter: filter);
+  void setSort(WatchlistSortOption sortOption) => _rebuildState(sortOption: sortOption);
+  void clearFilters() => _rebuildState(query: '', filter: WatchlistFilterModel.empty);
 
   void addItem(WatchlistItemModel item) {
-    repository.add(item);
+    ref.read(watchlistRepositoryProvider).add(item);
     load();
   }
 
   void updateItem(WatchlistItemModel item) {
-    repository.update(item);
+    ref.read(watchlistRepositoryProvider).update(item);
     load();
   }
 
   void deleteItem(String id) {
-    repository.delete(id);
+    ref.read(watchlistRepositoryProvider).delete(id);
     load();
   }
 
@@ -62,15 +47,31 @@ class WatchlistController extends StateNotifier<WatchlistState> {
   void deactivate(String id) {
     final current = getById(id);
     if (current == null) return;
-    repository.update(current.copyWith(isActive: false));
-    load();
+    updateItem(current.copyWith(isActive: false));
   }
 
   void activate(String id) {
     final current = getById(id);
     if (current == null) return;
-    repository.update(current.copyWith(isActive: true));
-    load();
+    updateItem(current.copyWith(isActive: true));
+  }
+
+  void activateMany(Set<String> ids) {
+    for (final id in ids) {
+      activate(id);
+    }
+  }
+
+  void deactivateMany(Set<String> ids) {
+    for (final id in ids) {
+      deactivate(id);
+    }
+  }
+
+  void deleteMany(Set<String> ids) {
+    for (final id in ids) {
+      deleteItem(id);
+    }
   }
 
   void _rebuildState({
@@ -80,48 +81,33 @@ class WatchlistController extends StateNotifier<WatchlistState> {
     WatchlistSortOption? sortOption,
   }) {
     final nextAllItems = allItems ?? state.allItems;
-    final nextQuery = query ?? state.query;
+    final nextQuery = (query ?? state.query).trim().toLowerCase();
     final nextFilter = filter ?? state.filter;
     final nextSort = sortOption ?? state.sortOption;
 
-    var items = [...nextAllItems];
+    final themeQuery = nextFilter.themeContains?.trim().toLowerCase() ?? '';
 
-    final normalizedQuery = nextQuery.trim().toLowerCase();
-    if (normalizedQuery.isNotEmpty) {
-      items = items.where((item) {
-        return item.title.toLowerCase().contains(normalizedQuery) ||
-            (item.theme ?? '').toLowerCase().contains(normalizedQuery) ||
-            (item.refId ?? '').toLowerCase().contains(normalizedQuery) ||
-            (item.comment ?? '').toLowerCase().contains(normalizedQuery);
-      }).toList();
-    }
+    var items = nextAllItems.where((item) {
+      if (nextQuery.isNotEmpty) {
+        final matchesQuery = item.title.toLowerCase().contains(nextQuery) ||
+            (item.theme ?? '').toLowerCase().contains(nextQuery) ||
+            (item.refId ?? '').toLowerCase().contains(nextQuery) ||
+            (item.comment ?? '').toLowerCase().contains(nextQuery);
+        if (!matchesQuery) return false;
+      }
 
-    if (nextFilter.activeOnly) {
-      items = items.where((item) => item.isActive).toList();
-    }
+      if (nextFilter.activeOnly && !item.isActive) return false;
 
-    if (nextFilter.targetHitOnly) {
-      items = items.where((item) {
-        final market = item.marketPrice;
-        if (market == null) return false;
-        return market <= item.desiredBuyPrice;
-      }).toList();
-    }
+      final market = item.marketPrice;
+      if (nextFilter.targetHitOnly && (market == null || market > item.desiredBuyPrice)) return false;
+      if (nextFilter.underMaxOnly && (market == null || market > item.maxBuyPrice)) return false;
 
-    if (nextFilter.underMaxOnly) {
-      items = items.where((item) {
-        final market = item.marketPrice;
-        if (market == null) return false;
-        return market <= item.maxBuyPrice;
-      }).toList();
-    }
+      if (themeQuery.isNotEmpty && !(item.theme ?? '').toLowerCase().contains(themeQuery)) {
+        return false;
+      }
 
-    if ((nextFilter.themeContains ?? '').trim().isNotEmpty) {
-      final theme = nextFilter.themeContains!.trim().toLowerCase();
-      items = items.where((item) {
-        return (item.theme ?? '').toLowerCase().contains(theme);
-      }).toList();
-    }
+      return true;
+    }).toList();
 
     switch (nextSort) {
       case WatchlistSortOption.newest:
@@ -131,9 +117,7 @@ class WatchlistController extends StateNotifier<WatchlistState> {
         items.sort((a, b) => a.createdAt.compareTo(b.createdAt));
         break;
       case WatchlistSortOption.titleAsc:
-        items.sort(
-          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-        );
+        items.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
         break;
       case WatchlistSortOption.desiredLowToHigh:
         items.sort((a, b) => a.desiredBuyPrice.compareTo(b.desiredBuyPrice));
@@ -142,22 +126,17 @@ class WatchlistController extends StateNotifier<WatchlistState> {
         items.sort((a, b) => b.desiredBuyPrice.compareTo(a.desiredBuyPrice));
         break;
       case WatchlistSortOption.marketLowToHigh:
-        items.sort(
-          (a, b) => (a.marketPrice ?? double.infinity)
-              .compareTo(b.marketPrice ?? double.infinity),
-        );
+        items.sort((a, b) => (a.marketPrice ?? double.infinity).compareTo(b.marketPrice ?? double.infinity));
         break;
       case WatchlistSortOption.marketHighToLow:
-        items.sort(
-          (a, b) => (b.marketPrice ?? -1).compareTo(a.marketPrice ?? -1),
-        );
+        items.sort((a, b) => (b.marketPrice ?? -1).compareTo(a.marketPrice ?? -1));
         break;
     }
 
     state = state.copyWith(
       allItems: nextAllItems,
       visibleItems: items,
-      query: nextQuery,
+      query: query ?? state.query,
       filter: nextFilter,
       sortOption: nextSort,
     );
@@ -165,6 +144,6 @@ class WatchlistController extends StateNotifier<WatchlistState> {
 }
 
 final watchlistControllerProvider =
-    StateNotifierProvider<WatchlistController, WatchlistState>((ref) {
-  return WatchlistController(ref.read(watchlistRepositoryProvider));
-});
+    NotifierProvider<WatchlistController, WatchlistState>(
+  WatchlistController.new,
+);

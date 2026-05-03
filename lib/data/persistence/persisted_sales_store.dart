@@ -1,20 +1,16 @@
-// lib/data/persistence/persisted_sales_store.dart
-
-import 'dart:convert';
-
+import 'package:lego_trading_manager/core/utils/isolate_json_helper.dart';
 import 'package:lego_trading_manager/data/models/sale_model.dart';
 import 'package:lego_trading_manager/data/persistence/shared_prefs_json_store.dart';
 
 class PersistedSalesStore {
   static const String _key = 'sales';
-
   final SharedPrefsJsonStore _store = SharedPrefsJsonStore();
 
   Future<List<SaleModel>> load() async {
     final raw = await _store.read(_key);
     if (raw == null || raw.trim().isEmpty) return const [];
 
-    final decoded = jsonDecode(raw) as List;
+    final decoded = await IsolateJsonHelper.decode(raw) as List;
     return decoded
         .map((e) => SaleModel.fromMap(Map<String, dynamic>.from(e as Map)))
         .toList();
@@ -22,7 +18,8 @@ class PersistedSalesStore {
 
   Future<void> save(List<SaleModel> items) async {
     final data = items.map((e) => e.toMap()).toList();
-    await _store.write(_key, jsonEncode(data));
+    final raw = await IsolateJsonHelper.encode(data);
+    await _store.write(_key, raw);
   }
 
   Future<void> clear() async {

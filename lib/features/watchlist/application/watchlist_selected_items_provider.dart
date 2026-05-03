@@ -5,7 +5,7 @@ import 'package:lego_trading_manager/features/watchlist/application/watchlist_se
 
 final watchlistSelectedItemsProvider =
     Provider<List<WatchlistItemModel>>((ref) {
-  final selectedIds = ref.watch(watchlistSelectionProvider);
+  final selectedIds = ref.watch(watchlistSelectionControllerProvider).selectedIds;
   final allItems = ref.watch(watchlistControllerProvider).allItems;
 
   return allItems.where((item) => selectedIds.contains(item.id)).toList();

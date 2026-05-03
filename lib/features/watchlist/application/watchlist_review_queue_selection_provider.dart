@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class WatchlistReviewQueueSelectionController
-    extends StateNotifier<Set<String>> {
-  WatchlistReviewQueueSelectionController() : super({});
+class WatchlistReviewQueueSelectionController extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    return {};
+  }
 
   void toggle(String id) {
     final next = {...state};
@@ -24,6 +26,6 @@ class WatchlistReviewQueueSelectionController
 }
 
 final watchlistReviewQueueSelectionProvider =
-    StateNotifierProvider<WatchlistReviewQueueSelectionController, Set<String>>(
-  (ref) => WatchlistReviewQueueSelectionController(),
+    NotifierProvider<WatchlistReviewQueueSelectionController, Set<String>>(
+  WatchlistReviewQueueSelectionController.new,
 );

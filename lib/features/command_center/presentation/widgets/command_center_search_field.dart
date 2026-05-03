@@ -1,5 +1,3 @@
-// lib/features/command_center/presentation/widgets/command_center_search_field.dart
-
 import 'package:flutter/material.dart';
 
 class CommandCenterSearchField extends StatelessWidget {

@@ -8,40 +8,33 @@ final salesVisibleProvider = Provider<List<SaleModel>>((ref) {
   final sales = ref.watch(salesControllerProvider);
   final ui = ref.watch(salesUiControllerProvider);
 
-  var items = [...sales];
-
   final query = ui.query.trim().toLowerCase();
-  if (query.isNotEmpty) {
-    items = items.where((item) {
-      return item.itemId.toLowerCase().contains(query) ||
+  final filter = ui.filter;
+  final platformContains = filter.platformContains?.trim().toLowerCase() ?? '';
+  final buyerContains = filter.buyerContains?.trim().toLowerCase() ?? '';
+
+  // ОПТИМІЗАЦІЯ: Один прохід замість каскаду where()
+  var items = sales.where((item) {
+    if (query.isNotEmpty) {
+      final matchesQuery = item.itemId.toLowerCase().contains(query) ||
           item.platform.toLowerCase().contains(query) ||
           (item.buyerName ?? '').toLowerCase().contains(query);
-    }).toList();
-  }
+      if (!matchesQuery) return false;
+    }
 
-  final filter = ui.filter;
+    if (platformContains.isNotEmpty && !item.platform.toLowerCase().contains(platformContains)) {
+      return false;
+    }
 
-  if ((filter.platformContains ?? '').trim().isNotEmpty) {
-    final platform = filter.platformContains!.trim().toLowerCase();
-    items = items.where((item) {
-      return item.platform.toLowerCase().contains(platform);
-    }).toList();
-  }
+    if (buyerContains.isNotEmpty && !(item.buyerName ?? '').toLowerCase().contains(buyerContains)) {
+      return false;
+    }
 
-  if ((filter.buyerContains ?? '').trim().isNotEmpty) {
-    final buyer = filter.buyerContains!.trim().toLowerCase();
-    items = items.where((item) {
-      return (item.buyerName ?? '').toLowerCase().contains(buyer);
-    }).toList();
-  }
+    if (filter.minNet != null && item.finalNet < filter.minNet!) return false;
+    if (filter.maxNet != null && item.finalNet > filter.maxNet!) return false;
 
-  if (filter.minNet != null) {
-    items = items.where((item) => item.finalNet >= filter.minNet!).toList();
-  }
-
-  if (filter.maxNet != null) {
-    items = items.where((item) => item.finalNet <= filter.maxNet!).toList();
-  }
+    return true;
+  }).toList();
 
   switch (ui.sort) {
     case SalesSortOption.newest:

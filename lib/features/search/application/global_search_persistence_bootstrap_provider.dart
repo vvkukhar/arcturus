@@ -26,6 +26,7 @@ final globalSearchPersistenceBootstrapProvider =
 
   ref.read(globalSearchRecentQueriesProvider.notifier).replaceAll(recent);
   ref.read(globalSearchPinnedResultsProvider.notifier).replaceAll(pinned);
-  ref.read(globalSearchDefaultScopeProvider.notifier).state =
-      raw['defaultScope'] as String?;
+  ref.read(globalSearchDefaultScopeProvider.notifier).set(
+        raw['defaultScope'] as String?,
+      );
 });

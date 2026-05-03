@@ -13,7 +13,7 @@ class SaleReportTextService {
       'Quantity: ${sale.quantity}',
       'Sale price: ${sale.salePrice.toStringAsFixed(2)}',
       'Platform fee: ${sale.platformFee.toStringAsFixed(2)}',
-      'Shipping by me: ${sale.shippingByMe.toStringAsFixed(2)}',
+      'Shipping by me: ${sale.shippingPaidByMe.toStringAsFixed(2)}',
       'Final net: ${sale.finalNet.toStringAsFixed(2)}',
       'Unit net: ${sale.unitNet.toStringAsFixed(2)}',
       'Currency: ${sale.currency}',

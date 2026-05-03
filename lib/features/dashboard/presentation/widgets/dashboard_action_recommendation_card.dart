@@ -1,5 +1,3 @@
-// lib/features/dashboard/presentation/widgets/dashboard_action_recommendation_card.dart
-
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_action_recommendation_model.dart';
 

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_helper_provider.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_controller.dart';
 
 class InventoryInlineActionService {
   final Ref ref;
@@ -9,41 +9,41 @@ class InventoryInlineActionService {
   InventoryInlineActionService(this.ref);
 
   Future<void> markListed(String itemId) async {
-    final repo = InventoryRepository();
-    final item = repo.getById(itemId);
+    final controller = ref.read(inventoryControllerProvider.notifier);
+    final item = controller.getById(itemId);
     if (item == null) return;
 
-    repo.updateItem(item.copyWith(status: ItemStatus.listed));
+    await controller.updateItem(item.copyWith(status: ItemStatus.listed));
 
     await ref.read(activityLogHelperProvider).inventoryAction(
           title: 'Inventory quick action',
-          subtitle: '${item.title} → listed',
+          subtitle: '${item.title} -> listed',
         );
   }
 
   Future<void> markSold(String itemId) async {
-    final repo = InventoryRepository();
-    final item = repo.getById(itemId);
+    final controller = ref.read(inventoryControllerProvider.notifier);
+    final item = controller.getById(itemId);
     if (item == null) return;
 
-    repo.updateItem(item.copyWith(status: ItemStatus.sold));
+    await controller.updateItem(item.copyWith(status: ItemStatus.sold));
 
     await ref.read(activityLogHelperProvider).inventoryAction(
           title: 'Inventory quick action',
-          subtitle: '${item.title} → sold',
+          subtitle: '${item.title} -> sold',
         );
   }
 
   Future<void> archive(String itemId) async {
-    final repo = InventoryRepository();
-    final item = repo.getById(itemId);
+    final controller = ref.read(inventoryControllerProvider.notifier);
+    final item = controller.getById(itemId);
     if (item == null) return;
 
-    repo.updateItem(item.copyWith(status: ItemStatus.archived));
+    await controller.updateItem(item.copyWith(status: ItemStatus.archived));
 
     await ref.read(activityLogHelperProvider).inventoryAction(
           title: 'Inventory quick action',
-          subtitle: '${item.title} → archived',
+          subtitle: '${item.title} -> archived',
         );
   }
 }

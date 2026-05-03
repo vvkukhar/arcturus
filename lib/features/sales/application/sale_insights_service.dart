@@ -1,5 +1,3 @@
-// lib/features/sales/application/sale_insights_service.dart
-
 import 'package:lego_trading_manager/data/models/sale_model.dart';
 
 class SaleInsightsService {

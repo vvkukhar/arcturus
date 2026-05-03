@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class PurchaseFlowConfirmController extends StateNotifier<Set<String>> {
-  PurchaseFlowConfirmController() : super(const {});
+class PurchaseFlowConfirmController extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    return const {};
+  }
 
   void confirm(String id) {
     state = {...state, id};
@@ -18,6 +21,6 @@ class PurchaseFlowConfirmController extends StateNotifier<Set<String>> {
 }
 
 final purchaseFlowConfirmProvider =
-    StateNotifierProvider<PurchaseFlowConfirmController, Set<String>>(
-  (ref) => PurchaseFlowConfirmController(),
+    NotifierProvider<PurchaseFlowConfirmController, Set<String>>(
+  PurchaseFlowConfirmController.new,
 );

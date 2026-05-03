@@ -2,14 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/settings/application/backup_history_entry_model.dart';
 import 'package:lego_trading_manager/features/settings/application/backup_history_service.dart';
 
-class BackupHistoryController
-    extends StateNotifier<List<BackupHistoryEntryModel>> {
-  final BackupHistoryService service;
-
-  BackupHistoryController(this.service) : super(const []);
+class BackupHistoryController extends Notifier<List<BackupHistoryEntryModel>> {
+  @override
+  List<BackupHistoryEntryModel> build() {
+    return const [];
+  }
 
   Future<void> load() async {
-    state = await service.getAll();
+    state = await ref.read(backupHistoryServiceProvider).getAll();
   }
 
   Future<void> add({
@@ -17,16 +17,16 @@ class BackupHistoryController
     required int recordCount,
     required String type,
   }) async {
-    await service.add(
-      fileName: fileName,
-      recordCount: recordCount,
-      type: type,
-    );
+    await ref.read(backupHistoryServiceProvider).add(
+          fileName: fileName,
+          recordCount: recordCount,
+          type: type,
+        );
     await load();
   }
 
   Future<void> clear() async {
-    await service.clear();
+    await ref.read(backupHistoryServiceProvider).clear();
     state = const [];
   }
 }
@@ -36,8 +36,6 @@ final backupHistoryServiceProvider = Provider<BackupHistoryService>((ref) {
 });
 
 final backupHistoryProvider =
-    StateNotifierProvider<BackupHistoryController, List<BackupHistoryEntryModel>>(
-  (ref) => BackupHistoryController(
-    ref.watch(backupHistoryServiceProvider),
-  ),
+    NotifierProvider<BackupHistoryController, List<BackupHistoryEntryModel>>(
+  BackupHistoryController.new,
 );

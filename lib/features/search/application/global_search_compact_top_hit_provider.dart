@@ -1,3 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final globalSearchCompactTopHitProvider = StateProvider<bool>((ref) => false);
+class GlobalSearchCompactTopHitNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool value) {
+    state = value;
+  }
+}
+
+final globalSearchCompactTopHitProvider =
+    NotifierProvider<GlobalSearchCompactTopHitNotifier, bool>(
+  GlobalSearchCompactTopHitNotifier.new,
+);

@@ -1,5 +1,3 @@
-// lib/features/partout/presentation/add_partout_project_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/enums/partout_project_status.dart';
 import 'package:lego_trading_manager/core/utils/id_generator.dart';

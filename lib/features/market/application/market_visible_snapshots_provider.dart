@@ -5,77 +5,61 @@ import 'package:lego_trading_manager/features/market/application/market_controll
 import 'package:lego_trading_manager/features/market/application/market_sort_option.dart';
 import 'package:lego_trading_manager/features/market/application/market_ui_controller.dart';
 
-final marketVisibleSnapshotsProvider =
-    Provider<List<MarketSnapshotModel>>((ref) {
+final marketVisibleSnapshotsProvider = Provider<List<MarketSnapshotModel>>((ref) {
   final snapshots = ref.watch(marketControllerProvider);
   final ui = ref.watch(marketUiControllerProvider);
   final inventoryRepository = ref.read(inventoryRepositoryProvider);
 
-  var result = [...snapshots];
-
   final query = ui.query.trim().toLowerCase();
-  if (query.isNotEmpty) {
-    result = result.where((snapshot) {
-      final itemTitle =
-          inventoryRepository.getById(snapshot.itemRef)?.title ?? '';
-
-      return snapshot.source.toLowerCase().contains(query) ||
-          itemTitle.toLowerCase().contains(query) ||
-          (snapshot.url ?? '').toLowerCase().contains(query);
-    }).toList();
-  }
-
   final filter = ui.filter;
+  final filterSource = filter.sourceContains?.trim().toLowerCase() ?? '';
+  final filterTitle = filter.itemTitleContains?.trim().toLowerCase() ?? '';
 
-  if ((filter.sourceContains ?? '').trim().isNotEmpty) {
-    final sourceQuery = filter.sourceContains!.trim().toLowerCase();
-    result = result.where((snapshot) {
-      return snapshot.source.toLowerCase().contains(sourceQuery);
-    }).toList();
-  }
-
-  if ((filter.itemTitleContains ?? '').trim().isNotEmpty) {
-    final titleQuery = filter.itemTitleContains!.trim().toLowerCase();
-    result = result.where((snapshot) {
-      final itemTitle =
-          inventoryRepository.getById(snapshot.itemRef)?.title ?? '';
-      return itemTitle.toLowerCase().contains(titleQuery);
-    }).toList();
-  }
-
-  if (filter.withUrlOnly) {
-    result = result
-        .where((snapshot) => (snapshot.url ?? '').trim().isNotEmpty)
-        .toList();
-  }
-
+  // Для позитивного тренду прекалькулюємо айдішніки ОДИН раз до циклу, 
+  // щоб не рахувати історію для кожного елемента окремо всередині where()
+  Set<String> positiveItemRefs = {};
   if (filter.positiveTrendOnly) {
     final grouped = <String, List<MarketSnapshotModel>>{};
-
     for (final snapshot in snapshots) {
       grouped.putIfAbsent(snapshot.itemRef, () => []).add(snapshot);
     }
-
-    final positiveItemRefs = <String>{};
-
     for (final entry in grouped.entries) {
-      final history = [...entry.value];
-      history.sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
-
-      if (history.length < 2) continue;
-
-      final latest = history[0];
-      final previous = history[1];
-
-      if (latest.averagePrice > previous.averagePrice) {
+      final history = [...entry.value]..sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
+      if (history.length > 1 && history[0].averagePrice > history[1].averagePrice) {
         positiveItemRefs.add(entry.key);
       }
     }
-
-    result = result.where((snapshot) {
-      return positiveItemRefs.contains(snapshot.itemRef);
-    }).toList();
   }
+
+  // ОПТИМІЗАЦІЯ: Один прохід для фільтрації
+  var result = snapshots.where((snapshot) {
+    final itemTitle = inventoryRepository.getById(snapshot.itemRef)?.title ?? '';
+
+    if (query.isNotEmpty) {
+      final matchesQuery = snapshot.source.toLowerCase().contains(query) ||
+          itemTitle.toLowerCase().contains(query) ||
+          (snapshot.url ?? '').toLowerCase().contains(query);
+      if (!matchesQuery) return false;
+    }
+
+    if (filterSource.isNotEmpty && !snapshot.source.toLowerCase().contains(filterSource)) {
+      return false;
+    }
+
+    if (filterTitle.isNotEmpty && !itemTitle.toLowerCase().contains(filterTitle)) {
+      return false;
+    }
+
+    if (filter.withUrlOnly && (snapshot.url ?? '').trim().isEmpty) {
+      return false;
+    }
+
+    if (filter.positiveTrendOnly && !positiveItemRefs.contains(snapshot.itemRef)) {
+      return false;
+    }
+
+    return true;
+  }).toList();
 
   switch (ui.sortOption) {
     case MarketSortOption.newest:
@@ -94,9 +78,7 @@ final marketVisibleSnapshotsProvider =
       result.sort((a, b) => b.highPrice.compareTo(a.highPrice));
       break;
     case MarketSortOption.sourceAsc:
-      result.sort(
-        (a, b) => a.source.toLowerCase().compareTo(b.source.toLowerCase()),
-      );
+      result.sort((a, b) => a.source.toLowerCase().compareTo(b.source.toLowerCase()));
       break;
   }
 

@@ -17,11 +17,11 @@ class DashboardFlowCountersModel {
   });
 }
 
-final dashboardFlowCountersProvider =
-    Provider<DashboardFlowCountersModel>((ref) {
+final dashboardFlowCountersProvider = Provider<DashboardFlowCountersModel>((ref) {
   final purchaseFlow = ref.watch(watchlistPurchaseFlowProvider);
   final repriceFlow = ref.watch(inventoryRepriceFlowProvider);
   final reviewDone = ref.watch(inventoryReviewDoneProvider);
+  
   final headline = purchaseFlow.isNotEmpty
       ? 'Purchase flow has active items'
       : repriceFlow.isNotEmpty
@@ -29,6 +29,7 @@ final dashboardFlowCountersProvider =
           : reviewDone.isNotEmpty
               ? 'Some review items are completed'
               : 'No active flow pressure';
+              
   return DashboardFlowCountersModel(
     purchaseFlow: purchaseFlow.length,
     repriceFlow: repriceFlow.length,

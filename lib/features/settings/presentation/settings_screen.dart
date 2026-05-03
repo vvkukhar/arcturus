@@ -10,19 +10,19 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       appBar: AppBar(
-        title: Text('Settings'),
+        title: const Text('Settings'),
       ),
-      drawer: AppDrawer(),
-      floatingActionButton: GlobalQuickAddFab(),
+      drawer: const AppDrawer(),
+      floatingActionButton: const GlobalQuickAddFab(),
       body: ListView(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         children: [
           AppDataHealthCard(),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           AppDataIntegrityCard(),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           AppDataBackupCard(),
         ],
       ),

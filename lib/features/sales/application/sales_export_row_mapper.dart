@@ -5,7 +5,7 @@ class SalesExportRowMapper {
     return [
       sale.id,
       sale.itemId,
-      sale.platform.name,
+      sale.platform,
       sale.buyerName ?? '',
       sale.salePrice.toString(),
       sale.platformFee.toString(),

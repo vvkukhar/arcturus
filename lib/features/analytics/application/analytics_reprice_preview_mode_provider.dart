@@ -5,7 +5,16 @@ enum AnalyticsRepricePreviewMode {
   table,
 }
 
+class AnalyticsRepricePreviewModeNotifier extends Notifier<AnalyticsRepricePreviewMode> {
+  @override
+  AnalyticsRepricePreviewMode build() => AnalyticsRepricePreviewMode.cards;
+
+  void set(AnalyticsRepricePreviewMode value) {
+    state = value;
+  }
+}
+
 final analyticsRepricePreviewModeProvider =
-    StateProvider<AnalyticsRepricePreviewMode>(
-  (ref) => AnalyticsRepricePreviewMode.cards,
+    NotifierProvider<AnalyticsRepricePreviewModeNotifier, AnalyticsRepricePreviewMode>(
+  AnalyticsRepricePreviewModeNotifier.new,
 );
