@@ -35,24 +35,12 @@ export class DecisionEngineService {
     const roiPercent = totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
 
     let score = 50;
-
     score += Math.min(30, roiPercent / 2);
 
-    if (params.historicalRoi > 30) {
-      score += 10;
-    }
-
-    if (expectedProfit < 0) {
-      score -= 60;
-    }
-
-    if (roiPercent < 15) {
-      score -= 25;
-    }
-
-    if (roiPercent >= 40) {
-      score += 15;
-    }
+    if (params.historicalRoi > 30) score += 10;
+    if (expectedProfit < 0) score -= 60;
+    if (roiPercent < 15) score -= 25;
+    if (roiPercent >= 40) score += 15;
 
     score = Math.max(0, Math.min(100, toMoney(score)));
 
@@ -97,44 +85,32 @@ export class DecisionEngineService {
 
   async evaluateBuy(dto: EvaluateBuyDto): Promise<unknown> {
     const item = await this.prisma.item.findUnique({
-      where: {
-        id: dto.itemId,
-      },
+      where: { id: dto.itemId },
     });
 
-    if (!item) {
-      throw new NotFoundException('Item not found');
-    }
+    if (!item) throw new NotFoundException('Item not found');
 
     let listing = null;
-
     if (dto.listingId) {
       listing = await this.prisma.marketListing.findUnique({
-        where: {
-          id: dto.listingId,
-        },
+        where: { id: dto.listingId },
       });
-
-      if (!listing) {
-        throw new NotFoundException('Listing not found');
-      }
+      if (!listing) throw new NotFoundException('Listing not found');
     }
 
     const economics = (await this.unitEconomics.perItem(dto.itemId)) as any;
 
     const buyPrice = toMoney(dto.buyPrice ?? listing?.price ?? 0);
     const shippingPrice = toMoney(dto.shippingPrice ?? listing?.shippingPrice ?? 0);
-const fallbackSellPrice = Number(listing?.price ?? 0) * 1.4;
+    const fallbackSellPrice = Number(listing?.price ?? 0) * 1.4;
 
-const targetSellPrice = toMoney(
-  dto.targetSellPrice ??
-    economics.avgSellPrice ??
-    (fallbackSellPrice || buyPrice * 1.4),
-);
+    const targetSellPrice = toMoney(
+      dto.targetSellPrice ??
+        economics.avgSellPrice ??
+        (fallbackSellPrice || buyPrice * 1.4),
+    );
 
-    if (buyPrice <= 0) {
-      throw new BadRequestException('buyPrice is required');
-    }
+    if (buyPrice <= 0) throw new BadRequestException('buyPrice is required');
 
     const decision = this.scoreBuy({
       buyPrice,
@@ -180,18 +156,11 @@ const targetSellPrice = toMoney(
 
   async evaluateInventory(dto: EvaluateInventoryDto): Promise<unknown> {
     const inventory = await this.prisma.inventoryItem.findUnique({
-      where: {
-        id: dto.inventoryItemId,
-      },
-      include: {
-        item: true,
-        expenses: true,
-      },
+      where: { id: dto.inventoryItemId },
+      include: { item: true, expenses: true },
     });
 
-    if (!inventory) {
-      throw new NotFoundException('Inventory item not found');
-    }
+    if (!inventory) throw new NotFoundException('Inventory item not found');
 
     const targetRoiPercent = dto.targetRoiPercent ?? 35;
     const expenses = toMoney(
@@ -278,67 +247,43 @@ const targetSellPrice = toMoney(
         ...(params?.action ? { action: params.action } : {}),
         ...(params?.executionStatus ? { executionStatus: params.executionStatus } : {}),
       },
-      include: {
-        item: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      include: { item: true },
+      orderBy: { createdAt: 'desc' },
       take: params?.limit ?? 100,
     });
   }
 
   async runInventorySweep(): Promise<unknown> {
     const inventory = await this.prisma.inventoryItem.findMany({
-      where: {
-        quantity: {
-          gt: 0,
-        },
-      },
+      where: { quantity: { gt: 0 } },
       take: 200,
     });
 
     const results = [];
-
     for (const row of inventory) {
-      const decision = await this.evaluateInventory({
-        inventoryItemId: row.id,
-      });
-
+      const decision = await this.evaluateInventory({ inventoryItemId: row.id });
       results.push(decision);
     }
 
-    return {
-      evaluated: results.length,
-      results,
-    };
+    return { evaluated: results.length, results };
   }
 
   async runBuySweep(): Promise<unknown> {
     const listings = await this.prisma.marketListing.findMany({
-      where: {
-        status: 'active',
-      },
-      orderBy: {
-        fetchedAt: 'desc',
-      },
+      where: { status: 'active' },
+      orderBy: { fetchedAt: 'desc' },
       take: 200,
     });
 
     const results = [];
-
     for (const listing of listings) {
       const decision = await this.evaluateBuy({
         itemId: listing.itemId,
         listingId: listing.id,
       });
-
       results.push(decision);
     }
 
-    return {
-      evaluated: results.length,
-      results,
-    };
+    return { evaluated: results.length, results };
   }
 }

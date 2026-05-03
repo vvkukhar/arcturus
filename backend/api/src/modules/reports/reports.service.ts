@@ -12,121 +12,68 @@ type PeriodParams = {
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private getRange(params?: PeriodParams): {
-    from: Date;
-    to: Date;
-  } {
+  private getRange(params?: PeriodParams): { from: Date; to: Date } {
     const now = new Date();
-
-    const from = params?.from
-      ? new Date(params.from)
-      : new Date(now.getFullYear(), now.getMonth(), 1);
-
+    const from = params?.from ? new Date(params.from) : new Date(now.getFullYear(), now.getMonth(), 1);
     const to = params?.to ? new Date(params.to) : now;
-
-    return {
-      from,
-      to,
-    };
+    return { from, to };
   }
 
   private inRangeWhere(field: string, from: Date, to: Date): Record<string, unknown> {
-    return {
-      [field]: {
-        gte: from,
-        lte: to,
-      },
-    };
+    return { [field]: { gte: from, lte: to } };
   }
 
   async profitAndLoss(params?: PeriodParams): Promise<unknown> {
     const { from, to } = this.getRange(params);
 
-    const [sales, returns, expenses, purchaseOrders] = await Promise.all([
-      this.prisma.sale.findMany({
-        where: this.inRangeWhere('createdAt', from, to),
-        include: {
-          item: true,
-          inventoryItem: true,
-        },
-      }),
-      this.prisma.returnRequest.findMany({
+    const [salesAgg, returnsAgg, expensesAgg, purchaseOrders] = await Promise.all([
+      this.prisma.sale.aggregate({
+        _sum: { sellPrice: true, costBasis: true, profit: true },
+        _count: true,
         where: this.inRangeWhere('createdAt', from, to),
       }),
-      this.prisma.expense.findMany({
+      this.prisma.returnRequest.aggregate({
+        _sum: { refundAmount: true },
+        _count: true,
+        where: { ...this.inRangeWhere('createdAt', from, to), status: { in: ['approved', 'resolved'] } },
+      }),
+      this.prisma.expense.aggregate({
+        _sum: { amount: true },
+        _count: true,
         where: this.inRangeWhere('incurredAt', from, to),
       }),
       this.prisma.purchaseOrder.findMany({
-        where: this.inRangeWhere('createdAt', from, to),
+        where: { ...this.inRangeWhere('createdAt', from, to), status: { in: ['planned', 'approved', 'ordered', 'paid'] } },
+        select: { totalCost: true, actualPrice: true, plannedPrice: true }
       }),
     ]);
 
-    const grossRevenue = toMoney(
-      sales.reduce((sum, sale) => sum + Number(sale.sellPrice ?? 0), 0),
-    );
-
-    const cogs = toMoney(
-      sales.reduce((sum, sale) => sum + Number(sale.costBasis ?? 0), 0),
-    );
-
+    const grossRevenue = toMoney(salesAgg._sum.sellPrice ?? 0);
+    const cogs = toMoney(salesAgg._sum.costBasis ?? 0);
     const grossProfit = toMoney(grossRevenue - cogs);
-
-    const refunds = toMoney(
-      returns
-        .filter((row) => ['approved', 'resolved'].includes(row.status))
-        .reduce((sum, row) => sum + Number(row.refundAmount ?? 0), 0),
-    );
-
-    const operatingExpenses = toMoney(
-      expenses.reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0),
-    );
+    const refunds = toMoney(returnsAgg._sum.refundAmount ?? 0);
+    const operatingExpenses = toMoney(expensesAgg._sum.amount ?? 0);
 
     const procurementCommitted = toMoney(
-      purchaseOrders
-        .filter((order) => ['planned', 'approved', 'ordered', 'paid'].includes(order.status))
-        .reduce(
-          (sum, order) =>
-            sum +
-            Number(order.totalCost ?? order.actualPrice ?? order.plannedPrice ?? 0),
-          0,
-        ),
+      purchaseOrders.reduce((sum, order) => sum + Number(order.totalCost ?? order.actualPrice ?? order.plannedPrice ?? 0), 0)
     );
 
     const netRevenue = toMoney(grossRevenue - refunds);
     const netProfitBeforeExpenses = toMoney(grossProfit - refunds);
     const netProfit = toMoney(netProfitBeforeExpenses - operatingExpenses);
 
-    const marginPercent =
-      netRevenue > 0 ? toMoney((netProfit / netRevenue) * 100) : 0;
-
+    const marginPercent = netRevenue > 0 ? toMoney((netProfit / netRevenue) * 100) : 0;
     const roiPercent = cogs > 0 ? toMoney((netProfit / cogs) * 100) : 0;
 
     return {
-      period: {
-        from: from.toISOString(),
-        to: to.toISOString(),
-      },
-      revenue: {
-        grossRevenue,
-        refunds,
-        netRevenue,
-      },
-      costs: {
-        cogs,
-        operatingExpenses,
-        procurementCommitted,
-      },
-      profit: {
-        grossProfit,
-        netProfitBeforeExpenses,
-        netProfit,
-        marginPercent,
-        roiPercent,
-      },
+      period: { from: from.toISOString(), to: to.toISOString() },
+      revenue: { grossRevenue, refunds, netRevenue },
+      costs: { cogs, operatingExpenses, procurementCommitted },
+      profit: { grossProfit, netProfitBeforeExpenses, netProfit, marginPercent, roiPercent },
       counters: {
-        sales: sales.length,
-        returns: returns.length,
-        expenses: expenses.length,
+        sales: salesAgg._count,
+        returns: returnsAgg._count,
+        expenses: expensesAgg._count,
         purchaseOrders: purchaseOrders.length,
       },
     };
@@ -137,31 +84,14 @@ export class ReportsService {
 
     const sales = await this.prisma.sale.findMany({
       where: this.inRangeWhere('createdAt', from, to),
-      include: {
-        item: true,
-      },
+      include: { item: { select: { theme: true } } },
     });
 
-    const map = new Map<
-      string,
-      {
-        revenue: number;
-        cost: number;
-        profit: number;
-        units: number;
-        sales: number;
-      }
-    >();
+    const map = new Map<string, { revenue: number; cost: number; profit: number; units: number; sales: number }>();
 
     for (const sale of sales) {
       const theme = sale.item.theme ?? 'Unknown';
-      const current = map.get(theme) ?? {
-        revenue: 0,
-        cost: 0,
-        profit: 0,
-        units: 0,
-        sales: 0,
-      };
+      const current = map.get(theme) ?? { revenue: 0, cost: 0, profit: 0, units: 0, sales: 0 };
 
       current.revenue += Number(sale.sellPrice ?? 0);
       current.cost += Number(sale.costBasis ?? 0);
@@ -188,31 +118,18 @@ export class ReportsService {
   async expensesByCategory(params?: PeriodParams): Promise<unknown[]> {
     const { from, to } = this.getRange(params);
 
-    const expenses = await this.prisma.expense.findMany({
+    const agg = await this.prisma.expense.groupBy({
+      by: ['category'],
+      _sum: { amount: true },
+      _count: { id: true },
       where: this.inRangeWhere('incurredAt', from, to),
     });
 
-    const map = new Map<string, { amount: number; count: number }>();
-
-    for (const expense of expenses) {
-      const current = map.get(expense.category) ?? {
-        amount: 0,
-        count: 0,
-      };
-
-      current.amount += Number(expense.amount ?? 0);
-      current.count += 1;
-
-      map.set(expense.category, current);
-    }
-
-    return Array.from(map.entries())
-      .map(([category, value]) => ({
-        category,
-        amount: toMoney(value.amount),
-        count: value.count,
-      }))
-      .sort((a, b) => b.amount - a.amount);
+    return agg.map(row => ({
+      category: row.category,
+      amount: toMoney(row._sum.amount ?? 0),
+      count: row._count.id
+    })).sort((a, b) => b.amount - a.amount);
   }
 
   async dailyPnl(params?: PeriodParams): Promise<unknown[]> {
@@ -221,40 +138,24 @@ export class ReportsService {
     const [sales, returns, expenses] = await Promise.all([
       this.prisma.sale.findMany({
         where: this.inRangeWhere('createdAt', from, to),
+        select: { createdAt: true, sellPrice: true, costBasis: true, profit: true }
       }),
       this.prisma.returnRequest.findMany({
-        where: this.inRangeWhere('createdAt', from, to),
+        where: { ...this.inRangeWhere('createdAt', from, to), status: { in: ['approved', 'resolved'] } },
+        select: { createdAt: true, refundAmount: true }
       }),
       this.prisma.expense.findMany({
         where: this.inRangeWhere('incurredAt', from, to),
+        select: { incurredAt: true, amount: true }
       }),
     ]);
 
-    const map = new Map<
-      string,
-      {
-        revenue: number;
-        cost: number;
-        profit: number;
-        refunds: number;
-        expenses: number;
-      }
-    >();
+    const map = new Map<string, { revenue: number; cost: number; profit: number; refunds: number; expenses: number }>();
 
     const ensure = (date: Date) => {
       const key = date.toISOString().slice(0, 10);
-      const current =
-        map.get(key) ??
-        {
-          revenue: 0,
-          cost: 0,
-          profit: 0,
-          refunds: 0,
-          expenses: 0,
-        };
-
+      const current = map.get(key) ?? { revenue: 0, cost: 0, profit: 0, refunds: 0, expenses: 0 };
       map.set(key, current);
-
       return current;
     };
 
@@ -266,10 +167,6 @@ export class ReportsService {
     }
 
     for (const row of returns) {
-      if (!['approved', 'resolved'].includes(row.status)) {
-        continue;
-      }
-
       ensure(row.createdAt).refunds += Number(row.refundAmount ?? 0);
     }
 
@@ -294,22 +191,10 @@ export class ReportsService {
     const { from, to } = this.getRange(params);
 
     const payload = {
-      pnl: await this.profitAndLoss({
-        from: from.toISOString(),
-        to: to.toISOString(),
-      }),
-      salesByTheme: await this.salesByTheme({
-        from: from.toISOString(),
-        to: to.toISOString(),
-      }),
-      expensesByCategory: await this.expensesByCategory({
-        from: from.toISOString(),
-        to: to.toISOString(),
-      }),
-      dailyPnl: await this.dailyPnl({
-        from: from.toISOString(),
-        to: to.toISOString(),
-      }),
+      pnl: await this.profitAndLoss({ from: from.toISOString(), to: to.toISOString() }),
+      salesByTheme: await this.salesByTheme({ from: from.toISOString(), to: to.toISOString() }),
+      expensesByCategory: await this.expensesByCategory({ from: from.toISOString(), to: to.toISOString() }),
+      dailyPnl: await this.dailyPnl({ from: from.toISOString(), to: to.toISOString() }),
     };
 
     return this.prisma.reportSnapshot.create({
@@ -324,9 +209,7 @@ export class ReportsService {
 
   async snapshots(): Promise<unknown[]> {
     return this.prisma.reportSnapshot.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
       take: 100,
     });
   }

@@ -2,130 +2,107 @@ import { convertToUah } from '../common/currency-converter';
 import { avg, median } from '../common/money';
 import { prisma } from '../prisma';
 
-type MarketListingRow = {
-  price: number;
-  currency: string;
-  shippingPrice: number | null;
-  shippingCurrency: string | null;
-  sealed: boolean | null;
-};
-
-function confidenceFromCount(count: number): number {
-  if (count >= 10) return 0.95;
-  if (count >= 5) return 0.8;
-  if (count >= 2) return 0.65;
-  if (count >= 1) return 0.45;
-  return 0;
-}
-
 export async function recomputeMarketSnapshotsJob(): Promise<{
   totalItems: number;
   snapshotsCreated: number;
 }> {
   const items = await prisma.item.findMany({
+    select: { id: true },
+  });
+
+  const activeListings = await prisma.marketListing.findMany({
+    where: { status: 'active' },
     select: {
-      id: true,
+      itemId: true,
+      price: true,
+      currency: true,
+      shippingPrice: true,
+      shippingCurrency: true,
+      sealed: true,
     },
   });
 
-  let snapshotsCreated = 0;
+  const listingsByItem = new Map<string, typeof activeListings>();
 
-  for (const item of items) {
-    const listings: MarketListingRow[] = await prisma.marketListing.findMany({
-      where: {
-        itemId: item.id,
-        status: 'active',
-      },
-      select: {
-        price: true,
-        currency: true,
-        shippingPrice: true,
-        shippingCurrency: true,
-        sealed: true,
-      },
-    });
+  for (const listing of activeListings) {
+    const arr = listingsByItem.get(listing.itemId) || [];
+    arr.push(listing);
+    listingsByItem.set(listing.itemId, arr);
+  }
+
+  const snapshotData = items.map((item) => {
+    const listings = listingsByItem.get(item.id) || [];
 
     if (listings.length === 0) {
-      await prisma.marketSnapshot.create({
-        data: {
-          itemId: item.id,
-          scope: 'ua',
-          listingsCount: 0,
-          confidenceScore: 0,
-        },
-      });
-
-      snapshotsCreated += 1;
-      continue;
-    }
-
-    const prices = listings
-      .map((listing: MarketListingRow) =>
-        convertToUah(listing.price, listing.currency),
-      )
-      .filter((value: number) => Number.isFinite(value) && value > 0);
-
-    const pricesWithShipping = listings
-      .map((listing: MarketListingRow) => {
-        const price = convertToUah(listing.price, listing.currency);
-        const shipping = convertToUah(
-          listing.shippingPrice ?? 0,
-          listing.shippingCurrency ?? listing.currency,
-        );
-
-        return price + shipping;
-      })
-      .filter((value: number) => Number.isFinite(value) && value > 0);
-
-    const shipping = listings
-      .map((listing: MarketListingRow) =>
-        convertToUah(
-          listing.shippingPrice ?? 0,
-          listing.shippingCurrency ?? listing.currency,
-        ),
-      )
-      .filter((value: number) => Number.isFinite(value) && value >= 0);
-
-    const sealedPrices = listings
-      .filter((listing: MarketListingRow) => listing.sealed === true)
-      .map((listing: MarketListingRow) =>
-        convertToUah(listing.price, listing.currency),
-      )
-      .filter((value: number) => Number.isFinite(value) && value > 0);
-
-    const usedPrices = listings
-      .filter((listing: MarketListingRow) => listing.sealed !== true)
-      .map((listing: MarketListingRow) =>
-        convertToUah(listing.price, listing.currency),
-      )
-      .filter((value: number) => Number.isFinite(value) && value > 0);
-
-    await prisma.marketSnapshot.create({
-      data: {
+      return {
         itemId: item.id,
         scope: 'ua',
-        listingsCount: listings.length,
-        lowestPrice: prices.length > 0 ? Math.min(...prices) : null,
-        lowestPriceWithShipping:
-          pricesWithShipping.length > 0
-            ? Math.min(...pricesWithShipping)
-            : null,
-        avgPrice: avg(prices),
-        medianPrice: median(prices),
-        avgShipping: avg(shipping),
-        minShipping: shipping.length > 0 ? Math.min(...shipping) : null,
-        maxShipping: shipping.length > 0 ? Math.max(...shipping) : null,
-        sealedAvgPrice: avg(sealedPrices),
-        usedAvgPrice: avg(usedPrices),
-        confidenceScore: confidenceFromCount(listings.length),
-      },
-    });
+        listingsCount: 0,
+        confidenceScore: 0,
+      };
+    }
 
-    snapshotsCreated += 1;
+    const prices: number[] = [];
+    const pricesWithShipping: number[] = [];
+    const shipping: number[] = [];
+    const sealedPrices: number[] = [];
+    const usedPrices: number[] = [];
+
+    for (const listing of listings) {
+      const price = convertToUah(listing.price, listing.currency);
+      const ship = convertToUah(
+        listing.shippingPrice ?? 0,
+        listing.shippingCurrency ?? listing.currency,
+      );
+
+      if (Number.isFinite(price) && price > 0) {
+        prices.push(price);
+        pricesWithShipping.push(price + ship);
+
+        if (listing.sealed === true) {
+          sealedPrices.push(price);
+        } else {
+          usedPrices.push(price);
+        }
+      }
+
+      if (Number.isFinite(ship) && ship >= 0) {
+        shipping.push(ship);
+      }
+    }
+
+    const sortedPrices = prices.sort((a, b) => a - b);
+    const sortedPricesWithShipping = pricesWithShipping.sort((a, b) => a - b);
+    const sortedShipping = shipping.sort((a, b) => a - b);
+
+    const confidenceScore =
+      listings.length >= 10 ? 0.95 : listings.length >= 5 ? 0.8 : listings.length >= 2 ? 0.65 : 0.45;
+
+    return {
+      itemId: item.id,
+      scope: 'ua',
+      listingsCount: listings.length,
+      lowestPrice: sortedPrices.length > 0 ? sortedPrices[0] : null,
+      lowestPriceWithShipping: sortedPricesWithShipping.length > 0 ? sortedPricesWithShipping[0] : null,
+      avgPrice: avg(prices),
+      medianPrice: median(prices),
+      avgShipping: avg(shipping),
+      minShipping: sortedShipping.length > 0 ? sortedShipping[0] : null,
+      maxShipping: sortedShipping.length > 0 ? sortedShipping[sortedShipping.length - 1] : null,
+      sealedAvgPrice: avg(sealedPrices),
+      usedAvgPrice: avg(usedPrices),
+      confidenceScore,
+    };
+  });
+
+  if (snapshotData.length > 0) {
+    await prisma.marketSnapshot.createMany({
+      data: snapshotData,
+    });
   }
 
   return {
     totalItems: items.length,
-    snapshotsCreated,
+    snapshotsCreated: snapshotData.length,
   };
 }

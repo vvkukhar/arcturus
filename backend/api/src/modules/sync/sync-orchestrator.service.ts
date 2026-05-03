@@ -15,6 +15,13 @@ export class SyncOrchestratorService {
     private readonly realtime: RealtimeGateway,
   ) {}
 
+  private async processInChunks<T>(items: T[], chunkSize: number, processor: (item: T) => Promise<void>) {
+    for (let i = 0; i < items.length; i += chunkSize) {
+      const chunk = items.slice(i, i + chunkSize);
+      await Promise.all(chunk.map(processor));
+    }
+  }
+
   async refreshAll(): Promise<{
     totalItems: number;
     refreshedItems: number;
@@ -22,65 +29,38 @@ export class SyncOrchestratorService {
     recomputedWatchlistDecisions: number;
   }> {
     const [items, inventoryItems, watchlistItems] = await Promise.all([
-      this.prisma.item.findMany({
-        select: {
-          id: true,
-        },
-      }),
-      this.prisma.inventoryItem.findMany({
-        select: {
-          id: true,
-        },
-      }),
-      this.prisma.watchlistItem.findMany({
-        select: {
-          id: true,
-        },
-      }),
+      this.prisma.item.findMany({ select: { id: true } }),
+      this.prisma.inventoryItem.findMany({ select: { id: true } }),
+      this.prisma.watchlistItem.findMany({ select: { id: true } }),
     ]);
 
-    this.syncStateService.start(
-      'global_refresh',
-      items.length,
-      'Refreshing all market snapshots',
-    );
-
-    this.realtime.emitCustom('sync.started', {
-      mode: 'global_refresh',
-      totalItems: items.length,
-    });
+    this.syncStateService.start('global_refresh', items.length, 'Refreshing all market snapshots');
+    this.realtime.emitCustom('sync.started', { mode: 'global_refresh', totalItems: items.length });
 
     let refreshedItems = 0;
     let recomputedInventoryDecisions = 0;
     let recomputedWatchlistDecisions = 0;
 
     try {
-      for (const item of items) {
+      await this.processInChunks(items, 50, async (item) => {
         await this.marketSyncService.refreshItemSnapshot(item.id);
         refreshedItems += 1;
 
-        this.syncStateService.progress(
-          refreshedItems,
-          `Refreshed ${refreshedItems}/${items.length}`,
-        );
-
-        if (refreshedItems % 10 === 0 || refreshedItems === items.length) {
-          this.realtime.emitCustom('sync.progress', {
-            processedItems: refreshedItems,
-            totalItems: items.length,
-          });
+        if (refreshedItems % 50 === 0 || refreshedItems === items.length) {
+          this.syncStateService.progress(refreshedItems, `Refreshed ${refreshedItems}/${items.length}`);
+          this.realtime.emitCustom('sync.progress', { processedItems: refreshedItems, totalItems: items.length });
         }
-      }
+      });
 
-      for (const inventoryItem of inventoryItems) {
+      await this.processInChunks(inventoryItems, 50, async (inventoryItem) => {
         await this.decisionsService.recomputeInventoryDecision(inventoryItem.id);
         recomputedInventoryDecisions += 1;
-      }
+      });
 
-      for (const watchlistItem of watchlistItems) {
+      await this.processInChunks(watchlistItems, 50, async (watchlistItem) => {
         await this.decisionsService.recomputeWatchlistDecision(watchlistItem.id);
         recomputedWatchlistDecisions += 1;
-      }
+      });
 
       this.syncStateService.finish('Global refresh completed');
 
@@ -101,13 +81,8 @@ export class SyncOrchestratorService {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-
       this.syncStateService.fail(message);
-
-      this.realtime.emitCustom('sync.failed', {
-        message,
-      });
-
+      this.realtime.emitCustom('sync.failed', { message });
       throw error;
     }
   }
@@ -118,31 +93,15 @@ export class SyncOrchestratorService {
     try {
       const snapshot = await this.marketSyncService.refreshItemSnapshot(itemId);
 
-      const inventoryItems = await this.prisma.inventoryItem.findMany({
-        where: {
-          itemId,
-        },
-        select: {
-          id: true,
-        },
-      });
+      const [inventoryItems, watchlistItems] = await Promise.all([
+        this.prisma.inventoryItem.findMany({ where: { itemId }, select: { id: true } }),
+        this.prisma.watchlistItem.findMany({ where: { itemId }, select: { id: true } }),
+      ]);
 
-      const watchlistItems = await this.prisma.watchlistItem.findMany({
-        where: {
-          itemId,
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      for (const inventoryItem of inventoryItems) {
-        await this.decisionsService.recomputeInventoryDecision(inventoryItem.id);
-      }
-
-      for (const watchlistItem of watchlistItems) {
-        await this.decisionsService.recomputeWatchlistDecision(watchlistItem.id);
-      }
+      await Promise.all([
+        ...inventoryItems.map(inv => this.decisionsService.recomputeInventoryDecision(inv.id)),
+        ...watchlistItems.map(watch => this.decisionsService.recomputeWatchlistDecision(watch.id))
+      ]);
 
       this.syncStateService.progress(1, 'Item refreshed');
       this.syncStateService.finish('Item refresh completed');
