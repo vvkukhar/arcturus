@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 export default function LoginPage() {
   const [value, setValue] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6">
@@ -13,31 +14,48 @@ export default function LoginPage() {
         <div className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
           Arcturus Admin
         </div>
+
         <h1 className="mt-3 text-3xl font-black tracking-tight">Login</h1>
+
         <p className="mt-2 text-sm text-slate-500">
           Enter your backend Bearer token for admin access.
         </p>
+
         <div className="mt-6 space-y-3">
           <textarea
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setError(null);
+            }}
             placeholder="Paste token"
             className="min-h-36 w-full rounded-xl border border-border bg-white px-4 py-3 text-sm outline-none"
           />
+
+          {error ? <div className="text-sm font-semibold text-red-600">{error}</div> : null}
+
           <Button
             className="w-full"
+            disabled={loading || !value.trim()}
             onClick={async () => {
               try {
                 setLoading(true);
+                setError(null);
+
                 const response = await fetch('/api/auth/login', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ token: value }),
                 });
+
                 if (!response.ok) {
-                  throw new Error('Login failed');
+                  const data = await response.json().catch(() => null);
+                  throw new Error(data?.error ?? 'Login failed');
                 }
+
                 window.location.href = '/admin/dashboard';
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Login failed');
               } finally {
                 setLoading(false);
               }

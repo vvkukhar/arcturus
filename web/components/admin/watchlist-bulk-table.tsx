@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { AddToPurchaseFlowButton } from '@/components/admin/add-to-purchase-flowbutton';
+import { AddToPurchaseFlowButton } from '@/components/admin/add-to-purchase-flow-button';
 import { BulkSelectionToolbar } from '@/components/admin/bulk-selection-toolbar';
 import { StatusPill } from '@/components/admin/status-pill';
 import { WatchlistEditDialog } from '@/components/admin/watchlist-edit-dialog';
@@ -28,6 +28,7 @@ type Props = {
 export function WatchlistBulkTable({ rows }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
 
   const toggle = (id: string) => {
@@ -39,27 +40,41 @@ export function WatchlistBulkTable({ rows }: Props) {
   const clear = () => setSelected([]);
 
   const bulkAdd = async () => {
-    for (const id of selected) {
-      await fetch('/api/admin/flows/purchase/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ watchlistItemId: id }),
-      });
-    }
+    try {
+      setBulkLoading(true);
 
-    clear();
-    router.refresh();
+      await Promise.all(
+        selected.map((id) =>
+          fetch('/api/admin/flows/purchase/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ watchlistItemId: id }),
+          }),
+        ),
+      );
+
+      clear();
+      router.refresh();
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   const bulkSetActive = async (active: boolean) => {
-    await fetch('/api/admin/watchlist/bulk-activate', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: selected, active }),
-    });
+    try {
+      setBulkLoading(true);
 
-    clear();
-    router.refresh();
+      await fetch('/api/admin/watchlist/bulk-activate', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selected, active }),
+      });
+
+      clear();
+      router.refresh();
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   const bulkDelete = async () => {
@@ -67,14 +82,20 @@ export function WatchlistBulkTable({ rows }: Props) {
 
     if (!ok) return;
 
-    await fetch('/api/admin/watchlist/bulk-delete', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: selected }),
-    });
+    try {
+      setBulkLoading(true);
 
-    clear();
-    router.refresh();
+      await fetch('/api/admin/watchlist/bulk-delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selected }),
+      });
+
+      clear();
+      router.refresh();
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   if (rows.length === 0) {
@@ -88,64 +109,72 @@ export function WatchlistBulkTable({ rows }: Props) {
         onClear={clear}
         onBulkPurchase={bulkAdd}
       />
+
       {selected.length > 0 ? (
         <div className="mb-4 flex flex-wrap gap-2">
           <button
+            disabled={bulkLoading}
             onClick={() => bulkSetActive(true)}
-            className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700"
+            className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 disabled:opacity-60"
           >
             Activate Selected
           </button>
+
           <button
+            disabled={bulkLoading}
             onClick={() => bulkSetActive(false)}
-            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700"
+            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 disabled:opacity-60"
           >
             Deactivate Selected
           </button>
+
           <button
+            disabled={bulkLoading}
             onClick={bulkDelete}
-            className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-60"
           >
-            Delete Selected
+            {bulkLoading ? 'Working...' : 'Delete Selected'}
           </button>
         </div>
       ) : null}
-      <div className="overflow-x-auto">
+
+      <div className="overflow-x-auto rounded-2xl border border-border bg-white">
         <table className="min-w-full border-separate border-spacing-0">
           <thead>
             <tr>
-              <th className="border-b border-border px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
+              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
                 Select
               </th>
-              <th className="border-b border-border px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
+              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
                 Item
               </th>
-              <th className="border-b border-border px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
+              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
                 Desired Buy
               </th>
-              <th className="border-b border-border px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
+              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
                 Max Buy
               </th>
-              <th className="border-b border-border px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
+              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
                 Target Sell
               </th>
-              <th className="border-b border-border px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
+              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
                 Target ROI
               </th>
-              <th className="border-b border-border px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
+              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
                 Status
               </th>
-              <th className="border-b border-border px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
+              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
                 Priority
               </th>
-              <th className="border-b border-border px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
+              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
                 Actions
               </th>
             </tr>
           </thead>
+
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id}>
+              <tr key={row.id} className="hover:bg-slate-50">
                 <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
                   <input
                     type="checkbox"
@@ -153,6 +182,7 @@ export function WatchlistBulkTable({ rows }: Props) {
                     onChange={() => toggle(row.id)}
                   />
                 </td>
+
                 <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
                   <div>
                     <Link
@@ -164,28 +194,36 @@ export function WatchlistBulkTable({ rows }: Props) {
                     <div className="mt-1 text-xs text-slate-500">{row.itemId}</div>
                   </div>
                 </td>
+
                 <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
                   {formatMoney(row.desiredBuyPrice)}
                 </td>
+
                 <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
                   {formatMoney(row.maxBuyPrice)}
                 </td>
+
                 <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
                   {formatMoney(row.targetSellPrice)}
                 </td>
+
                 <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
                   {row.targetSellPrice && row.maxBuyPrice > 0
                     ? formatPercent(
-                        ((row.targetSellPrice - row.maxBuyPrice) / row.maxBuyPrice) * 100,
+                        ((row.targetSellPrice - row.maxBuyPrice) / row.maxBuyPrice) *
+                          100,
                       )
                     : '—'}
                 </td>
+
                 <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
                   <StatusPill value={row.active ? 'active' : 'inactive'} />
                 </td>
+
                 <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
                   {row.priority}
                 </td>
+
                 <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
                   <div className="flex flex-wrap gap-2">
                     <WatchlistEditDialog item={row} />

@@ -1,44 +1,54 @@
 import Link from 'next/link';
-import { ButtonHTMLAttributes, AnchorHTMLAttributes } from 'react';
+import type {
+  AnchorHTMLAttributes,
+  ButtonHTMLAttributes,
+  ReactNode,
+} from 'react';
 import { cn } from '@/lib/utils';
 
 type CommonProps = {
   variant?: 'default' | 'secondary';
   className?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
-type ButtonProps = CommonProps &
+type NativeButtonProps = CommonProps &
   ButtonHTMLAttributes<HTMLButtonElement> & {
-    href?: never;
+    href?: undefined;
   };
 
-type LinkProps = CommonProps &
-  AnchorHTMLAttributes<HTMLAnchorElement> & {
+type LinkButtonProps = CommonProps &
+  Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
     href: string;
   };
 
-export function Button(props: ButtonProps | LinkProps) {
+export function Button(props: NativeButtonProps | LinkButtonProps) {
   const base =
-    'inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-90';
+    'inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-90 disabled:pointer-events-none disabled:opacity-50';
 
-  const variant =
+  const styles =
     props.variant === 'secondary'
-      ? 'bg-white border border-border text-foreground'
+      ? 'border border-border bg-white text-foreground'
       : 'bg-primary text-white';
 
-  if ('href' in props && props.href) {
+  if (props.href !== undefined) {
     const { className, children, href, variant: _variant, ...rest } = props;
+
     return (
-      <Link href={href} className={cn(base, variant, className)} {...rest}>
+      <Link href={href} className={cn(base, styles, className)} {...rest}>
         {children}
       </Link>
     );
   }
 
-  const { className, children, variant: _variant, ...rest } = props;
+  const { className, children, variant: _variant, type, ...rest } = props;
+
   return (
-    <button className={cn(base, variant, className)} {...rest}>
+    <button
+      type={type ?? 'button'}
+      className={cn(base, styles, className)}
+      {...rest}
+    >
       {children}
     </button>
   );

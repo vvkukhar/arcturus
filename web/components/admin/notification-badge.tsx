@@ -7,28 +7,47 @@ export function NotificationBadge() {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    fetch('/api/notifications')
-      .then((r) => r.json())
-      .then((data) => {
-        const unread = data.filter((x: any) => !x.read).length;
-        setCount(unread);
-      });
+    let mounted = true;
+
+    const load = async () => {
+      try {
+        const response = await fetch('/api/notifications', {
+          cache: 'no-store',
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const rows = Array.isArray(data) ? data : [];
+        const unread = rows.filter((x: any) => !x.read).length;
+
+        if (mounted) {
+          setCount(unread);
+        }
+      } catch {
+        // keep current count
+      }
+    };
 
     const socket = getSocket();
 
-    socket.on('notification', () => {
+    const onNotification = () => {
       setCount((x) => x + 1);
-    });
+    };
+
+    load();
+    socket.on('notification', onNotification);
 
     return () => {
-      socket.off('notification');
+      mounted = false;
+      socket.off('notification', onNotification);
     };
   }, []);
 
   if (count === 0) return null;
 
   return (
-    <div className="absolute -right-1 -top-1 rounded-full bg-red-500 text-white text-xs px-1.5">
+    <div className="absolute -right-1 -top-1 rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
       {count}
     </div>
   );

@@ -5,9 +5,13 @@ import { getAdminToken } from '@/lib/server-auth';
 export async function GET() {
   const token = await getAdminToken();
 
+  if (!token) {
+    return NextResponse.json(null, { status: 401 });
+  }
+
   const res = await fetch(`${appConfig.apiBaseUrl}/auth/me`, {
     headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Authorization: `Bearer ${token}`,
     },
     cache: 'no-store',
   });

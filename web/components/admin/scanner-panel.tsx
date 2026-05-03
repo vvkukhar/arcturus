@@ -11,28 +11,51 @@ export function ScannerPanel() {
   const [name, setName] = useState('');
   const [sourceCode, setSourceCode] = useState('');
   const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
-    const [sourcesRes, jobsRes] = await Promise.all([
-      apiFetch<ScannerSource[]>('/api/scanner/sources'),
-      apiFetch<ScannerJob[]>('/api/scanner/jobs'),
-    ]);
+    try {
+      const [sourcesRes, jobsRes] = await Promise.all([
+        apiFetch<ScannerSource[]>('/api/scanner/sources'),
+        apiFetch<ScannerJob[]>('/api/scanner/jobs'),
+      ]);
 
-    setSources(Array.isArray(sourcesRes) ? sourcesRes : []);
-    setJobs(Array.isArray(jobsRes) ? jobsRes : []);
+      const sourceRows = Array.isArray(sourcesRes) ? sourcesRes : [];
+      const jobRows = Array.isArray(jobsRes) ? jobsRes : [];
 
-    if (Array.isArray(sourcesRes) && sourcesRes[0]?.code && !sourceCode) {
-      setSourceCode(sourcesRes[0].code);
+      setSources(sourceRows);
+      setJobs(jobRows);
+
+      if (sourceRows[0]?.code && !sourceCode) {
+        setSourceCode(sourceRows[0].code);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Scanner load failed');
+      setSources([]);
+      setJobs([]);
     }
   };
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className="space-y-4 rounded-2xl border border-border bg-white p-5">
-      <div className="text-xl font-black">Scanner</div>
+      <div>
+        <div className="text-xl font-black">Scanner</div>
+        <div className="mt-1 text-sm text-slate-500">
+          Sources, queued scans, and scanner job creation.
+        </div>
+      </div>
+
+      {error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
 
       <div className="grid gap-3 md:grid-cols-2">
         <input
@@ -50,24 +73,34 @@ export function ScannerPanel() {
       </div>
 
       <button
-        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        disabled={loading === 'source' || !code || !name}
         onClick={async () => {
-          await apiFetch('/api/scanner/sources', {
-            method: 'POST',
-            body: JSON.stringify({
-              code,
-              name,
-              type: 'manual',
-              enabled: true,
-            }),
-          });
+          try {
+            setLoading('source');
+            setError(null);
 
-          setCode('');
-          setName('');
-          load();
+            await apiFetch('/api/scanner/sources', {
+              method: 'POST',
+              body: JSON.stringify({
+                code,
+                name,
+                type: 'manual',
+                enabled: true,
+              }),
+            });
+
+            setCode('');
+            setName('');
+            await load();
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Source create failed');
+          } finally {
+            setLoading(null);
+          }
         }}
       >
-        Add Source
+        {loading === 'source' ? 'Adding...' : 'Add Source'}
       </button>
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -93,48 +126,66 @@ export function ScannerPanel() {
       </div>
 
       <button
-        className="rounded-xl border border-border px-4 py-2 text-sm font-semibold"
+        className="rounded-xl border border-border px-4 py-2 text-sm font-semibold disabled:opacity-60"
+        disabled={loading === 'job' || !sourceCode}
         onClick={async () => {
-          await apiFetch('/api/scanner/jobs', {
-            method: 'POST',
-            body: JSON.stringify({
-              sourceCode,
-              query,
-            }),
-          });
+          try {
+            setLoading('job');
+            setError(null);
 
-          setQuery('');
-          load();
+            await apiFetch('/api/scanner/jobs', {
+              method: 'POST',
+              body: JSON.stringify({
+                sourceCode,
+                query,
+              }),
+            });
+
+            setQuery('');
+            await load();
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Scan enqueue failed');
+          } finally {
+            setLoading(null);
+          }
         }}
       >
-        Enqueue Scan
+        {loading === 'job' ? 'Enqueueing...' : 'Enqueue Scan'}
       </button>
 
       <div className="space-y-2">
         <div className="text-sm font-bold text-slate-500">Sources</div>
-        {sources.map((source) => (
-          <div
-            key={source.code}
-            className="rounded-xl border border-border p-3 text-sm"
-          >
-            <div className="font-bold">{source.name}</div>
-            <div className="text-slate-500">{source.code}</div>
-          </div>
-        ))}
+        {sources.length === 0 ? (
+          <div className="text-sm text-slate-500">No sources</div>
+        ) : (
+          sources.map((source) => (
+            <div
+              key={source.code}
+              className="rounded-xl border border-border p-3 text-sm"
+            >
+              <div className="font-bold">{source.name}</div>
+              <div className="text-slate-500">{source.code}</div>
+            </div>
+          ))
+        )}
       </div>
 
       <div className="space-y-2">
         <div className="text-sm font-bold text-slate-500">Jobs</div>
-        {jobs.map((job) => (
-          <div
-            key={job.id}
-            className="rounded-xl border border-border p-3 text-sm"
-          >
-            <div className="font-bold">{job.sourceCode}</div>
-            <div className="text-slate-500">{job.query || '—'}</div>
-            <div className="text-xs text-slate-400">{job.status}</div>
-          </div>
-        ))}
+        {jobs.length === 0 ? (
+          <div className="text-sm text-slate-500">No jobs</div>
+        ) : (
+          jobs.map((job) => (
+            <div
+              key={job.id}
+              className="rounded-xl border border-border p-3 text-sm"
+            >
+              <div className="font-bold">{job.sourceCode}</div>
+              <div className="text-slate-500">{job.query || '—'}</div>
+              <div className="text-xs text-slate-400">{job.status}</div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

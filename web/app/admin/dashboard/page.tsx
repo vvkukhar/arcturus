@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { AiSuggestionsPanel } from '@/components/admin/ai-suggestions-panel';
 import { AuthStatus } from '@/components/admin/auth-status';
 import { CollaborationPanel } from '@/components/admin/collaboration-panel';
-import { CollaborativeAssignmentPanel } from '@/components/admin/collaborativeassignment-panel';
+import { CollaborativeAssignmentPanel } from '@/components/admin/collaborative-assignment-panel';
 import { CreateItemDialog } from '@/components/admin/create-item-dialog';
 import { DashboardChartCard } from '@/components/admin/dashboard-chart-card';
 import { DealExplainer } from '@/components/admin/deal-explainer';
@@ -134,20 +134,26 @@ export default async function AdminDashboardPage() {
         <CreateItemDialog />
       </div>
 
+      {execution?.headline ? (
+        <div className="rounded-2xl border border-border bg-white p-5 text-sm font-semibold text-slate-700">
+          {execution.headline}
+        </div>
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <MetricCard
           title="Purchase Queue"
-          value={counters?.purchase ?? 0}
+          value={counters?.purchase ?? execution?.purchasePending ?? 0}
           subtitle="Pending buy execution items"
         />
         <MetricCard
           title="Reprice Queue"
-          value={counters?.reprice ?? 0}
+          value={counters?.reprice ?? execution?.repricePending ?? 0}
           subtitle="Inventory waiting for listing"
         />
         <MetricCard
           title="Review Queue"
-          value={counters?.review ?? 0}
+          value={counters?.review ?? execution?.reviewPending ?? 0}
           subtitle="Manual checks still pending"
         />
         <MetricCard
@@ -172,9 +178,9 @@ export default async function AdminDashboardPage() {
           title="Flow Queues"
           labels={['Purchase', 'Reprice', 'Review']}
           values={[
-            counters?.purchase ?? 0,
-            counters?.reprice ?? 0,
-            counters?.review ?? 0,
+            counters?.purchase ?? execution?.purchasePending ?? 0,
+            counters?.reprice ?? execution?.repricePending ?? 0,
+            counters?.review ?? execution?.reviewPending ?? 0,
           ]}
         />
         <DashboardChartCard

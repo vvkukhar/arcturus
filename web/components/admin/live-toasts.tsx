@@ -10,31 +10,44 @@ export function LiveToasts() {
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on('sale_registered', (x: any) => {
+    const onSaleRegistered = (x: any) => {
       push({
         title: 'Sale',
-        message: `${x.title} • +${x.profit}`,
+        message: `${x?.title ?? 'Sale registered'} • +${x?.profit ?? 0}`,
       });
-    });
+    };
 
-    socket.on('inventory_updated', (x: any) => {
+    const onInventoryUpdated = (x: any) => {
       push({
         title: 'Inventory updated',
-        message: x.titleSnapshot,
+        message: x?.titleSnapshot ?? x?.title ?? 'Inventory changed',
       });
-    });
+    };
 
-    socket.on('user_created', (x: any) => {
+    const onUserCreated = (x: any) => {
       push({
         title: 'New user',
-        message: x.name,
+        message: x?.name ?? 'User created',
       });
-    });
+    };
+
+    const onNotification = (x: any) => {
+      push({
+        title: x?.title ?? 'Notification',
+        message: x?.message ?? '',
+      });
+    };
+
+    socket.on('sale_registered', onSaleRegistered);
+    socket.on('inventory_updated', onInventoryUpdated);
+    socket.on('user_created', onUserCreated);
+    socket.on('notification', onNotification);
 
     return () => {
-      socket.off('sale_registered');
-      socket.off('inventory_updated');
-      socket.off('user_created');
+      socket.off('sale_registered', onSaleRegistered);
+      socket.off('inventory_updated', onInventoryUpdated);
+      socket.off('user_created', onUserCreated);
+      socket.off('notification', onNotification);
     };
   }, [push]);
 

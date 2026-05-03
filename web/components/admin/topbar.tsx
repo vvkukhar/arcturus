@@ -1,8 +1,11 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 
 export function AdminTopbar() {
+  const router = useRouter();
+
   return (
     <div className="flex items-center justify-between border-b border-border bg-white px-6 py-4">
       <div>
@@ -11,8 +14,17 @@ export function AdminTopbar() {
           Inventory, opportunities, flows, operator layer
         </div>
       </div>
+
       <div className="flex items-center gap-2">
-        <Button href="/admin/dashboard">Refresh View</Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            router.refresh();
+          }}
+        >
+          Refresh View
+        </Button>
+
         <Button
           variant="secondary"
           onClick={async () => {

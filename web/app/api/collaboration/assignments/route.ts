@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { appConfig } from '@/lib/config';
+import { getAdminToken } from '@/lib/server-auth';
 
 export async function GET() {
+  const token = await getAdminToken();
+
   const res = await fetch(`${appConfig.apiBaseUrl}/collaboration/assignments`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     cache: 'no-store',
   });
 

@@ -1,67 +1,81 @@
-import Image from 'next/image';
-import { AddToRepriceFlowButton } from '@/components/admin/add-to-reprice-flowbutton';
+import { notFound } from 'next/navigation';
 import { ImageGalleryManager } from '@/components/admin/image-gallery-manager';
 import { ImageUploadForm } from '@/components/admin/image-upload-form';
-import { InventoryEditDialog } from '@/components/admin/inventory-edit-dialog';
+import { InventoryInlineEditor } from '@/components/admin/inventory-inline-editor';
 import { SectionCard } from '@/components/admin/section-card';
+import { StatusPill } from '@/components/admin/status-pill';
 import { api } from '@/lib/api';
 import { formatMoney } from '@/lib/format';
+
 type Props = {
- params: Promise<{ id: string }>;
+  params: Promise<{
+    id: string;
+  }>;
 };
-async function getData(): Promise<any[]> {
- try {
-  return await api.get('/inventory');
- } catch {
-  return [];
- }
+
+async function getInventoryItem(id: string): Promise<any | null> {
+  try {
+    return await api.get(`/inventory/${id}`);
+  } catch {
+    return null;
+  }
 }
-export default async function Page({ params }: Props) {
- const { id } = await params;
- const rows = await getData();
- const item = rows.find((x) => x.id === id);
- if (!item) {
-  return <SectionCard title="Not found">No data</SectionCard>;
- }
- const primaryImage = item.images?.[0]?.imageUrl ?? item.imageUrl ?? null;
- return (
-  <SectionCard title="Inventory Item">
-   <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-    <div className="space-y-4">
-     <div className="text-2xl font-black">{item.titleSnapshot}</div>
-     <div className="overflow-hidden rounded-3xl border border-border bg-slate-100">
-      {primaryImage ? (
-       <Image
-        src={primaryImage}
-        alt={item.titleSnapshot}
-        width={1200}
-        height={900}
-        className="h-auto w-full object-cover"
-       />
-      ) : (
-       <div className="aspect-[4/3]" />
-      )}
-     </div>
-     <ImageUploadForm inventoryItemId={item.id} />
-     <ImageGalleryManager images={item.images ?? []} />
+
+export default async function InventoryDetailsPage({ params }: Props) {
+  const { id } = await params;
+  const item = await getInventoryItem(id);
+
+  if (!item) {
+    notFound();
+  }
+
+  const images = Array.isArray(item.images) ? item.images : [];
+
+  return (
+    <div className="space-y-6">
+      <SectionCard title={item.titleSnapshot || item.item?.title || 'Inventory Item'}>
+        <div className="grid gap-6 xl:grid-cols-3">
+          <div className="space-y-3 xl:col-span-2">
+            <div className="text-sm text-slate-500">{item.id}</div>
+
+            <div className="flex flex-wrap gap-2">
+              <StatusPill value={item.condition ?? 'unknown'} />
+              <StatusPill value={item.sealed ? 'sealed' : 'used'} />
+              <StatusPill value={(item.quantity ?? 0) > 0 ? 'available' : 'sold'} />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="rounded-2xl border border-border bg-slate-50 p-4">
+                <div className="text-xs font-bold uppercase text-slate-500">Purchase</div>
+                <div className="mt-1 text-lg font-black">{formatMoney(item.purchasePrice)}</div>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-slate-50 p-4">
+                <div className="text-xs font-bold uppercase text-slate-500">Cost Basis</div>
+                <div className="mt-1 text-lg font-black">{formatMoney(item.totalCost)}</div>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-slate-50 p-4">
+                <div className="text-xs font-bold uppercase text-slate-500">Manual Sell</div>
+                <div className="mt-1 text-lg font-black">
+                  {formatMoney(item.expectedSalePriceManual)}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-slate-50 p-4">
+                <div className="text-xs font-bold uppercase text-slate-500">Quantity</div>
+                <div className="mt-1 text-lg font-black">{item.quantity ?? 0}</div>
+              </div>
+            </div>
+
+            <InventoryInlineEditor item={item} />
+          </div>
+
+          <ImageUploadForm inventoryItemId={item.id} />
+        </div>
+      </SectionCard>
+
+      <ImageGalleryManager inventoryItemId={item.id} images={images} />
     </div>
-    <div className="space-y-4">
-     <div className="grid gap-4 md:grid-cols-2">
-      <div>Buy Price: {formatMoney(item.purchasePrice)}</div>
-      <div>Total Cost: {formatMoney(item.totalCost)}</div>
-      <div>Quantity: {item.quantity}</div>
-      <div>Condition: {item.condition}</div>
-      <div>Sealed: {String(item.sealed)}</div>
-      <div>Theme: {item.item?.theme ?? '—'}</div>
-      <div>Set Number: {item.item?.setNumber ?? '—'}</div>
-      <div>Manual Sell: {formatMoney(item.expectedSalePriceManual)}</div>
-     </div>
-     <div className="flex flex-wrap gap-2">
-      <InventoryEditDialog item={item} />
-      <AddToRepriceFlowButton inventoryItemId={item.id} />
-     </div>
-    </div>
-   </div>
-  </SectionCard>
- );
+  );
 }

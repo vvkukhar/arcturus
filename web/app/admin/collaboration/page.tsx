@@ -1,6 +1,6 @@
 import { AssignmentTable } from '@/components/admin/assignment-table';
 import { CollaborationPanel } from '@/components/admin/collaboration-panel';
-import { CollaborativeAssignmentPanel } from '@/components/admin/collaborativeassignment-panel';
+import { CollaborativeAssignmentPanel } from '@/components/admin/collaborative-assignment-panel';
 import { UserManagement } from '@/components/admin/user-management';
 
 export default function CollaborationPage() {

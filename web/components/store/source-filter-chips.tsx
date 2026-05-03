@@ -25,18 +25,23 @@ export function SourceFilterChips() {
     <div className="flex flex-wrap gap-2">
       <button
         onClick={() => update(null)}
-        className={`rounded-full border px-3 py-2 text-sm ${
-          currentTheme === '' ? 'bg-slate-900 text-white' : 'bg-white'
+        className={`rounded-full border border-border px-3 py-2 text-sm font-semibold ${
+          currentTheme === ''
+            ? 'bg-slate-900 text-white'
+            : 'bg-white text-slate-700 hover:bg-slate-50'
         }`}
       >
         All Themes
       </button>
+
       {themes.map((theme) => (
         <button
           key={theme}
           onClick={() => update(theme)}
-          className={`rounded-full border px-3 py-2 text-sm ${
-            currentTheme === theme ? 'bg-slate-900 text-white' : 'bg-white'
+          className={`rounded-full border border-border px-3 py-2 text-sm font-semibold ${
+            currentTheme === theme
+              ? 'bg-slate-900 text-white'
+              : 'bg-white text-slate-700 hover:bg-slate-50'
           }`}
         >
           {theme}

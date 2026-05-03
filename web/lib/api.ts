@@ -3,11 +3,12 @@ import { getAdminToken } from '@/lib/server-auth';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getAdminToken();
+  const isFormData = init?.body instanceof FormData;
 
   const response = await fetch(`${appConfig.apiBaseUrl}${path}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
@@ -15,7 +16,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`API error ${response.status}`);
+    let message = `API error ${response.status}`;
+
+    try {
+      const data = await response.json();
+
+      if (typeof data?.message === 'string') {
+        message = data.message;
+      } else if (typeof data?.error === 'string') {
+        message = data.error;
+      }
+    } catch {
+      // ignore non-json error body
+    }
+
+    throw new Error(message);
+  }
+
+  if (response.status === 204) {
+    return null as T;
   }
 
   return response.json() as Promise<T>;
@@ -31,6 +50,11 @@ export const api = {
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: 'PATCH',
+      body: JSON.stringify(body ?? {}),
+    }),
+  delete: <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: 'DELETE',
       body: JSON.stringify(body ?? {}),
     }),
 };

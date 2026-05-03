@@ -6,7 +6,25 @@ async function request<T>(path: string): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`API error ${response.status}`);
+    let message = `API error ${response.status}`;
+
+    try {
+      const data = await response.json();
+
+      if (typeof data?.message === 'string') {
+        message = data.message;
+      } else if (typeof data?.error === 'string') {
+        message = data.error;
+      }
+    } catch {
+      // ignore non-json error body
+    }
+
+    throw new Error(message);
+  }
+
+  if (response.status === 204) {
+    return null as T;
   }
 
   return response.json() as Promise<T>;
@@ -33,6 +51,7 @@ export const publicApi = {
     const suffix = search.toString() ? `?${search.toString()}` : '';
     return request<T>(`/public/catalog${suffix}`);
   },
-  getCatalogItem: <T>(slug: string) => request<T>(`/public/catalog/${slug}`),
-  getAnalytics: <T>() => request<T>(`/public/analytics`),
+  getCatalogItem: <T>(slug: string) =>
+    request<T>(`/public/catalog/${encodeURIComponent(slug)}`),
+  getAnalytics: <T>() => request<T>('/public/analytics'),
 };

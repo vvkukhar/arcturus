@@ -21,7 +21,7 @@ export function StoreSort() {
 
         router.push(`/store/catalog?${params.toString()}`);
       }}
-      className="rounded-xl border border-border px-4 py-3 text-sm"
+      className="rounded-xl border border-border bg-white px-4 py-3 text-sm font-semibold"
     >
       <option value="">Newest</option>
       <option value="price_asc">Price Asc</option>

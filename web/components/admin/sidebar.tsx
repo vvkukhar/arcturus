@@ -3,29 +3,30 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  Activity,
+  AlertTriangle,
+  BadgeDollarSign,
+  Bell,
   Boxes,
   ChartColumn,
-  ClipboardList,
-  Gauge,
-  Package,
-  RefreshCw,
-  SearchCheck,
-  Wallet,
-  Activity,
   ChartNoAxesCombined,
+  ClipboardList,
   Coins,
-  AlertTriangle,
   DatabaseZap,
-  MailCheck,
-  KanbanSquare,
-  Bell,
-  Users,
-  ReceiptText,
-  ScrollText,
+  Gauge,
   Handshake,
-  BadgeDollarSign,
+  KanbanSquare,
+  MailCheck,
+  Package,
+  ReceiptText,
+  RefreshCw,
   ScanSearch,
+  ScrollText,
+  SearchCheck,
+  Users,
+  Wallet,
 } from 'lucide-react';
+import { NotificationBadge } from '@/components/admin/notification-badge';
 import { cn } from '@/lib/utils';
 
 const items = [
@@ -69,16 +70,19 @@ export function AdminSidebar() {
         <div className="grid grid-cols-3 gap-2">
           <Link
             href="/admin/notifications"
-            className="flex items-center justify-center rounded-xl border border-border p-2 hover:bg-slate-50"
+            className="relative flex items-center justify-center rounded-xl border border-border p-2 hover:bg-slate-50"
           >
             <Bell size={16} />
+            <NotificationBadge />
           </Link>
+
           <Link
             href="/admin/collaboration"
             className="flex items-center justify-center rounded-xl border border-border p-2 hover:bg-slate-50"
           >
             <Users size={16} />
           </Link>
+
           <Link
             href="/admin/scanner"
             className="flex items-center justify-center rounded-xl border border-border p-2 hover:bg-slate-50"
