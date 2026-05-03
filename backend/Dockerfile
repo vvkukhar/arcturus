@@ -2,37 +2,34 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
 
-# Копіюємо package.json (шляхи тепер прямі, бо ми в папці backend)
-COPY api/package.json ./api/
-COPY workers/package.json ./workers/
-COPY scrapers/package.json ./scrapers/
-COPY package.json package-lock.json* ./
-
-RUN npm install
-
-# Копіюємо весь код
+# Копіюємо ВЕСЬ вміст папки backend
 COPY . .
 
-# Білдимо API
+# 1. Готуємо API
 WORKDIR /app/api
-RUN npx prisma generate && npm run build
+RUN npm install && npx prisma generate && npm run build
 
-# Білдимо Workers
+# 2. Готуємо Workers
 WORKDIR /app/workers
-RUN npx prisma generate && npm run build
+RUN npm install && npx prisma generate && npm run build
 
-# Scrapers
+# 3. Готуємо Scrapers
 WORKDIR /app/scrapers
-RUN npx prisma generate
+RUN npm install && npx prisma generate
 
 # Runner stage
 FROM node:22-alpine AS runner
 WORKDIR /app
 RUN apk add --no-cache openssl
+
+# Копіюємо все готове з builder
 COPY --from=builder /app /app
 
-# Скрипт запуску тепер теж копіюється з api
+# Надаємо права на скрипт запуску
 WORKDIR /app/api
 RUN chmod +x start-all.sh
+
 EXPOSE 4000
+
+# Запускаємо наш комбайн
 CMD ["./start-all.sh"]
