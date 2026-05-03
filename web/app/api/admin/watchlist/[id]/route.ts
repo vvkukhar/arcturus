@@ -2,26 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { appConfig } from '@/lib/config';
 import { getAdminToken } from '@/lib/server-auth';
 
-type Props = {
-  params: Promise<{
-    id: string;
-  }>;
-};
-
-export async function GET(_: NextRequest, { params }: Props) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const token = await getAdminToken();
-
-  const response = await fetch(`${appConfig.apiBaseUrl}/watchlist/${id}`, {
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+  const res = await fetch(`${appConfig.apiBaseUrl}/watchlist/${id}`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     cache: 'no-store',
   });
-
-  if (!response.ok) {
-    return NextResponse.json(null, { status: response.status });
-  }
-
-  return NextResponse.json(await response.json());
+  if (!res.ok) return NextResponse.json({ ok: false }, { status: res.status });
+  return NextResponse.json(await res.json());
 }
