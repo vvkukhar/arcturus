@@ -3,8 +3,19 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('arcturus_admin_token')?.value;
-  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin');
-  const isLoginRoute = request.nextUrl.pathname === '/login';
+  const { pathname } = request.nextUrl;
+
+  if (
+    pathname.startsWith('/_next') || 
+    pathname.startsWith('/api') || 
+    pathname.startsWith('/icons') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next();
+  }
+
+  const isAdminRoute = pathname.startsWith('/admin');
+  const isLoginRoute = pathname === '/login';
 
   if (isAdminRoute && !token) {
     return NextResponse.redirect(new URL('/login', request.url));
@@ -18,5 +29,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/login'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.json).*)'],
 };
