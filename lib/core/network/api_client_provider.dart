@@ -9,13 +9,13 @@ final authTokenProvider = Provider<Future<String?> Function()>((ref) {
   return () async {
     final envToken = dotenv.env['AUTH_TOKEN'];
     if (envToken != null && envToken.trim().isNotEmpty) {
-      return envToken.trim().replaceAll('"', '').replaceAll("'", "");
+      return envToken.trim().replaceAll('"', '').replaceAll("'", "''");
     }
 
     final prefs = await SharedPreferences.getInstance();
     final localToken = prefs.getString('auth_token');
     if (localToken != null && localToken.trim().isNotEmpty) {
-      return localToken.trim().replaceAll('"', '').replaceAll("'", "");
+      return localToken.trim().replaceAll('"', '').replaceAll("'", "''");
     }
     
     return null;

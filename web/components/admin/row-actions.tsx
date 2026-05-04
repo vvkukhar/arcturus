@@ -17,18 +17,20 @@ export function RowActions({
 }: Props) {
   return (
     <div className="flex flex-wrap gap-2">
-      <Button className="px-3 py-2 text-xs" onClick={onPrimary}>
-        {primaryLabel}
-      </Button>
-      {secondaryLabel && onSecondary ? (
+      {onPrimary && (
+        <Button size="sm" onClick={onPrimary}>
+          {primaryLabel}
+        </Button>
+      )}
+      {secondaryLabel && onSecondary && (
         <Button
           variant="secondary"
-          className="px-3 py-2 text-xs"
+          size="sm"
           onClick={onSecondary}
         >
           {secondaryLabel}
         </Button>
-      ) : null}
+      )}
     </div>
   );
 }

@@ -1,14 +1,37 @@
 'use client';
 
 import { useState } from 'react';
-import { LockKeyhole, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { LockKeyhole, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/client-api';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [value, setValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!value.trim()) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      await apiFetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ token: value.trim() }),
+      });
+
+      router.push('/admin/dashboard');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed');
+      setLoading(false);
+    }
+  };
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 relative overflow-hidden">
@@ -29,7 +52,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="relative">
               <textarea
                 value={value}
@@ -43,38 +66,23 @@ export default function LoginPage() {
               />
             </div>
 
-            {error ? (
+            {error && (
               <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-600 flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
                 {error}
               </div>
-            ) : null}
+            )}
 
             <Button
+              type="submit"
               className="w-full h-14 text-base"
               disabled={loading || !value.trim()}
-              onClick={async () => {
-                try {
-                  setLoading(true);
-                  setError(null);
-
-                  await apiFetch('/api/auth/login', {
-                    method: 'POST',
-                    body: JSON.stringify({ token: value }),
-                  });
-
-                  window.location.href = '/admin/dashboard';
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : 'Authentication failed');
-                } finally {
-                  setLoading(false);
-                }
-              }}
             >
+              {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
               {loading ? 'Verifying...' : 'Enter System'}
               {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
             </Button>
-          </div>
+          </form>
         </div>
       </div>
     </main>

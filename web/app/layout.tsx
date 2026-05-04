@@ -8,6 +8,7 @@ export const viewport: Viewport = {
   themeColor: '#3b82f6',
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 5,
 };
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
     template: '%s | Arcturus',
     default: 'Arcturus - Premium LEGO Trading',
   },
-  description: 'Ексклюзивний доступ до раритетних наборів LEGO. Миттєве бронювання та гарантія.',
+  description: 'Ексклюзивний доступ до раритетних наборів LEGO. Миттєве бронювання та абсолютна гарантія оригінальності.',
   manifest: '/manifest.json',
   icons: {
     icon: '/favicon.ico',
@@ -25,8 +26,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="uk">
-      <body className="antialiased">
+    <html lang="uk" className="scroll-smooth">
+      <body className="antialiased min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-blue-600 selection:text-white">
         <ToastProvider>
           <LiveToasts />
           <FomoTicker />

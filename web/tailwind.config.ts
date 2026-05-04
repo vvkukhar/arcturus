@@ -9,21 +9,31 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        border: '#e2e8f0',
-        background: '#f8fafc',
-        foreground: '#0f172a',
-        muted: '#f1f5f9',
+        border: 'hsl(var(--border))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
         card: '#ffffff',
-        primary: '#3b82f6',
-        primaryHover: '#2563eb',
       },
-      boxShadow: {
-        'soft': '0 4px 40px -2px rgba(0, 0, 0, 0.05)',
-        'glow': '0 0 20px rgba(59, 130, 246, 0.15)',
+      transitionTimingFunction: {
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
+      },
+      animation: {
+        'float': 'float 6s ease-in-out infinite',
+        'fade-in-up': 'fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+      },
+      keyframes: {
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-12px)' },
+        },
+        'fade-in-up': {
+          from: { opacity: '0', transform: 'translateY(20px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
       },
     },
   },
-  plugins: [],
+  plugins: [require('tailwindcss-animate')],
 };
 
 export default config;

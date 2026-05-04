@@ -20,9 +20,7 @@ const searchQueries = [
 
 export async function runBrickLinkSource(): Promise<void> {
   const source = await prisma.marketSource.findUnique({
-    where: {
-      code: 'bricklink',
-    },
+    where: { code: 'bricklink' },
   });
 
   if (!source || !source.enabled) {
@@ -42,10 +40,8 @@ export async function runBrickLinkSource(): Promise<void> {
 
       const response = await axios.get<string>(url, {
         headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
-          Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         },
         timeout: 15000,
       });
@@ -61,27 +57,22 @@ export async function runBrickLinkSource(): Promise<void> {
         const now = new Date();
 
         const existing = await prisma.marketListing.findUnique({
-          where: {
-            id: listingId,
-          },
+          where: { id: listingId },
         });
 
         const shippingPrice =
           listing.shippingPrice ??
           estimateUaShippingBySource({
-            source: 'bricklink',
+            sourceCode: 'bricklink',
             itemPrice: listing.price,
             currency: listing.currency,
             sealed: listing.sealed,
           });
 
-        const shippingCurrency =
-          listing.shippingCurrency ?? listing.currency ?? 'USD';
+        const shippingCurrency = listing.shippingCurrency ?? listing.currency ?? 'USD';
 
         const upserted = await prisma.marketListing.upsert({
-          where: {
-            id: listingId,
-          },
+          where: { id: listingId },
           update: {
             sourceCode: source.code,
             itemId,
@@ -168,9 +159,7 @@ export async function runBrickLinkSource(): Promise<void> {
       scope: 'scraper',
       sourceCode: 'bricklink',
       message: 'BrickLink source failed',
-      detailsJson: {
-        error: message,
-      },
+      detailsJson: { error: message },
     });
 
     await finishSourceRun({

@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { MousePointerSquareDashed, X } from 'lucide-react';
 
 type Props = {
   selectedCount: number;
@@ -15,29 +16,38 @@ export function BulkSelectionToolbar({
   onBulkPurchase,
   onBulkReprice,
 }: Props) {
-  if (selectedCount <= 0) {
-    return null;
-  }
+  if (selectedCount <= 0) return null;
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-white p-4">
-      <div className="text-sm font-bold">{selectedCount} selected</div>
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-[1.5rem] border border-blue-200 bg-blue-50 p-4 shadow-sm animate-in fade-in slide-in-from-top-2">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+          <MousePointerSquareDashed className="h-5 w-5" />
+        </div>
+        <div>
+          <div className="text-sm font-black text-slate-900">{selectedCount} items selected</div>
+          <div className="text-xs font-medium text-slate-500">Apply actions to multiple items at once</div>
+        </div>
+      </div>
 
-      {onBulkPurchase ? (
-        <Button className="px-3 py-2 text-xs" onClick={onBulkPurchase}>
-          Add Selected to Purchase Flow
+      <div className="flex flex-wrap items-center gap-2">
+        {onBulkPurchase && (
+          <Button size="sm" onClick={onBulkPurchase} className="bg-blue-600 hover:bg-blue-700 text-white">
+            Add to Purchase Flow
+          </Button>
+        )}
+        
+        {onBulkReprice && (
+          <Button size="sm" onClick={onBulkReprice} className="bg-blue-600 hover:bg-blue-700 text-white">
+            Add to Reprice Flow
+          </Button>
+        )}
+
+        <Button variant="ghost" size="sm" onClick={onClear} className="gap-2 text-slate-500 hover:text-slate-900">
+          <X className="h-4 w-4" />
+          Clear Selection
         </Button>
-      ) : null}
-
-      {onBulkReprice ? (
-        <Button className="px-3 py-2 text-xs" onClick={onBulkReprice}>
-          Add Selected to Reprice Flow
-        </Button>
-      ) : null}
-
-      <Button variant="secondary" className="px-3 py-2 text-xs" onClick={onClear}>
-        Clear
-      </Button>
+      </div>
     </div>
   );
 }

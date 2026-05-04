@@ -13,9 +13,10 @@ export function StoreSearch() {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const params = new URLSearchParams(searchParams.toString());
+    const trimmed = value.trim();
 
-    if (value.trim()) {
-      params.set('q', value.trim());
+    if (trimmed) {
+      params.set('q', trimmed);
     } else {
       params.delete('q');
     }
@@ -36,7 +37,7 @@ export function StoreSearch() {
           className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-sm text-slate-900 shadow-sm transition-all focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
         />
       </div>
-      <Button type="submit" className="py-3.5 px-8 sm:w-auto w-full text-base">
+      <Button type="submit" className="py-3.5 px-8 sm:w-auto w-full text-base h-[50px]">
         Search
       </Button>
     </form>

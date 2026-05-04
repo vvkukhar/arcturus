@@ -21,161 +21,78 @@ import { UserManagement } from '@/components/admin/user-management';
 import { Badge } from '@/components/ui/badge';
 import { api } from '@/lib/api';
 import { publicApi } from '@/lib/public-api';
-import {
+import { formatMoney, formatPercent } from '@/lib/format';
+import type {
   DailyPlanTask,
   DashboardExecutionSummary,
   DashboardFlowCounters,
   OpportunityItem,
+  ReserveRequest,
+  InventoryItem,
+  DealItem
 } from '@/lib/types';
 
-async function getExecutionSummary(): Promise<DashboardExecutionSummary | null> {
-  try {
-    return await api.get<DashboardExecutionSummary>('/dashboard/execution-summary');
-  } catch {
-    return null;
-  }
-}
+export const revalidate = 0; // Disable caching for dashboard
 
-async function getFlowCounters(): Promise<DashboardFlowCounters | null> {
-  try {
-    return await api.get<DashboardFlowCounters>('/dashboard/flow-counters');
-  } catch {
-    return null;
-  }
-}
+async function getDashboardData() {
+  const results = await Promise.allSettled([
+    api.get<DashboardExecutionSummary>('/dashboard/execution-summary'),
+    api.get<DashboardFlowCounters>('/dashboard/flow-counters'),
+    api.get<OpportunityItem[]>('/opportunities/buy?limit=5'),
+    api.get<OpportunityItem[]>('/opportunities/sell?limit=5'),
+    api.get<DailyPlanTask[]>('/planning/daily'),
+    api.get<ReserveRequest[]>('/public/reserve-requests'),
+    api.get<InventoryItem[]>('/inventory'),
+    publicApi.getAnalytics<any>(),
+    api.get<DealItem[]>('/deals')
+  ]);
 
-async function getBuyOpportunities(): Promise<OpportunityItem[]> {
-  try {
-    return await api.get<OpportunityItem[]>('/opportunities/buy?limit=5');
-  } catch {
-    return [];
-  }
-}
-
-async function getSellOpportunities(): Promise<OpportunityItem[]> {
-  try {
-    return await api.get<OpportunityItem[]>('/opportunities/sell?limit=5');
-  } catch {
-    return [];
-  }
-}
-
-async function getDailyPlan(): Promise<DailyPlanTask[]> {
-  try {
-    return await api.get<DailyPlanTask[]>('/planning/daily');
-  } catch {
-    return [];
-  }
-}
-
-async function getReserves(): Promise<any[]> {
-  try {
-    return await api.get<any[]>('/public/reserve-requests');
-  } catch {
-    return [];
-  }
-}
-
-async function getInventory(): Promise<any[]> {
-  try {
-    return await api.get<any[]>('/inventory');
-  } catch {
-    return [];
-  }
-}
-
-async function getStoreAnalytics(): Promise<any | null> {
-  try {
-    return await publicApi.getAnalytics<any>();
-  } catch {
-    return null;
-  }
-}
-
-async function getDeals(): Promise<any[]> {
-  try {
-    return await api.get<any[]>('/deals');
-  } catch {
-    return [];
-  }
+  return {
+    execution: results[0].status === 'fulfilled' ? results[0].value : null,
+    counters: results[1].status === 'fulfilled' ? results[1].value : null,
+    buyOpps: results[2].status === 'fulfilled' ? results[2].value : [],
+    sellOpps: results[3].status === 'fulfilled' ? results[3].value : [],
+    dailyPlan: results[4].status === 'fulfilled' ? results[4].value : [],
+    reserves: results[5].status === 'fulfilled' ? results[5].value : [],
+    inventory: results[6].status === 'fulfilled' ? results[6].value : [],
+    storeAnalytics: results[7].status === 'fulfilled' ? results[7].value : null,
+    deals: results[8].status === 'fulfilled' ? results[8].value : []
+  };
 }
 
 export default async function AdminDashboardPage() {
-  const [
-    execution,
-    counters,
-    buyOpps,
-    sellOpps,
-    dailyPlan,
-    reserves,
-    inventory,
-    storeAnalytics,
-    deals,
-  ] = await Promise.all([
-    getExecutionSummary(),
-    getFlowCounters(),
-    getBuyOpportunities(),
-    getSellOpportunities(),
-    getDailyPlan(),
-    getReserves(),
-    getInventory(),
-    getStoreAnalytics(),
-    getDeals(),
-  ]);
+  const data = await getDashboardData();
+  const { execution, counters, buyOpps, sellOpps, dailyPlan, reserves, inventory, storeAnalytics, deals } = data;
 
   const pendingReserves = reserves.filter((x) => x.status === 'pending').length;
   const withImages = inventory.filter((x) => Array.isArray(x.images) && x.images.length > 0).length;
   const hotDeals = deals.filter((x) => x.action === 'BUY_NOW').length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <AuthStatus />
         <CreateItemDialog />
       </div>
 
-      {execution?.headline ? (
-        <div className="rounded-2xl border border-border bg-white p-5 text-sm font-semibold text-slate-700">
-          {execution.headline}
+      {execution?.headline && (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm font-bold text-blue-800 shadow-sm">
+          💡 {execution.headline}
         </div>
-      ) : null}
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-        <MetricCard
-          title="Purchase Queue"
-          value={counters?.purchase ?? execution?.purchasePending ?? 0}
-          subtitle="Pending buy execution items"
-        />
-        <MetricCard
-          title="Reprice Queue"
-          value={counters?.reprice ?? execution?.repricePending ?? 0}
-          subtitle="Inventory waiting for listing"
-        />
-        <MetricCard
-          title="Review Queue"
-          value={counters?.review ?? execution?.reviewPending ?? 0}
-          subtitle="Manual checks still pending"
-        />
-        <MetricCard
-          title="Pending Reserves"
-          value={pendingReserves}
-          subtitle="Customer reserve requests"
-        />
-        <MetricCard
-          title="Inventory With Images"
-          value={withImages}
-          subtitle="Listings with visual assets"
-        />
-        <MetricCard
-          title="Hot Deals"
-          value={hotDeals}
-          subtitle="Scanner BUY_NOW matches"
-        />
+        <MetricCard title="Purchase Queue" value={counters?.purchase ?? execution?.purchasePending ?? 0} subtitle="Pending buy execution" />
+        <MetricCard title="Reprice Queue" value={counters?.reprice ?? execution?.repricePending ?? 0} subtitle="Inventory waiting for listing" />
+        <MetricCard title="Review Queue" value={counters?.review ?? execution?.reviewPending ?? 0} subtitle="Manual checks pending" />
+        <MetricCard title="Pending Reserves" value={pendingReserves} subtitle="Customer requests" />
+        <MetricCard title="Media Coverage" value={withImages} subtitle="Listings with assets" />
+        <MetricCard title="Hot Deals" value={hotDeals} subtitle="Scanner BUY_NOW matches" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
         <DashboardChartCard
-          title="Flow Queues"
+          title="Flow Pipelines"
           labels={['Purchase', 'Reprice', 'Review']}
           values={[
             counters?.purchase ?? execution?.purchasePending ?? 0,
@@ -187,14 +104,14 @@ export default async function AdminDashboardPage() {
           title="Reserve Status"
           labels={['Pending', 'Approved', 'Contacted', 'Rejected']}
           values={[
-            reserves.filter((x) => x.status === 'pending').length,
+            pendingReserves,
             reserves.filter((x) => x.status === 'approved').length,
             reserves.filter((x) => x.status === 'contacted').length,
             reserves.filter((x) => x.status === 'rejected').length,
           ]}
         />
         <DashboardChartCard
-          title="Store Analytics"
+          title="Store Health"
           labels={['Inventory', 'Available', 'Reserves', 'Deals']}
           values={[
             storeAnalytics?.totalInventory ?? 0,
@@ -219,50 +136,31 @@ export default async function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <CollaborativeAssignmentPanel />
-        <UserManagement />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <RepricerPanel />
-        <DealExplainer />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <ScannerPanel />
-        <ScannerRunnerPanel />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <RepricerFromCompsPanel />
-        <DealsPanel />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
         <SectionCard title="Top Buy Opportunities">
           <div className="space-y-3">
             {buyOpps.length === 0 ? (
-              <div className="text-sm text-slate-500">No data</div>
+              <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm font-medium text-slate-400">
+                No active buy opportunities
+              </div>
             ) : (
               buyOpps.map((item) => (
-                <div
-                  key={`${item.itemId}-${item.title}`}
-                  className="rounded-2xl border border-border p-4"
-                >
+                <div key={`${item.itemId}-${item.title}`} className="rounded-2xl border border-border bg-slate-50/50 p-4 transition-colors hover:bg-white hover:shadow-sm">
                   <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="font-bold">{item.title}</div>
-                      <div className="mt-1 text-sm text-slate-500">
+                    <div className="flex-1">
+                      <div className="font-bold text-slate-900 leading-tight">{item.title}</div>
+                      <div className="mt-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         {item.action} • {item.actionReasonPrimary}
                       </div>
                     </div>
-                    <Badge>Score {item.score}</Badge>
+                    <Badge className={item.score > 80 ? 'bg-emerald-100 text-emerald-700' : ''}>
+                      Score {item.score.toFixed(0)}
+                    </Badge>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-sm text-slate-600">
-                    <span>Profit {item.profit}</span>
-                    <span>ROI {item.roi}%</span>
-                    {item.totalBuy != null ? <span>Buy {item.totalBuy}</span> : null}
-                    {item.targetSellPrice != null ? <span>Sell {item.targetSellPrice}</span> : null}
+                  <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium text-slate-600 border-t border-slate-200 pt-3">
+                    <span className="text-emerald-600">Profit: {formatMoney(item.profit)}</span>
+                    <span className="text-emerald-600">ROI: {formatPercent(item.roi)}</span>
+                    {item.totalBuy != null && <span>Buy: {formatMoney(item.totalBuy)}</span>}
+                    {item.targetSellPrice != null && <span>Sell: {formatMoney(item.targetSellPrice)}</span>}
                   </div>
                 </div>
               ))
@@ -273,26 +171,27 @@ export default async function AdminDashboardPage() {
         <SectionCard title="Top Sell Opportunities">
           <div className="space-y-3">
             {sellOpps.length === 0 ? (
-              <div className="text-sm text-slate-500">No data</div>
+              <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm font-medium text-slate-400">
+                No active sell opportunities
+              </div>
             ) : (
               sellOpps.map((item) => (
-                <div
-                  key={`${item.itemId}-${item.title}`}
-                  className="rounded-2xl border border-border p-4"
-                >
+                <div key={`${item.itemId}-${item.title}`} className="rounded-2xl border border-border bg-slate-50/50 p-4 transition-colors hover:bg-white hover:shadow-sm">
                   <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="font-bold">{item.title}</div>
-                      <div className="mt-1 text-sm text-slate-500">
+                    <div className="flex-1">
+                      <div className="font-bold text-slate-900 leading-tight">{item.title}</div>
+                      <div className="mt-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         {item.action} • {item.actionReasonPrimary}
                       </div>
                     </div>
-                    <Badge>Score {item.score}</Badge>
+                    <Badge className={item.score > 80 ? 'bg-blue-100 text-blue-700' : ''}>
+                      Score {item.score.toFixed(0)}
+                    </Badge>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-sm text-slate-600">
-                    <span>Profit {item.profit}</span>
-                    <span>ROI {item.roi}%</span>
-                    {item.targetSellPrice != null ? <span>Target {item.targetSellPrice}</span> : null}
+                  <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium text-slate-600 border-t border-slate-200 pt-3">
+                    <span className="text-emerald-600">Profit: {formatMoney(item.profit)}</span>
+                    <span className="text-emerald-600">ROI: {formatPercent(item.roi)}</span>
+                    {item.targetSellPrice != null && <span>Target: {formatMoney(item.targetSellPrice)}</span>}
                   </div>
                 </div>
               ))
@@ -305,20 +204,22 @@ export default async function AdminDashboardPage() {
         <SectionCard title="Daily Plan">
           <div className="space-y-3">
             {dailyPlan.length === 0 ? (
-              <div className="text-sm text-slate-500">No plan data</div>
+              <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm font-medium text-slate-400">
+                All caught up for today!
+              </div>
             ) : (
               dailyPlan.map((task) => (
-                <div
-                  key={`${task.order}-${task.title}`}
-                  className="rounded-2xl border border-border p-4"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="font-bold">
-                      {task.order}. {task.title}
+                <div key={`${task.order}-${task.title}`} className="flex items-center justify-between gap-4 rounded-2xl border border-border p-4 bg-white shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 font-bold text-slate-500">
+                      {task.order}
                     </div>
-                    <Badge>{task.type}</Badge>
+                    <div>
+                      <div className="font-bold text-slate-900">{task.title}</div>
+                      <div className="text-xs text-slate-500">{task.reason}</div>
+                    </div>
                   </div>
-                  <div className="mt-2 text-sm text-slate-500">{task.reason}</div>
+                  <Badge className="bg-slate-100 text-slate-600">{task.type}</Badge>
                 </div>
               ))
             )}
@@ -326,49 +227,23 @@ export default async function AdminDashboardPage() {
         </SectionCard>
 
         <SectionCard title="Quick Links">
-          <div className="space-y-3">
-            <Link
-              href="/admin/reserves"
-              className="block rounded-2xl border border-border p-4 font-bold hover:bg-slate-50"
-            >
-              Open Reserve Queue
-            </Link>
-            <Link
-              href="/admin/orders/board"
-              className="block rounded-2xl border border-border p-4 font-bold hover:bg-slate-50"
-            >
-              Open Order Status Board
-            </Link>
-            <Link
-              href="/admin/inventory"
-              className="block rounded-2xl border border-border p-4 font-bold hover:bg-slate-50"
-            >
-              Open Inventory Media
-            </Link>
-            <Link
-              href="/admin/activity"
-              className="block rounded-2xl border border-border p-4 font-bold hover:bg-slate-50"
-            >
-              Open Activity Log
-            </Link>
-            <Link
-              href="/admin/collaboration"
-              className="block rounded-2xl border border-border p-4 font-bold hover:bg-slate-50"
-            >
-              Open Collaboration
-            </Link>
-            <Link
-              href="/admin/repricer"
-              className="block rounded-2xl border border-border p-4 font-bold hover:bg-slate-50"
-            >
-              Open Repricer
-            </Link>
-            <Link
-              href="/admin/scanner"
-              className="block rounded-2xl border border-border p-4 font-bold hover:bg-slate-50"
-            >
-              Open Scanner
-            </Link>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { href: '/admin/reserves', label: 'Reserve Queue' },
+              { href: '/admin/orders/board', label: 'Order Board' },
+              { href: '/admin/inventory', label: 'Inventory Media' },
+              { href: '/admin/scanner', label: 'Scanner' },
+              { href: '/admin/repricer', label: 'Repricer' },
+              { href: '/admin/collaboration', label: 'Collaboration' },
+            ].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="flex items-center justify-center rounded-2xl border border-border bg-slate-50/50 p-4 text-sm font-bold text-slate-700 transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:shadow-sm"
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
         </SectionCard>
       </div>

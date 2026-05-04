@@ -1,4 +1,3 @@
-// backend/api/tsconfig.json
 {
   "compilerOptions": {
     "module": "commonjs",
@@ -10,10 +9,11 @@
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "strict": true,
     "skipLibCheck": true,
+    "moduleResolution": "node",
+    "ignoreDeprecations": "5.0",
     "types": ["node", "jest"]
   },
   "include": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"],

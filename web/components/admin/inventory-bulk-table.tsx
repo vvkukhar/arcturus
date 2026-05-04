@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AddToRepriceFlowButton } from '@/components/admin/add-to-reprice-flow-button';
 import { BulkSelectionToolbar } from '@/components/admin/bulk-selection-toolbar';
@@ -9,201 +9,178 @@ import { InventoryEditDialog } from '@/components/admin/inventory-edit-dialog';
 import { StatusPill } from '@/components/admin/status-pill';
 import { formatMoney, formatPercent } from '@/lib/format';
 import { InventoryDeleteButton } from '@/components/admin/inventory-delete-button';
-
-type InventoryRow = {
-  id: string;
-  itemId: string;
-  titleSnapshot: string;
-  purchasePrice: number;
-  totalCost: number;
-  expectedSalePriceManual?: number | null;
-  quantity: number;
-  condition: string;
-  sealed: boolean;
-};
+import { apiFetch } from '@/lib/client-api';
+import type { InventoryItem, ApiResponse } from '@/lib/types';
+import { Loader2 } from 'lucide-react';
 
 type Props = {
-  rows: InventoryRow[];
+  rows: InventoryItem[];
 };
 
 export function InventoryBulkTable({ rows }: Props) {
   const router = useRouter();
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
-  const selectedSet = useMemo(() => new Set(selected), [selected]);
 
-  const toggle = (id: string) => {
-    setSelected((current) =>
-      current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
-    );
-  };
+  const toggle = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
-  const clear = () => setSelected([]);
+  const toggleAll = useCallback(() => {
+    if (selected.size === rows.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(rows.map(r => r.id)));
+    }
+  }, [rows, selected.size]);
+
+  const clear = useCallback(() => setSelected(new Set()), []);
 
   const bulkAdd = async () => {
     try {
       setBulkLoading(true);
-
-      await Promise.all(
-        selected.map((id) =>
-          fetch('/api/admin/flows/reprice/add', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ inventoryItemId: id }),
-          }),
-        ),
+      const requests = Array.from(selected).map((id) =>
+        apiFetch('/api/admin/flows/reprice/add', {
+          method: 'POST',
+          body: JSON.stringify({ inventoryItemId: id }),
+        })
       );
-
+      await Promise.all(requests);
       clear();
       router.refresh();
+    } catch (error) {
+      alert('Помилка при масовому додаванні до Reprice Flow');
     } finally {
       setBulkLoading(false);
     }
   };
 
   const bulkDelete = async () => {
-    const ok = window.confirm('Delete selected inventory items?');
-
-    if (!ok) return;
+    if (!window.confirm(`Ви дійсно хочете видалити ${selected.size} елементів? Цю дію неможливо скасувати.`)) return;
 
     try {
       setBulkLoading(true);
-
-      await fetch('/api/admin/inventory/bulk-delete', {
+      await apiFetch<ApiResponse<any>>('/api/admin/inventory/bulk-delete', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: selected }),
+        body: JSON.stringify({ ids: Array.from(selected) }),
       });
-
       clear();
       router.refresh();
+    } catch (error) {
+      alert('Помилка при масовому видаленні');
     } finally {
       setBulkLoading(false);
     }
   };
 
-  if (rows.length === 0) {
-    return <div className="text-sm text-slate-500">Inventory is empty</div>;
-  }
-
   return (
-    <div>
+    <div className="space-y-4">
       <BulkSelectionToolbar
-        selectedCount={selected.length}
+        selectedCount={selected.size}
         onClear={clear}
         onBulkReprice={bulkAdd}
       />
 
-      {selected.length > 0 ? (
-        <div className="mb-4">
+      {selected.size > 0 && (
+        <div className="flex gap-2 animate-in fade-in slide-in-from-top-2">
           <button
             disabled={bulkLoading}
             onClick={bulkDelete}
-            className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-60"
           >
-            {bulkLoading ? 'Working...' : 'Delete Selected'}
+            {bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {bulkLoading ? 'Видалення...' : 'Видалити обрані'}
           </button>
         </div>
-      ) : null}
+      )}
 
-      <div className="overflow-x-auto rounded-2xl border border-border bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-border bg-white shadow-sm">
         <table className="min-w-full border-separate border-spacing-0">
           <thead>
             <tr>
-              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
-                Select
+              <th className="border-b border-border bg-slate-50/80 px-4 py-4 text-left">
+                <input
+                  type="checkbox"
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  checked={selected.size > 0 && selected.size === rows.length}
+                  ref={input => {
+                    if (input) input.indeterminate = selected.size > 0 && selected.size < rows.length;
+                  }}
+                  onChange={toggleAll}
+                />
               </th>
-              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
-                Item
-              </th>
-              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
-                Purchase
-              </th>
-              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
-                Cost Basis
-              </th>
-              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
-                Manual Sell
-              </th>
-              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
-                Qty
-              </th>
-              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
-                Condition
-              </th>
-              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
-                Est. ROI
-              </th>
-              <th className="border-b border-border bg-slate-50 px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500">
-                Actions
-              </th>
+              {['Item', 'Purchase', 'Cost Basis', 'Manual Sell', 'Qty', 'Condition', 'Est. ROI', 'Actions'].map((header) => (
+                <th key={header} className="border-b border-border bg-slate-50/80 px-4 py-4 text-left text-xs font-black uppercase tracking-wider text-slate-500">
+                  {header}
+                </th>
+              ))}
             </tr>
           </thead>
 
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="hover:bg-slate-50">
-                <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
-                  <input
-                    type="checkbox"
-                    checked={selectedSet.has(row.id)}
-                    onChange={() => toggle(row.id)}
-                  />
-                </td>
+          <tbody className="divide-y divide-border">
+            {rows.map((row) => {
+              const estimatedRoi = row.expectedSalePriceManual && row.totalCost > 0
+                ? ((row.expectedSalePriceManual - row.totalCost) / row.totalCost) * 100
+                : null;
 
-                <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
-                  <div>
-                    <Link
-                      href={`/admin/inventory/${row.id}`}
-                      className="font-bold hover:underline"
-                    >
-                      {row.titleSnapshot || row.itemId}
-                    </Link>
-                    <div className="mt-1 text-xs text-slate-500">{row.itemId}</div>
-                  </div>
-                </td>
-
-                <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
-                  {formatMoney(row.purchasePrice)}
-                </td>
-
-                <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
-                  {formatMoney(row.totalCost)}
-                </td>
-
-                <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
-                  {formatMoney(row.expectedSalePriceManual)}
-                </td>
-
-                <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
-                  {row.quantity}
-                </td>
-
-                <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
-                  <div className="space-y-1">
-                    <div>{row.condition}</div>
-                    <StatusPill value={row.sealed ? 'sealed' : 'used'} />
-                  </div>
-                </td>
-
-                <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
-                  {row.expectedSalePriceManual && row.totalCost > 0
-                    ? formatPercent(
-                        ((row.expectedSalePriceManual - row.totalCost) / row.totalCost) *
-                          100,
-                      )
-                    : '—'}
-                </td>
-
-                <td className="border-b border-border px-4 py-4 align-top text-sm text-slate-800">
-                  <div className="flex flex-wrap gap-2">
-                    <InventoryEditDialog item={row} />
-                    <AddToRepriceFlowButton inventoryItemId={row.id} />
-                    <InventoryDeleteButton id={row.id} />
-                  </div>
-                </td>
-              </tr>
-            ))}
+              return (
+                <tr key={row.id} className="transition-colors hover:bg-slate-50/80 group">
+                  <td className="px-4 py-4 align-top">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      checked={selected.has(row.id)}
+                      onChange={() => toggle(row.id)}
+                    />
+                  </td>
+                  <td className="px-4 py-4 align-top text-sm">
+                    <div className="flex flex-col">
+                      <Link href={`/admin/inventory/${row.id}`} className="font-bold text-slate-900 hover:text-blue-600 hover:underline">
+                        {row.titleSnapshot || row.itemId}
+                      </Link>
+                      <span className="mt-1 text-xs font-medium text-slate-400 font-mono">{row.itemId}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 align-top text-sm font-medium text-slate-700">
+                    {formatMoney(row.purchasePrice)}
+                  </td>
+                  <td className="px-4 py-4 align-top text-sm font-bold text-slate-900">
+                    {formatMoney(row.totalCost)}
+                  </td>
+                  <td className="px-4 py-4 align-top text-sm font-medium text-blue-600">
+                    {formatMoney(row.expectedSalePriceManual)}
+                  </td>
+                  <td className="px-4 py-4 align-top text-sm text-slate-700">
+                    <span className="inline-flex items-center justify-center min-w-[2rem] rounded-md bg-slate-100 px-2 py-1 font-mono text-xs font-bold">
+                      {row.quantity}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 align-top">
+                    <div className="flex flex-col items-start gap-1.5">
+                      <span className="text-sm font-medium text-slate-700 capitalize">{row.condition}</span>
+                      <StatusPill value={row.sealed ? 'Sealed' : 'Used'} />
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 align-top text-sm">
+                    <span className={estimatedRoi && estimatedRoi > 0 ? 'font-bold text-emerald-600' : 'text-slate-400'}>
+                      {estimatedRoi !== null ? formatPercent(estimatedRoi) : '—'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 align-top">
+                    <div className="flex flex-wrap gap-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                      <InventoryEditDialog item={row} />
+                      <AddToRepriceFlowButton inventoryItemId={row.id} />
+                      <InventoryDeleteButton id={row.id} />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

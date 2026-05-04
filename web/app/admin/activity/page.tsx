@@ -1,42 +1,69 @@
-'use client';
+import { SectionCard } from '@/components/admin/section-card';
+import { DataTable } from '@/components/admin/data-table';
+import { api } from '@/lib/api';
+import { StatusPill } from '@/components/admin/status-pill';
 
-import { useEffect, useState } from 'react';
-import { ActivityFilters } from '@/components/admin/activity-filters';
-import { apiFetch } from '@/lib/client-api';
+interface ActivityLog {
+  id: string;
+  action: string;
+  createdAt: string;
+}
 
-export default function ActivityPage() {
-  const [rows, setRows] = useState<any[]>([]);
-  const [filter, setFilter] = useState('all');
+async function getActivityLogs(): Promise<ActivityLog[]> {
+  try {
+    return await api.get<ActivityLog[]>('/activity');
+  } catch {
+    return [];
+  }
+}
 
-  useEffect(() => {
-    let mounted = true;
-    
-    apiFetch<any[]>('/api/activity')
-      .then((data) => {
-        if (mounted) setRows(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        if (mounted) setRows([]);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const filtered =
-    filter === 'all' ? rows : rows.filter((x) => x.action.includes(filter));
+export default async function ActivityPage() {
+  const rows = await getActivityLogs();
 
   return (
-    <div className="space-y-4">
-      <div className="text-2xl font-black">Activity</div>
-      <ActivityFilters setFilter={setFilter} />
-      {filtered.map((row) => (
-        <div key={row.id} className="border p-3 rounded-xl">
-          <div className="font-bold">{row.action}</div>
-          <div className="text-xs text-slate-500">{row.createdAt}</div>
-        </div>
-      ))}
+    <div className="space-y-6 animate-fade-in-up">
+      <div>
+        <h1 className="text-3xl font-black text-slate-900">System Activity</h1>
+        <p className="mt-1 text-sm text-slate-500">Immutable audit log of all system actions.</p>
+      </div>
+
+      <SectionCard title="Recent Activity">
+        <DataTable
+          rows={rows}
+          emptyText="No recent activity found."
+          getRowKey={(row) => row.id}
+          columns={[
+            {
+              key: 'action',
+              header: 'Action / Event',
+              render: (row) => (
+                <span className="font-semibold text-slate-800">{row.action}</span>
+              ),
+            },
+            {
+              key: 'type',
+              header: 'Category',
+              render: (row) => {
+                const lower = row.action.toLowerCase();
+                let cat = 'System';
+                if (lower.includes('inventory')) cat = 'Inventory';
+                if (lower.includes('sale')) cat = 'Sales';
+                if (lower.includes('user')) cat = 'Users';
+                return <StatusPill value={cat} />;
+              },
+            },
+            {
+              key: 'createdAt',
+              header: 'Timestamp',
+              render: (row) => (
+                <span className="text-sm font-mono text-slate-500">
+                  {new Date(row.createdAt).toLocaleString('uk-UA')}
+                </span>
+              ),
+            },
+          ]}
+        />
+      </SectionCard>
     </div>
   );
 }

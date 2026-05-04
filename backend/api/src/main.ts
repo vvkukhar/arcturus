@@ -18,17 +18,16 @@ async function bootstrap(): Promise<void> {
         callback(null, true);
         return;
       }
-
       callback(new Error('Origin not allowed by CORS'), false);
     },
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
   });
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(strictValidationPipe);
 
   const port = Number(process.env.PORT ?? 4000);
-
   await app.listen(port);
 }
 

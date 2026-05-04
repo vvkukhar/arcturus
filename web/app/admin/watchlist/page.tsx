@@ -3,17 +3,7 @@ import { SectionCard } from '@/components/admin/section-card';
 import { TableSearchForm } from '@/components/admin/table-search-form';
 import { WatchlistBulkTable } from '@/components/admin/watchlist-bulk-table';
 import { api } from '@/lib/api';
-
-type WatchlistRow = {
-  id: string;
-  itemId: string;
-  titleSnapshot: string;
-  desiredBuyPrice: number;
-  maxBuyPrice: number;
-  targetSellPrice?: number | null;
-  active: boolean;
-  priority: number;
-};
+import type { WatchlistItem } from '@/lib/types';
 
 type Props = {
   searchParams: Promise<{
@@ -21,9 +11,9 @@ type Props = {
   }>;
 };
 
-async function getWatchlist(): Promise<WatchlistRow[]> {
+async function getWatchlist(): Promise<WatchlistItem[]> {
   try {
-    return await api.get<WatchlistRow[]>('/watchlist');
+    return await api.get<WatchlistItem[]>('/watchlist');
   } catch {
     return [];
   }

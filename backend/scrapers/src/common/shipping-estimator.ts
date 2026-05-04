@@ -1,10 +1,10 @@
 export function estimateUaShippingBySource(params: {
-  source: string;
+  sourceCode: string;
   itemPrice?: number | null;
   currency?: string | null;
   sealed?: boolean | null;
 }): number {
-  const source = params.source.toLowerCase();
+  const source = params.sourceCode.toLowerCase();
   const price = params.itemPrice ?? 0;
 
   if (source === 'olx') {

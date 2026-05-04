@@ -13,33 +13,34 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${appConfig.apiBaseUrl}${path}`, {
-    ...init,
-    headers,
-    cache: 'no-store',
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-  if (!response.ok) {
-    let message = `API error ${response.status}`;
+  try {
+    const response = await fetch(`${appConfig.apiBaseUrl}${path}`, {
+      ...init,
+      headers,
+      signal: controller.signal,
+      cache: 'no-store',
+    });
 
-    try {
-      const data = await response.json();
-      if (typeof data?.message === 'string') {
-        message = data.message;
-      } else if (typeof data?.error === 'string') {
-        message = data.error;
-      }
-    } catch {
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      let message = `API error ${response.status}`;
+      try {
+        const data = await response.json();
+        message = data?.message || data?.error || message;
+      } catch {}
+      throw new Error(message);
     }
 
-    throw new Error(message);
+    if (response.status === 204) return null as T;
+    return response.json() as Promise<T>;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
   }
-
-  if (response.status === 204) {
-    return null as T;
-  }
-
-  return response.json() as Promise<T>;
 }
 
 export const api = {

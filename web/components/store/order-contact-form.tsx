@@ -1,14 +1,24 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Send, Loader2, CreditCard } from 'lucide-react';
+import { CreditCard, Loader2, MessageSquare, Phone, User } from 'lucide-react';
 import { apiFetch } from '@/lib/client-api';
 import { Button } from '@/components/ui/button';
+import type { ApiResponse } from '@/lib/types';
 
 type Props = {
   inventoryItemId?: string;
   productTitle: string;
 };
+
+interface OrderResponse {
+  id?: string;
+  orders?: { id: string }[];
+}
+
+interface CheckoutResponse {
+  url: string;
+}
 
 export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
   const [name, setName] = useState('');
@@ -17,31 +27,36 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const handleSubmit = () => {
-    if (!name || !contact) return;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !contact.trim()) {
+      setError('Ім\'я та контактні дані є обов\'язковими.');
+      return;
+    }
     
     startTransition(async () => {
       try {
         setError(null);
         
-        const reserveResponse = await apiFetch<any>('/api/store/contact', {
+        const reserveResponse = await apiFetch<ApiResponse<OrderResponse>>('/api/store/contact', {
           method: 'POST',
           body: JSON.stringify({
             inventoryItemId,
-            name,
-            contact,
-            message,
+            name: name.trim(),
+            contact: contact.trim(),
+            message: message.trim(),
             productTitle,
           }),
         });
 
-        const orderId = reserveResponse?.orders?.[0]?.id || reserveResponse?.id; 
+        const data = reserveResponse.data || (reserveResponse as unknown as OrderResponse);
+        const orderId = data?.orders?.[0]?.id || data?.id;
 
         if (!orderId) {
-          throw new Error('Не вдалося створити замовлення. Спробуйте ще раз.');
+          throw new Error('Не вдалося створити замовлення. Сервер не повернув ID.');
         }
 
-        const checkoutResponse = await apiFetch<any>('/api/store/checkout', {
+        const checkoutResponse = await apiFetch<CheckoutResponse>('/api/store/checkout', {
           method: 'POST',
           body: JSON.stringify({ orderId }),
         });
@@ -49,24 +64,29 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
         if (checkoutResponse?.url) {
           window.location.href = checkoutResponse.url;
         } else {
-          throw new Error('Помилка ініціалізації платіжного шлюзу.');
+          throw new Error('Помилка ініціалізації платіжного шлюзу. Немає URL.');
         }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Сталася невідома помилка');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Сталася невідома помилка під час оформлення.');
       }
     });
   };
 
   return (
-    <div className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-600">
           {error}
         </div>
       )}
-      <div>
-        <label className="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500">Ваше Ім'я</label>
+      
+      <div className="space-y-1.5">
+        <label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500">
+          <User className="h-3.5 w-3.5" />
+          Ваше Ім'я
+        </label>
         <input
+          required
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Джон Доу"
@@ -74,9 +94,14 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
           className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-medium transition-all placeholder:text-slate-400 hover:bg-slate-50 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50"
         />
       </div>
-      <div>
-        <label className="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500">Контакт (Telegram / Телефон)</label>
+
+      <div className="space-y-1.5">
+        <label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500">
+          <Phone className="h-3.5 w-3.5" />
+          Контакт (Telegram / Телефон)
+        </label>
         <input
+          required
           value={contact}
           onChange={(e) => setContact(e.target.value)}
           placeholder="@username або +380..."
@@ -84,19 +109,24 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
           className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-medium transition-all placeholder:text-slate-400 hover:bg-slate-50 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50"
         />
       </div>
-      <div>
-        <label className="mb-2 block text-xs font-black uppercase tracking-widest text-slate-500">Додаткові побажання</label>
+
+      <div className="space-y-1.5">
+        <label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500">
+          <MessageSquare className="h-3.5 w-3.5" />
+          Додаткові побажання
+        </label>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           disabled={isPending}
-          className="min-h-24 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-medium transition-all placeholder:text-slate-400 hover:bg-slate-50 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50"
+          className="min-h-[100px] w-full resize-y rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-medium transition-all placeholder:text-slate-400 hover:bg-slate-50 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50"
         />
       </div>
+
       <Button
+        type="submit"
         className="w-full py-4 text-base h-16 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl shadow-blue-600/20"
-        disabled={isPending || !name || !contact}
-        onClick={handleSubmit}
+        disabled={isPending || !name.trim() || !contact.trim()}
       >
         {isPending ? (
           <Loader2 className="mr-2 h-6 w-6 animate-spin text-white" />
@@ -105,6 +135,6 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
         )}
         {isPending ? 'Захищене з\'єднання...' : 'Оплатити безпечно'}
       </Button>
-    </div>
+    </form>
   );
 }

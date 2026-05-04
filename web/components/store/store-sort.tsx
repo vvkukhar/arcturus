@@ -7,26 +7,28 @@ export function StoreSort() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const value = e.target.value;
+
+    if (value) {
+      params.set('sort', value);
+    } else {
+      params.delete('sort');
+    }
+
+    router.push(`/store/catalog?${params.toString()}`);
+  };
+
   return (
-    <div className="relative flex items-center">
+    <div className="relative flex items-center max-w-[240px]">
       <div className="pointer-events-none absolute left-4 text-slate-400">
         <ArrowDownWideNarrow size={18} />
       </div>
       <select
         value={searchParams.get('sort') ?? ''}
-        onChange={(e) => {
-          const params = new URLSearchParams(searchParams.toString());
-          const value = e.target.value;
-
-          if (value) {
-            params.set('sort', value);
-          } else {
-            params.delete('sort');
-          }
-
-          router.push(`/store/catalog?${params.toString()}`);
-        }}
-        className="appearance-none rounded-2xl border border-slate-200 bg-white py-2.5 pl-11 pr-10 text-sm font-semibold text-slate-700 shadow-sm outline-none transition-all hover:bg-slate-50 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer"
+        onChange={handleSortChange}
+        className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-2.5 pl-11 pr-10 text-sm font-semibold text-slate-700 shadow-sm outline-none transition-all hover:bg-slate-50 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer"
       >
         <option value="">Newest Arrivals</option>
         <option value="price_asc">Price: Low to High</option>

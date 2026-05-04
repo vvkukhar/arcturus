@@ -8,11 +8,7 @@ export function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/_next') || 
     pathname.startsWith('/api') || 
-    pathname.startsWith('/icons') ||
-    pathname.startsWith('/images') ||
-    pathname === '/favicon.ico' ||
-    pathname === '/manifest.json' ||
-    pathname.includes('.')
+    pathname.match(/\.(.*)$/)
   ) {
     return NextResponse.next();
   }
@@ -28,7 +24,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin/dashboard', request.url));
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.headers.set('X-Arcturus-Auth-State', token ? 'authenticated' : 'guest');
+  return response;
 }
 
 export const config = {

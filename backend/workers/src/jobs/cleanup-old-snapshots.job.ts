@@ -1,9 +1,5 @@
 import { prisma } from '../prisma';
 
-type IdRow = {
-  id: string;
-};
-
 export async function cleanupOldSnapshotsJob(params?: {
   keepPerItem?: number;
 }): Promise<{
@@ -13,64 +9,49 @@ export async function cleanupOldSnapshotsJob(params?: {
   const keepPerItem = params?.keepPerItem ?? 30;
 
   const items = await prisma.item.findMany({
-    select: {
-      id: true,
-    },
+    select: { id: true },
   });
 
   let deletedSnapshots = 0;
   let deletedDecisions = 0;
 
-  for (const item of items) {
-    const snapshots: IdRow[] = await prisma.marketSnapshot.findMany({
-      where: {
-        itemId: item.id,
-      },
-      orderBy: {
-        computedAt: 'desc',
-      },
-      skip: keepPerItem,
-      select: {
-        id: true,
-      },
-    });
+  const chunkSize = 50;
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize);
+    
+    await Promise.all(
+      chunk.map(async (item) => {
+        const snapshots = await prisma.marketSnapshot.findMany({
+          where: { itemId: item.id },
+          orderBy: { computedAt: 'desc' },
+          skip: keepPerItem,
+          select: { id: true },
+        });
 
-    if (snapshots.length > 0) {
-      const result = await prisma.marketSnapshot.deleteMany({
-        where: {
-          id: {
-            in: snapshots.map((snapshot: IdRow) => snapshot.id),
-          },
-        },
-      });
+        if (snapshots.length > 0) {
+          const snapshotIds = snapshots.map((s) => s.id);
+          const result = await prisma.marketSnapshot.deleteMany({
+            where: { id: { in: snapshotIds } },
+          });
+          deletedSnapshots += result.count;
+        }
 
-      deletedSnapshots += result.count;
-    }
+        const decisions = await prisma.decisionSnapshot.findMany({
+          where: { itemId: item.id },
+          orderBy: { createdAt: 'desc' },
+          skip: keepPerItem,
+          select: { id: true },
+        });
 
-    const decisions: IdRow[] = await prisma.decisionSnapshot.findMany({
-      where: {
-        itemId: item.id,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      skip: keepPerItem,
-      select: {
-        id: true,
-      },
-    });
-
-    if (decisions.length > 0) {
-      const result = await prisma.decisionSnapshot.deleteMany({
-        where: {
-          id: {
-            in: decisions.map((decision: IdRow) => decision.id),
-          },
-        },
-      });
-
-      deletedDecisions += result.count;
-    }
+        if (decisions.length > 0) {
+          const decisionIds = decisions.map((d) => d.id);
+          const result = await prisma.decisionSnapshot.deleteMany({
+            where: { id: { in: decisionIds } },
+          });
+          deletedDecisions += result.count;
+        }
+      })
+    );
   }
 
   return {

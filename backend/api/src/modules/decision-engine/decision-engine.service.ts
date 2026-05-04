@@ -7,6 +7,16 @@ import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { EvaluateBuyDto } from './dto/evaluate-buy.dto';
 import { EvaluateInventoryDto } from './dto/evaluate-inventory.dto';
 
+interface BuyScoreResult {
+  action: string;
+  score: number;
+  confidence: number;
+  reasonPrimary: string;
+  reasonSecondary?: string;
+  expectedProfit: number;
+  roiPercent: number;
+}
+
 @Injectable()
 export class DecisionEngineService {
   constructor(
@@ -21,15 +31,7 @@ export class DecisionEngineService {
     shippingPrice: number;
     targetSellPrice: number;
     historicalRoi: number;
-  }): {
-    action: string;
-    score: number;
-    confidence: number;
-    reasonPrimary: string;
-    reasonSecondary?: string;
-    expectedProfit: number;
-    roiPercent: number;
-  } {
+  }): BuyScoreResult {
     const totalCost = toMoney(params.buyPrice + params.shippingPrice);
     const expectedProfit = toMoney(params.targetSellPrice - totalCost);
     const roiPercent = totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;

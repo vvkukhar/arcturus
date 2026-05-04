@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { apiFetch } from '@/lib/client-api';
+import { Loader2, PlusCircle } from 'lucide-react';
 
 type Props = {
   watchlistItemId: string;
@@ -11,41 +13,32 @@ type Props = {
 export function AddToPurchaseFlowButton({ watchlistItemId }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const handleAdd = async () => {
+    try {
+      setLoading(true);
+      await apiFetch('/api/admin/flows/purchase/add', {
+        method: 'POST',
+        body: JSON.stringify({ watchlistItemId }),
+      });
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to add to purchase flow');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="space-y-1">
-      <Button
-        variant="secondary"
-        className="px-3 py-2 text-xs"
-        disabled={loading}
-        onClick={async () => {
-          try {
-            setLoading(true);
-            setError(null);
-
-            const response = await fetch('/api/admin/flows/purchase/add', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ watchlistItemId }),
-            });
-
-            if (!response.ok) {
-              throw new Error(`Add failed: ${response.status}`);
-            }
-
-            router.refresh();
-          } catch (err) {
-            setError(err instanceof Error ? err.message : 'Add failed');
-          } finally {
-            setLoading(false);
-          }
-        }}
-      >
-        {loading ? 'Adding...' : 'To Flow'}
-      </Button>
-
-      {error ? <div className="text-xs text-red-600">{error}</div> : null}
-    </div>
+    <Button
+      variant="secondary"
+      size="sm"
+      disabled={loading}
+      onClick={handleAdd}
+      className="gap-1.5"
+    >
+      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlusCircle className="h-3.5 w-3.5" />}
+      {loading ? 'Adding...' : 'To Flow'}
+    </Button>
   );
 }

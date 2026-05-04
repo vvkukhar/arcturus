@@ -16,12 +16,8 @@ export class DecisionActionService {
 
   private async getDecision(id: string) {
     const decision = await this.prisma.decisionSnapshot.findUnique({
-      where: {
-        id,
-      },
-      include: {
-        item: true,
-      },
+      where: { id },
+      include: { item: true },
     });
 
     if (!decision) {
@@ -55,9 +51,7 @@ export class DecisionActionService {
     }
 
     const updated = await this.prisma.decisionSnapshot.update({
-      where: {
-        id: decision.id,
-      },
+      where: { id: decision.id },
       data: {
         executionStatus: 'executed',
         executedAt: new Date(),
@@ -73,19 +67,14 @@ export class DecisionActionService {
     this.realtime.emitCustom('decision.executed', updated);
     this.realtime.emitDashboardRefresh('decision_executed');
 
-    return {
-      decision: updated,
-      result,
-    };
+    return { decision: updated, result };
   }
 
   async ignore(decisionSnapshotId: string, note?: string | null): Promise<unknown> {
     const decision = await this.getDecision(decisionSnapshotId);
 
     const updated = await this.prisma.decisionSnapshot.update({
-      where: {
-        id: decision.id,
-      },
+      where: { id: decision.id },
       data: {
         executionStatus: 'ignored',
         ignoredAt: new Date(),
@@ -112,9 +101,7 @@ export class DecisionActionService {
     const decision = await this.getDecision(decisionSnapshotId);
 
     const updated = await this.prisma.decisionSnapshot.update({
-      where: {
-        id: decision.id,
-      },
+      where: { id: decision.id },
       data: {
         executionStatus: 'reviewed',
         executedAt: new Date(),
@@ -142,13 +129,8 @@ export class DecisionActionService {
     const payload = (decision.payloadJson as Record<string, any>) ?? {};
 
     const existingWatchlist = await this.prisma.watchlistItem.findFirst({
-      where: {
-        itemId: decision.itemId,
-        active: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      where: { itemId: decision.itemId, active: true },
+      orderBy: { createdAt: 'desc' },
     });
 
     const buyPrice = toMoney(Number(payload.buyPrice ?? payload.totalCost ?? 0));
@@ -174,17 +156,10 @@ export class DecisionActionService {
         itemId: decision.itemId,
         watchlistItemId: watchlist.id,
         titleSnapshot: decision.item.title,
-        sourceCode: null,
-        supplierName: null,
-        sourceUrl: null,
         status: decision.action === 'BUY_NOW' ? 'approved' : 'planned',
         plannedPrice: buyPrice > 0 ? buyPrice : null,
-        actualPrice: null,
         shippingPrice: payload.shippingPrice != null ? toMoney(Number(payload.shippingPrice)) : null,
-        totalCost:
-          buyPrice > 0
-            ? toMoney(buyPrice + Number(payload.shippingPrice ?? 0))
-            : null,
+        totalCost: buyPrice > 0 ? toMoney(buyPrice + Number(payload.shippingPrice ?? 0)) : null,
         targetSellPrice: targetSellPrice > 0 ? targetSellPrice : null,
         quantity: 1,
         condition: decision.item.conditionDefault ?? 'used',
@@ -213,23 +188,16 @@ export class DecisionActionService {
       },
     });
 
-    return {
-      watchlist,
-      purchaseOrder,
-      purchaseFlow,
-    };
+    return { watchlist, purchaseOrder, purchaseFlow };
   }
 
   async executeInventoryDecision(decisionSnapshotId: string): Promise<unknown> {
     const decision = await this.getDecision(decisionSnapshotId);
     const payload = (decision.payloadJson as Record<string, any>) ?? {};
-
     const inventoryItemId = payload.inventoryItemId ?? decision.contextId;
 
     const inventory = await this.prisma.inventoryItem.findUnique({
-      where: {
-        id: inventoryItemId,
-      },
+      where: { id: inventoryItemId },
     });
 
     if (!inventory) {
@@ -255,9 +223,7 @@ export class DecisionActionService {
         },
       });
 
-      return {
-        reviewFlow,
-      };
+      return { reviewFlow };
     }
 
     const suggestedPrice = toMoney(
@@ -284,27 +250,16 @@ export class DecisionActionService {
       },
     });
 
-    return {
-      repriceFlow,
-    };
+    return { repriceFlow };
   }
 
   async executeTopPending(limit = 20): Promise<unknown> {
     const decisions = await this.prisma.decisionSnapshot.findMany({
       where: {
         executionStatus: 'pending',
-        action: {
-          in: ['BUY_NOW', 'REPRICE_UP', 'REPRICE_UP_OR_REVIEW', 'SELL_FAST'],
-        },
+        action: { in: ['BUY_NOW', 'REPRICE_UP', 'REPRICE_UP_OR_REVIEW', 'SELL_FAST'] },
       },
-      orderBy: [
-        {
-          score: 'desc',
-        },
-        {
-          createdAt: 'desc',
-        },
-      ],
+      orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
       take: limit,
     });
 
@@ -313,11 +268,7 @@ export class DecisionActionService {
     for (const decision of decisions) {
       try {
         const result = await this.execute(decision.id, 'Bulk top pending execution');
-        results.push({
-          id: decision.id,
-          ok: true,
-          result,
-        });
+        results.push({ id: decision.id, ok: true, result });
       } catch (error) {
         results.push({
           id: decision.id,
@@ -327,9 +278,6 @@ export class DecisionActionService {
       }
     }
 
-    return {
-      processed: results.length,
-      results,
-    };
+    return { processed: results.length, results };
   }
 }

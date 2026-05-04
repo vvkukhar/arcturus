@@ -2,6 +2,9 @@ import 'dotenv/config';
 import { prisma } from './prisma';
 import { runBrickLinkSource } from './sources/bricklink/bricklink-source';
 import { runOlxSource } from './sources/olx/olx-source';
+import { runEbaySource } from './sources/ebay/ebay-source';
+import { runBrickowlSource } from './sources/brickowl/brickowl-source';
+import { runBrickeconomySource } from './sources/brickeconomy/brickeconomy-source';
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -10,6 +13,9 @@ async function sleep(ms: number): Promise<void> {
 async function runAll(): Promise<void> {
   await runOlxSource();
   await runBrickLinkSource();
+  await runEbaySource();
+  await runBrickowlSource();
+  await runBrickeconomySource();
 }
 
 async function main(): Promise<void> {

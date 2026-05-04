@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { apiFetch } from '@/lib/client-api';
+import { Loader2, Trash2 } from 'lucide-react';
 
 type Props = {
   id: string;
@@ -11,44 +13,34 @@ type Props = {
 export function WatchlistDeleteButton({ id }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (!window.confirm('Delete watchlist item?')) return;
+
+    try {
+      setLoading(true);
+      await apiFetch('/api/admin/watchlist/delete', {
+        method: 'DELETE',
+        body: JSON.stringify({ id }),
+      });
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-1">
-      <Button
-        variant="secondary"
-        className="px-3 py-2 text-xs"
-        disabled={loading}
-        onClick={async () => {
-          const ok = window.confirm('Delete watchlist item?');
-          if (!ok) return;
-
-          try {
-            setLoading(true);
-            setError(null);
-
-            const response = await fetch('/api/admin/watchlist/delete', {
-              method: 'DELETE',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id }),
-            });
-
-            if (!response.ok) {
-              throw new Error(`Delete failed: ${response.status}`);
-            }
-
-            router.refresh();
-          } catch (err) {
-            setError(err instanceof Error ? err.message : 'Delete failed');
-          } finally {
-            setLoading(false);
-          }
-        }}
-      >
-        {loading ? 'Deleting...' : 'Delete'}
-      </Button>
-
-      {error ? <div className="text-xs text-red-600">{error}</div> : null}
-    </div>
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={loading}
+      onClick={handleDelete}
+      className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+    >
+      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+      {loading ? 'Deleting...' : 'Delete'}
+    </Button>
   );
 }

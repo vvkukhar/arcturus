@@ -6,18 +6,7 @@ import { SectionCard } from '@/components/admin/section-card';
 import { StatusPill } from '@/components/admin/status-pill';
 import { TableSearchForm } from '@/components/admin/table-search-form';
 import { api } from '@/lib/api';
-
-type ReserveRow = {
-  id: string;
-  inventoryItemId?: string | null;
-  productTitle: string;
-  name: string;
-  contact: string;
-  message?: string | null;
-  status: string;
-  adminNote?: string | null;
-  createdAt?: string;
-};
+import type { ReserveRequest } from '@/lib/types';
 
 type Props = {
   searchParams: Promise<{
@@ -26,16 +15,14 @@ type Props = {
   }>;
 };
 
-async function getRows(q?: string, status?: string): Promise<ReserveRow[]> {
+async function getReserves(q?: string, status?: string): Promise<ReserveRequest[]> {
   try {
     const search = new URLSearchParams();
-
     if (q) search.set('q', q);
     if (status) search.set('status', status);
 
-    return await api.get<ReserveRow[]>(
-      `/public/reserve-requests${search.toString() ? `?${search.toString()}` : ''}`,
-    );
+    const query = search.toString() ? `?${search.toString()}` : '';
+    return await api.get<ReserveRequest[]>(`/public/reserve-requests${query}`);
   } catch {
     return [];
   }
@@ -43,30 +30,34 @@ async function getRows(q?: string, status?: string): Promise<ReserveRow[]> {
 
 export default async function AdminReservesPage({ searchParams }: Props) {
   const { q, status } = await searchParams;
-  const rows = await getRows(q, status);
+  const rows = await getReserves(q, status);
 
   return (
     <SectionCard title="Reserve Requests">
-      <div className="mb-4 space-y-3">
-        <TableSearchForm placeholder="Search reserves by product, name, contact" />
-        <ReserveFilters />
+      <div className="mb-6 space-y-4">
+        <TableSearchForm placeholder="Search reserves by product, name, contact..." />
+        <ReserveFilters currentStatus={status ?? 'all'} />
       </div>
+
       <DataTable
         rows={rows}
-        emptyText="No reserve requests"
+        emptyText="No reserve requests found."
+        getRowKey={(row) => row.id}
         columns={[
           {
             key: 'product',
             header: 'Product',
             render: (row) => (
-              <div>
+              <div className="flex flex-col">
                 <Link
                   href={`/admin/reserves/${row.id}`}
-                  className="font-bold hover:underline"
+                  className="font-bold text-slate-900 hover:text-blue-600 hover:underline"
                 >
                   {row.productTitle || '—'}
                 </Link>
-                <div className="mt-1 text-xs text-slate-500">{row.inventoryItemId ?? row.id}</div>
+                <span className="mt-1 text-xs font-medium text-slate-400 font-mono">
+                  {row.inventoryItemId ?? row.id}
+                </span>
               </div>
             ),
           },
@@ -74,16 +65,20 @@ export default async function AdminReservesPage({ searchParams }: Props) {
             key: 'customer',
             header: 'Customer',
             render: (row) => (
-              <div>
-                <div>{row.name}</div>
-                <div className="mt-1 text-xs text-slate-500">{row.contact}</div>
+              <div className="flex flex-col">
+                <span className="font-semibold text-slate-900">{row.name}</span>
+                <span className="mt-1 text-xs font-medium text-slate-500">{row.contact}</span>
               </div>
             ),
           },
           {
             key: 'message',
             header: 'Message',
-            render: (row) => row.message ?? '—',
+            render: (row) => (
+              <span className="text-slate-600 line-clamp-2 max-w-xs" title={row.message ?? ''}>
+                {row.message ?? '—'}
+              </span>
+            ),
           },
           {
             key: 'status',
@@ -92,13 +87,17 @@ export default async function AdminReservesPage({ searchParams }: Props) {
           },
           {
             key: 'created',
-            header: 'Created',
-            render: (row) => row.createdAt ?? '—',
+            header: 'Date',
+            render: (row) => (
+              <span className="text-slate-500 whitespace-nowrap">
+                {row.createdAt ? new Date(row.createdAt).toLocaleDateString('uk-UA') : '—'}
+              </span>
+            ),
           },
           {
             key: 'actions',
             header: 'Actions',
-            render: (row) => <ReserveRequestActions id={row.id} />,
+            render: (row) => <ReserveRequestActions id={row.id} currentStatus={row.status} />,
           },
         ]}
       />

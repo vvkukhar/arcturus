@@ -1,13 +1,18 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 export function Magnetic({ children }: { children: React.ReactElement }) {
   const ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(window.matchMedia('(max-width: 768px)').matches);
+  }, []);
 
   const handleMouse = (e: React.MouseEvent) => {
-    if (!ref.current) return;
+    if (!ref.current || isMobile) return;
     const { clientX, clientY } = e;
     const { height, width, left, top } = ref.current.getBoundingClientRect();
     const middleX = clientX - (left + width / 2);
@@ -16,6 +21,7 @@ export function Magnetic({ children }: { children: React.ReactElement }) {
   };
 
   const reset = () => {
+    if (isMobile) return;
     setPosition({ x: 0, y: 0 });
   };
 
@@ -24,10 +30,10 @@ export function Magnetic({ children }: { children: React.ReactElement }) {
       ref={ref}
       onMouseMove={handleMouse}
       onMouseLeave={reset}
-      className="relative inline-flex"
+      className="relative inline-flex will-change-transform"
       style={{
         transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
-        transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
       }}
     >
       {children}

@@ -3,10 +3,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lego_trading_manager/app/app.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  await dotenv.load(fileName: '.env');
 
   runApp(
     const ProviderScope(
@@ -1130,6 +1133,78 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
   ]);
 });
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\lib\core\auth\auth_service.dart =====
+
+import 'dart:convert';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'package:lego_trading_manager/core/config/api_config.dart';
+
+final authServiceProvider = Provider<AuthService>((ref) {
+  return AuthService();
+});
+
+class AuthService {
+  Future<bool> login(String masterToken) async {
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/auth/login');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'token': masterToken}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final jwt = data['token'] as String?;
+
+        if (jwt != null && jwt.isNotEmpty) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', jwt);
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/auth/logout');
+      await http.post(url);
+    } catch (_) {
+      // Р†РіРЅРѕСЂСѓС”РјРѕ РїРѕРјРёР»РєРё РјРµСЂРµР¶С– РїСЂРё Р»РѕРіР°СѓС‚С–
+    }
+  }
+
+  Future<bool> checkSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final localToken = prefs.getString('auth_token');
+    
+    if (localToken == null || localToken.isEmpty) return false;
+
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/auth/me');
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $localToken',
+        },
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\core\bootstrap\app_bootstrap.dart =====
 
 import 'package:lego_trading_manager/core/storage/store_persistence.dart';
@@ -1315,8 +1390,21 @@ final appReloadServiceProvider = Provider<AppReloadService>((ref) {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\core\config\api_config.dart =====
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class ApiConfig {
-  static const String baseUrl = 'http://10.0.2.2:4000/api';
+  static String get baseUrl {
+    final envUrl = dotenv.env['API_BASE_URL'];
+    if (envUrl != null && envUrl.isNotEmpty) {
+      return envUrl;
+    }
+    
+    if (kReleaseMode || kIsWeb) {
+      return 'https://arcturus-api-idsb.onrender.com/api';
+    }
+    return 'http://10.0.2.2:4000/api';
+  }
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\core\conflicts\conflict_repository.dart =====
@@ -1752,12 +1840,28 @@ class ApiClient {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\core\network\api_client_provider.dart =====
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lego_trading_manager/core/network/api_client.dart';
 import 'package:lego_trading_manager/core/network/auth_http_client.dart';
 
 final authTokenProvider = Provider<Future<String?> Function()>((ref) {
-  return () async => null;
+  return () async {
+    final envToken = dotenv.env['AUTH_TOKEN'];
+    if (envToken != null && envToken.trim().isNotEmpty) {
+      return envToken.trim().replaceAll('"', '').replaceAll("'", "");
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final localToken = prefs.getString('auth_token');
+    if (localToken != null && localToken.trim().isNotEmpty) {
+      return localToken.trim().replaceAll('"', '').replaceAll("'", "");
+    }
+    
+    return null;
+  };
 });
 
 final apiClientProvider = Provider<ApiClient>((ref) {
@@ -2694,7 +2798,6 @@ class SimpleHttpClient implements HttpClientAbstraction {
 
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 

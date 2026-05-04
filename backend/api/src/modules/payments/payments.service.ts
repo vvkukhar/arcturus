@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymentsService {
@@ -66,10 +67,48 @@ export class PaymentsService {
     return { url: data.pageUrl };
   }
 
-  async handleWebhook(body: any): Promise<{ received: boolean }> {
-    if (body && body.status === 'success' && body.reference) {
+  verifySignature(pubKeyBase64: string, xSignBase64: string, body: any): boolean {
+    try {
+      const pubKeyBuf = Buffer.from(pubKeyBase64, 'base64');
+      const signatureBuf = Buffer.from(xSignBase64, 'base64');
+      const messageBuf = Buffer.from(JSON.stringify(body), 'utf8');
+
+      const verify = crypto.createVerify('SHA256');
+      verify.update(messageBuf);
+      verify.end();
+
+      const keyObj = crypto.createPublicKey({
+        key: pubKeyBuf,
+        format: 'der',
+        type: 'spki',
+      });
+
+      return verify.verify(keyObj, signatureBuf);
+    } catch {
+      return false;
+    }
+  }
+
+  async handleWebhook(body: any, xSignBase64?: string): Promise<{ received: boolean }> {
+    if (!xSignBase64) {
+      throw new BadRequestException('Missing X-Sign header');
+    }
+
+    const keyRes = await fetch('https://api.monobank.ua/api/merchant/pubkey', {
+      headers: { 'X-Token': this.monoToken },
+    });
+    
+    if (!keyRes.ok) throw new BadRequestException('Failed to fetch Mono pubkey');
+    const { key: pubKeyBase64 } = await keyRes.json();
+
+    if (!this.verifySignature(pubKeyBase64, xSignBase64, body)) {
+      throw new BadRequestException('Invalid signature');
+    }
+
+    if (body.status === 'success' && body.reference) {
       await this.processSuccessfulPayment(body.reference, body.amount);
     }
+
     return { received: true };
   }
 

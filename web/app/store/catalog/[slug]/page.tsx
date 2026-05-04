@@ -1,110 +1,140 @@
-import Image from 'next/image';
+import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { publicApi } from '@/lib/public-api';
 import { OrderContactForm } from '@/components/store/order-contact-form';
 import { AvailabilityBadge } from '@/components/store/availability-badge';
-import { ShieldCheck, Box, Tag } from 'lucide-react';
+import { formatMoney } from '@/lib/format';
+import { ShieldCheck, Truck, RotateCcw } from 'lucide-react';
+import Image from 'next/image';
 
-export default async function StoreCatalogItemPage({ params }: { params: Promise<{ slug: string }> }) {
+interface CatalogItemDetail {
+  id: string;
+  titleSnapshot?: string;
+  item?: { title?: string; setNumber?: string; theme?: string };
+  expectedSalePriceManual?: number;
+  totalCost?: number;
+  condition?: string;
+  sealed?: boolean;
+  quantity: number;
+  images?: { isPrimary?: boolean; imageUrl: string }[];
+}
+
+type Props = {
+  params: Promise<{ slug: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const item = await publicApi.getCatalogItem<any>(slug);
-  
-  if (!item) {
-    return (
-      <div className="flex min-h-[70vh] items-center justify-center">
-        <h1 className="text-3xl font-black text-slate-400 tracking-tight">Екземпляр не знайдено</h1>
-      </div>
-    );
+  try {
+    const data = await publicApi.getCatalogItem<CatalogItemDetail>(slug);
+    const title = data.titleSnapshot || data.item?.title || 'LEGO Set';
+    return {
+      title: `${title} | Arcturus Store`,
+      description: `Придбати ${title}. Стан: ${data.condition}. Оригінальне LEGO.`,
+    };
+  } catch {
+    return { title: 'Not Found | Arcturus Store' };
+  }
+}
+
+export default async function ProductDetailPage({ params }: Props) {
+  const { slug } = await params;
+  let product: CatalogItemDetail;
+
+  try {
+    product = await publicApi.getCatalogItem<CatalogItemDetail>(slug);
+  } catch {
+    notFound();
   }
 
-  const primaryImage = item.images?.find((x: any) => x.isPrimary)?.imageUrl ?? item.images?.[0]?.imageUrl;
-  const price = item.expectedSalePriceManual ?? item.totalCost;
+  const title = product.titleSnapshot || product.item?.title || 'Unknown Product';
+  const price = product.expectedSalePriceManual ?? product.totalCost ?? 0;
+  const isAvailable = product.quantity > 0;
+  
+  const images = Array.isArray(product.images) && product.images.length > 0 
+    ? [...product.images].sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+    : [];
 
   return (
-    <div className="mx-auto max-w-7xl">
-      <div className="flex flex-col lg:flex-row gap-12 lg:gap-20 items-start">
-        
-        {/* Ліва частина: Липка (Sticky) галерея */}
-        <div className="w-full lg:w-1/2 lg:sticky lg:top-32 space-y-6">
-          <div className="relative aspect-square w-full overflow-hidden rounded-[3rem] border border-white/60 bg-white/40 backdrop-blur-xl shadow-2xl shadow-slate-200/50 p-4">
-            <div className="relative w-full h-full rounded-[2.5rem] overflow-hidden bg-white">
-              {primaryImage ? (
-                <Image 
-                  src={primaryImage} 
-                  alt={item.titleSnapshot} 
-                  fill 
-                  className="object-cover hover:scale-105 transition-transform duration-700 cursor-crosshair" 
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300 font-black text-2xl tracking-widest">
-                  NO MEDIA
-                </div>
-              )}
-            </div>
+    <div className="mx-auto max-w-7xl animate-fade-in-up">
+      <div className="grid gap-12 lg:grid-cols-2">
+        <div className="space-y-4">
+          <div className="relative aspect-square w-full overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-sm">
+            {images.length > 0 ? (
+              <Image
+                src={images[0].imageUrl}
+                alt={title}
+                fill
+                priority
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-400 font-medium">
+                Немає фото
+              </div>
+            )}
           </div>
-          
-          {/* Міні-галерея якщо є інші фото */}
-          {item.images && item.images.length > 1 && (
-            <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-              {item.images.map((img: any) => (
-                <div key={img.id} className="relative w-24 h-24 shrink-0 rounded-2xl overflow-hidden border-2 border-transparent hover:border-blue-500 transition-colors cursor-pointer bg-white shadow-sm">
-                  <Image src={img.imageUrl} alt="" fill className="object-cover" />
+          {images.length > 1 && (
+            <div className="grid grid-cols-4 gap-4">
+              {images.slice(1).map((img, idx) => (
+                <div key={idx} className="relative aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                  <Image src={img.imageUrl} alt="" fill className="object-cover" sizes="25vw" />
                 </div>
               ))}
             </div>
           )}
         </div>
-        
-        {/* Права частина: Деталі та Форма (Scrollable) */}
-        <div className="w-full lg:w-1/2 flex flex-col justify-center min-h-[80vh] pb-20">
-          <div className="animate-fade-in-up">
-            <AvailabilityBadge quantity={item.quantity} />
-            <h1 className="mt-6 text-5xl sm:text-6xl font-black tracking-tighter leading-[1.1] text-slate-900">
-              {item.titleSnapshot}
-            </h1>
-            
-            <div className="mt-8 flex items-baseline gap-4">
-              <div className="text-6xl font-black tracking-tighter text-blue-600">{price} ₴</div>
-            </div>
 
-            <div className="mt-10 grid grid-cols-2 gap-4">
-              <div className="rounded-3xl border border-slate-200/60 bg-white/60 backdrop-blur-md p-5 flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                  <Tag size={24} />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">Стан</div>
-                  <div className="text-lg font-black text-slate-900">{item.condition ?? 'Вживаний'}</div>
-                </div>
-              </div>
-              <div className="rounded-3xl border border-slate-200/60 bg-white/60 backdrop-blur-md p-5 flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                  <Box size={24} />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">Комплектація</div>
-                  <div className="text-lg font-black text-slate-900">{item.sealed ? 'Запаковано' : 'Відкрито'}</div>
-                </div>
-              </div>
-            </div>
+        <div className="flex flex-col pt-4 lg:pt-8">
+          <div className="mb-4 flex items-center gap-3">
+            <AvailabilityBadge quantity={product.quantity} />
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-600">
+              {product.condition} {product.sealed && '(Sealed)'}
+            </span>
+            {product.item?.theme && (
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-600">
+                {product.item.theme}
+              </span>
+            )}
+          </div>
 
-            <div className="mt-6 rounded-3xl border border-slate-200/60 bg-white/60 backdrop-blur-md p-6 flex gap-4">
-              <ShieldCheck className="h-8 w-8 text-emerald-500 shrink-0" />
-              <div>
-                <h4 className="font-black text-slate-900 text-lg">Гарантія Arcturus</h4>
-                <p className="text-slate-600 font-medium mt-1 leading-relaxed text-sm">
-                  Цей екземпляр пройшов повну фізичну перевірку. Ми гарантуємо 100% оригінальність та відповідність заявленому стану.
-                </p>
-              </div>
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 leading-tight">
+            {title}
+          </h1>
+
+          <div className="mt-6 flex items-end gap-4">
+            <div className="text-5xl font-black text-blue-600 tracking-tighter">
+              {formatMoney(price)}
             </div>
           </div>
-          
-          <div className="mt-12 rounded-[2.5rem] border border-white/80 bg-white/80 backdrop-blur-2xl p-8 sm:p-10 shadow-2xl shadow-blue-900/5 relative overflow-hidden animate-fade-in-up delay-200">
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-indigo-500" />
-            <h3 className="mb-8 text-3xl font-black tracking-tight text-slate-900">Оформити резерв</h3>
-            <OrderContactForm inventoryItemId={item.id} productTitle={item.titleSnapshot} />
+
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 border-y border-slate-200 py-6">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="h-8 w-8 text-emerald-500" />
+              <div className="text-sm font-semibold text-slate-700">100%<br/>Оригінал</div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Truck className="h-8 w-8 text-blue-500" />
+              <div className="text-sm font-semibold text-slate-700">Надійна<br/>Доставка</div>
+            </div>
+            <div className="flex items-center gap-3">
+              <RotateCcw className="h-8 w-8 text-indigo-500" />
+              <div className="text-sm font-semibold text-slate-700">Огляд при<br/>Отриманні</div>
+            </div>
+          </div>
+
+          <div className="mt-8">
+            <h3 className="mb-4 text-lg font-black text-slate-900">Оформлення замовлення</h3>
+            {isAvailable ? (
+              <OrderContactForm inventoryItemId={product.id} productTitle={title} />
+            ) : (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center text-amber-800 font-semibold">
+                На жаль, цей товар вже продано або зарезервовано іншим клієнтом.
+              </div>
+            )}
           </div>
         </div>
-
       </div>
     </div>
   );

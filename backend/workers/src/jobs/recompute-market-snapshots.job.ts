@@ -30,16 +30,20 @@ export async function recomputeMarketSnapshotsJob(): Promise<{
     listingsByItem.set(listing.itemId, arr);
   }
 
-  const snapshotData = items.map((item) => {
+  const snapshotData = [];
+
+  for (const item of items) {
     const listings = listingsByItem.get(item.id) || [];
 
     if (listings.length === 0) {
-      return {
+      snapshotData.push({
         itemId: item.id,
         scope: 'ua',
         listingsCount: 0,
         confidenceScore: 0,
-      };
+        computedAt: new Date(),
+      });
+      continue;
     }
 
     const prices: number[] = [];
@@ -78,7 +82,7 @@ export async function recomputeMarketSnapshotsJob(): Promise<{
     const confidenceScore =
       listings.length >= 10 ? 0.95 : listings.length >= 5 ? 0.8 : listings.length >= 2 ? 0.65 : 0.45;
 
-    return {
+    snapshotData.push({
       itemId: item.id,
       scope: 'ua',
       listingsCount: listings.length,
@@ -92,12 +96,15 @@ export async function recomputeMarketSnapshotsJob(): Promise<{
       sealedAvgPrice: avg(sealedPrices),
       usedAvgPrice: avg(usedPrices),
       confidenceScore,
-    };
-  });
+      computedAt: new Date(),
+    });
+  }
 
-  if (snapshotData.length > 0) {
+  const chunkSize = 100;
+  for (let i = 0; i < snapshotData.length; i += chunkSize) {
+    const chunk = snapshotData.slice(i, i + chunkSize);
     await prisma.marketSnapshot.createMany({
-      data: snapshotData,
+      data: chunk,
     });
   }
 

@@ -4,36 +4,44 @@ import { useEffect } from 'react';
 import { getSocket } from '@/lib/socket';
 import { useToast } from '@/components/ui/toast-provider';
 
+interface WsPayload {
+  title?: string;
+  profit?: number;
+  titleSnapshot?: string;
+  name?: string;
+  message?: string;
+}
+
 export function LiveToasts() {
   const { push } = useToast();
 
   useEffect(() => {
     const socket = getSocket();
 
-    const onSaleRegistered = (x: any) => {
+    const onSaleRegistered = (x: WsPayload) => {
       push({
-        title: 'Sale',
-        message: `${x?.title ?? 'Sale registered'} • +${x?.profit ?? 0}`,
+        title: '💰 Новий продаж!',
+        message: `${x?.title ?? 'Товар продано'} • Прибуток: +${x?.profit ?? 0}₴`,
       });
     };
 
-    const onInventoryUpdated = (x: any) => {
+    const onInventoryUpdated = (x: WsPayload) => {
       push({
-        title: 'Inventory updated',
-        message: x?.titleSnapshot ?? x?.title ?? 'Inventory changed',
+        title: '📦 Інвентар оновлено',
+        message: x?.titleSnapshot ?? x?.title ?? 'Дані синхронізовано',
       });
     };
 
-    const onUserCreated = (x: any) => {
+    const onUserCreated = (x: WsPayload) => {
       push({
-        title: 'New user',
-        message: x?.name ?? 'User created',
+        title: '👤 Новий користувач',
+        message: x?.name ?? 'Оператора додано до системи',
       });
     };
 
-    const onNotification = (x: any) => {
+    const onNotification = (x: WsPayload) => {
       push({
-        title: x?.title ?? 'Notification',
+        title: x?.title ?? '🔔 Системне сповіщення',
         message: x?.message ?? '',
       });
     };

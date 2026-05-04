@@ -13,14 +13,14 @@ export async function recomputeDecisionsJob(): Promise<{
     where: { quantity: { gt: 0 } },
     include: { item: true },
     orderBy: { updatedAt: 'desc' },
-    take: 500,
+    take: 1000,
   });
 
   const listings = await prisma.marketListing.findMany({
     where: { status: 'active' },
     include: { item: true },
     orderBy: { fetchedAt: 'desc' },
-    take: 500,
+    take: 1000,
   });
 
   const listingItemIds = [...new Set(listings.map(l => l.itemId))];
@@ -160,7 +160,11 @@ export async function recomputeDecisionsJob(): Promise<{
   }
 
   if (dbOperations.length > 0) {
-    await prisma.$transaction(dbOperations);
+    const chunkSize = 100;
+    for (let i = 0; i < dbOperations.length; i += chunkSize) {
+      const chunk = dbOperations.slice(i, i + chunkSize);
+      await prisma.$transaction(chunk);
+    }
   }
 
   await prisma.activityLog.create({

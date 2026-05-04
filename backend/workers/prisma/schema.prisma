@@ -9,14 +9,13 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?  @unique
-  role      String   @default("operator")
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id                     String            @id @default(cuid())
+  name                   String
+  email                  String?           @unique
+  role                   String            @default("operator")
+  active                 Boolean           @default(true)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
   sessions               UserSession[]
   assignedInventoryItems InventoryItem[]
   assignedWatchlistItems WatchlistItem[]
@@ -35,25 +34,23 @@ model UserSession {
   token     String    @unique
   expiresAt DateTime?
   createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
   @@index([expiresAt])
 }
 
 model Item {
-  id               String   @id @default(cuid())
-  kind             String   @default("set")
-  title            String
-  setNumber        String?
-  theme            String?
-  conditionDefault String?  @default("used")
-  imageUrl         String?
-  notes            String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
+  id                String             @id @default(cuid())
+  kind              String             @default("set")
+  title             String
+  setNumber         String?
+  theme             String?
+  conditionDefault  String?            @default("used")
+  imageUrl          String?
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   inventoryItems    InventoryItem[]
   watchlistItems    WatchlistItem[]
   marketListings    MarketListing[]
@@ -69,14 +66,13 @@ model Item {
 }
 
 model Warehouse {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  address   String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id             String            @id @default(cuid())
+  code           String            @unique
+  name           String
+  address        String?
+  active         Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
   locations      StorageLocation[]
   stockMovements StockMovement[]
 
@@ -84,17 +80,16 @@ model Warehouse {
 }
 
 model StorageLocation {
-  id          String   @id @default(cuid())
-  warehouseId String
-  code        String
-  name        String
-  zone        String?
-  shelf       String?
-  box         String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id             String          @id @default(cuid())
+  warehouseId    String
+  code           String
+  name           String
+  zone           String?
+  shelf          String?
+  box            String?
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   warehouse      Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   inventoryItems InventoryItem[]
 
@@ -103,14 +98,14 @@ model StorageLocation {
 }
 
 model InventoryItem {
-  id                      String   @id @default(cuid())
+  id                      String            @id @default(cuid())
   itemId                  String
   titleSnapshot           String
   purchasePrice           Float
   totalCost               Float
-  quantity                Int      @default(1)
-  condition               String   @default("used")
-  sealed                  Boolean  @default(false)
+  quantity                Int               @default(1)
+  condition               String            @default("used")
+  sealed                  Boolean           @default(false)
   expectedSalePriceManual Float?
   source                  String?
   purchaseUrl             String?
@@ -118,24 +113,23 @@ model InventoryItem {
   storageLocationId       String?
   warehouseId             String?
   notes                   String?
-  priority                Int      @default(50)
+  priority                Int               @default(50)
   assignedUserId          String?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  item            Item              @relation(fields: [itemId], references: [id])
-  assignedUser    User?             @relation(fields: [assignedUserId], references: [id])
-  location        StorageLocation?  @relation(fields: [storageLocationId], references: [id])
-  images          InventoryImage[]
-  sales           Sale[]
-  repriceFlows    RepriceFlowItem[]
-  reviewFlows     ReviewFlowItem[]
-  stockMovements  StockMovement[]
-  reserveRequests ReserveRequest[]
-  orders          Order[]
-  purchaseOrders  PurchaseOrder[]
-  returns         ReturnRequest[]
-  expenses        Expense[]
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  item                    Item              @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  assignedUser            User?             @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  location                StorageLocation?  @relation(fields: [storageLocationId], references: [id], onDelete: SetNull)
+  images                  InventoryImage[]
+  sales                   Sale[]
+  repriceFlows            RepriceFlowItem[]
+  reviewFlows             ReviewFlowItem[]
+  stockMovements          StockMovement[]
+  reserveRequests         ReserveRequest[]
+  orders                  Order[]
+  purchaseOrders          PurchaseOrder[]
+  returns                 ReturnRequest[]
+  expenses                Expense[]
 
   @@index([itemId, quantity])
   @@index([assignedUserId, quantity])
@@ -145,58 +139,55 @@ model InventoryItem {
 }
 
 model StockMovement {
-  id                    String   @id @default(cuid())
+  id                    String         @id @default(cuid())
   inventoryItemId       String
   warehouseId           String?
   fromStorageLocationId String?
   toStorageLocationId   String?
   type                  String
-  quantity              Int      @default(1)
+  quantity              Int            @default(1)
   reason                String?
-  createdAt             DateTime @default(now())
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
-  warehouse     Warehouse?    @relation(fields: [warehouseId], references: [id])
+  createdAt             DateTime       @default(now())
+  inventoryItem         InventoryItem  @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  warehouse             Warehouse?     @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
 
   @@index([inventoryItemId, type])
   @@index([warehouseId, createdAt])
 }
 
 model InventoryImage {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
   imageUrl        String
   altText         String?
-  isPrimary       Boolean  @default(false)
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  isPrimary       Boolean       @default(false)
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([inventoryItemId, sortOrder])
   @@index([inventoryItemId, isPrimary])
 }
 
 model WatchlistItem {
-  id              String   @id @default(cuid())
+  id              String             @id @default(cuid())
   itemId          String
   titleSnapshot   String
   desiredBuyPrice Float
   maxBuyPrice     Float
   targetSellPrice Float?
-  active          Boolean  @default(true)
-  priority        Int      @default(50)
+  active          Boolean            @default(true)
+  priority        Int                @default(50)
   notes           String?
   assignedUserId  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  item          Item               @relation(fields: [itemId], references: [id])
-  assignedUser  User?              @relation(fields: [assignedUserId], references: [id])
-  purchaseFlows PurchaseFlowItem[]
-  deals         Deal[]
-  purchaseOrders PurchaseOrder[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  item            Item               @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  assignedUser    User?              @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  purchaseFlows   PurchaseFlowItem[]
+  deals           Deal[]
+  purchaseOrders  PurchaseOrder[]
 
   @@index([itemId, active])
   @@index([assignedUserId, active])
@@ -205,7 +196,7 @@ model WatchlistItem {
 }
 
 model PurchaseOrder {
-  id              String    @id @default(cuid())
+  id              String         @id @default(cuid())
   itemId          String
   watchlistItemId String?
   inventoryItemId String?
@@ -214,26 +205,25 @@ model PurchaseOrder {
   sourceCode      String?
   supplierName    String?
   sourceUrl       String?
-  status          String    @default("planned")
+  status          String         @default("planned")
   plannedPrice    Float?
   actualPrice     Float?
   shippingPrice   Float?
   totalCost       Float?
   targetSellPrice Float?
-  quantity        Int       @default(1)
-  condition       String    @default("used")
-  sealed          Boolean   @default(false)
+  quantity        Int            @default(1)
+  condition       String         @default("used")
+  sealed          Boolean        @default(false)
   notes           String?
   purchasedAt     DateTime?
   receivedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  item          Item           @relation(fields: [itemId], references: [id])
-  watchlistItem WatchlistItem? @relation(fields: [watchlistItemId], references: [id])
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
-  expenses      Expense[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  item            Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  watchlistItem   WatchlistItem? @relation(fields: [watchlistItemId], references: [id], onDelete: SetNull)
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  assignedUser    User?          @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  expenses        Expense[]
 
   @@index([status, createdAt])
   @@index([itemId, status])
@@ -241,22 +231,21 @@ model PurchaseOrder {
 }
 
 model MarketSource {
-  id        String   @id @default(cuid())
-  code      String   @unique
+  id        String          @id @default(cuid())
+  code      String          @unique
   name      String
-  type      String   @default("manual")
-  enabled   Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  listings MarketListing[]
-  runs     SourceRunLog[]
+  type      String          @default("manual")
+  enabled   Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  listings  MarketListing[]
+  runs      SourceRunLog[]
 
   @@index([enabled, type])
 }
 
 model MarketListing {
-  id                  String   @id
+  id                  String               @id
   sourceId            String
   sourceCode          String
   itemId              String
@@ -269,7 +258,7 @@ model MarketListing {
   sellerName          String?
   sellerRating        Float?
   price               Float
-  currency            String   @default("UAH")
+  currency            String               @default("UAH")
   shippingPrice       Float?
   shippingCurrency    String?
   country             String?
@@ -277,16 +266,16 @@ model MarketListing {
   sealed              Boolean?
   completenessPercent Int?
   quantityAvailable   Int?
-  status              String   @default("active")
-  fetchedAt           DateTime @default(now())
-  firstSeenAt         DateTime @default(now())
-  lastSeenAt          DateTime @default(now())
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  source MarketSource @relation(fields: [sourceId], references: [id])
-  item   Item         @relation(fields: [itemId], references: [id])
-  deals  Deal[]
+  status              String               @default("active")
+  fetchedAt           DateTime             @default(now())
+  firstSeenAt         DateTime             @default(now())
+  lastSeenAt          DateTime             @default(now())
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  source              MarketSource         @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  item                Item                 @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  deals               Deal[]
+  unresolvedMatches   UnresolvedMatchQueue[]
 
   @@index([itemId, status, price])
   @@index([sourceId, status, fetchedAt])
@@ -310,8 +299,7 @@ model MarketSnapshot {
   usedAvgPrice            Float?
   confidenceScore         Float    @default(0)
   computedAt              DateTime @default(now())
-
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item                    Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([itemId, computedAt])
 }
@@ -331,8 +319,7 @@ model DecisionSnapshot {
   executedAt      DateTime?
   ignoredAt       DateTime?
   createdAt       DateTime  @default(now())
-
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item            Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([contextType, contextId, createdAt])
   @@index([executionStatus, action, score])
@@ -340,52 +327,49 @@ model DecisionSnapshot {
 }
 
 model PurchaseFlowItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   watchlistItemId String
   selectedPrice   Float?
-  status          String   @default("pending")
+  status          String        @default("pending")
   reason          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([watchlistItemId, status])
 }
 
 model RepriceFlowItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
   currentPrice    Float?
   suggestedPrice  Float?
-  status          String   @default("pending")
+  status          String        @default("pending")
   reason          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([inventoryItemId, status])
 }
 
 model ReviewFlowItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
-  status          String   @default("pending")
+  status          String        @default("pending")
   reason          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([inventoryItemId, status])
 }
 
 model Deal {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   listingId       String
   watchlistItemId String
   buyPrice        Float
@@ -394,23 +378,23 @@ model Deal {
   roiPercent      Float
   action          String
   score           Float
-  status          String   @default("open")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  status          String        @default("open")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
-  listing       MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
-
+  @@unique([watchlistItemId, listingId])
   @@index([status, score])
   @@index([action, status])
   @@index([watchlistItemId, listingId])
 }
 
 model Sale {
-  id              String   @id @default(cuid())
+  id              String          @id @default(cuid())
   inventoryItemId String
   itemId          String
-  quantity        Int      @default(1)
+  quantity        Int             @default(1)
   sellPrice       Float
   costBasis       Float
   profit          Float
@@ -418,89 +402,85 @@ model Sale {
   channel         String?
   buyerName       String?
   notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  item          Item          @relation(fields: [itemId], references: [id])
-  orders        Order[]
-  returns       ReturnRequest[]
-  expenses      Expense[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  inventoryItem   InventoryItem   @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  item            Item            @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  orders          Order[]
+  returns         ReturnRequest[]
+  expenses        Expense[]
 
   @@index([itemId, createdAt])
   @@index([createdAt])
 }
 
 model Order {
-  id               String   @id @default(cuid())
+  id               String          @id @default(cuid())
   reserveRequestId String?
   inventoryItemId  String?
   saleId           String?
   productTitle     String
   buyerName        String
   contact          String
-  status           String   @default("pending")
+  status           String          @default("pending")
   sellPrice        Float?
-  quantity         Int      @default(1)
+  quantity         Int             @default(1)
   channel          String?
   adminNote        String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  reserveRequest ReserveRequest? @relation(fields: [reserveRequestId], references: [id])
-  inventoryItem  InventoryItem?  @relation(fields: [inventoryItemId], references: [id])
-  sale           Sale?           @relation(fields: [saleId], references: [id])
-  returns        ReturnRequest[]
-  expenses       Expense[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  reserveRequest   ReserveRequest? @relation(fields: [reserveRequestId], references: [id], onDelete: SetNull)
+  inventoryItem    InventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  sale             Sale?           @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  returns          ReturnRequest[]
+  expenses         Expense[]
 
   @@index([status, createdAt])
   @@index([inventoryItemId])
 }
 
 model ReturnRequest {
-  id              String    @id @default(cuid())
+  id              String        @id @default(cuid())
   saleId          String
   orderId         String?
   inventoryItemId String
-  status          String    @default("requested")
+  status          String        @default("requested")
   reason          String?
   refundAmount    Float?
-  restock         Boolean   @default(true)
-  quantity        Int       @default(1)
+  restock         Boolean       @default(true)
+  quantity        Int           @default(1)
   adminNote       String?
   resolvedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  sale          Sale          @relation(fields: [saleId], references: [id])
-  order         Order?        @relation(fields: [orderId], references: [id])
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  sale            Sale          @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  order           Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
 
   @@index([status, createdAt])
   @@index([saleId])
 }
 
 model Expense {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   type            String
   category        String
   amount          Float
-  currency        String   @default("UAH")
+  currency        String         @default("UAH")
   description     String?
   inventoryItemId String?
   purchaseOrderId String?
   saleId          String?
   orderId         String?
   assignedUserId  String?
-  incurredAt      DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
-  sale          Sale?          @relation(fields: [saleId], references: [id])
-  order         Order?         @relation(fields: [orderId], references: [id])
-  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
+  incurredAt      DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  sale            Sale?          @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  order           Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  assignedUser    User?          @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
 
   @@index([category, incurredAt])
   @@index([type, incurredAt])
@@ -539,27 +519,25 @@ model AuditLog {
   ipAddress   String?
   userAgent   String?
   createdAt   DateTime @default(now())
-
-  actor User? @relation(fields: [actorUserId], references: [id])
+  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([entityType, entityId, createdAt])
   @@index([action, createdAt])
 }
 
 model ReserveRequest {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   inventoryItemId String?
   productTitle    String
   name            String
   contact         String
   message         String?
-  status          String   @default("pending")
+  status          String         @default("pending")
   adminNote       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  orders        Order[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  orders          Order[]
 
   @@index([status, createdAt])
 }
@@ -574,8 +552,7 @@ model Notification {
   payloadJson  Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  targetUser User? @relation(fields: [targetUserId], references: [id])
+  targetUser   User?    @relation(fields: [targetUserId], references: [id], onDelete: SetNull)
 
   @@index([targetUserId, read, createdAt])
 }
@@ -590,7 +567,7 @@ model ActivityLog {
 }
 
 model UnresolvedMatchQueue {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   listingId       String
   sourceCode      String
   titleRaw        String
@@ -598,29 +575,29 @@ model UnresolvedMatchQueue {
   extractedSetNo  String?
   suggestedItemId String?
   resolvedItemId  String?
-  status          String   @default("pending")
+  status          String        @default("pending")
   resolutionNote  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([sourceCode, status])
 }
 
 model SourceRunLog {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   sourceId      String
-  startedAt     DateTime  @default(now())
+  startedAt     DateTime     @default(now())
   finishedAt    DateTime?
-  status        String    @default("running")
-  itemsSeen     Int       @default(0)
-  itemsMatched  Int       @default(0)
-  itemsInserted Int       @default(0)
-  itemsUpdated  Int       @default(0)
+  status        String       @default("running")
+  itemsSeen     Int          @default(0)
+  itemsMatched  Int          @default(0)
+  itemsInserted Int          @default(0)
+  itemsUpdated  Int          @default(0)
   errorMessage  String?
-  createdAt     DateTime  @default(now())
-
-  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+  source        MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@index([sourceId, startedAt])
 }
@@ -639,16 +616,16 @@ model SyncErrorLog {
 }
 
 model ScanJob {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   sourceCode   String
   query        String?
-  status       String    @default("queued")
-  resultCount  Int       @default(0)
+  status       String   @default("queued")
+  resultCount  Int      @default(0)
   errorMessage String?
   startedAt    DateTime?
   finishedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([status, createdAt])
 }
@@ -668,8 +645,7 @@ model SoldComp {
   imageUrl        String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  item            Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   @@unique([sourceCode, externalId])
   @@index([sourceCode])

@@ -1,14 +1,11 @@
 import { HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-export function Card({
-  className,
-  ...props
-}: HTMLAttributes<HTMLDivElement>) {
+export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        'rounded-2xl border border-border bg-card shadow-sm',
+        'rounded-[2rem] border border-border bg-white shadow-sm',
         className,
       )}
       {...props}
@@ -16,9 +13,6 @@ export function Card({
   );
 }
 
-export function CardContent({
-  className,
-  ...props
-}: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('p-5', className)} {...props} />;
+export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('p-6', className)} {...props} />;
 }

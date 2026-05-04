@@ -9,11 +9,15 @@ export default function AdminLayout({
 }>) {
   return (
     <AuthGate>
-      <div className="flex min-h-screen bg-slate-50">
+      <div className="flex min-h-screen bg-slate-50 overflow-hidden">
         <AdminSidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col h-screen overflow-y-auto">
           <AdminTopbar />
-          <main className="flex-1 p-6">{children}</main>
+          <main className="flex-1 p-6 lg:px-8">
+            <div className="mx-auto max-w-7xl">
+              {children}
+            </div>
+          </main>
         </div>
       </div>
     </AuthGate>

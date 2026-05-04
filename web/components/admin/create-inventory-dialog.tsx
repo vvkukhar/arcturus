@@ -4,17 +4,20 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ItemAutocomplete } from '@/components/admin/item-autocomplete';
 import { Button } from '@/components/ui/button';
+import { apiFetch } from '@/lib/client-api';
+import { Loader2, Plus, X } from 'lucide-react';
 
 function parseNumber(value: string, fallback: number | null = null): number | null {
   if (!value.trim()) return fallback;
-  const parsed = Number(value);
+  const parsed = Number(value.replace(/,/g, '.')); // Дозволяємо і кому і крапку
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 export function CreateInventoryDialog() {
   const router = useRouter();
-
   const [open, setOpen] = useState(false);
+  
+  // States
   const [itemSearch, setItemSearch] = useState('');
   const [itemId, setItemId] = useState('');
   const [titleSnapshot, setTitleSnapshot] = useState('');
@@ -24,158 +27,161 @@ export function CreateInventoryDialog() {
   const [condition, setCondition] = useState('used');
   const [sealed, setSealed] = useState(false);
   const [expectedSalePriceManual, setExpectedSalePriceManual] = useState('');
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const resetForm = () => {
+    setItemSearch(''); setItemId(''); setTitleSnapshot('');
+    setPurchasePrice(''); setTotalCost(''); setQuantity('1');
+    setCondition('used'); setSealed(false); setExpectedSalePriceManual('');
+    setError(null);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    resetForm();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      setError(null);
+
+      const parsedPurchasePrice = parseNumber(purchasePrice);
+      const parsedTotalCost = parseNumber(totalCost, parsedPurchasePrice);
+      const parsedQuantity = parseNumber(quantity, 1);
+      const parsedExpectedSalePrice = parseNumber(expectedSalePriceManual, null);
+
+      if (!itemId.trim()) throw new Error('Поле Item ID є обов\'язковим');
+      if (!titleSnapshot.trim()) throw new Error('Поле Title є обов\'язковим');
+      if (parsedPurchasePrice == null || parsedPurchasePrice < 0) throw new Error('Некоректна ціна закупівлі');
+      if (parsedTotalCost == null || parsedTotalCost < 0) throw new Error('Некоректна загальна вартість');
+      if (parsedQuantity == null || parsedQuantity < 1) throw new Error('Кількість має бути мінімум 1');
+
+      await apiFetch('/api/admin/inventory/create', {
+        method: 'POST',
+        body: JSON.stringify({
+          itemId: itemId.trim(),
+          titleSnapshot: titleSnapshot.trim(),
+          purchasePrice: parsedPurchasePrice,
+          totalCost: parsedTotalCost,
+          quantity: parsedQuantity,
+          condition: condition.trim() || 'used',
+          sealed,
+          expectedSalePriceManual: parsedExpectedSalePrice,
+        }),
+      });
+
+      router.refresh();
+      handleClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Помилка при створенні');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!open) {
-    return <Button onClick={() => setOpen(true)}>Create Inventory</Button>;
+    return (
+      <Button onClick={() => setOpen(true)} className="gap-2">
+        <Plus className="h-4 w-4" />
+        Додати товар
+      </Button>
+    );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-lg rounded-3xl border border-border bg-white p-6 shadow-xl">
-        <div className="text-lg font-black">Create Inventory Item</div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-lg rounded-[2rem] border border-border bg-white p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-black tracking-tight text-slate-900">Створити товар</h2>
+          <button onClick={handleClose} className="rounded-full p-2 hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-        {error ? (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
             {error}
           </div>
-        ) : null}
+        )}
 
-        <div className="mt-4 space-y-3">
-          <ItemAutocomplete
-            value={itemSearch}
-            onChange={setItemSearch}
-            onPick={(item) => {
-              setItemSearch(item.title);
-              setItemId(item.id);
-              setTitleSnapshot(item.title);
-            }}
-            placeholder="Search item by title or set number"
-          />
-
-          <input
-            value={itemId}
-            onChange={(e) => setItemId(e.target.value)}
-            placeholder="Item ID"
-            className="w-full rounded-xl border border-border px-4 py-3 text-sm"
-          />
-
-          <input
-            value={titleSnapshot}
-            onChange={(e) => setTitleSnapshot(e.target.value)}
-            placeholder="Title Snapshot"
-            className="w-full rounded-xl border border-border px-4 py-3 text-sm"
-          />
-
-          <input
-            value={purchasePrice}
-            onChange={(e) => setPurchasePrice(e.target.value)}
-            placeholder="Purchase Price"
-            className="w-full rounded-xl border border-border px-4 py-3 text-sm"
-          />
-
-          <input
-            value={totalCost}
-            onChange={(e) => setTotalCost(e.target.value)}
-            placeholder="Total Cost"
-            className="w-full rounded-xl border border-border px-4 py-3 text-sm"
-          />
-
-          <input
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            placeholder="Quantity"
-            className="w-full rounded-xl border border-border px-4 py-3 text-sm"
-          />
-
-          <input
-            value={condition}
-            onChange={(e) => setCondition(e.target.value)}
-            placeholder="Condition"
-            className="w-full rounded-xl border border-border px-4 py-3 text-sm"
-          />
-
-          <label className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-sm">
-            <input
-              type="checkbox"
-              checked={sealed}
-              onChange={(e) => setSealed(e.target.checked)}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Знайти товар (Автозаповнення)</label>
+            <ItemAutocomplete
+              value={itemSearch}
+              onChange={setItemSearch}
+              onPick={(item) => {
+                setItemSearch(item.title);
+                setItemId(item.id);
+                setTitleSnapshot(item.title);
+              }}
+              placeholder="Введіть назву або артикул LEGO..."
             />
-            <span>Sealed</span>
-          </label>
+          </div>
 
-          <input
-            value={expectedSalePriceManual}
-            onChange={(e) => setExpectedSalePriceManual(e.target.value)}
-            placeholder="Manual Sell Price"
-            className="w-full rounded-xl border border-border px-4 py-3 text-sm"
-          />
-        </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Item ID</label>
+              <input required value={itemId} onChange={(e) => setItemId(e.target.value)} placeholder="Напр. 75192-1" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Кількість</label>
+              <input type="number" min="1" required value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" />
+            </div>
+          </div>
 
-        <div className="mt-5 flex gap-2">
-          <Button
-            disabled={loading}
-            onClick={async () => {
-              try {
-                setLoading(true);
-                setError(null);
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Назва</label>
+            <input required value={titleSnapshot} onChange={(e) => setTitleSnapshot(e.target.value)} placeholder="Повна назва набору" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" />
+          </div>
 
-                const parsedPurchasePrice = parseNumber(purchasePrice);
-                const parsedTotalCost = parseNumber(totalCost, parsedPurchasePrice);
-                const parsedQuantity = parseNumber(quantity, 1);
-                const parsedExpectedSalePrice = parseNumber(expectedSalePriceManual, null);
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Ціна закупівлі (₴)</label>
+              <input required type="number" step="0.01" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} placeholder="0.00" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Собівартість (₴)</label>
+              <input type="number" step="0.01" value={totalCost} onChange={(e) => setTotalCost(e.target.value)} placeholder="Опціонально" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" />
+            </div>
+          </div>
 
-                if (!itemId.trim()) throw new Error('Item ID is required');
-                if (!titleSnapshot.trim()) throw new Error('Title is required');
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Бажана ціна продажу</label>
+              <input type="number" step="0.01" value={expectedSalePriceManual} onChange={(e) => setExpectedSalePriceManual(e.target.value)} placeholder="Опціонально" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Стан</label>
+              <select value={condition} onChange={(e) => setCondition(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer">
+                <option value="new">New (Новий)</option>
+                <option value="used">Used (Вживаний)</option>
+                <option value="incomplete">Incomplete (Неповний)</option>
+              </select>
+            </div>
+          </div>
 
-                if (parsedPurchasePrice == null || parsedPurchasePrice < 0) {
-                  throw new Error('Purchase price must be a valid number');
-                }
+          <div className="pt-2">
+            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-semibold cursor-pointer hover:bg-slate-100 transition-colors">
+              <input type="checkbox" checked={sealed} onChange={(e) => setSealed(e.target.checked)} className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+              <span>Запакований (Sealed)</span>
+            </label>
+          </div>
 
-                if (parsedTotalCost == null || parsedTotalCost < 0) {
-                  throw new Error('Total cost must be a valid number');
-                }
-
-                if (parsedQuantity == null || parsedQuantity < 1) {
-                  throw new Error('Quantity must be at least 1');
-                }
-
-                const response = await fetch('/api/admin/inventory/create', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    itemId: itemId.trim(),
-                    titleSnapshot: titleSnapshot.trim(),
-                    purchasePrice: parsedPurchasePrice,
-                    totalCost: parsedTotalCost,
-                    quantity: parsedQuantity,
-                    condition: condition.trim() || 'used',
-                    sealed,
-                    expectedSalePriceManual: parsedExpectedSalePrice,
-                  }),
-                });
-
-                if (!response.ok) {
-                  throw new Error(`Create failed: ${response.status}`);
-                }
-
-                router.refresh();
-                setOpen(false);
-              } catch (err) {
-                setError(err instanceof Error ? err.message : 'Create failed');
-              } finally {
-                setLoading(false);
-              }
-            }}
-          >
-            {loading ? 'Creating...' : 'Create'}
-          </Button>
-
-          <Button variant="secondary" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-        </div>
+          <div className="mt-8 flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <Button type="button" variant="ghost" onClick={handleClose} disabled={loading}>
+              Скасувати
+            </Button>
+            <Button type="submit" disabled={loading} className="min-w-[120px]">
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? 'Створення...' : 'Створити'}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );

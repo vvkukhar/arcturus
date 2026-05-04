@@ -2,22 +2,17 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { apiFetch } from '@/lib/client-api';
+import { Loader2, Save } from 'lucide-react';
+import type { WatchlistItem } from '@/lib/types';
 
 type Props = {
-  item: {
-    id: string;
-    titleSnapshot: string;
-    desiredBuyPrice: number;
-    maxBuyPrice: number;
-    targetSellPrice?: number | null;
-    active: boolean;
-    priority: number;
-  };
+  item: WatchlistItem;
 };
 
-function toNumber(value: string, fallback: number | null = 0): number | null {
-  if (value.trim() === '') return fallback;
-  const parsed = Number(value);
+function parseNumber(value: string, fallback: number | null = 0): number | null {
+  if (!value.trim()) return fallback;
+  const parsed = Number(value.replace(/,/g, '.'));
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
@@ -25,109 +20,128 @@ export function WatchlistInlineEditor({ item }: Props) {
   const router = useRouter();
 
   const [titleSnapshot, setTitleSnapshot] = useState(item.titleSnapshot ?? '');
-  const [desiredBuyPrice, setDesiredBuyPrice] = useState(
-    String(item.desiredBuyPrice ?? ''),
-  );
-  const [maxBuyPrice, setMaxBuyPrice] = useState(
-    String(item.maxBuyPrice ?? ''),
-  );
+  const [desiredBuyPrice, setDesiredBuyPrice] = useState(String(item.desiredBuyPrice ?? ''));
+  const [maxBuyPrice, setMaxBuyPrice] = useState(String(item.maxBuyPrice ?? ''));
   const [targetSellPrice, setTargetSellPrice] = useState(
     item.targetSellPrice != null ? String(item.targetSellPrice) : '',
   );
   const [active, setActive] = useState(Boolean(item.active));
   const [priority, setPriority] = useState(String(item.priority ?? '0'));
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const parsedDesired = parseNumber(desiredBuyPrice, 0);
+      const parsedMax = parseNumber(maxBuyPrice, 0);
+      const parsedTarget = targetSellPrice.trim() === '' ? null : parseNumber(targetSellPrice, null);
+      const parsedPriority = parseNumber(priority, 0);
+
+      if (parsedDesired === null || parsedDesired < 0) throw new Error('Invalid desired buy');
+      if (parsedMax === null || parsedMax < 0) throw new Error('Invalid max buy');
+
+      await apiFetch('/api/admin/watchlist/update', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          id: item.id,
+          titleSnapshot,
+          desiredBuyPrice: parsedDesired,
+          maxBuyPrice: parsedMax,
+          targetSellPrice: parsedTarget,
+          active,
+          priority: parsedPriority,
+        }),
+      });
+
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="space-y-2">
-      <div className="grid gap-2 md:grid-cols-6">
-        <input
-          value={titleSnapshot}
-          onChange={(e) => setTitleSnapshot(e.target.value)}
-          className="rounded-xl border border-border px-3 py-2 text-sm"
-          placeholder="Title"
-        />
+    <div className="space-y-3 rounded-2xl border border-border bg-slate-50 p-4">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Quick Edit Configuration</span>
+      </div>
+      
+      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-6 lg:grid-cols-7">
+        <div className="md:col-span-2">
+          <input
+            value={titleSnapshot}
+            onChange={(e) => setTitleSnapshot(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-blue-500 outline-none"
+            placeholder="Title Snapshot"
+          />
+        </div>
 
         <input
+          type="number"
+          step="0.01"
           value={desiredBuyPrice}
           onChange={(e) => setDesiredBuyPrice(e.target.value)}
-          className="rounded-xl border border-border px-3 py-2 text-sm"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-blue-500 outline-none"
           placeholder="Desired Buy"
         />
 
         <input
+          type="number"
+          step="0.01"
           value={maxBuyPrice}
           onChange={(e) => setMaxBuyPrice(e.target.value)}
-          className="rounded-xl border border-border px-3 py-2 text-sm"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-blue-500 outline-none"
           placeholder="Max Buy"
         />
 
         <input
+          type="number"
+          step="0.01"
           value={targetSellPrice}
           onChange={(e) => setTargetSellPrice(e.target.value)}
-          className="rounded-xl border border-border px-3 py-2 text-sm"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-blue-500 outline-none"
           placeholder="Target Sell"
         />
 
         <input
+          type="number"
+          min="0"
+          max="10"
           value={priority}
           onChange={(e) => setPriority(e.target.value)}
-          className="rounded-xl border border-border px-3 py-2 text-sm"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-blue-500 outline-none"
           placeholder="Priority"
         />
 
-        <label className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm">
+        <label className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm cursor-pointer hover:bg-slate-50">
           <input
             type="checkbox"
             checked={active}
             onChange={(e) => setActive(e.target.checked)}
+            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
           />
-          <span>Active</span>
+          <span className="font-medium text-slate-700">Active</span>
         </label>
+      </div>
 
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          {error && <span className="text-xs font-semibold text-red-600">{error}</span>}
+        </div>
         <button
           disabled={loading}
-          className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-          onClick={async () => {
-            try {
-              setLoading(true);
-              setError(null);
-
-              const response = await fetch('/api/admin/watchlist/update', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  id: item.id,
-                  titleSnapshot,
-                  desiredBuyPrice: toNumber(desiredBuyPrice, 0),
-                  maxBuyPrice: toNumber(maxBuyPrice, 0),
-                  targetSellPrice:
-                    targetSellPrice.trim() === ''
-                      ? null
-                      : toNumber(targetSellPrice, null),
-                  active,
-                  priority: toNumber(priority, 0),
-                }),
-              });
-
-              if (!response.ok) {
-                throw new Error(`Save failed: ${response.status}`);
-              }
-
-              router.refresh();
-            } catch (err) {
-              setError(err instanceof Error ? err.message : 'Save failed');
-            } finally {
-              setLoading(false);
-            }
-          }}
+          onClick={handleSave}
+          className="flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50"
         >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {loading ? 'Saving...' : 'Save Inline'}
         </button>
       </div>
-
-      {error ? <div className="text-xs text-red-600">{error}</div> : null}
     </div>
   );
 }
