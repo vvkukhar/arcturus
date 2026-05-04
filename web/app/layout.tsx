@@ -1,38 +1,29 @@
-import '@/app/globals.css';
-import { ToastProvider } from '@/components/ui/toast-provider';
-import { LiveToasts } from '@/components/admin/live-toasts';
-import { Metadata, Viewport } from 'next';
-import { FomoTicker } from '@/components/store/fomo-ticker';
-
-export const viewport: Viewport = {
-  themeColor: '#3b82f6',
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 5,
-};
+import type { Metadata } from "next";
+import "./globals.css";
+import { CartProvider } from "@/components/providers/cart-provider";
+import { Navbar } from "@/components/layout/navbar";
+import { CartSidebar } from "@/components/cart/cart-sidebar";
 
 export const metadata: Metadata = {
-  title: {
-    template: '%s | Arcturus',
-    default: 'Arcturus - Premium LEGO Trading',
-  },
-  description: 'Ексклюзивний доступ до раритетних наборів LEGO. Миттєве бронювання та абсолютна гарантія оригінальності.',
-  manifest: '/manifest.json',
-  icons: {
-    icon: '/favicon.ico',
-    apple: '/icons/Icon-192.png',
-  },
+  title: "Arcturus Store | Premium LEGO",
+  description: "Find the best deals on rare and retired LEGO sets.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="uk" className="scroll-smooth">
-      <body className="antialiased min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-blue-600 selection:text-white">
-        <ToastProvider>
-          <LiveToasts />
-          <FomoTicker />
-          {children}
-        </ToastProvider>
+    <html lang="en">
+      <body className="antialiased text-slate-900 bg-slate-50 min-h-screen flex flex-col">
+        <CartProvider>
+          <Navbar />
+          <CartSidebar />
+          <main className="flex-1">
+            {children}
+          </main>
+        </CartProvider>
       </body>
     </html>
   );

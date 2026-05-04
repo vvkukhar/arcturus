@@ -1,89 +1,44 @@
-import { publicApi } from '@/lib/public-api';
-import { StoreProductCard } from '@/components/store/store-product-card';
-import { StoreFilters } from '@/components/store/store-filters';
-import { StoreSearch } from '@/components/store/store-search';
-import { SourceFilterChips } from '@/components/store/source-filter-chips';
-import { StoreSort } from '@/components/store/store-sort';
-import { EmptyState } from '@/components/ui/empty-state';
+import { ProductCard } from '@/components/store/product-card';
+import { InventoryItem } from '@/lib/types';
+import { PackageSearch } from 'lucide-react';
 
-type Props = {
-  searchParams: Promise<{
-    q?: string;
-    type?: string;
-    theme?: string;
-    sort?: string;
-    availableOnly?: string;
-  }>;
-};
-
-interface CatalogItem {
-  id: string;
-  titleSnapshot?: string;
-  item?: { title?: string };
-  expectedSalePriceManual?: number;
-  totalCost?: number;
-  condition?: string;
-  quantity: number;
-  images?: { isPrimary?: boolean; imageUrl: string }[];
+async function getCatalogItems(): Promise<InventoryItem[]> {
+  try {
+    const res = await fetch(`${process.env.API_BASE_URL || 'http://localhost:4000/api'}/public/catalog`, {
+      cache: 'no-store'
+    });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
 }
 
-export const revalidate = 60;
-
-export default async function StoreCatalogPage({ searchParams }: Props) {
-  const params = await searchParams;
-  
-  let items: CatalogItem[] = [];
-  try {
-    items = await publicApi.getCatalog<CatalogItem[]>({
-      q: params.q,
-      type: params.type,
-      theme: params.theme,
-      sort: params.sort,
-      availableOnly: params.availableOnly === 'true',
-    });
-  } catch (error) {
-    items = [];
-  }
+export default async function CatalogPage() {
+  const items = await getCatalogItems();
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="rounded-3xl border border-border bg-white p-6 shadow-sm">
-        <div className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
-          Catalog
-        </div>
-        <h1 className="mt-3 text-4xl font-black text-slate-900">Browse Inventory</h1>
-        <div className="mt-6 space-y-4">
-          <StoreSearch />
-          <StoreFilters />
-          <SourceFilterChips />
-          <StoreSort />
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Catalog</h1>
+          <p className="text-slate-500 mt-2 text-lg">Explore our curated collection of LEGO sets and minifigures.</p>
         </div>
       </div>
-      
-      {items.length === 0 ? (
-        <EmptyState title="Нічого не знайдено" description="Спробуйте змінити критерії пошуку або фільтри." />
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-          {items.map((item) => {
-            const title = item.titleSnapshot || item.item?.title || 'Unknown Product';
-            const slug = title.toLowerCase().replaceAll(' ', '-') || item.id;
-            const primaryImage =
-              Array.isArray(item.images) && item.images.length > 0
-                ? (item.images.find((x) => x.isPrimary) ?? item.images[0]).imageUrl
-                : null;
 
-            return (
-              <StoreProductCard
-                key={item.id}
-                title={title}
-                slug={slug}
-                price={item.expectedSalePriceManual ?? item.totalCost}
-                condition={item.condition}
-                status={item.quantity > 0 ? 'Available' : 'Sold'}
-                imageUrl={primaryImage}
-              />
-            );
-          })}
+      {items.length === 0 ? (
+        <div className="py-24 flex flex-col items-center justify-center bg-white rounded-3xl border border-slate-100 border-dashed">
+          <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-6">
+            <PackageSearch size={32} />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900">No items found</h3>
+          <p className="text-slate-500 mt-2">Check back later for new arrivals.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
+          {items.map((item) => (
+            <ProductCard key={item.id} item={item} />
+          ))}
         </div>
       )}
     </div>
