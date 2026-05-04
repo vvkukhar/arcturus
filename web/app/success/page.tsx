@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { CheckCircle, Package, ArrowRight, Loader2 } from 'lucide-react';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/client-api';
 import { formatMoney } from '@/lib/format';
 
-export default function SuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [order, setOrder] = useState<any>(null);
@@ -117,5 +117,22 @@ export default function SuccessPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+          <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+            Завантаження...
+          </div>
+        </div>
+      </main>
+    }>
+      <SuccessContent />
+    </Suspense>
   );
 }
