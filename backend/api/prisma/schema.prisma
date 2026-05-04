@@ -1,3 +1,4 @@
+// backend/api/prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -384,7 +385,6 @@ model Deal {
   listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
-  @@unique([watchlistItemId, listingId])
   @@index([status, score])
   @@index([action, status])
   @@index([watchlistItemId, listingId])
