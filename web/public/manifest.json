@@ -1,7 +1,7 @@
 {
   "name": "Arcturus Premium LEGO",
   "short_name": "Arcturus",
-  "description": "Premium LEGO Trading Platform",
+  "description": "Exclusive LEGO Trading Manager",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",

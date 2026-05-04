@@ -12,7 +12,6 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/images') ||
     pathname === '/favicon.ico' ||
     pathname === '/manifest.json' ||
-    pathname === '/sw.js' ||
     pathname.includes('.')
   ) {
     return NextResponse.next();

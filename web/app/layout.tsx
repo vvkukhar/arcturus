@@ -6,6 +6,8 @@ import { FomoTicker } from '@/components/store/fomo-ticker';
 
 export const viewport: Viewport = {
   themeColor: '#3b82f6',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export const metadata: Metadata = {
@@ -13,25 +15,15 @@ export const metadata: Metadata = {
     template: '%s | Arcturus',
     default: 'Arcturus - Premium LEGO Trading',
   },
-  description: 'Ексклюзивний доступ до раритетних наборів та лімітованих мініфігурок LEGO. Миттєве бронювання та абсолютна гарантія оригінальності.',
+  description: 'Ексклюзивний доступ до раритетних наборів LEGO. Миттєве бронювання та гарантія.',
   manifest: '/manifest.json',
   icons: {
     icon: '/favicon.ico',
     apple: '/icons/Icon-192.png',
   },
-  openGraph: {
-    title: 'Arcturus - Premium LEGO',
-    description: 'Ексклюзивний доступ до раритетних наборів LEGO',
-    type: 'website',
-    siteName: 'Arcturus',
-  },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="uk">
       <body className="antialiased">

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -8,14 +9,13 @@ final authTokenProvider = Provider<Future<String?> Function()>((ref) {
   return () async {
     final envToken = dotenv.env['AUTH_TOKEN'];
     if (envToken != null && envToken.trim().isNotEmpty) {
-      // Жорстке очищення від випадкових лапок та пробілів з .env
-      return envToken.replaceAll('"', '').replaceAll("'", "").trim();
+      return envToken.trim().replaceAll('"', '').replaceAll("'", "");
     }
 
     final prefs = await SharedPreferences.getInstance();
     final localToken = prefs.getString('auth_token');
     if (localToken != null && localToken.trim().isNotEmpty) {
-      return localToken.replaceAll('"', '').replaceAll("'", "").trim();
+      return localToken.trim().replaceAll('"', '').replaceAll("'", "");
     }
     
     return null;
