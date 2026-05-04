@@ -8,11 +8,17 @@ final authTokenProvider = Provider<Future<String?> Function()>((ref) {
   return () async {
     final envToken = dotenv.env['AUTH_TOKEN'];
     if (envToken != null && envToken.trim().isNotEmpty) {
-      return envToken.trim();
+      // Жорстке очищення від випадкових лапок та пробілів з .env
+      return envToken.replaceAll('"', '').replaceAll("'", "").trim();
     }
 
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    final localToken = prefs.getString('auth_token');
+    if (localToken != null && localToken.trim().isNotEmpty) {
+      return localToken.replaceAll('"', '').replaceAll("'", "").trim();
+    }
+    
+    return null;
   };
 });
 
