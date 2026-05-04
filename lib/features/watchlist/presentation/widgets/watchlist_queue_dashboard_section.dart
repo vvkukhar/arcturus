@@ -3,7 +3,6 @@ import 'package:lego_trading_manager/features/watchlist/application/watchlist_al
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_auto_buy_cash_compare_model.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_auto_buy_simulation_model.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_capital_discipline_model.dart';
-import 'package:lego_trading_manager/features/watchlist/application/watchlist_capital_discipline_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_commit_durability_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_commit_stability_model.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_execution_balance_model.dart';

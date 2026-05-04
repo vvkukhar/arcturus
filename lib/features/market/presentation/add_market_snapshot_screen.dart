@@ -1,5 +1,7 @@
+// lib/features/market/presentation/add_market_snapshot_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/providers/local_datasources_provider.dart';
 import 'package:lego_trading_manager/core/utils/id_generator.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
 import 'package:lego_trading_manager/data/models/market_snapshot_model.dart';
@@ -17,7 +19,7 @@ class AddMarketSnapshotScreen extends ConsumerStatefulWidget {
 class _AddMarketSnapshotScreenState
     extends ConsumerState<AddMarketSnapshotScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _inventoryRepository = InventoryRepository();
+  late final InventoryRepository _inventoryRepository;
 
   String? _selectedItemId;
 
@@ -29,6 +31,12 @@ class _AddMarketSnapshotScreenState
   final _sellerCountController = TextEditingController();
   final _availableQtyController = TextEditingController();
   final _urlController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _inventoryRepository = InventoryRepository(ref.read(inventoryLocalDatasourceProvider));
+  }
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;

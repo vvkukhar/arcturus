@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/analytics/application/turnover_bucket_model.dart';
 
 final turnoverBucketsProvider = Provider<List<TurnoverBucketModel>>((ref) {
-  final sold = InventoryRepository().getSoldItems();
+  final sold = ref.watch(inventoryRepositoryProvider).getSoldItems();
 
   int lt7 = 0;
   int d7_30 = 0;

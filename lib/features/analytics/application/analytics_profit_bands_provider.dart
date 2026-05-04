@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_profit_band_model.dart';
 
 final analyticsProfitBandsProvider =
     Provider<List<AnalyticsProfitBandModel>>((ref) {
-  final sold = InventoryRepository().getSoldItems();
+  final sold = ref.watch(inventoryRepositoryProvider).getSoldItems();
 
   int negative = 0;
   int zeroTo500 = 0;

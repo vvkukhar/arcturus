@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 class AppDatabase {
   Database? _database;
@@ -9,10 +11,19 @@ class AppDatabase {
       return _database!;
     }
 
-    final databasesPath = await databaseFactory.getDatabasesPath();
+    if (kIsWeb) {
+      databaseFactory = databaseFactoryFfiWeb;
+    } else if (defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+
+    final databasesPath = await getDatabasesPath();
     final dbPath = join(databasesPath, 'arcturus_crm.db');
 
-    _database = await databaseFactory.openDatabase(
+    _database = await openDatabase(
       dbPath,
       version: 1,
       onCreate: (db, version) async {

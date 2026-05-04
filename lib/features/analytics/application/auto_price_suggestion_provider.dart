@@ -1,7 +1,5 @@
-// lib/features/analytics/application/auto_price_suggestion_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/analytics/application/auto_price_suggestion_model.dart';
 import 'package:lego_trading_manager/features/analytics/application/auto_price_suggestion_service.dart';
 
@@ -13,7 +11,7 @@ final autoPriceSuggestionServiceProvider =
 final autoPriceSuggestionsProvider =
     Provider<List<AutoPriceSuggestionModel>>((ref) {
   final service = ref.watch(autoPriceSuggestionServiceProvider);
-  final items = InventoryRepository().getAllItems();
+  final items = ref.watch(inventoryRepositoryProvider).getAllItems();
 
   final result =
       items.map(service.build).whereType<AutoPriceSuggestionModel>().toList();

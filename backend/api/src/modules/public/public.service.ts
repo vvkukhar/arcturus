@@ -5,12 +5,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class PublicService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
+    private readonly redis: RedisService,
   ) {}
 
   private slugify(value: string): string {
@@ -53,10 +55,17 @@ export class PublicService {
     sort?: string;
     limit?: number;
   }): Promise<unknown[]> {
+    const cacheKey = `public_catalog:${JSON.stringify(params)}`;
+    
+    if (!params.q) {
+      const cached = await this.redis.get<unknown[]>(cacheKey);
+      if (cached) return cached;
+    }
+
     const limit = Math.min(params.limit ?? 48, 200);
     const q = params.q?.trim();
 
-    return this.prisma.inventoryItem.findMany({
+    const data = await this.prisma.inventoryItem.findMany({
       where: {
         quantity: params.availableOnly === true ? { gt: 0 } : undefined,
         OR:
@@ -95,7 +104,7 @@ export class PublicService {
               ]
             : undefined,
         item: {
-          ...(params.type ? { kind: params.type } : {}),
+          ...(params.type && params.type !== 'all' ? { kind: params.type } : {}),
           ...(params.theme
             ? {
                 theme: {
@@ -117,6 +126,12 @@ export class PublicService {
       orderBy: this.resolveOrderBy(params.sort),
       take: limit,
     });
+
+    if (!params.q) {
+      await this.redis.set(cacheKey, data, 300);
+    }
+
+    return data;
   }
 
   async getCatalogItemBySlug(slug: string): Promise<unknown | null> {

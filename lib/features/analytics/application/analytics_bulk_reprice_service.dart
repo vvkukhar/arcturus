@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_helper_provider.dart';
 
 class AnalyticsBulkRepriceService {
@@ -8,7 +8,7 @@ class AnalyticsBulkRepriceService {
   AnalyticsBulkRepriceService(this.ref);
 
   Future<int> applyAllMarket98() async {
-    final repo = InventoryRepository();
+    final repo = ref.read(inventoryRepositoryProvider);
     final items = repo.getAllItems();
     int affected = 0;
 
@@ -20,7 +20,7 @@ class AnalyticsBulkRepriceService {
       );
     }).toList();
 
-    repo.replaceAll(next);
+    await repo.replaceAll(next);
 
     await ref.read(activityLogHelperProvider).inventoryAction(
           title: 'Analytics bulk repricing',

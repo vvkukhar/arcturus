@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { TelegramService } from './telegram.service';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
+    private readonly telegram: TelegramService,
   ) {}
 
   async create(params: {
@@ -53,13 +55,20 @@ export class NotificationsService {
     action: string;
     targetUserId?: string | null;
   }): Promise<unknown> {
-    return this.create({
+    const notification = await this.create({
       title: 'Deal detected',
       message: `${params.itemTitle} • ${params.action} • ROI ${params.roi.toFixed(2)}%`,
       type: 'deal',
       targetUserId: params.targetUserId ?? null,
       payloadJson: params,
     });
+
+    if (params.action === 'BUY_NOW') {
+      const tgMessage = `🚨 <b>УВАГА: STRONG BUY</b> 🚨\n\n📦 <b>Товар:</b> ${params.itemTitle}\n📈 <b>ROI:</b> ${params.roi.toFixed(2)}%\n\n<i>Дій швидко, заходь в адмінку!</i>`;
+      await this.telegram.sendMessage(tgMessage);
+    }
+
+    return notification;
   }
 
   async createSaleNotification(params: {
@@ -67,13 +76,18 @@ export class NotificationsService {
     profit: number;
     targetUserId?: string | null;
   }): Promise<unknown> {
-    return this.create({
+    const notification = await this.create({
       title: 'Sale registered',
       message: `${params.itemTitle} • profit ${params.profit}`,
       type: 'sale',
       targetUserId: params.targetUserId ?? null,
       payloadJson: params,
     });
+
+    const tgMessage = `💰 <b>НОВИЙ ПРОДАЖ</b> 💰\n\n📦 <b>Товар:</b> ${params.itemTitle}\n💵 <b>Чистий профіт:</b> ${params.profit} UAH\n\n<i>Гарна робота!</i>`;
+    await this.telegram.sendMessage(tgMessage);
+
+    return notification;
   }
 
   async createAssignmentNotification(params: {

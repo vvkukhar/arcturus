@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/utils/csv_builder.dart';
 import 'package:lego_trading_manager/core/utils/file_exporter.dart';
 import 'package:lego_trading_manager/core/utils/json_builder.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
-import 'package:lego_trading_manager/data/repositories/purchases_repository.dart';
-import 'package:lego_trading_manager/data/repositories/sales_repository.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_export_row_mapper.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchases_export_row_mapper.dart';
 import 'package:lego_trading_manager/features/sales/application/sales_export_row_mapper.dart';
@@ -17,9 +15,8 @@ import 'package:lego_trading_manager/features/settings/presentation/widgets/expo
 class ExportScreen extends ConsumerWidget {
   const ExportScreen({super.key});
 
-  Future<void> _exportInventoryJson(BuildContext context) async {
-    final items =
-        InventoryRepository().getAllItems().map((e) => e.toMap()).toList();
+  Future<void> _exportInventoryJson(BuildContext context, WidgetRef ref) async {
+    final items = ref.read(inventoryRepositoryProvider).getAllItems().map((e) => e.toMap()).toList();
     final json = JsonBuilder.build(items);
     await FileExporter.exportText(filename: 'inventory.json', content: json);
 
@@ -30,9 +27,8 @@ class ExportScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _exportSalesJson(BuildContext context) async {
-    final sales =
-        SalesRepository().getAllSales().map((e) => e.toMap()).toList();
+  Future<void> _exportSalesJson(BuildContext context, WidgetRef ref) async {
+    final sales = ref.read(salesRepositoryProvider).getAllSales().map((e) => e.toMap()).toList();
     final json = JsonBuilder.build(sales);
     await FileExporter.exportText(filename: 'sales.json', content: json);
 
@@ -43,9 +39,8 @@ class ExportScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _exportPurchasesJson(BuildContext context) async {
-    final purchases =
-        PurchasesRepository().getAllPurchases().map((e) => e.toMap()).toList();
+  Future<void> _exportPurchasesJson(BuildContext context, WidgetRef ref) async {
+    final purchases = ref.read(purchasesRepositoryProvider).getAllPurchases().map((e) => e.toMap()).toList();
     final json = JsonBuilder.build(purchases);
     await FileExporter.exportText(filename: 'purchases.json', content: json);
 
@@ -56,7 +51,7 @@ class ExportScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _exportInventoryCsv(BuildContext context) async {
+  Future<void> _exportInventoryCsv(BuildContext context, WidgetRef ref) async {
     final rows = <List<String>>[
       [
         'id',
@@ -69,7 +64,7 @@ class ExportScreen extends ConsumerWidget {
         'marketAverage',
         'status',
       ],
-      ...InventoryRepository().getAllItems().map(InventoryExportRowMapper.map),
+      ...ref.read(inventoryRepositoryProvider).getAllItems().map(InventoryExportRowMapper.map),
     ];
 
     final csv = CsvBuilder.build(rows);
@@ -82,7 +77,7 @@ class ExportScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _exportSalesCsv(BuildContext context) async {
+  Future<void> _exportSalesCsv(BuildContext context, WidgetRef ref) async {
     final rows = <List<String>>[
       [
         'id',
@@ -95,7 +90,7 @@ class ExportScreen extends ConsumerWidget {
         'finalNet',
         'saleDate',
       ],
-      ...SalesRepository().getAllSales().map(SalesExportRowMapper.map),
+      ...ref.read(salesRepositoryProvider).getAllSales().map(SalesExportRowMapper.map),
     ];
 
     final csv = CsvBuilder.build(rows);
@@ -108,7 +103,7 @@ class ExportScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _exportPurchasesCsv(BuildContext context) async {
+  Future<void> _exportPurchasesCsv(BuildContext context, WidgetRef ref) async {
     final rows = <List<String>>[
       [
         'id',
@@ -121,9 +116,7 @@ class ExportScreen extends ConsumerWidget {
         'currency',
         'purchaseDate',
       ],
-      ...PurchasesRepository()
-          .getAllPurchases()
-          .map(PurchasesExportRowMapper.map),
+      ...ref.read(purchasesRepositoryProvider).getAllPurchases().map(PurchasesExportRowMapper.map),
     ];
 
     final csv = CsvBuilder.build(rows);
@@ -165,37 +158,37 @@ class ExportScreen extends ConsumerWidget {
           Card(
             child: ListTile(
               title: const Text('Export Inventory JSON'),
-              onTap: () => _exportInventoryJson(context),
+              onTap: () => _exportInventoryJson(context, ref),
             ),
           ),
           Card(
             child: ListTile(
               title: const Text('Export Sales JSON'),
-              onTap: () => _exportSalesJson(context),
+              onTap: () => _exportSalesJson(context, ref),
             ),
           ),
           Card(
             child: ListTile(
               title: const Text('Export Purchases JSON'),
-              onTap: () => _exportPurchasesJson(context),
+              onTap: () => _exportPurchasesJson(context, ref),
             ),
           ),
           Card(
             child: ListTile(
               title: const Text('Export Inventory CSV'),
-              onTap: () => _exportInventoryCsv(context),
+              onTap: () => _exportInventoryCsv(context, ref),
             ),
           ),
           Card(
             child: ListTile(
               title: const Text('Export Sales CSV'),
-              onTap: () => _exportSalesCsv(context),
+              onTap: () => _exportSalesCsv(context, ref),
             ),
           ),
           Card(
             child: ListTile(
               title: const Text('Export Purchases CSV'),
-              onTap: () => _exportPurchasesCsv(context),
+              onTap: () => _exportPurchasesCsv(context, ref),
             ),
           ),
         ],

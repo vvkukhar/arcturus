@@ -18,6 +18,10 @@ class MarketRepository {
     return List<MarketSnapshotModel>.from(_memoryCache);
   }
 
+  List<MarketSnapshotModel> getAllSnapshots() {
+    return getAll();
+  }
+
   MarketSnapshotModel? getById(String id) {
     if (!_isLoaded) throw StateError('MarketRepository accessed before loadCache()');
     try {

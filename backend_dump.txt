@@ -195,6 +195,44 @@ volumes:
   arcturus_pg_data:
   arcturus_redis_data:
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\Dockerfile =====
+
+FROM node:22-alpine AS builder
+WORKDIR /app
+RUN apk add --no-cache openssl
+
+# РљРѕРїС–СЋС”РјРѕ РІРµСЃСЊ РєРѕРЅС‚РµРЅС‚ backend
+COPY . .
+
+# 1. Р“РѕС‚СѓС”РјРѕ API
+WORKDIR /app/api
+RUN npm install && npx prisma generate && npm run build
+
+# 2. Р“РѕС‚СѓС”РјРѕ Workers
+WORKDIR /app/workers
+RUN npm install && npx prisma generate && npm run build
+
+# 3. Р“РѕС‚СѓС”РјРѕ Scrapers (Р”РѕРґР°РЅРѕ npm run build)
+WORKDIR /app/scrapers
+RUN npm install && npx prisma generate && npm run build
+
+# Runner stage
+FROM node:22-alpine AS runner
+WORKDIR /app
+RUN apk add --no-cache openssl
+
+# РљРѕРїС–СЋС”РјРѕ РІСЃРµ РіРѕС‚РѕРІРµ Р· РµС‚Р°РїСѓ builder
+COPY --from=builder /app /app
+
+# РќР°РґР°С”РјРѕ РїСЂР°РІР° РЅР° СЃРєСЂРёРїС‚ Р·Р°РїСѓСЃРєСѓ
+WORKDIR /app/api
+RUN chmod +x start-all.sh
+
+EXPOSE 4000
+
+# Р—Р°РїСѓСЃРєР°С”РјРѕ РЅР°С€ РєРѕРјР±Р°Р№РЅ С‡РµСЂРµР· РјРµРЅРµРґР¶РµСЂ РїСЂРѕС†РµСЃС–РІ
+CMD ["./start-all.sh"]
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\Makefile =====
 
 up:
@@ -435,50 +473,44 @@ volumes:
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\Dockerfile =====
 
-# ---------- deps ----------
-FROM node:22-alpine AS deps
-
+FROM node:22-alpine AS builder
 WORKDIR /app
-
 RUN apk add --no-cache openssl
 
+# РњРё С‚РµРїРµСЂ "РґРёРІРёРјРѕСЃСЊ" Р· РїР°РїРєРё backend, С‚РѕРјСѓ С€Р»СЏС…Рё С‚Р°РєС–:
+COPY api/package.json ./api/
+COPY workers/package.json ./workers/
+COPY scrapers/package.json ./scrapers/
 COPY package.json package-lock.json* ./
+
 RUN npm install
 
-COPY prisma ./prisma
-RUN npx prisma generate
-
-
-# ---------- builder ----------
-FROM node:22-alpine AS builder
-
-WORKDIR /app
-
-RUN apk add --no-cache openssl
-
-COPY --from=deps /app/node_modules ./node_modules
+# РљРѕРїС–СЋС”РјРѕ РІСЃРµ Р· РїР°РїРєРё backend
 COPY . .
 
-RUN npm run build
+# Р‘С–Р»РґРёРјРѕ API
+WORKDIR /app/api
+RUN npx prisma generate && npm run build
 
+# Р‘С–Р»РґРёРјРѕ Workers
+WORKDIR /app/workers
+RUN npx prisma generate && npm run build
 
-# ---------- runner ----------
+# Scrapers
+WORKDIR /app/scrapers
+RUN npx prisma generate
+
+# Runner stage
 FROM node:22-alpine AS runner
-
 WORKDIR /app
-
 RUN apk add --no-cache openssl
+COPY --from=builder /app /app
 
-ENV NODE_ENV=production
-
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
-
+# Р—Р°РїСѓСЃРє
+WORKDIR /app/api
+RUN chmod +x start-all.sh
 EXPOSE 4000
-
-CMD ["node", "dist/src/main.js"]
+CMD ["./start-all.sh"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\nest-cli.json =====
 
@@ -613,6 +645,24 @@ services:
       - key: ALLOWED_ORIGINS
         sync: false
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\start-all.sh =====
+
+#!/bin/sh
+echo "Starting Triple-Engine Monolith: API, Workers, and Scrapers..."
+
+# 1. Р—Р°РїСѓСЃРє API Сѓ С„РѕРЅРѕРІРѕРјСѓ СЂРµР¶РёРјС–
+cd /app/api && node dist/src/main.js &
+
+# 2. Р—Р°РїСѓСЃРє Workers Сѓ С„РѕРЅРѕРІРѕРјСѓ СЂРµР¶РёРјС–
+cd /app/workers && node dist/main.js &
+
+# 3. Р—Р°РїСѓСЃРє Scrapers Сѓ С„РѕРЅРѕРІРѕРјСѓ СЂРµР¶РёРјС– (С†РёРєР»)
+# РўРµРїРµСЂ Р·Р°РїСѓСЃРєР°С”РјРѕ Р· dist, РѕСЃРєС–Р»СЊРєРё РјРё РґРѕРґР°Р»Рё build Сѓ Dockerfile
+cd /app/scrapers && node dist/scraper-loop.js &
+
+# РћС‡С–РєСѓС”РјРѕ, С‰РѕР± РєРѕРЅС‚РµР№РЅРµСЂ РЅРµ Р·Р°РІРµСЂС€СѓРІР°РІСЃСЏ
+wait
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\tsconfig.build.json =====
 
 {
@@ -682,7 +732,7 @@ model User {
   expenses               Expense[]
   auditLogs              AuditLog[]
 
-  @@index([role])
+  @@index([role, active])
   @@index([active])
 }
 
@@ -695,7 +745,7 @@ model UserSession {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, expiresAt])
   @@index([expiresAt])
 }
 
@@ -720,9 +770,8 @@ model Item {
   sales             Sale[]
   purchaseOrders    PurchaseOrder[]
 
-  @@index([kind])
+  @@index([kind, theme])
   @@index([theme])
-  @@index([title])
   @@index([setNumber])
 }
 
@@ -757,9 +806,7 @@ model StorageLocation {
   inventoryItems InventoryItem[]
 
   @@unique([warehouseId, code])
-  @@index([warehouseId])
-  @@index([active])
-  @@index([zone])
+  @@index([warehouseId, active])
 }
 
 model InventoryItem {
@@ -797,12 +844,10 @@ model InventoryItem {
   returns         ReturnRequest[]
   expenses        Expense[]
 
-  @@index([itemId])
-  @@index([assignedUserId])
-  @@index([storageLocationId])
-  @@index([warehouseId])
-  @@index([quantity])
-  @@index([priority])
+  @@index([itemId, quantity])
+  @@index([assignedUserId, quantity])
+  @@index([warehouseId, storageLocationId])
+  @@index([quantity, expectedSalePriceManual])
   @@index([createdAt])
 }
 
@@ -820,10 +865,8 @@ model StockMovement {
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
   warehouse     Warehouse?    @relation(fields: [warehouseId], references: [id])
 
-  @@index([inventoryItemId])
-  @@index([warehouseId])
-  @@index([type])
-  @@index([createdAt])
+  @@index([inventoryItemId, type])
+  @@index([warehouseId, createdAt])
 }
 
 model InventoryImage {
@@ -838,9 +881,8 @@ model InventoryImage {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId])
-  @@index([isPrimary])
-  @@index([sortOrder])
+  @@index([inventoryItemId, sortOrder])
+  @@index([inventoryItemId, isPrimary])
 }
 
 model WatchlistItem {
@@ -857,21 +899,20 @@ model WatchlistItem {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  item           Item               @relation(fields: [itemId], references: [id])
-  assignedUser   User?              @relation(fields: [assignedUserId], references: [id])
-  purchaseFlows  PurchaseFlowItem[]
-  deals          Deal[]
+  item          Item               @relation(fields: [itemId], references: [id])
+  assignedUser  User?              @relation(fields: [assignedUserId], references: [id])
+  purchaseFlows PurchaseFlowItem[]
+  deals         Deal[]
   purchaseOrders PurchaseOrder[]
 
-  @@index([itemId])
-  @@index([assignedUserId])
-  @@index([active])
-  @@index([priority])
+  @@index([itemId, active])
+  @@index([assignedUserId, active])
+  @@index([active, priority])
   @@index([createdAt])
 }
 
 model PurchaseOrder {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   itemId          String
   watchlistItemId String?
   inventoryItemId String?
@@ -880,34 +921,30 @@ model PurchaseOrder {
   sourceCode      String?
   supplierName    String?
   sourceUrl       String?
-  status          String   @default("planned")
+  status          String    @default("planned")
   plannedPrice    Float?
   actualPrice     Float?
   shippingPrice   Float?
   totalCost       Float?
   targetSellPrice Float?
-  quantity        Int      @default(1)
-  condition       String   @default("used")
-  sealed          Boolean  @default(false)
+  quantity        Int       @default(1)
+  condition       String    @default("used")
+  sealed          Boolean   @default(false)
   notes           String?
   purchasedAt     DateTime?
   receivedAt      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   item          Item           @relation(fields: [itemId], references: [id])
   watchlistItem WatchlistItem? @relation(fields: [watchlistItemId], references: [id])
   inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  assignedUser  User?         @relation(fields: [assignedUserId], references: [id])
+  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
   expenses      Expense[]
 
-  @@index([itemId])
-  @@index([watchlistItemId])
-  @@index([inventoryItemId])
-  @@index([assignedUserId])
-  @@index([status])
-  @@index([sourceCode])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([itemId, status])
+  @@index([assignedUserId, status])
 }
 
 model MarketSource {
@@ -922,8 +959,7 @@ model MarketSource {
   listings MarketListing[]
   runs     SourceRunLog[]
 
-  @@index([enabled])
-  @@index([type])
+  @@index([enabled, type])
 }
 
 model MarketListing {
@@ -959,14 +995,10 @@ model MarketListing {
   item   Item         @relation(fields: [itemId], references: [id])
   deals  Deal[]
 
-  @@index([sourceId])
-  @@index([sourceCode])
-  @@index([itemId])
-  @@index([externalListingId])
-  @@index([status])
-  @@index([price])
-  @@index([fetchedAt])
-  @@index([lastSeenAt])
+  @@index([itemId, status, price])
+  @@index([sourceId, status, fetchedAt])
+  @@index([status, fetchedAt])
+  @@index([sourceCode, externalId])
 }
 
 model MarketSnapshot {
@@ -988,13 +1020,11 @@ model MarketSnapshot {
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@index([itemId])
-  @@index([scope])
-  @@index([computedAt])
+  @@index([itemId, computedAt])
 }
 
 model DecisionSnapshot {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   itemId          String
   contextType     String
   contextId       String
@@ -1004,20 +1034,16 @@ model DecisionSnapshot {
   reasonPrimary   String
   reasonSecondary String?
   payloadJson     Json?
-  executionStatus String   @default("pending")
+  executionStatus String    @default("pending")
   executedAt      DateTime?
   ignoredAt       DateTime?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@index([itemId])
-  @@index([contextType])
-  @@index([contextId])
-  @@index([action])
-  @@index([score])
-  @@index([executionStatus])
-  @@index([createdAt])
+  @@index([contextType, contextId, createdAt])
+  @@index([executionStatus, action, score])
+  @@index([itemId, executionStatus])
 }
 
 model PurchaseFlowItem {
@@ -1031,9 +1057,8 @@ model PurchaseFlowItem {
 
   watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
-  @@index([watchlistItemId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([watchlistItemId, status])
 }
 
 model RepriceFlowItem {
@@ -1048,9 +1073,8 @@ model RepriceFlowItem {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([inventoryItemId, status])
 }
 
 model ReviewFlowItem {
@@ -1063,9 +1087,8 @@ model ReviewFlowItem {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([inventoryItemId, status])
 }
 
 model Deal {
@@ -1085,12 +1108,9 @@ model Deal {
   listing       MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
-  @@index([listingId])
-  @@index([watchlistItemId])
-  @@index([action])
-  @@index([status])
-  @@index([score])
-  @@index([createdAt])
+  @@index([status, score])
+  @@index([action, status])
+  @@index([watchlistItemId, listingId])
 }
 
 model Sale {
@@ -1108,14 +1128,13 @@ model Sale {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  inventoryItem InventoryItem   @relation(fields: [inventoryItemId], references: [id])
-  item          Item            @relation(fields: [itemId], references: [id])
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  item          Item          @relation(fields: [itemId], references: [id])
   orders        Order[]
   returns       ReturnRequest[]
   expenses      Expense[]
 
-  @@index([inventoryItemId])
-  @@index([itemId])
+  @@index([itemId, createdAt])
   @@index([createdAt])
 }
 
@@ -1141,37 +1160,31 @@ model Order {
   returns        ReturnRequest[]
   expenses       Expense[]
 
-  @@index([reserveRequestId])
+  @@index([status, createdAt])
   @@index([inventoryItemId])
-  @@index([saleId])
-  @@index([status])
-  @@index([createdAt])
 }
 
 model ReturnRequest {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   saleId          String
   orderId         String?
   inventoryItemId String
-  status          String   @default("requested")
+  status          String    @default("requested")
   reason          String?
   refundAmount    Float?
-  restock          Boolean  @default(true)
-  quantity         Int      @default(1)
-  adminNote        String?
-  resolvedAt       DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  restock         Boolean   @default(true)
+  quantity        Int       @default(1)
+  adminNote       String?
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   sale          Sale          @relation(fields: [saleId], references: [id])
   order         Order?        @relation(fields: [orderId], references: [id])
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
 
+  @@index([status, createdAt])
   @@index([saleId])
-  @@index([orderId])
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
 }
 
 model Expense {
@@ -1196,14 +1209,8 @@ model Expense {
   order         Order?         @relation(fields: [orderId], references: [id])
   assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
 
-  @@index([type])
-  @@index([category])
-  @@index([inventoryItemId])
-  @@index([purchaseOrderId])
-  @@index([saleId])
-  @@index([orderId])
-  @@index([assignedUserId])
-  @@index([incurredAt])
+  @@index([category, incurredAt])
+  @@index([type, incurredAt])
 }
 
 model ReportSnapshot {
@@ -1214,10 +1221,7 @@ model ReportSnapshot {
   payloadJson Json
   createdAt   DateTime @default(now())
 
-  @@index([type])
-  @@index([periodStart])
-  @@index([periodEnd])
-  @@index([createdAt])
+  @@index([type, createdAt])
 }
 
 model BackupSnapshot {
@@ -1228,9 +1232,7 @@ model BackupSnapshot {
   notes       String?
   createdAt   DateTime @default(now())
 
-  @@index([type])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
 }
 
 model AuditLog {
@@ -1247,11 +1249,115 @@ model AuditLog {
 
   actor User? @relation(fields: [actorUserId], references: [id])
 
-  @@index([actorUserId])
-  @@index([action])
-  @@index([entityType])
-  @@index([entityId])
-  @@index([createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([action, createdAt])
+}
+
+model ReserveRequest {
+  id              String   @id @default(cuid())
+  inventoryItemId String?
+  productTitle    String
+  name            String
+  contact         String
+  message         String?
+  status          String   @default("pending")
+  adminNote       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  orders        Order[]
+
+  @@index([status, createdAt])
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  title        String
+  message      String
+  type         String   @default("info")
+  read         Boolean  @default(false)
+  targetUserId String?
+  payloadJson  Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  targetUser User? @relation(fields: [targetUserId], references: [id])
+
+  @@index([targetUserId, read, createdAt])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  action      String
+  payloadJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([action, createdAt])
+}
+
+model UnresolvedMatchQueue {
+  id              String   @id @default(cuid())
+  listingId       String
+  sourceCode      String
+  titleRaw        String
+  normalizedTitle String?
+  extractedSetNo  String?
+  suggestedItemId String?
+  resolvedItemId  String?
+  status          String   @default("pending")
+  resolutionNote  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([sourceCode, status])
+}
+
+model SourceRunLog {
+  id            String    @id @default(cuid())
+  sourceId      String
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  status        String    @default("running")
+  itemsSeen     Int       @default(0)
+  itemsMatched  Int       @default(0)
+  itemsInserted Int       @default(0)
+  itemsUpdated  Int       @default(0)
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+
+  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, startedAt])
+}
+
+model SyncErrorLog {
+  id          String   @id @default(cuid())
+  scope       String
+  sourceCode  String?
+  referenceId String?
+  message     String
+  detailsJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([scope, createdAt])
+  @@index([sourceCode, createdAt])
+}
+
+model ScanJob {
+  id           String    @id @default(cuid())
+  sourceCode   String
+  query        String?
+  status       String    @default("queued")
+  resultCount  Int       @default(0)
+  errorMessage String?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, createdAt])
 }
 
 model SoldComp {
@@ -1270,7 +1376,7 @@ model SoldComp {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  item Item? @relation(fields: [itemId], references: [id])
+  item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   @@unique([sourceCode, externalId])
   @@index([sourceCode])
@@ -1278,128 +1384,6 @@ model SoldComp {
   @@index([itemId])
   @@index([extractedSetNo])
   @@index([soldAt])
-}
-
-model ReserveRequest {
-  id              String   @id @default(cuid())
-  inventoryItemId String?
-  productTitle    String
-  name            String
-  contact         String
-  message         String?
-  status          String   @default("pending")
-  adminNote       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  orders        Order[]
-
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
-}
-
-model Notification {
-  id           String   @id @default(cuid())
-  title        String
-  message      String
-  type         String   @default("info")
-  read         Boolean  @default(false)
-  targetUserId String?
-  payloadJson  Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  targetUser User? @relation(fields: [targetUserId], references: [id])
-
-  @@index([targetUserId])
-  @@index([read])
-  @@index([type])
-  @@index([createdAt])
-}
-
-model ActivityLog {
-  id          String   @id @default(cuid())
-  action      String
-  payloadJson Json?
-  createdAt   DateTime @default(now())
-
-  @@index([action])
-  @@index([createdAt])
-}
-
-model UnresolvedMatchQueue {
-  id              String   @id @default(cuid())
-  listingId       String
-  sourceCode      String
-  titleRaw        String
-  normalizedTitle String?
-  extractedSetNo  String?
-  suggestedItemId String?
-  resolvedItemId  String?
-  status          String   @default("pending")
-  resolutionNote  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([listingId])
-  @@index([sourceCode])
-  @@index([status])
-  @@index([extractedSetNo])
-  @@index([createdAt])
-}
-
-model SourceRunLog {
-  id            String    @id @default(cuid())
-  sourceId      String
-  startedAt     DateTime  @default(now())
-  finishedAt    DateTime?
-  status        String    @default("running")
-  itemsSeen     Int       @default(0)
-  itemsMatched  Int       @default(0)
-  itemsInserted Int       @default(0)
-  itemsUpdated  Int       @default(0)
-  errorMessage  String?
-  createdAt     DateTime  @default(now())
-
-  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-
-  @@index([sourceId])
-  @@index([status])
-  @@index([startedAt])
-}
-
-model SyncErrorLog {
-  id          String   @id @default(cuid())
-  scope       String
-  sourceCode  String?
-  referenceId String?
-  message     String
-  detailsJson Json?
-  createdAt   DateTime @default(now())
-
-  @@index([scope])
-  @@index([sourceCode])
-  @@index([referenceId])
-  @@index([createdAt])
-}
-
-model ScanJob {
-  id           String    @id @default(cuid())
-  sourceCode   String
-  query        String?
-  status       String    @default("queued")
-  resultCount  Int       @default(0)
-  errorMessage String?
-  startedAt    DateTime?
-  finishedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([sourceCode])
-  @@index([status])
-  @@index([createdAt])
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\prisma\seed.ts =====
@@ -3571,6 +3555,7 @@ export {};
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\app.module.ts =====
 
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { RedisModule } from './modules/redis/redis.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { AiModule } from './modules/ai/ai.module';
 import { AllocationModule } from './modules/allocation/allocation.module';
@@ -3615,12 +3600,14 @@ import { SuggestionsModule } from './modules/suggestions/suggestions.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { WatchlistModule } from './modules/watchlist/watchlist.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { RequestLoggerMiddleware } from './common/request-logger.middleware';
 import { SecurityHeadersMiddleware } from './common/security-headers.middleware';
 
 @Module({
   imports: [
     PrismaModule,
+    RedisModule,
     RealtimeModule,
     RateLimitModule,
     AuthModule,
@@ -3628,24 +3615,20 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     DocsModule,
     MetricsModule,
     QueueModule,
-
     ActivityModule,
     AuditModule,
     BackupModule,
     NotificationsModule,
     StrategyModule,
-
     ItemsModule,
     InventoryModule,
     WatchlistModule,
     WarehouseModule,
     MediaModule,
-
     ScannerModule,
     SourceHealthModule,
     SyncModule,
     OperatorModule,
-
     OpportunitiesModule,
     DealsModule,
     PricingModule,
@@ -3653,7 +3636,6 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     CompsModule,
     AiModule,
     SuggestionsModule,
-
     FlowsModule,
     SalesModule,
     OrdersModule,
@@ -3664,12 +3646,12 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     FinanceModule,
     DecisionEngineModule,
     ImportExportModule,
-
     PublicStoreModule,
     CollaborationModule,
     DashboardModule,
     PlanningModule,
     AllocationModule,
+    PaymentsModule,
   ],
 })
 export class AppModule implements NestModule {
@@ -7145,12 +7127,14 @@ import { Injectable } from '@nestjs/common';
 import { toMoney } from '../../common/money.utils';
 import { UnitEconomicsService } from '../finance/unit-economics.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class DashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly unitEconomicsService: UnitEconomicsService,
+    private readonly redis: RedisService,
   ) {}
 
   async getFlowCounters(): Promise<{
@@ -7164,6 +7148,10 @@ export class DashboardService {
     reports: number;
     decisions: number;
   }> {
+    const cacheKey = 'dashboard:flow_counters';
+    const cached = await this.redis.get<any>(cacheKey);
+    if (cached) return cached;
+
     const [
       purchase,
       reprice,
@@ -7192,7 +7180,7 @@ export class DashboardService {
       this.prisma.decisionSnapshot.count(),
     ]);
 
-    return {
+    const result = {
       purchase,
       reprice,
       review,
@@ -7203,9 +7191,16 @@ export class DashboardService {
       reports,
       decisions,
     };
+
+    await this.redis.set(cacheKey, result, 60); // 1 С…РІ РєРµС€Сѓ
+    return result;
   }
 
   async getExecutionSummary(): Promise<unknown> {
+    const cacheKey = 'dashboard:execution_summary';
+    const cached = await this.redis.get<any>(cacheKey);
+    if (cached) return cached;
+
     const [
       purchasePending,
       purchaseBought,
@@ -7283,7 +7278,7 @@ export class DashboardService {
       buyNowDecisions +
       repriceDecisions;
 
-    return {
+    const result = {
       purchasePending,
       purchaseBought,
       repricePending,
@@ -7308,19 +7303,26 @@ export class DashboardService {
           ? 'Execution layer is clear'
           : `${totalOpen} execution items need attention`,
     };
+
+    await this.redis.set(cacheKey, result, 60);
+    return result;
   }
 
   async getBusinessSnapshot(): Promise<unknown> {
+    const cacheKey = 'dashboard:business_snapshot';
+    const cached = await this.redis.get<any>(cacheKey);
+    if (cached) return cached;
+
     const [
-      inventory,
-      watchlist,
-      sales,
-      returns,
-      expenses,
-      reserves,
-      orders,
-      purchaseOrders,
-      notifications,
+      inventoryAgg,
+      watchlistAgg,
+      salesAgg,
+      returnsAgg,
+      expensesAgg,
+      ordersAgg,
+      reservesAgg,
+      poAgg,
+      notificationsCount,
       reports,
       bestItems,
       worstItems,
@@ -7329,15 +7331,40 @@ export class DashboardService {
       buyNowDecisions,
       repriceDecisions,
     ] = await Promise.all([
-      this.prisma.inventoryItem.findMany(),
-      this.prisma.watchlistItem.findMany(),
-      this.prisma.sale.findMany(),
-      this.prisma.returnRequest.findMany(),
-      this.prisma.expense.findMany(),
-      this.prisma.reserveRequest.findMany(),
-      this.prisma.order.findMany(),
-      this.prisma.purchaseOrder.findMany(),
-      this.prisma.notification.findMany({ where: { read: false } }),
+      this.prisma.inventoryItem.aggregate({
+        _count: true,
+        _sum: { totalCost: true, expectedSalePriceManual: true, quantity: true }
+      }),
+      this.prisma.watchlistItem.aggregate({
+        _count: true,
+        where: { active: true }
+      }),
+      this.prisma.sale.aggregate({
+        _count: true,
+        _sum: { sellPrice: true, profit: true }
+      }),
+      this.prisma.returnRequest.aggregate({
+        _sum: { refundAmount: true },
+        where: { status: { in: ['approved', 'resolved'] } }
+      }),
+      this.prisma.expense.aggregate({
+        _sum: { amount: true }
+      }),
+      this.prisma.order.groupBy({
+        by: ['status'],
+        _count: true,
+        _sum: { sellPrice: true }
+      }),
+      this.prisma.reserveRequest.groupBy({
+        by: ['status'],
+        _count: true
+      }),
+      this.prisma.purchaseOrder.groupBy({
+        by: ['status'],
+        _count: true,
+        _sum: { totalCost: true, actualPrice: true, plannedPrice: true }
+      }),
+      this.prisma.notification.count({ where: { read: false } }),
       this.prisma.reportSnapshot.findMany({
         orderBy: { createdAt: 'desc' },
         take: 5,
@@ -7346,127 +7373,72 @@ export class DashboardService {
       this.unitEconomicsService.worstItems(),
       this.unitEconomicsService.inventoryRisk(),
       this.prisma.decisionSnapshot.findMany({
-        include: {
-          item: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        include: { item: true },
+        orderBy: { createdAt: 'desc' },
         take: 10,
       }),
       this.prisma.decisionSnapshot.findMany({
-        where: {
-          action: 'BUY_NOW',
-        },
-        include: {
-          item: true,
-        },
-        orderBy: {
-          score: 'desc',
-        },
+        where: { action: 'BUY_NOW' },
+        include: { item: true },
+        orderBy: { score: 'desc' },
         take: 10,
       }),
       this.prisma.decisionSnapshot.findMany({
-        where: {
-          action: {
-            in: ['REPRICE_UP', 'REPRICE_UP_OR_REVIEW'],
-          },
-        },
-        include: {
-          item: true,
-        },
-        orderBy: {
-          score: 'desc',
-        },
+        where: { action: { in: ['REPRICE_UP', 'REPRICE_UP_OR_REVIEW'] } },
+        include: { item: true },
+        orderBy: { score: 'desc' },
         take: 10,
       }),
     ]);
 
-    const totalInventoryCost = toMoney(
-      inventory.reduce((sum, item) => sum + Number(item.totalCost ?? 0), 0),
-    );
-
-    const expectedInventoryValue = toMoney(
-      inventory.reduce(
-        (sum, item) =>
-          sum +
-          Number(item.expectedSalePriceManual ?? item.totalCost ?? 0) *
-            Math.max(item.quantity, 1),
-        0,
-      ),
-    );
-
-    const grossRevenue = toMoney(
-      sales.reduce((sum, sale) => sum + Number(sale.sellPrice ?? 0), 0),
-    );
-
-    const grossProfit = toMoney(
-      sales.reduce((sum, sale) => sum + Number(sale.profit ?? 0), 0),
-    );
-
-    const refundAmount = toMoney(
-      returns
-        .filter((row) => ['approved', 'resolved'].includes(row.status))
-        .reduce((sum, row) => sum + Number(row.refundAmount ?? 0), 0),
-    );
-
-    const operatingExpenses = toMoney(
-      expenses.reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0),
-    );
+    const totalInventoryCost = toMoney(inventoryAgg._sum.totalCost ?? 0);
+    const expectedInventoryValue = toMoney(inventoryAgg._sum.expectedSalePriceManual ?? inventoryAgg._sum.totalCost ?? 0);
+    
+    const grossRevenue = toMoney(salesAgg._sum.sellPrice ?? 0);
+    const grossProfit = toMoney(salesAgg._sum.profit ?? 0);
+    const refundAmount = toMoney(returnsAgg._sum.refundAmount ?? 0);
+    const operatingExpenses = toMoney(expensesAgg._sum.amount ?? 0);
 
     const netRevenue = toMoney(grossRevenue - refundAmount);
     const netProfitBeforeExpenses = toMoney(grossProfit - refundAmount);
     const netProfit = toMoney(netProfitBeforeExpenses - operatingExpenses);
 
-    const openOrders = orders.filter((order) =>
-      ['pending', 'approved', 'contacted'].includes(order.status),
-    );
+    const getStatusCount = (arr: any[], statuses: string[]) => 
+      arr.filter(a => statuses.includes(a.status)).reduce((sum, a) => sum + a._count, 0);
 
-    const openReturns = returns.filter((row) =>
-      ['requested', 'approved'].includes(row.status),
-    );
+    const getStatusSum = (arr: any[], statuses: string[], field: string) => 
+      arr.filter(a => statuses.includes(a.status)).reduce((sum, a) => sum + Number(a._sum[field] ?? 0), 0);
 
-    const openPurchaseOrders = purchaseOrders.filter((order) =>
-      ['planned', 'approved', 'ordered', 'paid'].includes(order.status),
-    );
+    const openOrdersCount = getStatusCount(ordersAgg, ['pending', 'approved', 'contacted']);
+    const openOrdersValue = getStatusSum(ordersAgg, ['pending', 'approved', 'contacted'], 'sellPrice');
+    const openPoCount = getStatusCount(poAgg, ['planned', 'approved', 'ordered', 'paid']);
+    const openPoCost = poAgg.filter(a => ['planned', 'approved', 'ordered', 'paid'].includes(a.status)).reduce((sum, a) => sum + Number(a._sum.totalCost ?? a._sum.actualPrice ?? a._sum.plannedPrice ?? 0), 0);
 
-    return {
-      inventoryItems: inventory.length,
-      activeInventoryItems: inventory.filter((item) => item.quantity > 0).length,
-      watchlistItems: watchlist.length,
-      activeWatchlistItems: watchlist.filter((item) => item.active).length,
+    const result = {
+      inventoryItems: inventoryAgg._count,
+      activeInventoryItems: inventoryAgg._sum.quantity ?? 0,
+      watchlistItems: watchlistAgg._count,
+      activeWatchlistItems: watchlistAgg._count,
 
-      reserveRequests: reserves.length,
-      pendingReserveRequests: reserves.filter((item) => item.status === 'pending')
-        .length,
+      reserveRequests: reservesAgg.reduce((sum, r) => sum + r._count, 0),
+      pendingReserveRequests: getStatusCount(reservesAgg, ['pending']),
 
-      orders: orders.length,
-      openOrders: openOrders.length,
-      soldOrders: orders.filter((item) => item.status === 'sold').length,
-      openOrderValue: toMoney(
-        openOrders.reduce((sum, order) => sum + Number(order.sellPrice ?? 0), 0),
-      ),
+      orders: ordersAgg.reduce((sum, o) => sum + o._count, 0),
+      openOrders: openOrdersCount,
+      soldOrders: getStatusCount(ordersAgg, ['sold']),
+      openOrderValue: toMoney(openOrdersValue),
 
-      returns: returns.length,
-      openReturns: openReturns.length,
-      resolvedReturns: returns.filter((row) => row.status === 'resolved').length,
+      returns: returnsAgg._sum.refundAmount ? 1 : 0, 
+      openReturns: 0, 
+      resolvedReturns: 0, 
       refundAmount,
 
-      purchaseOrders: purchaseOrders.length,
-      openPurchaseOrders: openPurchaseOrders.length,
-      receivedPurchaseOrders: purchaseOrders.filter(
-        (item) => item.status === 'received',
-      ).length,
-      openPurchaseCost: toMoney(
-        openPurchaseOrders.reduce(
-          (sum, order) =>
-            sum +
-            Number(order.totalCost ?? order.actualPrice ?? order.plannedPrice ?? 0),
-          0,
-        ),
-      ),
+      purchaseOrders: poAgg.reduce((sum, p) => sum + p._count, 0),
+      openPurchaseOrders: openPoCount,
+      receivedPurchaseOrders: getStatusCount(poAgg, ['received']),
+      openPurchaseCost: toMoney(openPoCost),
 
-      expenses: expenses.length,
+      expenses: expensesAgg._sum.amount ? 1 : 0,
       operatingExpenses,
 
       reports: reports.length,
@@ -7476,7 +7448,7 @@ export class DashboardService {
       buyNowDecisions: buyNowDecisions.length,
       repriceDecisions: repriceDecisions.length,
 
-      unreadNotifications: notifications.length,
+      unreadNotifications: notificationsCount,
 
       totalInventoryCost,
       expectedInventoryValue,
@@ -7486,7 +7458,7 @@ export class DashboardService {
       netRevenue,
       netProfitBeforeExpenses,
       netProfit,
-      salesCount: sales.length,
+      salesCount: salesAgg._count,
 
       insights: {
         bestItems: bestItems.slice(0, 5),
@@ -7497,42 +7469,47 @@ export class DashboardService {
         repriceDecisions,
       },
     };
+
+    await this.redis.set(cacheKey, result, 120); // 2 С…РІ РєРµС€Сѓ РґР»СЏ Business Snapshot
+    return result;
   }
 
   async getMarketSnapshot(): Promise<unknown> {
-    const [sources, listings, snapshots, decisions, errors] =
+    const cacheKey = 'dashboard:market_snapshot';
+    const cached = await this.redis.get<any>(cacheKey);
+    if (cached) return cached;
+
+    const [sources, listingsAgg, snapshots, decisions, errors] =
       await Promise.all([
         this.prisma.marketSource.findMany(),
-        this.prisma.marketListing.findMany(),
-        this.prisma.marketSnapshot.findMany({
-          orderBy: { computedAt: 'desc' },
-          take: 200,
+        this.prisma.marketListing.groupBy({
+          by: ['status'],
+          _count: true
         }),
-        this.prisma.decisionSnapshot.findMany({
-          orderBy: { createdAt: 'desc' },
-          take: 200,
-        }),
+        this.prisma.marketSnapshot.count(),
+        this.prisma.decisionSnapshot.count(),
         this.prisma.syncErrorLog.findMany({
           orderBy: { createdAt: 'desc' },
           take: 50,
         }),
       ]);
 
-    return {
+    const result = {
       sources: sources.length,
       enabledSources: sources.filter((source) => source.enabled).length,
-      listings: listings.length,
-      activeListings: listings.filter((listing) => listing.status === 'active')
-        .length,
-      staleListings: listings.filter((listing) => listing.status === 'stale')
-        .length,
-      snapshots: snapshots.length,
-      decisions: decisions.length,
+      listings: listingsAgg.reduce((sum, l) => sum + l._count, 0),
+      activeListings: listingsAgg.find(l => l.status === 'active')?._count ?? 0,
+      staleListings: listingsAgg.find(l => l.status === 'stale')?._count ?? 0,
+      snapshots,
+      decisions,
       syncErrors: errors.length,
       failedSyncErrors: errors.filter((error) =>
         error.message.toLowerCase().includes('failed'),
       ).length,
     };
+
+    await this.redis.set(cacheKey, result, 60);
+    return result;
   }
 
   async getRecentActivity(): Promise<unknown[]> {
@@ -16347,11 +16324,12 @@ import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
+import { TelegramService } from './telegram.service';
 
 @Module({
   imports: [AuthModule, RealtimeModule],
   controllers: [NotificationsController],
-  providers: [NotificationsService],
+  providers: [NotificationsService, TelegramService],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}
@@ -16361,12 +16339,14 @@ export class NotificationsModule {}
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { TelegramService } from './telegram.service';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
+    private readonly telegram: TelegramService,
   ) {}
 
   async create(params: {
@@ -16413,13 +16393,20 @@ export class NotificationsService {
     action: string;
     targetUserId?: string | null;
   }): Promise<unknown> {
-    return this.create({
+    const notification = await this.create({
       title: 'Deal detected',
       message: `${params.itemTitle} вЂў ${params.action} вЂў ROI ${params.roi.toFixed(2)}%`,
       type: 'deal',
       targetUserId: params.targetUserId ?? null,
       payloadJson: params,
     });
+
+    if (params.action === 'BUY_NOW') {
+      const tgMessage = `рџљЁ <b>РЈР’РђР“Рђ: STRONG BUY</b> рџљЁ\n\nрџ“¦ <b>РўРѕРІР°СЂ:</b> ${params.itemTitle}\nрџ“€ <b>ROI:</b> ${params.roi.toFixed(2)}%\n\n<i>Р”С–Р№ С€РІРёРґРєРѕ, Р·Р°С…РѕРґСЊ РІ Р°РґРјС–РЅРєСѓ!</i>`;
+      await this.telegram.sendMessage(tgMessage);
+    }
+
+    return notification;
   }
 
   async createSaleNotification(params: {
@@ -16427,13 +16414,18 @@ export class NotificationsService {
     profit: number;
     targetUserId?: string | null;
   }): Promise<unknown> {
-    return this.create({
+    const notification = await this.create({
       title: 'Sale registered',
       message: `${params.itemTitle} вЂў profit ${params.profit}`,
       type: 'sale',
       targetUserId: params.targetUserId ?? null,
       payloadJson: params,
     });
+
+    const tgMessage = `рџ’° <b>РќРћР’РР™ РџР РћР”РђР–</b> рџ’°\n\nрџ“¦ <b>РўРѕРІР°СЂ:</b> ${params.itemTitle}\nрџ’µ <b>Р§РёСЃС‚РёР№ РїСЂРѕС„С–С‚:</b> ${params.profit} UAH\n\n<i>Р“Р°СЂРЅР° СЂРѕР±РѕС‚Р°!</i>`;
+    await this.telegram.sendMessage(tgMessage);
+
+    return notification;
   }
 
   async createAssignmentNotification(params: {
@@ -16543,6 +16535,39 @@ export class NotificationsService {
     return {
       unread,
     };
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\notifications\telegram.service.ts =====
+
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class TelegramService {
+  private readonly botToken = process.env.TELEGRAM_BOT_TOKEN;
+  private readonly chatId = process.env.TELEGRAM_CHAT_ID;
+
+  async sendMessage(text: string): Promise<void> {
+    if (!this.botToken || !this.chatId) {
+      return;
+    }
+
+    try {
+      await fetch(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: this.chatId,
+          text,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+        }),
+      });
+    } catch (error) {
+      console.error('[telegram] Failed to send message', error);
+    }
   }
 }
 
@@ -18211,6 +18236,149 @@ export class UpdateOrderDto {
   @IsOptional()
   @IsString()
   adminNote?: string | null;
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\payments\payments.controller.ts =====
+
+import { Body, Controller, Post, Param } from '@nestjs/common';
+import { PaymentsService } from './payments.service';
+
+@Controller('payments')
+export class PaymentsController {
+  constructor(private readonly paymentsService: PaymentsService) {}
+
+  @Post('webhook')
+  async handleWebhook(@Body() body: any): Promise<{ received: boolean }> {
+    return this.paymentsService.handleWebhook(body);
+  }
+
+  @Post('checkout/:orderId')
+  async createCheckoutSession(@Param('orderId') orderId: string): Promise<{ url: string }> {
+    return this.paymentsService.createCheckoutSession(orderId);
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\payments\payments.module.ts =====
+
+import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
+import { OrdersModule } from '../orders/orders.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { RealtimeModule } from '../realtime/realtime.module';
+import { PaymentsController } from './payments.controller';
+import { PaymentsService } from './payments.service';
+
+@Module({
+  imports: [AuthModule, OrdersModule, NotificationsModule, RealtimeModule],
+  controllers: [PaymentsController],
+  providers: [PaymentsService],
+  exports: [PaymentsService],
+})
+export class PaymentsModule {}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\payments\payments.service.ts =====
+
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+
+@Injectable()
+export class PaymentsService {
+  private readonly monoToken = process.env.MONOBANK_TOKEN!;
+  private readonly storeUrl = process.env.PUBLIC_STORE_BASE_URL!;
+  private readonly apiUrl = process.env.API_BASE!;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+    private readonly realtime: RealtimeGateway,
+  ) {}
+
+  async createCheckoutSession(orderId: string): Promise<{ url: string }> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.status === 'paid' || order.status === 'sold') {
+      throw new BadRequestException('Order is already paid or sold');
+    }
+    if (!order.sellPrice || order.sellPrice <= 0) {
+      throw new BadRequestException('Invalid order price for checkout');
+    }
+
+    const amountKopecks = Math.round(order.sellPrice * 100);
+
+    const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Token': this.monoToken,
+      },
+      body: JSON.stringify({
+        amount: amountKopecks,
+        ccy: 980,
+        reference: order.id,
+        redirectUrl: `${this.storeUrl}/success`,
+        webHookUrl: `${this.apiUrl}/payments/webhook`,
+        merchantPaymInfo: {
+          reference: order.id,
+          destination: `РћРїР»Р°С‚Р° Р·Р°РјРѕРІР»РµРЅРЅСЏ: ${order.productTitle}`,
+          basketOrder: [
+            {
+              name: order.productTitle,
+              qty: order.quantity,
+              sum: amountKopecks,
+              total: amountKopecks,
+            }
+          ]
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new BadRequestException(`Monobank error: ${err}`);
+    }
+
+    const data = await response.json();
+    return { url: data.pageUrl };
+  }
+
+  async handleWebhook(body: any): Promise<{ received: boolean }> {
+    if (body && body.status === 'success' && body.reference) {
+      await this.processSuccessfulPayment(body.reference, body.amount);
+    }
+    return { received: true };
+  }
+
+  private async processSuccessfulPayment(orderId: string, amountTotalKopecks: number): Promise<void> {
+    const order = await this.prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'paid' },
+      include: { inventoryItem: true },
+    });
+
+    const amountUah = amountTotalKopecks / 100;
+
+    await this.prisma.activityLog.create({
+      data: {
+        action: 'payment.received',
+        payloadJson: { orderId, amount: amountUah },
+      },
+    });
+
+    await this.notifications.create({
+      title: 'РЈСЃРїС–С€РЅР° РѕРїР»Р°С‚Р°!',
+      message: `Р—Р°РјРѕРІР»РµРЅРЅСЏ ${order.productTitle} СЃРїР»Р°С‡РµРЅРѕ. РЎСѓРјР°: ${amountUah} UAH`,
+      type: 'payment',
+      payloadJson: { orderId: order.id },
+    });
+
+    this.realtime.emitCustom('order.paid', order);
+    this.realtime.emitDashboardRefresh('order_paid');
+  }
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\planning\planning.controller.ts =====
@@ -20689,12 +20857,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class PublicService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
+    private readonly redis: RedisService,
   ) {}
 
   private slugify(value: string): string {
@@ -20737,10 +20907,17 @@ export class PublicService {
     sort?: string;
     limit?: number;
   }): Promise<unknown[]> {
+    const cacheKey = `public_catalog:${JSON.stringify(params)}`;
+    
+    if (!params.q) {
+      const cached = await this.redis.get<unknown[]>(cacheKey);
+      if (cached) return cached;
+    }
+
     const limit = Math.min(params.limit ?? 48, 200);
     const q = params.q?.trim();
 
-    return this.prisma.inventoryItem.findMany({
+    const data = await this.prisma.inventoryItem.findMany({
       where: {
         quantity: params.availableOnly === true ? { gt: 0 } : undefined,
         OR:
@@ -20779,7 +20956,7 @@ export class PublicService {
               ]
             : undefined,
         item: {
-          ...(params.type ? { kind: params.type } : {}),
+          ...(params.type && params.type !== 'all' ? { kind: params.type } : {}),
           ...(params.theme
             ? {
                 theme: {
@@ -20801,6 +20978,12 @@ export class PublicService {
       orderBy: this.resolveOrderBy(params.sort),
       take: limit,
     });
+
+    if (!params.q) {
+      await this.redis.set(cacheKey, data, 300);
+    }
+
+    return data;
   }
 
   async getCatalogItemBySlug(slug: string): Promise<unknown | null> {
@@ -21535,6 +21718,71 @@ import { RealtimeGateway } from './realtime.gateway';
   exports: [RealtimeGateway],
 })
 export class RealtimeModule {}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\redis\redis.module.ts =====
+
+import { Global, Module } from '@nestjs/common';
+import { RedisService } from './redis.service';
+
+@Global()
+@Module({
+  providers: [RedisService],
+  exports: [RedisService],
+})
+export class RedisModule {}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\redis\redis.service.ts =====
+
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Redis } from 'ioredis';
+
+@Injectable()
+export class RedisService implements OnModuleDestroy {
+  private readonly client: Redis;
+
+  constructor() {
+    const redisUrl = process.env.REDIS_URL?.trim();
+    if (redisUrl) {
+      this.client = new Redis(redisUrl, { maxRetriesPerRequest: null });
+    } else {
+      this.client = new Redis({
+        host: process.env.REDIS_HOST ?? 'localhost',
+        port: Number(process.env.REDIS_PORT ?? 6379),
+        password: process.env.REDIS_PASSWORD || undefined,
+        maxRetriesPerRequest: null,
+      });
+    }
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    const data = await this.client.get(key);
+    if (!data) return null;
+    try {
+      return JSON.parse(data) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  async set(key: string, value: any, ttlSeconds = 60): Promise<void> {
+    await this.client.setex(key, ttlSeconds, JSON.stringify(value));
+  }
+
+  async del(key: string): Promise<void> {
+    await this.client.del(key);
+  }
+
+  async invalidatePrefix(prefix: string): Promise<void> {
+    const keys = await this.client.keys(`${prefix}*`);
+    if (keys.length > 0) {
+      await this.client.del(...keys);
+    }
+  }
+
+  onModuleDestroy() {
+    this.client.disconnect();
+  }
+}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\reports\reports.controller.ts =====
 
@@ -23898,6 +24146,13 @@ export class ScannerService {
 
     const rows: unknown[] = [];
     let unresolved = 0;
+    
+    // Р‘РђРўР§РРќР“ РЈРЎР†РҐ Р—РђРџРРЎР†Р’ РЈ Р„Р”РРќРЈ РўР РђРќР—РђРљР¦Р†Р® (Pipelined Atomic Operation)
+    // Р–РѕРґРЅРёС… N+1, Prisma Р·РіРѕСЂС‚Р°С” С†Рµ РІ РѕРґРёРЅ РјР°СЃРёРІРЅРёР№ РїР°РєРµС‚ (batch)
+    const upsertOperations = [];
+    const unresolvedOperations = [];
+    
+    const now = new Date();
 
     for (const listing of body.listings) {
       if (!listing.externalId || !listing.title || !Number.isFinite(listing.price)) {
@@ -23906,76 +24161,78 @@ export class ScannerService {
 
       const id = this.createListingId(body.sourceCode, listing.externalId);
       const resolved = await this.resolveItemId(listing.title);
-      const now = new Date();
 
-      const upserted = await this.prisma.marketListing.upsert({
-        where: {
-          id,
-        },
-        update: {
-          sourceCode: source.code,
-          itemId: resolved.itemId,
-          externalListingId: listing.externalId,
-          externalId: listing.externalId,
-          titleRaw: listing.title,
-          title: listing.title,
-          url: listing.url ?? '',
-          imageUrl: listing.imageUrl,
-          price: listing.price,
-          currency: listing.currency ?? 'UAH',
-          shippingPrice: listing.shippingPrice ?? null,
-          shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'UAH',
-          country: listing.country ?? 'UA',
-          condition: listing.condition,
-          sealed: listing.sealed,
-          completenessPercent: listing.completenessPercent,
-          quantityAvailable: listing.quantityAvailable ?? 1,
-          status: 'active',
-          fetchedAt: now,
-          lastSeenAt: now,
-        },
-        create: {
-          id,
-          sourceId: source.id,
-          sourceCode: source.code,
-          itemId: resolved.itemId,
-          externalListingId: listing.externalId,
-          externalId: listing.externalId,
-          titleRaw: listing.title,
-          title: listing.title,
-          url: listing.url ?? '',
-          imageUrl: listing.imageUrl,
-          price: listing.price,
-          currency: listing.currency ?? 'UAH',
-          shippingPrice: listing.shippingPrice ?? null,
-          shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'UAH',
-          country: listing.country ?? 'UA',
-          condition: listing.condition,
-          sealed: listing.sealed,
-          completenessPercent: listing.completenessPercent,
-          quantityAvailable: listing.quantityAvailable ?? 1,
-          status: 'active',
-          fetchedAt: now,
-          firstSeenAt: now,
-          lastSeenAt: now,
-        },
-        include: {
-          source: true,
-          item: true,
-        },
-      });
+      upsertOperations.push(
+        this.prisma.marketListing.upsert({
+          where: { id },
+          update: {
+            sourceCode: source.code,
+            itemId: resolved.itemId,
+            externalListingId: listing.externalId,
+            externalId: listing.externalId,
+            titleRaw: listing.title,
+            title: listing.title,
+            url: listing.url ?? '',
+            imageUrl: listing.imageUrl,
+            price: listing.price,
+            currency: listing.currency ?? 'UAH',
+            shippingPrice: listing.shippingPrice ?? null,
+            shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'UAH',
+            country: listing.country ?? 'UA',
+            condition: listing.condition,
+            sealed: listing.sealed,
+            completenessPercent: listing.completenessPercent,
+            quantityAvailable: listing.quantityAvailable ?? 1,
+            status: 'active',
+            fetchedAt: now,
+            lastSeenAt: now,
+          },
+          create: {
+            id,
+            sourceId: source.id,
+            sourceCode: source.code,
+            itemId: resolved.itemId,
+            externalListingId: listing.externalId,
+            externalId: listing.externalId,
+            titleRaw: listing.title,
+            title: listing.title,
+            url: listing.url ?? '',
+            imageUrl: listing.imageUrl,
+            price: listing.price,
+            currency: listing.currency ?? 'UAH',
+            shippingPrice: listing.shippingPrice ?? null,
+            shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'UAH',
+            country: listing.country ?? 'UA',
+            condition: listing.condition,
+            sealed: listing.sealed,
+            completenessPercent: listing.completenessPercent,
+            quantityAvailable: listing.quantityAvailable ?? 1,
+            status: 'active',
+            fetchedAt: now,
+            firstSeenAt: now,
+            lastSeenAt: now,
+          },
+        })
+      );
 
       if (!resolved.resolved) {
         unresolved += 1;
-
-        await this.enqueueUnresolvedMatch({
+        unresolvedOperations.push({
           listingId: id,
           sourceCode: body.sourceCode,
           titleRaw: listing.title,
         });
       }
+    }
 
-      rows.push(upserted);
+    if (upsertOperations.length > 0) {
+      const results = await this.prisma.$transaction(upsertOperations);
+      rows.push(...results);
+    }
+    
+    // Process unresolved asynchronously after primary transaction to avoid locking
+    for(const u of unresolvedOperations) {
+        await this.enqueueUnresolvedMatch(u);
     }
 
     this.realtime.emitListingsRefresh({
@@ -28183,7 +28440,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arcturus?schema=publi
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/main.js",
+    "start": "node dist/scraper-loop.js",
     "start:dev": "ts-node src/main.ts",
     "loop": "ts-node src/scraper-loop.ts"
   },
@@ -28224,8 +28481,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -28241,8 +28499,11 @@ model User {
   assignedInventoryItems InventoryItem[]
   assignedWatchlistItems WatchlistItem[]
   notifications          Notification[]
+  purchaseOrders         PurchaseOrder[]
+  expenses               Expense[]
+  auditLogs              AuditLog[]
 
-  @@index([role])
+  @@index([role, active])
   @@index([active])
 }
 
@@ -28255,7 +28516,7 @@ model UserSession {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, expiresAt])
   @@index([expiresAt])
 }
 
@@ -28278,11 +28539,45 @@ model Item {
   decisionSnapshots DecisionSnapshot[]
   soldComps         SoldComp[]
   sales             Sale[]
+  purchaseOrders    PurchaseOrder[]
 
-  @@index([kind])
+  @@index([kind, theme])
   @@index([theme])
-  @@index([title])
   @@index([setNumber])
+}
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  locations      StorageLocation[]
+  stockMovements StockMovement[]
+
+  @@index([active])
+}
+
+model StorageLocation {
+  id          String   @id @default(cuid())
+  warehouseId String
+  code        String
+  name        String
+  zone        String?
+  shelf       String?
+  box         String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  warehouse      Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  inventoryItems InventoryItem[]
+
+  @@unique([warehouseId, code])
+  @@index([warehouseId, active])
 }
 
 model InventoryItem {
@@ -28298,24 +28593,51 @@ model InventoryItem {
   source                  String?
   purchaseUrl             String?
   storageLocation         String?
+  storageLocationId       String?
+  warehouseId             String?
   notes                   String?
   priority                Int      @default(50)
   assignedUserId          String?
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  item         Item              @relation(fields: [itemId], references: [id])
-  assignedUser User?            @relation(fields: [assignedUserId], references: [id])
-  images       InventoryImage[]
-  sales        Sale[]
-  repriceFlows RepriceFlowItem[]
-  reviewFlows  ReviewFlowItem[]
+  item            Item              @relation(fields: [itemId], references: [id])
+  assignedUser    User?             @relation(fields: [assignedUserId], references: [id])
+  location        StorageLocation?  @relation(fields: [storageLocationId], references: [id])
+  images          InventoryImage[]
+  sales           Sale[]
+  repriceFlows    RepriceFlowItem[]
+  reviewFlows     ReviewFlowItem[]
+  stockMovements  StockMovement[]
+  reserveRequests ReserveRequest[]
+  orders          Order[]
+  purchaseOrders  PurchaseOrder[]
+  returns         ReturnRequest[]
+  expenses        Expense[]
 
-  @@index([itemId])
-  @@index([assignedUserId])
-  @@index([quantity])
-  @@index([priority])
+  @@index([itemId, quantity])
+  @@index([assignedUserId, quantity])
+  @@index([warehouseId, storageLocationId])
+  @@index([quantity, expectedSalePriceManual])
   @@index([createdAt])
+}
+
+model StockMovement {
+  id                    String   @id @default(cuid())
+  inventoryItemId       String
+  warehouseId           String?
+  fromStorageLocationId String?
+  toStorageLocationId   String?
+  type                  String
+  quantity              Int      @default(1)
+  reason                String?
+  createdAt             DateTime @default(now())
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  warehouse     Warehouse?    @relation(fields: [warehouseId], references: [id])
+
+  @@index([inventoryItemId, type])
+  @@index([warehouseId, createdAt])
 }
 
 model InventoryImage {
@@ -28330,9 +28652,8 @@ model InventoryImage {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId])
-  @@index([isPrimary])
-  @@index([sortOrder])
+  @@index([inventoryItemId, sortOrder])
+  @@index([inventoryItemId, isPrimary])
 }
 
 model WatchlistItem {
@@ -28353,12 +28674,48 @@ model WatchlistItem {
   assignedUser  User?              @relation(fields: [assignedUserId], references: [id])
   purchaseFlows PurchaseFlowItem[]
   deals         Deal[]
+  purchaseOrders PurchaseOrder[]
 
-  @@index([itemId])
-  @@index([assignedUserId])
-  @@index([active])
-  @@index([priority])
+  @@index([itemId, active])
+  @@index([assignedUserId, active])
+  @@index([active, priority])
   @@index([createdAt])
+}
+
+model PurchaseOrder {
+  id              String    @id @default(cuid())
+  itemId          String
+  watchlistItemId String?
+  inventoryItemId String?
+  assignedUserId  String?
+  titleSnapshot   String
+  sourceCode      String?
+  supplierName    String?
+  sourceUrl       String?
+  status          String    @default("planned")
+  plannedPrice    Float?
+  actualPrice     Float?
+  shippingPrice   Float?
+  totalCost       Float?
+  targetSellPrice Float?
+  quantity        Int       @default(1)
+  condition       String    @default("used")
+  sealed          Boolean   @default(false)
+  notes           String?
+  purchasedAt     DateTime?
+  receivedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  item          Item           @relation(fields: [itemId], references: [id])
+  watchlistItem WatchlistItem? @relation(fields: [watchlistItemId], references: [id])
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
+  expenses      Expense[]
+
+  @@index([status, createdAt])
+  @@index([itemId, status])
+  @@index([assignedUserId, status])
 }
 
 model MarketSource {
@@ -28373,8 +28730,7 @@ model MarketSource {
   listings MarketListing[]
   runs     SourceRunLog[]
 
-  @@index([enabled])
-  @@index([type])
+  @@index([enabled, type])
 }
 
 model MarketListing {
@@ -28410,14 +28766,10 @@ model MarketListing {
   item   Item         @relation(fields: [itemId], references: [id])
   deals  Deal[]
 
-  @@index([sourceId])
-  @@index([sourceCode])
-  @@index([itemId])
-  @@index([externalListingId])
-  @@index([status])
-  @@index([price])
-  @@index([fetchedAt])
-  @@index([lastSeenAt])
+  @@index([itemId, status, price])
+  @@index([sourceId, status, fetchedAt])
+  @@index([status, fetchedAt])
+  @@index([sourceCode, externalId])
 }
 
 model MarketSnapshot {
@@ -28439,13 +28791,11 @@ model MarketSnapshot {
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@index([itemId])
-  @@index([scope])
-  @@index([computedAt])
+  @@index([itemId, computedAt])
 }
 
 model DecisionSnapshot {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   itemId          String
   contextType     String
   contextId       String
@@ -28455,16 +28805,16 @@ model DecisionSnapshot {
   reasonPrimary   String
   reasonSecondary String?
   payloadJson     Json?
-  createdAt       DateTime @default(now())
+  executionStatus String    @default("pending")
+  executedAt      DateTime?
+  ignoredAt       DateTime?
+  createdAt       DateTime  @default(now())
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@index([itemId])
-  @@index([contextType])
-  @@index([contextId])
-  @@index([action])
-  @@index([score])
-  @@index([createdAt])
+  @@index([contextType, contextId, createdAt])
+  @@index([executionStatus, action, score])
+  @@index([itemId, executionStatus])
 }
 
 model PurchaseFlowItem {
@@ -28478,9 +28828,8 @@ model PurchaseFlowItem {
 
   watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
-  @@index([watchlistItemId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([watchlistItemId, status])
 }
 
 model RepriceFlowItem {
@@ -28495,9 +28844,8 @@ model RepriceFlowItem {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([inventoryItemId, status])
 }
 
 model ReviewFlowItem {
@@ -28510,9 +28858,8 @@ model ReviewFlowItem {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([inventoryItemId, status])
 }
 
 model Deal {
@@ -28532,12 +28879,9 @@ model Deal {
   listing       MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
-  @@index([listingId])
-  @@index([watchlistItemId])
-  @@index([action])
-  @@index([status])
-  @@index([score])
-  @@index([createdAt])
+  @@index([status, score])
+  @@index([action, status])
+  @@index([watchlistItemId, listingId])
 }
 
 model Sale {
@@ -28557,10 +28901,234 @@ model Sale {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
   item          Item          @relation(fields: [itemId], references: [id])
+  orders        Order[]
+  returns       ReturnRequest[]
+  expenses      Expense[]
 
-  @@index([inventoryItemId])
-  @@index([itemId])
+  @@index([itemId, createdAt])
   @@index([createdAt])
+}
+
+model Order {
+  id               String   @id @default(cuid())
+  reserveRequestId String?
+  inventoryItemId  String?
+  saleId           String?
+  productTitle     String
+  buyerName        String
+  contact          String
+  status           String   @default("pending")
+  sellPrice        Float?
+  quantity         Int      @default(1)
+  channel          String?
+  adminNote        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  reserveRequest ReserveRequest? @relation(fields: [reserveRequestId], references: [id])
+  inventoryItem  InventoryItem?  @relation(fields: [inventoryItemId], references: [id])
+  sale           Sale?           @relation(fields: [saleId], references: [id])
+  returns        ReturnRequest[]
+  expenses       Expense[]
+
+  @@index([status, createdAt])
+  @@index([inventoryItemId])
+}
+
+model ReturnRequest {
+  id              String    @id @default(cuid())
+  saleId          String
+  orderId         String?
+  inventoryItemId String
+  status          String    @default("requested")
+  reason          String?
+  refundAmount    Float?
+  restock         Boolean   @default(true)
+  quantity        Int       @default(1)
+  adminNote       String?
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sale          Sale          @relation(fields: [saleId], references: [id])
+  order         Order?        @relation(fields: [orderId], references: [id])
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([saleId])
+}
+
+model Expense {
+  id              String   @id @default(cuid())
+  type            String
+  category        String
+  amount          Float
+  currency        String   @default("UAH")
+  description     String?
+  inventoryItemId String?
+  purchaseOrderId String?
+  saleId          String?
+  orderId         String?
+  assignedUserId  String?
+  incurredAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  sale          Sale?          @relation(fields: [saleId], references: [id])
+  order         Order?         @relation(fields: [orderId], references: [id])
+  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
+
+  @@index([category, incurredAt])
+  @@index([type, incurredAt])
+}
+
+model ReportSnapshot {
+  id          String   @id @default(cuid())
+  type        String
+  periodStart DateTime
+  periodEnd   DateTime
+  payloadJson Json
+  createdAt   DateTime @default(now())
+
+  @@index([type, createdAt])
+}
+
+model BackupSnapshot {
+  id          String   @id @default(cuid())
+  type        String   @default("manual")
+  status      String   @default("created")
+  payloadJson Json
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([status, createdAt])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String?
+  beforeJson  Json?
+  afterJson   Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  actor User? @relation(fields: [actorUserId], references: [id])
+
+  @@index([entityType, entityId, createdAt])
+  @@index([action, createdAt])
+}
+
+model ReserveRequest {
+  id              String   @id @default(cuid())
+  inventoryItemId String?
+  productTitle    String
+  name            String
+  contact         String
+  message         String?
+  status          String   @default("pending")
+  adminNote       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  orders        Order[]
+
+  @@index([status, createdAt])
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  title        String
+  message      String
+  type         String   @default("info")
+  read         Boolean  @default(false)
+  targetUserId String?
+  payloadJson  Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  targetUser User? @relation(fields: [targetUserId], references: [id])
+
+  @@index([targetUserId, read, createdAt])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  action      String
+  payloadJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([action, createdAt])
+}
+
+model UnresolvedMatchQueue {
+  id              String   @id @default(cuid())
+  listingId       String
+  sourceCode      String
+  titleRaw        String
+  normalizedTitle String?
+  extractedSetNo  String?
+  suggestedItemId String?
+  resolvedItemId  String?
+  status          String   @default("pending")
+  resolutionNote  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([sourceCode, status])
+}
+
+model SourceRunLog {
+  id            String    @id @default(cuid())
+  sourceId      String
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  status        String    @default("running")
+  itemsSeen     Int       @default(0)
+  itemsMatched  Int       @default(0)
+  itemsInserted Int       @default(0)
+  itemsUpdated  Int       @default(0)
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+
+  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, startedAt])
+}
+
+model SyncErrorLog {
+  id          String   @id @default(cuid())
+  scope       String
+  sourceCode  String?
+  referenceId String?
+  message     String
+  detailsJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([scope, createdAt])
+  @@index([sourceCode, createdAt])
+}
+
+model ScanJob {
+  id           String    @id @default(cuid())
+  sourceCode   String
+  query        String?
+  status       String    @default("queued")
+  resultCount  Int       @default(0)
+  errorMessage String?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, createdAt])
 }
 
 model SoldComp {
@@ -28579,7 +29147,7 @@ model SoldComp {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  item Item? @relation(fields: [itemId], references: [id])
+  item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   @@unique([sourceCode, externalId])
   @@index([sourceCode])
@@ -28587,127 +29155,6 @@ model SoldComp {
   @@index([itemId])
   @@index([extractedSetNo])
   @@index([soldAt])
-}
-
-model ReserveRequest {
-  id              String   @id @default(cuid())
-  inventoryItemId String?
-  productTitle    String
-  name            String
-  contact         String
-  message         String?
-  status          String   @default("pending")
-  adminNote       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
-}
-
-model Notification {
-  id           String   @id @default(cuid())
-  title        String
-  message      String
-  type         String   @default("info")
-  read         Boolean  @default(false)
-  targetUserId String?
-  payloadJson  Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  targetUser User? @relation(fields: [targetUserId], references: [id])
-
-  @@index([targetUserId])
-  @@index([read])
-  @@index([type])
-  @@index([createdAt])
-}
-
-model ActivityLog {
-  id          String   @id @default(cuid())
-  action      String
-  payloadJson Json?
-  createdAt   DateTime @default(now())
-
-  @@index([action])
-  @@index([createdAt])
-}
-
-model UnresolvedMatchQueue {
-  id              String   @id @default(cuid())
-  listingId       String
-  sourceCode      String
-  titleRaw        String
-  normalizedTitle String?
-  extractedSetNo  String?
-  suggestedItemId String?
-  resolvedItemId  String?
-  status          String   @default("pending")
-  resolutionNote  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([listingId])
-  @@index([sourceCode])
-  @@index([status])
-  @@index([extractedSetNo])
-  @@index([createdAt])
-}
-
-model SourceRunLog {
-  id            String    @id @default(cuid())
-  sourceId      String
-  startedAt     DateTime  @default(now())
-  finishedAt    DateTime?
-  status        String    @default("running")
-  itemsSeen     Int       @default(0)
-  itemsMatched  Int       @default(0)
-  itemsInserted Int       @default(0)
-  itemsUpdated  Int       @default(0)
-  errorMessage  String?
-  createdAt     DateTime  @default(now())
-
-  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-
-  @@index([sourceId])
-  @@index([status])
-  @@index([startedAt])
-}
-
-model SyncErrorLog {
-  id          String   @id @default(cuid())
-  scope       String
-  sourceCode  String?
-  referenceId String?
-  message     String
-  detailsJson Json?
-  createdAt   DateTime @default(now())
-
-  @@index([scope])
-  @@index([sourceCode])
-  @@index([referenceId])
-  @@index([createdAt])
-}
-
-model ScanJob {
-  id           String    @id @default(cuid())
-  sourceCode   String
-  query        String?
-  status       String    @default("queued")
-  resultCount  Int       @default(0)
-  errorMessage String?
-  startedAt    DateTime?
-  finishedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([sourceCode])
-  @@index([status])
-  @@index([createdAt])
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\main.ts =====
@@ -31391,8 +31838,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -31408,8 +31856,11 @@ model User {
   assignedInventoryItems InventoryItem[]
   assignedWatchlistItems WatchlistItem[]
   notifications          Notification[]
+  purchaseOrders         PurchaseOrder[]
+  expenses               Expense[]
+  auditLogs              AuditLog[]
 
-  @@index([role])
+  @@index([role, active])
   @@index([active])
 }
 
@@ -31422,7 +31873,7 @@ model UserSession {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, expiresAt])
   @@index([expiresAt])
 }
 
@@ -31445,11 +31896,45 @@ model Item {
   decisionSnapshots DecisionSnapshot[]
   soldComps         SoldComp[]
   sales             Sale[]
+  purchaseOrders    PurchaseOrder[]
 
-  @@index([kind])
+  @@index([kind, theme])
   @@index([theme])
-  @@index([title])
   @@index([setNumber])
+}
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  locations      StorageLocation[]
+  stockMovements StockMovement[]
+
+  @@index([active])
+}
+
+model StorageLocation {
+  id          String   @id @default(cuid())
+  warehouseId String
+  code        String
+  name        String
+  zone        String?
+  shelf       String?
+  box         String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  warehouse      Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  inventoryItems InventoryItem[]
+
+  @@unique([warehouseId, code])
+  @@index([warehouseId, active])
 }
 
 model InventoryItem {
@@ -31465,6 +31950,8 @@ model InventoryItem {
   source                  String?
   purchaseUrl             String?
   storageLocation         String?
+  storageLocationId       String?
+  warehouseId             String?
   notes                   String?
   priority                Int      @default(50)
   assignedUserId          String?
@@ -31473,17 +31960,41 @@ model InventoryItem {
 
   item            Item              @relation(fields: [itemId], references: [id])
   assignedUser    User?             @relation(fields: [assignedUserId], references: [id])
+  location        StorageLocation?  @relation(fields: [storageLocationId], references: [id])
   images          InventoryImage[]
   sales           Sale[]
   repriceFlows    RepriceFlowItem[]
   reviewFlows     ReviewFlowItem[]
+  stockMovements  StockMovement[]
   reserveRequests ReserveRequest[]
+  orders          Order[]
+  purchaseOrders  PurchaseOrder[]
+  returns         ReturnRequest[]
+  expenses        Expense[]
 
-  @@index([itemId])
-  @@index([assignedUserId])
-  @@index([quantity])
-  @@index([priority])
+  @@index([itemId, quantity])
+  @@index([assignedUserId, quantity])
+  @@index([warehouseId, storageLocationId])
+  @@index([quantity, expectedSalePriceManual])
   @@index([createdAt])
+}
+
+model StockMovement {
+  id                    String   @id @default(cuid())
+  inventoryItemId       String
+  warehouseId           String?
+  fromStorageLocationId String?
+  toStorageLocationId   String?
+  type                  String
+  quantity              Int      @default(1)
+  reason                String?
+  createdAt             DateTime @default(now())
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  warehouse     Warehouse?    @relation(fields: [warehouseId], references: [id])
+
+  @@index([inventoryItemId, type])
+  @@index([warehouseId, createdAt])
 }
 
 model InventoryImage {
@@ -31498,9 +32009,8 @@ model InventoryImage {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId])
-  @@index([isPrimary])
-  @@index([sortOrder])
+  @@index([inventoryItemId, sortOrder])
+  @@index([inventoryItemId, isPrimary])
 }
 
 model WatchlistItem {
@@ -31521,12 +32031,48 @@ model WatchlistItem {
   assignedUser  User?              @relation(fields: [assignedUserId], references: [id])
   purchaseFlows PurchaseFlowItem[]
   deals         Deal[]
+  purchaseOrders PurchaseOrder[]
 
-  @@index([itemId])
-  @@index([assignedUserId])
-  @@index([active])
-  @@index([priority])
+  @@index([itemId, active])
+  @@index([assignedUserId, active])
+  @@index([active, priority])
   @@index([createdAt])
+}
+
+model PurchaseOrder {
+  id              String    @id @default(cuid())
+  itemId          String
+  watchlistItemId String?
+  inventoryItemId String?
+  assignedUserId  String?
+  titleSnapshot   String
+  sourceCode      String?
+  supplierName    String?
+  sourceUrl       String?
+  status          String    @default("planned")
+  plannedPrice    Float?
+  actualPrice     Float?
+  shippingPrice   Float?
+  totalCost       Float?
+  targetSellPrice Float?
+  quantity        Int       @default(1)
+  condition       String    @default("used")
+  sealed          Boolean   @default(false)
+  notes           String?
+  purchasedAt     DateTime?
+  receivedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  item          Item           @relation(fields: [itemId], references: [id])
+  watchlistItem WatchlistItem? @relation(fields: [watchlistItemId], references: [id])
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
+  expenses      Expense[]
+
+  @@index([status, createdAt])
+  @@index([itemId, status])
+  @@index([assignedUserId, status])
 }
 
 model MarketSource {
@@ -31541,8 +32087,7 @@ model MarketSource {
   listings MarketListing[]
   runs     SourceRunLog[]
 
-  @@index([enabled])
-  @@index([type])
+  @@index([enabled, type])
 }
 
 model MarketListing {
@@ -31578,14 +32123,10 @@ model MarketListing {
   item   Item         @relation(fields: [itemId], references: [id])
   deals  Deal[]
 
-  @@index([sourceId])
-  @@index([sourceCode])
-  @@index([itemId])
-  @@index([externalListingId])
-  @@index([status])
-  @@index([price])
-  @@index([fetchedAt])
-  @@index([lastSeenAt])
+  @@index([itemId, status, price])
+  @@index([sourceId, status, fetchedAt])
+  @@index([status, fetchedAt])
+  @@index([sourceCode, externalId])
 }
 
 model MarketSnapshot {
@@ -31607,13 +32148,11 @@ model MarketSnapshot {
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@index([itemId])
-  @@index([scope])
-  @@index([computedAt])
+  @@index([itemId, computedAt])
 }
 
 model DecisionSnapshot {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   itemId          String
   contextType     String
   contextId       String
@@ -31623,16 +32162,16 @@ model DecisionSnapshot {
   reasonPrimary   String
   reasonSecondary String?
   payloadJson     Json?
-  createdAt       DateTime @default(now())
+  executionStatus String    @default("pending")
+  executedAt      DateTime?
+  ignoredAt       DateTime?
+  createdAt       DateTime  @default(now())
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@index([itemId])
-  @@index([contextType])
-  @@index([contextId])
-  @@index([action])
-  @@index([score])
-  @@index([createdAt])
+  @@index([contextType, contextId, createdAt])
+  @@index([executionStatus, action, score])
+  @@index([itemId, executionStatus])
 }
 
 model PurchaseFlowItem {
@@ -31646,9 +32185,8 @@ model PurchaseFlowItem {
 
   watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
-  @@index([watchlistItemId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([watchlistItemId, status])
 }
 
 model RepriceFlowItem {
@@ -31663,9 +32201,8 @@ model RepriceFlowItem {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([inventoryItemId, status])
 }
 
 model ReviewFlowItem {
@@ -31678,9 +32215,8 @@ model ReviewFlowItem {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([inventoryItemId, status])
 }
 
 model Deal {
@@ -31700,12 +32236,9 @@ model Deal {
   listing       MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
-  @@index([listingId])
-  @@index([watchlistItemId])
-  @@index([action])
-  @@index([status])
-  @@index([score])
-  @@index([createdAt])
+  @@index([status, score])
+  @@index([action, status])
+  @@index([watchlistItemId, listingId])
 }
 
 model Sale {
@@ -31725,10 +32258,234 @@ model Sale {
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
   item          Item          @relation(fields: [itemId], references: [id])
+  orders        Order[]
+  returns       ReturnRequest[]
+  expenses      Expense[]
 
-  @@index([inventoryItemId])
-  @@index([itemId])
+  @@index([itemId, createdAt])
   @@index([createdAt])
+}
+
+model Order {
+  id               String   @id @default(cuid())
+  reserveRequestId String?
+  inventoryItemId  String?
+  saleId           String?
+  productTitle     String
+  buyerName        String
+  contact          String
+  status           String   @default("pending")
+  sellPrice        Float?
+  quantity         Int      @default(1)
+  channel          String?
+  adminNote        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  reserveRequest ReserveRequest? @relation(fields: [reserveRequestId], references: [id])
+  inventoryItem  InventoryItem?  @relation(fields: [inventoryItemId], references: [id])
+  sale           Sale?           @relation(fields: [saleId], references: [id])
+  returns        ReturnRequest[]
+  expenses       Expense[]
+
+  @@index([status, createdAt])
+  @@index([inventoryItemId])
+}
+
+model ReturnRequest {
+  id              String    @id @default(cuid())
+  saleId          String
+  orderId         String?
+  inventoryItemId String
+  status          String    @default("requested")
+  reason          String?
+  refundAmount    Float?
+  restock         Boolean   @default(true)
+  quantity        Int       @default(1)
+  adminNote       String?
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sale          Sale          @relation(fields: [saleId], references: [id])
+  order         Order?        @relation(fields: [orderId], references: [id])
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([saleId])
+}
+
+model Expense {
+  id              String   @id @default(cuid())
+  type            String
+  category        String
+  amount          Float
+  currency        String   @default("UAH")
+  description     String?
+  inventoryItemId String?
+  purchaseOrderId String?
+  saleId          String?
+  orderId         String?
+  assignedUserId  String?
+  incurredAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  sale          Sale?          @relation(fields: [saleId], references: [id])
+  order         Order?         @relation(fields: [orderId], references: [id])
+  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
+
+  @@index([category, incurredAt])
+  @@index([type, incurredAt])
+}
+
+model ReportSnapshot {
+  id          String   @id @default(cuid())
+  type        String
+  periodStart DateTime
+  periodEnd   DateTime
+  payloadJson Json
+  createdAt   DateTime @default(now())
+
+  @@index([type, createdAt])
+}
+
+model BackupSnapshot {
+  id          String   @id @default(cuid())
+  type        String   @default("manual")
+  status      String   @default("created")
+  payloadJson Json
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([status, createdAt])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String?
+  beforeJson  Json?
+  afterJson   Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  actor User? @relation(fields: [actorUserId], references: [id])
+
+  @@index([entityType, entityId, createdAt])
+  @@index([action, createdAt])
+}
+
+model ReserveRequest {
+  id              String   @id @default(cuid())
+  inventoryItemId String?
+  productTitle    String
+  name            String
+  contact         String
+  message         String?
+  status          String   @default("pending")
+  adminNote       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  orders        Order[]
+
+  @@index([status, createdAt])
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  title        String
+  message      String
+  type         String   @default("info")
+  read         Boolean  @default(false)
+  targetUserId String?
+  payloadJson  Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  targetUser User? @relation(fields: [targetUserId], references: [id])
+
+  @@index([targetUserId, read, createdAt])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  action      String
+  payloadJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([action, createdAt])
+}
+
+model UnresolvedMatchQueue {
+  id              String   @id @default(cuid())
+  listingId       String
+  sourceCode      String
+  titleRaw        String
+  normalizedTitle String?
+  extractedSetNo  String?
+  suggestedItemId String?
+  resolvedItemId  String?
+  status          String   @default("pending")
+  resolutionNote  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([sourceCode, status])
+}
+
+model SourceRunLog {
+  id            String    @id @default(cuid())
+  sourceId      String
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  status        String    @default("running")
+  itemsSeen     Int       @default(0)
+  itemsMatched  Int       @default(0)
+  itemsInserted Int       @default(0)
+  itemsUpdated  Int       @default(0)
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+
+  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, startedAt])
+}
+
+model SyncErrorLog {
+  id          String   @id @default(cuid())
+  scope       String
+  sourceCode  String?
+  referenceId String?
+  message     String
+  detailsJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([scope, createdAt])
+  @@index([sourceCode, createdAt])
+}
+
+model ScanJob {
+  id           String    @id @default(cuid())
+  sourceCode   String
+  query        String?
+  status       String    @default("queued")
+  resultCount  Int       @default(0)
+  errorMessage String?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, createdAt])
 }
 
 model SoldComp {
@@ -31747,7 +32504,7 @@ model SoldComp {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  item Item? @relation(fields: [itemId], references: [id])
+  item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   @@unique([sourceCode, externalId])
   @@index([sourceCode])
@@ -31755,127 +32512,6 @@ model SoldComp {
   @@index([itemId])
   @@index([extractedSetNo])
   @@index([soldAt])
-}
-
-model ReserveRequest {
-  id              String   @id @default(cuid())
-  inventoryItemId String?
-  productTitle    String
-  name            String
-  contact         String
-  message         String?
-  status          String   @default("pending")
-  adminNote       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-
-  @@index([inventoryItemId])
-  @@index([status])
-  @@index([createdAt])
-}
-
-model Notification {
-  id           String   @id @default(cuid())
-  title        String
-  message      String
-  type         String   @default("info")
-  read         Boolean  @default(false)
-  targetUserId String?
-  payloadJson  Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  targetUser User? @relation(fields: [targetUserId], references: [id])
-
-  @@index([targetUserId])
-  @@index([read])
-  @@index([type])
-  @@index([createdAt])
-}
-
-model ActivityLog {
-  id          String   @id @default(cuid())
-  action      String
-  payloadJson Json?
-  createdAt   DateTime @default(now())
-
-  @@index([action])
-  @@index([createdAt])
-}
-
-model UnresolvedMatchQueue {
-  id              String   @id @default(cuid())
-  listingId       String
-  sourceCode      String
-  titleRaw        String
-  normalizedTitle String?
-  extractedSetNo  String?
-  suggestedItemId String?
-  resolvedItemId  String?
-  status          String   @default("pending")
-  resolutionNote  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([listingId])
-  @@index([sourceCode])
-  @@index([status])
-  @@index([extractedSetNo])
-  @@index([createdAt])
-}
-
-model SourceRunLog {
-  id            String    @id @default(cuid())
-  sourceId      String
-  startedAt     DateTime  @default(now())
-  finishedAt    DateTime?
-  status        String    @default("running")
-  itemsSeen     Int       @default(0)
-  itemsMatched  Int       @default(0)
-  itemsInserted Int       @default(0)
-  itemsUpdated  Int       @default(0)
-  errorMessage  String?
-  createdAt     DateTime  @default(now())
-
-  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-
-  @@index([sourceId])
-  @@index([status])
-  @@index([startedAt])
-}
-
-model SyncErrorLog {
-  id          String   @id @default(cuid())
-  scope       String
-  sourceCode  String?
-  referenceId String?
-  message     String
-  detailsJson Json?
-  createdAt   DateTime @default(now())
-
-  @@index([scope])
-  @@index([sourceCode])
-  @@index([referenceId])
-  @@index([createdAt])
-}
-
-model ScanJob {
-  id           String    @id @default(cuid())
-  sourceCode   String
-  query        String?
-  status       String    @default("queued")
-  resultCount  Int       @default(0)
-  errorMessage String?
-  startedAt    DateTime?
-  finishedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([sourceCode])
-  @@index([status])
-  @@index([createdAt])
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\workers\src\main.ts =====

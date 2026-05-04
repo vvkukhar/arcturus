@@ -1,11 +1,14 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
 import 'package:lego_trading_manager/data/models/purchase_model.dart';
-import 'package:lego_trading_manager/data/repositories/market_repository.dart';
-import 'package:lego_trading_manager/data/repositories/purchases_repository.dart';
-import 'package:lego_trading_manager/data/repositories/sales_repository.dart';
 import 'package:lego_trading_manager/features/inventory/application/item_timeline_event_model.dart';
 
 class ItemTimelineService {
+  final Ref ref;
+
+  ItemTimelineService(this.ref);
+
   List<ItemTimelineEventModel> build(ItemModel item) {
     final result = <ItemTimelineEventModel>[];
 
@@ -19,7 +22,7 @@ class ItemTimelineService {
     );
 
     PurchaseModel? purchase;
-    for (final entry in PurchasesRepository().getAllPurchases()) {
+    for (final entry in ref.read(purchasesRepositoryProvider).getAllPurchases()) {
       if (entry.itemId == item.id) {
         purchase = entry;
         break;
@@ -37,7 +40,7 @@ class ItemTimelineService {
       );
     }
 
-    final snapshots = MarketRepository().getByItemRef(item.id);
+    final snapshots = ref.read(marketRepositoryProvider).getByItemRef(item.id);
     for (final snapshot in snapshots) {
       result.add(
         ItemTimelineEventModel(
@@ -49,7 +52,7 @@ class ItemTimelineService {
       );
     }
 
-    final sale = SalesRepository().getByItemId(item.id);
+    final sale = ref.read(salesRepositoryProvider).getByItemId(item.id);
     if (sale != null) {
       result.add(
         ItemTimelineEventModel(

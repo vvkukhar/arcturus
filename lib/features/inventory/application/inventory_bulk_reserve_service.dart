@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_helper_provider.dart';
 
 class InventoryBulkReserveService {
@@ -9,7 +9,7 @@ class InventoryBulkReserveService {
   InventoryBulkReserveService(this.ref);
 
   Future<int> reserve(Set<String> ids) async {
-    final repo = InventoryRepository();
+    final repo = ref.read(inventoryRepositoryProvider);
     final items = repo.getAllItems();
 
     int affected = 0;
@@ -20,7 +20,7 @@ class InventoryBulkReserveService {
     }).toList();
 
     for (final item in next) {
-      repo.updateItem(item);
+      await repo.updateItem(item);
     }
 
     await ref.read(activityLogHelperProvider).inventoryAction(
@@ -32,7 +32,7 @@ class InventoryBulkReserveService {
   }
 
   Future<int> unreserve(Set<String> ids) async {
-    final repo = InventoryRepository();
+    final repo = ref.read(inventoryRepositoryProvider);
     final items = repo.getAllItems();
 
     int affected = 0;
@@ -44,7 +44,7 @@ class InventoryBulkReserveService {
     }).toList();
 
     for (final item in next) {
-      repo.updateItem(item);
+      await repo.updateItem(item);
     }
 
     await ref.read(activityLogHelperProvider).inventoryAction(

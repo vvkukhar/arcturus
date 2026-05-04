@@ -1,12 +1,10 @@
-// lib/features/analytics/application/analytics_best_expected_profit_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 
 final analyticsBestExpectedProfitItemsProvider =
     Provider<List<ItemModel>>((ref) {
-  final items = InventoryRepository().getAllItems();
+  final items = ref.watch(inventoryRepositoryProvider).getAllItems();
 
   final sorted = [...items];
   sorted.sort((a, b) {

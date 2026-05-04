@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_bulk_action_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_bulk_action_type.dart';
 
@@ -8,11 +8,11 @@ class InventoryBulkApplyUsecase {
 
   InventoryBulkApplyUsecase(this.ref);
 
-  void run({
+  Future<void> run({
     required Set<String> selectedIds,
     required InventoryBulkActionType action,
-  }) {
-    final repo = InventoryRepository();
+  }) async {
+    final repo = ref.read(inventoryRepositoryProvider);
     final current = repo.getAllItems();
 
     final next = ref.read(inventoryBulkActionProvider).apply(
@@ -21,6 +21,6 @@ class InventoryBulkApplyUsecase {
           action: action,
         );
 
-    repo.replaceAll(next);
+    await repo.replaceAll(next);
   }
 }

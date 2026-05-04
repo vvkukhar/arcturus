@@ -1,10 +1,10 @@
-// lib/data/datasources/abstract_market_datasource.dart
+import 'package:lego_trading_manager/data/models/purchase_model.dart';
 
-import 'package:lego_trading_manager/data/models/market_snapshot_model.dart';
-
-abstract class AbstractMarketDatasource {
-  Future<List<MarketSnapshotModel>> getAll();
-  Future<List<MarketSnapshotModel>> getByItemRef(String itemRef);
-  Future<void> add(MarketSnapshotModel snapshot);
+abstract class AbstractPurchasesDatasource {
+  Future<List<PurchaseModel>> getAll();
+  Future<List<PurchaseModel>> getByItemId(String itemId);
+  Future<void> add(PurchaseModel purchase);
+  Future<void> update(PurchaseModel purchase);
   Future<void> delete(String id);
+  Future<void> replaceAll(List<PurchaseModel> purchases);
 }

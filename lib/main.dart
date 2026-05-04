@@ -1,27 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/core/bootstrap/app_bootstrap_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:lego_trading_manager/app/app.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  await dotenv.load(fileName: '.env');
 
   runApp(
     const ProviderScope(
-      child: LegoTradingManagerApp(),
+      child: LegoTradingApp(),
     ),
   );
-}
-
-class LegoTradingManagerApp extends StatelessWidget {
-  const LegoTradingManagerApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'LEGO Trading Manager',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(useMaterial3: true),
-      home: const AppBootstrapScreen(),
-    );
-  }
 }

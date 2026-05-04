@@ -1,20 +1,31 @@
-import 'package:lego_trading_manager/data/repositories/watchlist_repository.dart';
+import 'package:flutter/material.dart';
 
-class MarketLinkWatchlistService {
-  final WatchlistRepository repository;
+class PercentBadge extends StatelessWidget {
+  final double percent;
 
-  MarketLinkWatchlistService(this.repository);
+  const PercentBadge({
+    super.key,
+    required this.percent,
+  });
 
-  void syncMarketPrice({
-    required String itemRef,
-    required double averagePrice,
-  }) {
-    final all = repository.getAll();
+  @override
+  Widget build(BuildContext context) {
+    final isPositive = percent >= 0;
+    final color = isPositive ? Colors.green : Colors.redAccent;
 
-    for (final item in all) {
-      if (item.refId == itemRef) {
-        repository.update(item.copyWith(marketPrice: averagePrice));
-      }
-    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '${isPositive ? '+' : ''}${percent.toStringAsFixed(1)}%',
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
   }
 }

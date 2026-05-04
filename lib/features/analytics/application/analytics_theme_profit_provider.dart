@@ -1,7 +1,5 @@
-// lib/features/analytics/application/analytics_theme_profit_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 
 class AnalyticsThemeProfitEntry {
   final String theme;
@@ -17,7 +15,7 @@ class AnalyticsThemeProfitEntry {
 
 final analyticsThemeProfitProvider =
     Provider<List<AnalyticsThemeProfitEntry>>((ref) {
-  final items = InventoryRepository().getAllItems();
+  final items = ref.watch(inventoryRepositoryProvider).getAllItems();
   final grouped = <String, List<dynamic>>{};
 
   for (final item in items) {

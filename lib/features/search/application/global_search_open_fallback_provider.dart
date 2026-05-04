@@ -1,4 +1,6 @@
+// lib/features/search/application/global_search_open_fallback_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/providers/local_datasources_provider.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/data/repositories/market_repository.dart';
 import 'package:lego_trading_manager/data/repositories/purchases_repository.dart';
@@ -12,7 +14,7 @@ final globalSearchOpenFallbackProvider =
   (ref, pinned) {
     switch (pinned.type) {
       case 'inventory':
-        final item = InventoryRepository().getById(pinned.id);
+        final item = InventoryRepository(ref.read(inventoryLocalDatasourceProvider)).getById(pinned.id);
         if (item == null) return null;
         return GlobalSearchResultModel(
           title: pinned.title,
@@ -24,7 +26,7 @@ final globalSearchOpenFallbackProvider =
         );
 
       case 'watchlist':
-        final items = WatchlistRepository().getAll();
+        final items = WatchlistRepository(ref.read(watchlistLocalDatasourceProvider)).getAll();
         dynamic item;
         try {
           item = items.firstWhere((e) => e.id == pinned.id);
@@ -42,7 +44,7 @@ final globalSearchOpenFallbackProvider =
         );
 
       case 'purchase':
-        final items = PurchasesRepository().getAllPurchases();
+        final items = PurchasesRepository(ref.read(purchasesLocalDatasourceProvider)).getAllPurchases();
         dynamic item;
         try {
           item = items.firstWhere((e) => e.id == pinned.id);
@@ -60,7 +62,7 @@ final globalSearchOpenFallbackProvider =
         );
 
       case 'sale':
-        final items = SalesRepository().getAllSales();
+        final items = SalesRepository(ref.read(salesLocalDatasourceProvider)).getAllSales();
         dynamic item;
         try {
           item = items.firstWhere((e) => e.id == pinned.id);
@@ -78,7 +80,7 @@ final globalSearchOpenFallbackProvider =
         );
 
       case 'market':
-        final items = MarketRepository().getAll();
+        final items = MarketRepository(ref.read(marketLocalDatasourceProvider)).getAll();
         dynamic item;
         try {
           item = items.firstWhere((e) => e.id == pinned.id);

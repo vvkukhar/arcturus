@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/analytics/application/capital_allocation_entry_model.dart';
 
 final capitalAllocationProvider =
     Provider<List<CapitalAllocationEntryModel>>((ref) {
-  final items = InventoryRepository().getAllItems();
+  final items = ref.watch(inventoryRepositoryProvider).getAllItems();
 
   double planned = 0;
   double purchased = 0;

@@ -1,10 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
-import 'package:lego_trading_manager/data/repositories/sales_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_breakdown_model.dart';
 
 final analyticsThemeBreakdownProvider = Provider<List<AnalyticsBreakdownEntry>>((ref) {
-  final items = InventoryRepository().getAllItems();
+  final items = ref.watch(inventoryRepositoryProvider).getAllItems();
   final grouped = <String, double>{};
 
   for (final item in items) {
@@ -21,7 +20,7 @@ final analyticsThemeBreakdownProvider = Provider<List<AnalyticsBreakdownEntry>>(
 });
 
 final analyticsPlatformBreakdownProvider = Provider<List<AnalyticsBreakdownEntry>>((ref) {
-  final sales = SalesRepository().getAllSales();
+  final sales = ref.watch(salesRepositoryProvider).getAllSales();
   final grouped = <String, double>{};
 
   for (final sale in sales) {

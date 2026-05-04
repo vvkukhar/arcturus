@@ -1,4 +1,7 @@
+// lib/features/partout/presentation/add_partout_project_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/providers/local_datasources_provider.dart';
 import 'package:lego_trading_manager/core/enums/partout_project_status.dart';
 import 'package:lego_trading_manager/core/utils/id_generator.dart';
 import 'package:lego_trading_manager/core/utils/number_parser.dart';
@@ -7,23 +10,29 @@ import 'package:lego_trading_manager/data/models/item_model.dart';
 import 'package:lego_trading_manager/data/models/partout_project_model.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 
-class AddPartOutProjectScreen extends StatefulWidget {
+class AddPartOutProjectScreen extends ConsumerStatefulWidget {
   const AddPartOutProjectScreen({super.key});
 
   @override
-  State<AddPartOutProjectScreen> createState() =>
+  ConsumerState<AddPartOutProjectScreen> createState() =>
       _AddPartOutProjectScreenState();
 }
 
-class _AddPartOutProjectScreenState extends State<AddPartOutProjectScreen> {
+class _AddPartOutProjectScreenState extends ConsumerState<AddPartOutProjectScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _inventoryRepository = InventoryRepository();
+  late final InventoryRepository _inventoryRepository;
 
   String? _selectedItemId;
   final _purchaseCostController = TextEditingController(text: '0');
   final _shippingCostController = TextEditingController(text: '0');
   final _extraCostsController = TextEditingController(text: '0');
   final _notesController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _inventoryRepository = InventoryRepository(ref.read(inventoryLocalDatasourceProvider));
+  }
 
   ItemModel? get _selectedItem {
     if (_selectedItemId == null) return null;

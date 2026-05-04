@@ -1,4 +1,7 @@
+// lib/features/partout/presentation/partout_project_details_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/providers/local_datasources_provider.dart';
 import 'package:lego_trading_manager/core/utils/partout_calculator.dart';
 import 'package:lego_trading_manager/data/models/partout_line_model.dart';
 import 'package:lego_trading_manager/data/models/partout_project_model.dart';
@@ -9,7 +12,7 @@ import 'package:lego_trading_manager/features/partout/presentation/edit_partout_
 import 'package:lego_trading_manager/features/partout/presentation/widgets/partout_line_card.dart';
 import 'package:lego_trading_manager/features/partout/presentation/widgets/partout_metric_tile.dart';
 
-class PartOutProjectDetailsScreen extends StatefulWidget {
+class PartOutProjectDetailsScreen extends ConsumerStatefulWidget {
   final PartOutProjectModel project;
 
   const PartOutProjectDetailsScreen({
@@ -18,13 +21,13 @@ class PartOutProjectDetailsScreen extends StatefulWidget {
   });
 
   @override
-  State<PartOutProjectDetailsScreen> createState() =>
+  ConsumerState<PartOutProjectDetailsScreen> createState() =>
       _PartOutProjectDetailsScreenState();
 }
 
 class _PartOutProjectDetailsScreenState
-    extends State<PartOutProjectDetailsScreen> {
-  final _repository = PartOutRepository();
+    extends ConsumerState<PartOutProjectDetailsScreen> {
+  late final PartOutRepository _repository;
 
   late PartOutProjectModel _project;
   List<PartOutLineModel> _lines = [];
@@ -32,6 +35,7 @@ class _PartOutProjectDetailsScreenState
   @override
   void initState() {
     super.initState();
+    _repository = PartOutRepository(ref.read(partoutLocalDatasourceProvider));
     _project = widget.project;
     _load();
   }
@@ -74,7 +78,7 @@ class _PartOutProjectDetailsScreenState
   }
 
   void _deleteLine(PartOutLineModel line) {
-    _repository.deleteLine(line.id, _project.id);
+    _repository.deleteLine(line.id);
     setState(() {
       _load();
     });

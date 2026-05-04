@@ -1,5 +1,3 @@
-// lib/data/models/market_snapshot_model.dart
-
 class MarketSnapshotModel {
   final String id;
   final String itemRef;
@@ -26,6 +24,10 @@ class MarketSnapshotModel {
     required this.capturedAt,
     this.url,
   });
+
+  String get sourcePlatform => source;
+  DateTime get recordedAt => capturedAt;
+  String? get note => url;
 
   MarketSnapshotModel copyWith({
     String? id,

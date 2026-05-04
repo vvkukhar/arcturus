@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/sale_model.dart';
-import 'package:lego_trading_manager/data/repositories/sales_repository.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_monthly_profit_model.dart';
 
 final analyticsMonthlyProfitProvider =
     Provider<List<AnalyticsMonthlyProfitModel>>((ref) {
-  final sales = SalesRepository().getAllSales();
+  final sales = ref.watch(salesRepositoryProvider).getAllSales();
   final grouped = <String, List<SaleModel>>{};
 
   for (final sale in sales) {

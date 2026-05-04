@@ -4,12 +4,17 @@ import 'package:lego_trading_manager/data/repositories/inventory_repository.dart
 import 'package:lego_trading_manager/data/repositories/sales_repository.dart';
 
 class AnalyticsRepository {
-  final InventoryRepository _inventoryRepository = InventoryRepository();
-  final SalesRepository _salesRepository = SalesRepository();
+  final InventoryRepository inventoryRepository;
+  final SalesRepository salesRepository;
+
+  AnalyticsRepository({
+    required this.inventoryRepository,
+    required this.salesRepository,
+  });
 
   AnalyticsSummaryModel getSummary() {
-    final items = _inventoryRepository.getAllItems();
-    final sales = _salesRepository.getAllSales();
+    final items = inventoryRepository.getAllItems();
+    final sales = salesRepository.getAllSales();
 
     final soldItems = items.where((item) => item.isSold).toList();
     final activeItems = items.where((item) => item.isActive).toList();
@@ -25,7 +30,7 @@ class AnalyticsRepository {
     for (final item in soldItems) {
       if (item.actualSalePrice == null) continue;
 
-      final sale = _salesRepository.getByItemId(item.id);
+      final sale = salesRepository.getByItemId(item.id);
       final metrics = ProfitCalculator.calculateSaleMetrics(
         purchasePrice: item.purchasePrice,
         shippingToMe: item.shippingToMe,

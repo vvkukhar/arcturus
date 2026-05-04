@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_helper_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_auto_rule_execution_result_model.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_auto_rules_provider.dart';
@@ -11,7 +11,7 @@ class AnalyticsAutoRuleExecutionService {
 
   Future<AnalyticsAutoRuleExecutionResultModel> run() async {
     final rules = ref.read(analyticsAutoRulesProvider);
-    final repo = InventoryRepository();
+    final repo = ref.read(inventoryRepositoryProvider);
     final items = repo.getAllItems();
     final market98 = rules.any((e) => e.id == 'market_98' && e.enabled);
     final oldStockAttention =
@@ -36,7 +36,7 @@ class AnalyticsAutoRuleExecutionService {
       }
       return current;
     }).toList();
-    repo.replaceAll(next);
+    await repo.replaceAll(next);
     await ref.read(activityLogHelperProvider).inventoryAction(
           title: 'Analytics auto-rules executed',
           subtitle:

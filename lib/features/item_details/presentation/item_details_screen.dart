@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/core/widgets/details_action_bar.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
-import 'package:lego_trading_manager/data/repositories/market_repository.dart';
-import 'package:lego_trading_manager/data/repositories/partout_repository.dart';
-import 'package:lego_trading_manager/data/repositories/sales_repository.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_duplicate_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/item_lifecycle_provider.dart';
-import 'package:lego_trading_manager/features/inventory/application/item_quick_reprice_provider.dart';
-import 'package:lego_trading_manager/features/inventory/application/item_status_transition_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/item_timeline_provider.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/edit_item_screen.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/widgets/item_lifecycle_card.dart';
-import 'package:lego_trading_manager/features/inventory/presentation/widgets/item_quick_decision_bar.dart';
-import 'package:lego_trading_manager/features/inventory/presentation/widgets/item_quick_reprice_card.dart';
-import 'package:lego_trading_manager/features/inventory/presentation/widgets/item_status_action_card.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/widgets/item_timeline_card.dart';
 import 'package:lego_trading_manager/features/item_details/application/item_detail_insights_provider.dart';
 import 'package:lego_trading_manager/features/item_details/presentation/widgets/item_detail_header_card.dart';
@@ -75,15 +67,14 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
   }
 
   void _updateItem(ItemModel next) {
-    InventoryRepository().updateItem(next);
+    ref.read(inventoryRepositoryProvider).updateItem(next);
     setState(() {
       item = next;
     });
   }
 
   void _deleteItem(BuildContext context) {
-    final repo = InventoryRepository();
-    repo.deleteItem(item.id);
+    ref.read(inventoryRepositoryProvider).deleteItem(item.id);
     Navigator.of(context).pop({'deleted': true});
   }
 
@@ -128,50 +119,13 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
     Navigator.of(context).pop({'duplicated': duplicate});
   }
 
-  void _moveNextStatus() {
-    final next = ref.read(itemStatusTransitionProvider).moveNext(item);
-    _updateItem(next);
-  }
-
-  void _movePreviousStatus() {
-    final next = ref.read(itemStatusTransitionProvider).movePrevious(item);
-    _updateItem(next);
-  }
-
-  void _setMarketPrice() {
-    final next = ref.read(itemQuickRepriceProvider).toMarketAverage(item);
-    _updateItem(next);
-  }
-
-  void _setMinus5() {
-    final next = ref.read(itemQuickRepriceProvider).toMarketMinus5(item);
-    _updateItem(next);
-  }
-
-  void _setMinus10() {
-    final next = ref.read(itemQuickRepriceProvider).toMarketMinus10(item);
-    _updateItem(next);
-  }
-
-  void _setPlus3() {
-    final next = ref.read(itemQuickRepriceProvider).toMarketPlus3(item);
-    _updateItem(next);
-  }
-
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(appSettingsControllerProvider);
     final insights = ref.watch(itemDetailInsightsProvider).build(item);
     final timeline = ref.watch(itemTimelineServiceProvider).build(item);
     final lifecycle = ref.watch(itemLifecycleServiceProvider).build(item);
-    final sale = SalesRepository().getByItemId(item.id);
-    final marketSnapshots = MarketRepository().getByItemRef(item.id);
-    final partoutProjects = PartOutRepository()
-        .getAllProjects()
-        .where((project) => project.sourceSetId == item.id)
-        .toList();
-    final nextStatus = ref.read(itemStatusTransitionProvider).next(item.status);
-    final prevStatus = ref.read(itemStatusTransitionProvider).previous(item.status);
+    final sale = ref.watch(salesRepositoryProvider).getByItemId(item.id);
 
     return Scaffold(
       appBar: AppBar(
@@ -189,28 +143,8 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
         children: [
           ItemDetailHeaderCard(item: item),
           const SizedBox(height: 16),
-          ItemQuickDecisionBar(
-            onSetMarket: _setMarketPrice,
-            onMinus5: _setMinus5,
-            onMoveNext: nextStatus == null ? () {} : _moveNextStatus,
-            onMovePrevious: prevStatus == null ? () {} : _movePreviousStatus,
-          ),
-          const SizedBox(height: 16),
           const _SectionTitle('Lifecycle'),
           ItemLifecycleCard(steps: lifecycle),
-          const SizedBox(height: 16),
-          ItemStatusActionCard(
-            onPrevious: prevStatus == null ? null : _movePreviousStatus,
-            onNext: nextStatus == null ? null : _moveNextStatus,
-          ),
-          const SizedBox(height: 16),
-          const _SectionTitle('Quick Reprice'),
-          ItemQuickRepriceCard(
-            onMarket: _setMarketPrice,
-            onMinus5: _setMinus5,
-            onMinus10: _setMinus10,
-            onPlus3: _setPlus3,
-          ),
           const SizedBox(height: 16),
           GridView.count(
             crossAxisCount: 2,
@@ -249,21 +183,8 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                   _infoRow('Title', item.title),
                   _infoRow('Type', item.type.name),
                   _infoRow('Theme', _formatNullable(item.theme)),
-                  _infoRow('Subtheme', _formatNullable(item.subtheme)),
-                  _infoRow('LEGO Number', _formatNullable(item.legoNumber)),
-                  _infoRow('Minifig ID', _formatNullable(item.minifigId)),
-                  _infoRow('Set ID', _formatNullable(item.setId)),
                   _infoRow('Condition', item.condition.name),
-                  _infoRow('Completeness', item.completeness.name),
                   _infoRow('Quantity', item.quantity.toString()),
-                  _infoRow(
-                    'Purchase Date',
-                    item.purchaseDate?.toIso8601String().split('T').first ?? '-',
-                  ),
-                  _infoRow(
-                    'Sale Date',
-                    item.saleDate?.toIso8601String().split('T').first ?? '-',
-                  ),
                   _infoRow(
                     'Days In Inventory',
                     (item.daysInInventory ?? 0).toString(),
@@ -280,27 +201,6 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
               child: Column(
                 children: [
                   _infoRow(
-                    'Purchase Price',
-                    CurrencyFormatter.format(
-                      item.purchasePrice,
-                      currency: settings.baseCurrency,
-                    ),
-                  ),
-                  _infoRow(
-                    'Shipping To Me',
-                    CurrencyFormatter.format(
-                      item.shippingToMe,
-                      currency: settings.baseCurrency,
-                    ),
-                  ),
-                  _infoRow(
-                    'Extra Costs',
-                    CurrencyFormatter.format(
-                      item.extraCosts,
-                      currency: settings.baseCurrency,
-                    ),
-                  ),
-                  _infoRow(
                     'Total Cost',
                     CurrencyFormatter.format(
                       item.totalCost,
@@ -308,38 +208,11 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                     ),
                   ),
                   _infoRow(
-                    'Market Low',
-                    item.marketLow == null
-                        ? '-'
-                        : CurrencyFormatter.format(
-                            item.marketLow!,
-                            currency: settings.baseCurrency,
-                          ),
-                  ),
-                  _infoRow(
                     'Market Average',
                     item.marketAverage == null
                         ? '-'
                         : CurrencyFormatter.format(
                             item.marketAverage!,
-                            currency: settings.baseCurrency,
-                          ),
-                  ),
-                  _infoRow(
-                    'Expected Sale Price',
-                    item.expectedSalePrice == null
-                        ? '-'
-                        : CurrencyFormatter.format(
-                            item.expectedSalePrice!,
-                            currency: settings.baseCurrency,
-                          ),
-                  ),
-                  _infoRow(
-                    'Actual Sale Price',
-                    item.actualSalePrice == null
-                        ? '-'
-                        : CurrencyFormatter.format(
-                            item.actualSalePrice!,
                             currency: settings.baseCurrency,
                           ),
                   ),
@@ -356,35 +229,6 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                 child: Column(
                   children: [
                     _infoRow('Platform', sale.platform),
-                    _infoRow('Buyer', _formatNullable(sale.buyerName)),
-                    _infoRow(
-                      'Sale Price',
-                      CurrencyFormatter.format(
-                        sale.salePrice,
-                        currency: settings.baseCurrency,
-                      ),
-                    ),
-                    _infoRow(
-                      'Platform Fee',
-                      CurrencyFormatter.format(
-                        sale.platformFee,
-                        currency: settings.baseCurrency,
-                      ),
-                    ),
-                    _infoRow(
-                      'Shipping By Me',
-                      CurrencyFormatter.format(
-                        sale.shippingPaidByMe,
-                        currency: settings.baseCurrency,
-                      ),
-                    ),
-                    _infoRow(
-                      'Shipping By Buyer',
-                      CurrencyFormatter.format(
-                        sale.shippingPaidByBuyer,
-                        currency: settings.baseCurrency,
-                      ),
-                    ),
                     _infoRow(
                       'Net Profit',
                       CurrencyFormatter.format(
@@ -392,85 +236,11 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                         currency: settings.baseCurrency,
                       ),
                     ),
-                    _infoRow(
-                      'Sale Date',
-                      sale.saleDate.toIso8601String().split('T').first,
-                    ),
                   ],
                 ),
               ),
             ),
           ],
-          const SizedBox(height: 16),
-          const _SectionTitle('Market History'),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: marketSnapshots.isEmpty
-                  ? const Text('No market snapshots yet.')
-                  : Column(
-                      children: marketSnapshots
-                          .map(
-                            (snapshot) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '${snapshot.source} •\n${snapshot.capturedAt.toIso8601String().split('T').first}',
-                                    ),
-                                  ),
-                                  Text(
-                                    'L ${snapshot.lowPrice.toStringAsFixed(0)} / '
-                                    'A ${snapshot.averagePrice.toStringAsFixed(0)} / '
-                                    'H ${snapshot.highPrice.toStringAsFixed(0)}',
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-            ),
-          ),
-          if (partoutProjects.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const _SectionTitle('Part-out Links'),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: partoutProjects
-                      .map(
-                        (project) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            children: [
-                              Expanded(child: Text(project.sourceSetTitle)),
-                              Text(project.status.name),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          const _SectionTitle('Platforms & Notes'),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _infoRow('Bought On', _formatNullable(item.platformBought)),
-                  _infoRow('Sold On', _formatNullable(item.platformSold)),
-                  _infoRow('Tracked', item.isTracked ? 'yes' : 'no'),
-                ],
-              ),
-            ),
-          ),
           const SizedBox(height: 16),
           const _SectionTitle('Notes'),
           ItemDetailNotesCard(notes: item.notes),
@@ -488,7 +258,6 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
 
 class _SectionTitle extends StatelessWidget {
   final String title;
-
   const _SectionTitle(this.title);
 
   @override

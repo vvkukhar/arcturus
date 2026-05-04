@@ -1,14 +1,11 @@
-// lib/features/dashboard/application/dashboard_quick_insights_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
-import 'package:lego_trading_manager/data/repositories/sales_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_quick_insight_model.dart';
 
 final dashboardQuickInsightsProvider =
     Provider<List<DashboardQuickInsightModel>>((ref) {
-  final inventory = InventoryRepository().getAllItems();
-  final sales = SalesRepository().getAllSales();
+  final inventory = ref.watch(inventoryRepositoryProvider).getAllItems();
+  final sales = ref.watch(salesRepositoryProvider).getAllSales();
 
   final totalExpected = inventory.fold<double>(
     0,

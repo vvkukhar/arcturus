@@ -15,21 +15,18 @@ dependencies:
   http: ^1.2.2
   socket_io_client: ^3.0.2
 
-  # Database
   sqflite: ^2.3.3+1
-  sqflite_common_ffi: ^2.3.3
-  sqflite_common_ffi_web: ^0.4.2
+  sqflite_common_ffi: ^2.3.6
+  sqflite_common_ffi_web: ^1.0.1+1
 
-  # Storage / paths
   path: ^1.9.0
   path_provider: ^2.1.4
 
-  # Device / network
   connectivity_plus: ^6.0.5
   shared_preferences: ^2.2.3
 
-  # Utils
   uuid: ^4.4.0
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:
@@ -39,3 +36,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env

@@ -1,17 +1,19 @@
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_reprice_service.dart';
 
 class InventoryBulkRepriceUsecase {
+  final Ref ref;
   final InventoryRepriceService service;
 
-  InventoryBulkRepriceUsecase(this.service);
+  InventoryBulkRepriceUsecase(this.ref, this.service);
 
-  void run({
+  Future<void> run({
     required Set<String> selectedIds,
     required String mode,
     required double percent,
-  }) {
-    final repo = InventoryRepository();
+  }) async {
+    final repo = ref.read(inventoryRepositoryProvider);
     final items = repo.getAllItems();
 
     final next = items.map((item) {
@@ -29,6 +31,6 @@ class InventoryBulkRepriceUsecase {
       }
     }).toList();
 
-    repo.replaceAll(next);
+    await repo.replaceAll(next);
   }
 }

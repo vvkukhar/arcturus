@@ -44,6 +44,7 @@ import { SuggestionsModule } from './modules/suggestions/suggestions.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { WatchlistModule } from './modules/watchlist/watchlist.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { RequestLoggerMiddleware } from './common/request-logger.middleware';
 import { SecurityHeadersMiddleware } from './common/security-headers.middleware';
 
@@ -58,24 +59,20 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     DocsModule,
     MetricsModule,
     QueueModule,
-
     ActivityModule,
     AuditModule,
     BackupModule,
     NotificationsModule,
     StrategyModule,
-
     ItemsModule,
     InventoryModule,
     WatchlistModule,
     WarehouseModule,
     MediaModule,
-
     ScannerModule,
     SourceHealthModule,
     SyncModule,
     OperatorModule,
-
     OpportunitiesModule,
     DealsModule,
     PricingModule,
@@ -83,7 +80,6 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     CompsModule,
     AiModule,
     SuggestionsModule,
-
     FlowsModule,
     SalesModule,
     OrdersModule,
@@ -94,12 +90,12 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     FinanceModule,
     DecisionEngineModule,
     ImportExportModule,
-
     PublicStoreModule,
     CollaborationModule,
     DashboardModule,
     PlanningModule,
     AllocationModule,
+    PaymentsModule,
   ],
 })
 export class AppModule implements NestModule {

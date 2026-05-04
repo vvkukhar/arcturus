@@ -35,11 +35,17 @@ final partOutRepositoryProvider = Provider<PartOutRepository>((ref) {
 });
 
 final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
-  return DashboardRepository();
+  return DashboardRepository(
+    inventoryRepository: ref.watch(inventoryRepositoryProvider),
+    salesRepository: ref.watch(salesRepositoryProvider),
+  );
 });
 
 final analyticsRepositoryProvider = Provider<AnalyticsRepository>((ref) {
-  return AnalyticsRepository();
+  return AnalyticsRepository(
+    inventoryRepository: ref.watch(inventoryRepositoryProvider),
+    salesRepository: ref.watch(salesRepositoryProvider),
+  );
 });
 
 final tradingTransactionServiceProvider = Provider<TradingTransactionService>((ref) {

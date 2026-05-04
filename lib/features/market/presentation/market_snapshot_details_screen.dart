@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/widgets/details_action_bar.dart';
 import 'package:lego_trading_manager/data/models/market_snapshot_model.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_helper_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/action_report_helper_provider.dart';
 import 'package:lego_trading_manager/features/market/application/market_duplicate_provider.dart';
@@ -56,7 +56,7 @@ class _MarketSnapshotDetailsScreenState
   }
 
   String _itemTitle(String itemRef) {
-    return InventoryRepository().getById(itemRef)?.title ?? 'Unknown item';
+    return ref.read(inventoryRepositoryProvider).getById(itemRef)?.title ?? 'Unknown item';
   }
 
   Widget _infoRow(String label, String value) {

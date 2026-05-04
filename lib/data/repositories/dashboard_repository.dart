@@ -28,11 +28,16 @@ class DashboardStatsModel {
 }
 
 class DashboardRepository {
-  final InventoryRepository _inventoryRepository = InventoryRepository();
-  final SalesRepository _salesRepository = SalesRepository();
+  final InventoryRepository inventoryRepository;
+  final SalesRepository salesRepository;
+
+  DashboardRepository({
+    required this.inventoryRepository,
+    required this.salesRepository,
+  });
 
   DashboardStatsModel getStats() {
-    final resaleItems = _inventoryRepository
+    final resaleItems = inventoryRepository
         .getAllItems()
         .where((item) => item.ownershipType == OwnershipType.resale)
         .toList();
@@ -61,7 +66,7 @@ class DashboardRepository {
 
     for (final item in soldItems) {
       if (item.actualSalePrice == null) continue;
-      final sale = _salesRepository.getByItemId(item.id);
+      final sale = salesRepository.getByItemId(item.id);
 
       final metrics = ProfitCalculator.calculateSaleMetrics(
         purchasePrice: item.purchasePrice,
@@ -98,7 +103,7 @@ class DashboardRepository {
   }
 
   List<ItemModel> getStaleInventory({int minDays = 30}) {
-    final resaleItems = _inventoryRepository
+    final resaleItems = inventoryRepository
         .getAllItems()
         .where((item) => item.ownershipType == OwnershipType.resale)
         .where((item) => !item.isSold)
@@ -111,7 +116,7 @@ class DashboardRepository {
   }
 
   List<ItemModel> getBestDeals() {
-    final resaleItems = _inventoryRepository
+    final resaleItems = inventoryRepository
         .getAllItems()
         .where((item) => item.ownershipType == OwnershipType.resale)
         .where((item) => !item.isSold)

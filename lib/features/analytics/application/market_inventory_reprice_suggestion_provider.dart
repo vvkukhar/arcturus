@@ -1,11 +1,10 @@
-// lib/features/analytics/application/market_inventory_reprice_suggestion_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/analytics/application/market_inventory_reprice_suggestion_model.dart';
 
 final marketInventoryRepriceSuggestionProvider =
     Provider<List<MarketInventoryRepriceSuggestionModel>>((ref) {
-  final items = InventoryRepository().getAllItems();
+  final items = ref.watch(inventoryRepositoryProvider).getAllItems();
 
   final result = items
       .where((item) =>

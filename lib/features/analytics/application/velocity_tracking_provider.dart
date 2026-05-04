@@ -1,11 +1,9 @@
-// lib/features/analytics/application/velocity_tracking_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/analytics/application/velocity_bucket_model.dart';
 
 final velocityTrackingProvider = Provider<List<VelocityBucketModel>>((ref) {
-  final items = InventoryRepository().getAllItems();
+  final items = ref.watch(inventoryRepositoryProvider).getAllItems();
 
   int fast = 0;
   int medium = 0;

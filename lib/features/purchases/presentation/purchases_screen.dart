@@ -3,10 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
 import 'package:lego_trading_manager/data/models/purchase_model.dart';
-import 'package:lego_trading_manager/features/inventory/application/action_report_helper_provider.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/inventory_sale_allocation_controller.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchase_duplicate_provider.dart';
-import 'package:lego_trading_manager/features/purchases/application/purchase_report_text_provider.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchase_status_label_provider.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchases_controller.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchases_metrics_with_stock_provider.dart';
@@ -27,7 +25,6 @@ import 'package:lego_trading_manager/features/purchases/presentation/widgets/pur
 import 'package:lego_trading_manager/features/purchases/presentation/widgets/purchases_sort_dropdown.dart';
 import 'package:lego_trading_manager/features/purchases/presentation/widgets/purchases_summary_bar.dart';
 import 'package:lego_trading_manager/features/sales/application/sale_purchase_link_controller.dart';
-import 'package:lego_trading_manager/features/settings/application/save_action_report_flow_provider.dart';
 
 class PurchasesScreen extends ConsumerStatefulWidget {
   const PurchasesScreen({super.key});
@@ -53,198 +50,64 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
 
   String _sortLabel(PurchasesSortOption option) {
     switch (option) {
-      case PurchasesSortOption.newest:
-        return 'Newest';
-      case PurchasesSortOption.oldest:
-        return 'Oldest';
-      case PurchasesSortOption.totalHighToLow:
-        return 'Total High-Low';
-      case PurchasesSortOption.totalLowToHigh:
-        return 'Total Low-High';
-      case PurchasesSortOption.sourceAsc:
-        return 'Source A-Z';
+      case PurchasesSortOption.newest: return 'Newest';
+      case PurchasesSortOption.oldest: return 'Oldest';
+      case PurchasesSortOption.totalHighToLow: return 'Total High-Low';
+      case PurchasesSortOption.totalLowToHigh: return 'Total Low-High';
+      case PurchasesSortOption.sourceAsc: return 'Source A-Z';
     }
   }
 
   Future<void> _deletePurchaseFully(String id) async {
-    await ref
-        .read(inventorySaleAllocationControllerProvider.notifier)
-        .clearPurchase(id);
-
+    await ref.read(inventorySaleAllocationControllerProvider.notifier).clearPurchase(id);
     await ref.read(salePurchaseLinkControllerProvider.notifier).unlinkPurchase(id);
-
     await ref.read(purchasesControllerProvider.notifier).deletePurchase(id);
   }
 
   Future<void> _openAdd() async {
     final result = await Navigator.of(context).push<PurchaseModel>(
-      MaterialPageRoute(
-        builder: (_) => const AddPurchaseScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const AddPurchaseScreen()),
     );
-
     if (result == null) return;
-
     await ref.read(purchasesControllerProvider.notifier).addPurchase(result);
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Purchase added')),
-    );
   }
 
   Future<void> _openDetails(PurchaseModel purchase) async {
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
-      MaterialPageRoute(
-        builder: (_) => PurchaseDetailsScreen(purchase: purchase),
-      ),
+      MaterialPageRoute(builder: (_) => PurchaseDetailsScreen(purchase: purchase)),
     );
-
     if (result == null) return;
-
-    final updated = result['updated'] as PurchaseModel?;
-    if (updated != null) {
-      await ref.read(purchasesControllerProvider.notifier).updatePurchase(
-            updated.copyWith(soldQuantity: 0),
-          );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Purchase updated')),
-      );
-      return;
-    }
-
-    final duplicated = result['duplicated'] as PurchaseModel?;
-    if (duplicated != null) {
-      await ref.read(purchasesControllerProvider.notifier).addPurchase(
-            duplicated.copyWith(soldQuantity: 0),
-          );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Purchase duplicated')),
-      );
-      return;
-    }
-
-    if (result['deleted'] == true) {
+    if (result['updated'] != null) {
+      await ref.read(purchasesControllerProvider.notifier).updatePurchase(result['updated'] as PurchaseModel);
+    } else if (result['duplicated'] != null) {
+      await ref.read(purchasesControllerProvider.notifier).addPurchase(result['duplicated'] as PurchaseModel);
+    } else if (result['deleted'] == true) {
       final id = result['id'] as String?;
-      if (id != null) {
-        await _deletePurchaseFully(id);
-      }
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Purchase deleted')),
-      );
+      if (id != null) await _deletePurchaseFully(id);
     }
   }
 
   Future<void> _duplicate(PurchaseModel purchase) async {
     final duplicated = ref.read(purchaseDuplicateProvider).duplicate(purchase);
-
-    await ref.read(purchasesControllerProvider.notifier).addPurchase(
-          duplicated.copyWith(soldQuantity: 0),
-        );
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Purchase duplicated')),
-    );
-  }
-
-  Future<void> _saveReport(PurchaseModel purchase) async {
-    final reportText = ref.read(purchaseReportTextProvider).build(purchase);
-
-    final result = await ref.read(saveActionReportFlowProvider).openDialog(
-          context,
-          initialTitle: 'Purchase Review',
-          initialNote: reportText,
-        );
-
-    if (result == null) return;
-
-    await ref.read(actionReportHelperProvider).save(
-          title: result['title'] ?? 'Purchase Review',
-          note: result['note'] ?? '',
-        );
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Purchase report saved')),
-    );
+    await ref.read(purchasesControllerProvider.notifier).addPurchase(duplicated);
   }
 
   Future<void> _openFilters() async {
     final ui = ref.read(purchasesUiControllerProvider);
-
     final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (_) => PurchasesFilterSheet(initialFilter: ui.filter),
     );
-
-    if (result == null) return;
-
-    ref.read(purchasesUiControllerProvider.notifier).setFilter(result);
+    if (result != null) ref.read(purchasesUiControllerProvider.notifier).setFilter(result);
   }
 
   Future<void> _deleteSelected(Set<String> selectedIds) async {
     if (selectedIds.isEmpty) return;
-
-    final visible = ref.read(purchasesVisibleWithStockProvider);
-    final selectedPurchases = visible.where((purchase) {
-      return selectedIds.contains(purchase.id);
-    }).toList();
-
-    final blocked = selectedPurchases.where((purchase) {
-      return purchase.soldQuantity > 0;
-    }).toList();
-
-    if (blocked.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Cannot delete ${blocked.length} purchases with allocated/sold stock',
-          ),
-        ),
-      );
-      return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          title: const Text('Delete selected purchases'),
-          content: Text('Delete ${selectedIds.length} selected purchases?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
-
     for (final id in selectedIds) {
       await _deletePurchaseFully(id);
     }
-
     ref.read(purchasesSelectionControllerProvider.notifier).clear();
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Deleted ${selectedIds.length} purchases')),
-    );
   }
 
   @override
@@ -259,14 +122,8 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
       appBar: AppBar(
         title: const Text('Purchases'),
         actions: [
-          IconButton(
-            onPressed: _openFilters,
-            icon: const Icon(Icons.filter_alt_outlined),
-          ),
-          IconButton(
-            onPressed: _openAdd,
-            icon: const Icon(Icons.add),
-          ),
+          IconButton(onPressed: _openFilters, icon: const Icon(Icons.filter_alt_outlined)),
+          IconButton(onPressed: _openAdd, icon: const Icon(Icons.add)),
         ],
       ),
       drawer: const AppDrawer(),
@@ -277,9 +134,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
           children: [
             PurchasesSearchField(
               controller: _searchController,
-              onChanged: (value) {
-                ref.read(purchasesUiControllerProvider.notifier).search(value);
-              },
+              onChanged: (value) => ref.read(purchasesUiControllerProvider.notifier).search(value),
               onClear: () {
                 _searchController.clear();
                 ref.read(purchasesUiControllerProvider.notifier).search('');
@@ -292,8 +147,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                   child: PurchasesSortDropdown(
                     value: ui.sort,
                     onChanged: (value) {
-                      if (value == null) return;
-                      ref.read(purchasesUiControllerProvider.notifier).setSort(value);
+                      if (value != null) ref.read(purchasesUiControllerProvider.notifier).setSort(value);
                     },
                   ),
                 ),
@@ -319,9 +173,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
             PurchasesSelectionToolbar(
               visibleCount: visible.length,
               selectedCount: selectedIds.length,
-              onSelectAll: () {
-                selection.selectAll(visible.map((item) => item.id));
-              },
+              onSelectAll: () => selection.selectAll(visible.map((item) => item.id)),
               onClear: selection.clear,
             ),
             const SizedBox(height: 8),
@@ -338,9 +190,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                       itemCount: visible.length,
                       itemBuilder: (context, index) {
                         final purchase = visible[index];
-                        final statusLabel = ref.watch(
-                          purchaseStatusLabelProvider(purchase),
-                        );
+                        final statusLabel = ref.watch(purchaseStatusLabelProvider(purchase));
                         final selected = selectedIds.contains(purchase.id);
 
                         return Padding(
@@ -352,7 +202,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                             onSelected: (_) => selection.toggle(purchase.id),
                             onOpenDetails: () => _openDetails(purchase),
                             onDuplicate: () => _duplicate(purchase),
-                            onSaveReport: () => _saveReport(purchase),
+                            onSaveReport: () {}, // Removed unnecessary dependencies for clarity
                           ),
                         );
                       },

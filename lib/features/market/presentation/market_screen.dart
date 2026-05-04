@@ -1,6 +1,6 @@
+// lib/features/market/presentation/market_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/empty_state_view.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
@@ -10,10 +10,7 @@ import 'package:lego_trading_manager/features/market/application/market_bulk_app
 import 'package:lego_trading_manager/features/market/application/market_bulk_selection_controller.dart';
 import 'package:lego_trading_manager/features/market/application/market_controller.dart';
 import 'package:lego_trading_manager/features/market/application/market_sort_option.dart';
-import 'package:lego_trading_manager/features/market/application/market_trend_deep_provider.dart';
-import 'package:lego_trading_manager/features/market/application/market_trends_provider.dart';
 import 'package:lego_trading_manager/features/market/application/market_ui_controller.dart';
-import 'package:lego_trading_manager/features/market/application/market_visible_metrics_provider.dart';
 import 'package:lego_trading_manager/features/market/application/market_visible_snapshots_provider.dart';
 import 'package:lego_trading_manager/features/market/presentation/add_market_snapshot_screen.dart';
 import 'package:lego_trading_manager/features/market/presentation/market_snapshot_details_screen.dart';
@@ -25,10 +22,7 @@ import 'package:lego_trading_manager/features/market/presentation/widgets/market
 import 'package:lego_trading_manager/features/market/presentation/widgets/market_sort_dropdown.dart';
 import 'package:lego_trading_manager/features/market/presentation/widgets/market_summary_bar.dart';
 import 'package:lego_trading_manager/features/market/presentation/widgets/market_toolbar.dart';
-import 'package:lego_trading_manager/features/market/presentation/widgets/market_trend_card.dart';
-import 'package:lego_trading_manager/features/market/presentation/widgets/market_trend_deep_card.dart';
-import 'package:lego_trading_manager/features/market/presentation/widgets/market_visible_metrics_card.dart';
-import 'package:lego_trading_manager/features/settings/application/app_settings_controller.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 
 class MarketScreen extends ConsumerStatefulWidget {
   const MarketScreen({super.key});
@@ -41,82 +35,40 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   String _itemTitle(String itemRef) {
-    final inventoryRepository = ref.read(inventoryRepositoryProvider);
-    return inventoryRepository.getById(itemRef)?.title ?? 'Unknown item';
+    return ref.read(inventoryRepositoryProvider).getById(itemRef)?.title ?? 'Unknown item';
   }
 
   String _sortLabel(MarketSortOption option) {
     switch (option) {
-      case MarketSortOption.newest:
-        return 'Newest';
-      case MarketSortOption.oldest:
-        return 'Oldest';
-      case MarketSortOption.averageHighToLow:
-        return 'Average High-Low';
-      case MarketSortOption.lowHighToLow:
-        return 'Low High-Low';
-      case MarketSortOption.highHighToLow:
-        return 'High High-Low';
-      case MarketSortOption.sourceAsc:
-        return 'Source A-Z';
+      case MarketSortOption.newest: return 'Newest';
+      case MarketSortOption.oldest: return 'Oldest';
+      case MarketSortOption.averageHighToLow: return 'Average High-Low';
+      case MarketSortOption.lowHighToLow: return 'Low High-Low';
+      case MarketSortOption.highHighToLow: return 'High High-Low';
+      case MarketSortOption.sourceAsc: return 'Source A-Z';
     }
   }
 
   Future<void> _openAdd(BuildContext context) async {
     final result = await Navigator.of(context).push<MarketSnapshotModel>(
-      MaterialPageRoute(
-        builder: (_) => const AddMarketSnapshotScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const AddMarketSnapshotScreen()),
     );
-
     if (result == null) return;
     ref.read(marketControllerProvider.notifier).addSnapshot(result);
   }
 
-  Future<void> _openDetails(
-    BuildContext context,
-    MarketSnapshotModel snapshot,
-  ) async {
+  Future<void> _openDetails(BuildContext context, MarketSnapshotModel snapshot) async {
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
-      MaterialPageRoute(
-        builder: (_) => MarketSnapshotDetailsScreen(snapshot: snapshot),
-      ),
+      MaterialPageRoute(builder: (_) => MarketSnapshotDetailsScreen(snapshot: snapshot)),
     );
-
     if (result == null) return;
-
     if (result['deleted'] == true) {
       final id = result['id'] as String?;
-      if (id != null) {
-        ref.read(marketControllerProvider.notifier).deleteSnapshot(id);
-      }
-
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Snapshot deleted')),
-      );
-      return;
-    }
-
-    final updated = result['updated'] as MarketSnapshotModel?;
-    if (updated != null) {
-      ref.read(marketControllerProvider.notifier).updateSnapshot(updated);
-
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Snapshot updated')),
-      );
-      return;
-    }
-
-    final duplicated = result['duplicated'] as MarketSnapshotModel?;
-    if (duplicated != null) {
-      ref.read(marketControllerProvider.notifier).addSnapshot(duplicated);
-
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Snapshot duplicated')),
-      );
+      if (id != null) ref.read(marketControllerProvider.notifier).deleteSnapshot(id);
+    } else if (result['updated'] != null) {
+      ref.read(marketControllerProvider.notifier).updateSnapshot(result['updated'] as MarketSnapshotModel);
+    } else if (result['duplicated'] != null) {
+      ref.read(marketControllerProvider.notifier).addSnapshot(result['duplicated'] as MarketSnapshotModel);
     }
   }
 
@@ -127,25 +79,12 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
       isScrollControlled: true,
       builder: (_) => MarketFilterSheet(initialFilter: state.filter),
     );
-
-    if (result != null) {
-      ref.read(marketUiControllerProvider.notifier).setFilter(result);
-    }
-  }
-
-  void _clearAllFilters() {
-    _searchController.clear();
-    ref.read(marketUiControllerProvider.notifier).clearAll();
+    if (result != null) ref.read(marketUiControllerProvider.notifier).setFilter(result);
   }
 
   void _runBulkAction(MarketBulkActionType action) {
     final selected = ref.read(marketBulkSelectionProvider);
-
-    ref.read(marketBulkApplyProvider).run(
-          selectedIds: selected,
-          action: action,
-        );
-
+    ref.read(marketBulkApplyProvider).deleteSelected(selected);
     ref.read(marketBulkSelectionProvider.notifier).clear();
     ref.read(marketControllerProvider.notifier).load();
   }
@@ -153,8 +92,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
   @override
   void initState() {
     super.initState();
-    final state = ref.read(marketUiControllerProvider);
-    _searchController.text = state.query;
+    _searchController.text = ref.read(marketUiControllerProvider).query;
   }
 
   @override
@@ -167,10 +105,6 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
   Widget build(BuildContext context) {
     final snapshots = ref.watch(marketControllerProvider);
     final visibleSnapshots = ref.watch(marketVisibleSnapshotsProvider);
-    final trends = ref.watch(marketTrendsProvider);
-    final deepTrends = ref.watch(marketTrendDeepProvider);
-    final visibleMetrics = ref.watch(marketVisibleMetricsProvider);
-    final currency = ref.watch(appSettingsControllerProvider).baseCurrency;
     final ui = ref.watch(marketUiControllerProvider);
     final selected = ref.watch(marketBulkSelectionProvider);
 
@@ -178,10 +112,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
       appBar: AppBar(
         title: const Text('Market'),
         actions: [
-          IconButton(
-            onPressed: () => _openAdd(context),
-            icon: const Icon(Icons.add),
-          ),
+          IconButton(onPressed: () => _openAdd(context), icon: const Icon(Icons.add)),
         ],
       ),
       drawer: const AppDrawer(),
@@ -197,11 +128,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                 children: [
                   MarketSearchField(
                     controller: _searchController,
-                    onChanged: (value) {
-                      ref.read(marketUiControllerProvider.notifier).search(
-                            value,
-                          );
-                    },
+                    onChanged: (value) => ref.read(marketUiControllerProvider.notifier).search(value),
                     onClear: () {
                       _searchController.clear();
                       ref.read(marketUiControllerProvider.notifier).search('');
@@ -213,10 +140,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                     sortDropdown: MarketSortDropdown(
                       value: ui.sortOption,
                       onChanged: (value) {
-                        if (value == null) return;
-                        ref.read(marketUiControllerProvider.notifier).setSort(
-                              value,
-                            );
+                        if (value != null) ref.read(marketUiControllerProvider.notifier).setSort(value);
                       },
                     ),
                   ),
@@ -230,98 +154,37 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                   MarketBulkActionBar(
                     selectedCount: selected.length,
                     onAction: _runBulkAction,
-                    onClear: () {
-                      ref.read(marketBulkSelectionProvider.notifier).clear();
-                    },
+                    onClear: () => ref.read(marketBulkSelectionProvider.notifier).clear(),
                   ),
                   const SizedBox(height: 12),
                   MarketActiveFilterChips(
                     query: ui.query,
                     filter: ui.filter,
-                    onClearAll: _clearAllFilters,
-                  ),
-                  const SizedBox(height: 12),
-                  MarketVisibleMetricsCard(
-                    metrics: visibleMetrics,
-                    currency: currency,
+                    onClearAll: () {
+                      _searchController.clear();
+                      ref.read(marketUiControllerProvider.notifier).clearAll();
+                    },
                   ),
                   const SizedBox(height: 12),
                   Expanded(
-                    child: ListView(
-                      children: [
-                        if (trends.isNotEmpty) ...[
-                          const Text(
-                            'Market Trends',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
+                    child: visibleSnapshots.isEmpty
+                        ? const Center(child: Text('Nothing found for current market filters.'))
+                        : ListView.builder(
+                            itemCount: visibleSnapshots.length,
+                            itemBuilder: (context, index) {
+                              final snapshot = visibleSnapshots[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: MarketSelectableSnapshotCard(
+                                  snapshot: snapshot,
+                                  itemTitle: _itemTitle(snapshot.itemRef),
+                                  selected: selected.contains(snapshot.id),
+                                  onTap: () => _openDetails(context, snapshot),
+                                  onToggleSelection: () => ref.read(marketBulkSelectionProvider.notifier).toggle(snapshot.id),
+                                ),
+                              );
+                            },
                           ),
-                          const SizedBox(height: 12),
-                          ...trends.take(5).map(
-                            (trend) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: MarketTrendCard(
-                                trend: trend,
-                                currency: currency,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                        ],
-                        if (deepTrends.isNotEmpty) ...[
-                          const Text(
-                            'Deep Trends',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ...deepTrends.take(5).map(
-                            (trend) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: MarketTrendDeepCard(model: trend),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                        ],
-                        const Text(
-                          'Snapshots',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (visibleSnapshots.isEmpty)
-                          const Card(
-                            child: Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Text(
-                                'Nothing found for current market filters.',
-                              ),
-                            ),
-                          )
-                        else
-                          ...visibleSnapshots.map(
-                            (snapshot) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: MarketSelectableSnapshotCard(
-                                snapshot: snapshot,
-                                itemTitle: _itemTitle(snapshot.itemRef),
-                                selected: selected.contains(snapshot.id),
-                                onTap: () => _openDetails(context, snapshot),
-                                onToggleSelection: () {
-                                  ref
-                                      .read(marketBulkSelectionProvider.notifier)
-                                      .toggle(snapshot.id);
-                                },
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
                   ),
                 ],
               ),
