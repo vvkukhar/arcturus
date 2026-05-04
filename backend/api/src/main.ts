@@ -7,19 +7,23 @@ async function bootstrap(): Promise<void> {
     cors: false,
   });
 
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+  const corsEnv = process.env.CORS_ORIGINS ?? '';
+  const isWildcard = corsEnv === '*';
+  const allowedOrigins = corsEnv
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
 
   app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
-      callback(new Error('Origin not allowed by CORS'), false);
-    },
+    origin: isWildcard
+      ? true
+      : (origin, callback) => {
+          if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+            callback(null, true);
+            return;
+          }
+          callback(new Error('Origin not allowed by CORS'), false);
+        },
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
   });

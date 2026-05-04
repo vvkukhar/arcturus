@@ -5,9 +5,11 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('arcturus_admin_token')?.value;
   const { pathname } = request.nextUrl;
 
+  // Пропускаємо статику, API та маніфест (вирішує проблему 401 в консолі)
   if (
     pathname.startsWith('/_next') || 
     pathname.startsWith('/api') || 
+    pathname === '/manifest.json' ||
     pathname.match(/\.(.*)$/)
   ) {
     return NextResponse.next();
@@ -30,5 +32,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|images).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icons|images).*)'],
 };

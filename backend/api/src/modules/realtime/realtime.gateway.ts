@@ -7,12 +7,11 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
+const corsEnv = process.env.CORS_ORIGINS ?? '';
+
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') ?? [
-      'http://localhost:3000',
-      'http://localhost:3001',
-    ],
+    origin: corsEnv === '*' ? '*' : corsEnv.split(',').map((o) => o.trim()).filter(Boolean),
     credentials: true,
   },
 })

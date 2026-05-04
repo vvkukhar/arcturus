@@ -10,14 +10,14 @@
       "page": "/",
       "matchers": [
         {
-          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?(?:\\/((?!_next\\/static|_next\\/image|favicon.ico|manifest.json|icons|images).*))(\\.json)?[\\/#\\?]?$",
-          "originalSource": "/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|images).*)"
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?(?:\\/((?!_next\\/static|_next\\/image|favicon.ico|icons|images).*))(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/((?!_next/static|_next/image|favicon.ico|icons|images).*)"
         }
       ],
       "wasm": [],
       "assets": [],
       "env": {
-        "__NEXT_BUILD_ID": "zwvVpvpFonKqG3TkJNbw9",
+        "__NEXT_BUILD_ID": "gj_hlI4hXcYKQH8JfYBtg",
         "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "JLrAEnTye3UbhcgP5le1nL4eNViEqYKNeDeQaeMrcxo=",
         "__NEXT_PREVIEW_MODE_ID": "89556ab757acf80ae4c405e60fb64dab",
         "__NEXT_PREVIEW_MODE_SIGNING_KEY": "fde95186d69cc30b7decb201ccb38aaf2421c882d678840d49047470caa66426",

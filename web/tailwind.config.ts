@@ -1,5 +1,4 @@
 import type { Config } from 'tailwindcss';
-import tailwindcssAnimate from 'tailwindcss-animate';
 
 const config: Config = {
   content: [
@@ -34,7 +33,8 @@ const config: Config = {
       },
     },
   },
-  plugins: [tailwindcssAnimate],
+  // Використовуємо require() замість import для уникнення помилок jiti
+  plugins: [require('tailwindcss-animate')],
 };
 
 export default config;
