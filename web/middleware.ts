@@ -9,7 +9,10 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/_next') || 
     pathname.startsWith('/api') || 
     pathname.startsWith('/icons') ||
-    pathname.includes('.')
+    pathname.startsWith('/images') ||
+    pathname.includes('.') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/manifest.json'
   ) {
     return NextResponse.next();
   }
@@ -29,5 +32,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.json).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|images).*)',
+  ],
 };
