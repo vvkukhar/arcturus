@@ -1,7 +1,7 @@
 {
   "name": "Arcturus Premium LEGO",
   "short_name": "Arcturus",
-  "description": "Exclusive access to rare LEGO sets and minifigures",
+  "description": "Premium LEGO Trading Platform",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
@@ -16,7 +16,8 @@
     {
       "src": "/icons/Icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

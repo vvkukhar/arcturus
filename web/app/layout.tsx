@@ -1,8 +1,12 @@
 import '@/app/globals.css';
 import { ToastProvider } from '@/components/ui/toast-provider';
 import { LiveToasts } from '@/components/admin/live-toasts';
-import { Metadata } from 'next';
+import { Metadata, Viewport } from 'next';
 import { FomoTicker } from '@/components/store/fomo-ticker';
+
+export const viewport: Viewport = {
+  themeColor: '#3b82f6',
+};
 
 export const metadata: Metadata = {
   title: {
@@ -13,15 +17,13 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: '/favicon.ico',
+    apple: '/icons/Icon-192.png',
   },
   openGraph: {
     title: 'Arcturus - Premium LEGO',
     description: 'Ексклюзивний доступ до раритетних наборів LEGO',
     type: 'website',
     siteName: 'Arcturus',
-  },
-  twitter: {
-    card: 'summary_large_image',
   },
 };
 
