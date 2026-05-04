@@ -6,14 +6,13 @@ import 'package:lego_trading_manager/core/network/auth_http_client.dart';
 
 final authTokenProvider = Provider<Future<String?> Function()>((ref) {
   return () async {
-    final prefs = await SharedPreferences.getInstance();
-    final localToken = prefs.getString('auth_token');
-    
-    if (localToken != null && localToken.isNotEmpty) {
-      return localToken;
+    final envToken = dotenv.env['AUTH_TOKEN'];
+    if (envToken != null && envToken.trim().isNotEmpty) {
+      return envToken.trim();
     }
 
-    return dotenv.env['AUTH_TOKEN'];
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token');
   };
 });
 
