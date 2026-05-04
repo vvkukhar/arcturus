@@ -10,6 +10,10 @@ export const metadata: Metadata = {
     default: 'Arcturus - Premium LEGO Trading',
   },
   description: 'Ексклюзивний доступ до раритетних наборів та лімітованих мініфігурок LEGO. Миттєве бронювання та абсолютна гарантія оригінальності.',
+  manifest: '/manifest.json',
+  icons: {
+    icon: '/favicon.ico',
+  },
   openGraph: {
     title: 'Arcturus - Premium LEGO',
     description: 'Ексклюзивний доступ до раритетних наборів LEGO',

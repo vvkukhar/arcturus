@@ -10,9 +10,9 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/api') || 
     pathname.startsWith('/icons') ||
     pathname.startsWith('/images') ||
-    pathname.includes('.') ||
     pathname === '/favicon.ico' ||
-    pathname === '/manifest.json'
+    pathname === '/manifest.json' ||
+    pathname.includes('.')
   ) {
     return NextResponse.next();
   }
