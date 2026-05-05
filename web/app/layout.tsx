@@ -6,11 +6,14 @@ import { I18nProvider } from "@/components/providers/i18n-provider";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { CartSidebar } from "@/components/cart/cart-sidebar";
+import { Ticker } from "@/components/layout/ticker";
+import { CommandMenu } from "@/components/layout/command-menu";
+import { Sidebar } from "@/components/layout/sidebar";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "Arcturus | Premium LEGO Store",
-  description: "Rare and retired LEGO. Verified items, safe shipping.",
+  title: "Arcturus Terminal | Institutional LEGO Trading",
+  description: "Advanced analytics, screening, and trading for premium LEGO assets.",
 };
 
 export default function RootLayout({
@@ -20,16 +23,25 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased min-h-screen flex flex-col">
+      <body className="antialiased min-h-screen flex flex-col bg-[var(--background)]">
         <ThemeProvider>
           <I18nProvider>
             <CartProvider>
-              <Navbar />
+              <div className="sticky top-0 z-50 w-full">
+                <Ticker />
+                <Navbar />
+              </div>
+              <div className="flex flex-1 w-full max-w-[1920px] mx-auto relative">
+                <Sidebar />
+                <div className="flex-1 flex flex-col min-w-0">
+                  <main className="flex-1">
+                    {children}
+                  </main>
+                  <Footer />
+                </div>
+              </div>
+              <CommandMenu />
               <CartSidebar />
-              <main className="flex-1">
-                {children}
-              </main>
-              <Footer />
             </CartProvider>
           </I18nProvider>
         </ThemeProvider>

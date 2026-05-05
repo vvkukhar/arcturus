@@ -1,48 +1,91 @@
 'use client';
 
 import { useI18n } from '@/components/providers/i18n-provider';
-import { User, Package, Heart, Settings } from 'lucide-react';
+import { User, Package, Heart, Settings, TrendingUp, TrendingDown } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+const mockPortfolioData = [
+  { month: 'Jan', value: 45000 },
+  { month: 'Feb', value: 46200 },
+  { month: 'Mar', value: 45800 },
+  { month: 'Apr', value: 48500 },
+  { month: 'May', value: 52400 },
+];
 
 export default function AccountPage() {
   const { t } = useI18n();
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 py-12 md:py-16">
+    <div className="min-h-screen py-12 md:py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-4 mb-10 border-b border-slate-200 dark:border-slate-800 pb-8">
-          <div className="p-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl">
-            <User size={32} />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 border-b border-[var(--border)] pb-8">
+          <div className="flex items-center gap-4">
+            <div className="p-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl shadow-xl">
+              <User size={32} />
+            </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight">{t('account.title')}</h1>
+              <p className="text-slate-500 font-medium mt-1">investor@arcturus.store</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight">{t('account.title')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">user@arcturus.store</p>
+          <div className="bg-[var(--card)] px-6 py-4 rounded-2xl border border-[var(--border)] shadow-sm">
+            <p className="text-sm text-slate-500 font-bold mb-1 uppercase tracking-wider">Portfolio Value</p>
+            <div className="flex items-end gap-3">
+              <span className="text-3xl font-black">52,400 ₴</span>
+              <span className="flex items-center gap-1 text-green-500 font-bold text-sm mb-1">
+                <TrendingUp size={16} /> +16.4%
+              </span>
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-3 space-y-2">
-            <button className="w-full flex items-center gap-3 p-4 bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 rounded-xl font-bold border border-blue-100 dark:border-blue-900 shadow-sm transition-all">
+            <button className="w-full flex items-center gap-3 p-4 bg-[var(--card)] text-blue-600 dark:text-blue-400 rounded-xl font-bold border border-blue-100 dark:border-blue-900 shadow-sm transition-all">
               <Package size={20} /> {t('account.orders')}
             </button>
-            <button className="w-full flex items-center gap-3 p-4 bg-transparent text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white rounded-xl font-bold transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-800">
+            <button className="w-full flex items-center gap-3 p-4 bg-transparent text-slate-600 dark:text-slate-400 hover:bg-[var(--card)] hover:text-[var(--foreground)] rounded-xl font-bold transition-all border border-transparent hover:border-[var(--border)]">
               <Heart size={20} /> {t('account.wishlist')}
             </button>
-            <button className="w-full flex items-center gap-3 p-4 bg-transparent text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white rounded-xl font-bold transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-800">
+            <button className="w-full flex items-center gap-3 p-4 bg-transparent text-slate-600 dark:text-slate-400 hover:bg-[var(--card)] hover:text-[var(--foreground)] rounded-xl font-bold transition-all border border-transparent hover:border-[var(--border)]">
               <Settings size={20} /> {t('account.settings')}
             </button>
           </div>
 
-          <div className="lg:col-span-9">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-              <div className="p-6 md:p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                <h2 className="text-xl font-black text-slate-900 dark:text-white">{t('account.orders')}</h2>
+          <div className="lg:col-span-9 space-y-8">
+            <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden p-6 md:p-8">
+              <h2 className="text-xl font-black mb-6">Asset Growth (YTD)</h2>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={mockPortfolioData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis hide domain={['dataMin - 1000', 'dataMax + 1000']} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
+                      itemStyle={{ color: 'var(--foreground)' }}
+                    />
+                    <Area type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
-              <div className="p-8 md:p-16 flex flex-col items-center justify-center text-center">
-                <div className="w-16 h-16 bg-slate-50 dark:bg-slate-950 rounded-full flex items-center justify-center text-slate-300 dark:text-slate-700 mb-4">
+            </div>
+
+            <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden">
+              <div className="p-6 md:p-8 border-b border-[var(--border)]">
+                <h2 className="text-xl font-black">{t('account.orders')}</h2>
+              </div>
+              <div className="p-8 md:p-12 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4">
                   <Package size={28} />
                 </div>
-                <p className="text-lg font-bold text-slate-900 dark:text-white mb-2">No orders yet</p>
-                <p className="text-slate-500 dark:text-slate-400 font-medium">When you place an order, it will appear here.</p>
+                <p className="text-lg font-bold mb-2">No active positions</p>
+                <p className="text-slate-500 font-medium">Your acquired LEGO sets will appear here as assets.</p>
               </div>
             </div>
           </div>

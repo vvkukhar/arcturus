@@ -23,6 +23,10 @@ export function Navbar() {
     setLang(lang === 'en' ? 'uk' : 'en');
   };
 
+  const dispatchCommand = () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+  };
+
   return (
     <nav className="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/90 dark:bg-slate-950/90 border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -58,6 +62,15 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center gap-1 md:gap-3">
+            <button 
+              onClick={dispatchCommand}
+              className="hidden lg:flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl text-slate-500 transition-colors mr-2 border border-slate-200 dark:border-slate-800"
+            >
+              <Search size={16} />
+              <span className="text-sm font-bold">Search...</span>
+              <span className="text-[10px] font-black bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded shadow-sm">⌘K</span>
+            </button>
+
             <button 
               onClick={toggleLanguage}
               className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-3 md:py-2 text-xs md:text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors uppercase"
@@ -105,25 +118,25 @@ export function Navbar() {
             </button>
           </div>
           <div className="flex flex-col p-4 space-y-2 overflow-y-auto">
-            <Link href="/store/catalog" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
-              <Search size={20} className="text-slate-500" />
+             <button onClick={() => { setIsMobileMenuOpen(false); dispatchCommand(); }} className="w-full flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800">
+              <Search size={20} className="text-blue-600" />
+              Search
+            </button>
+            <Link href="/store/catalog" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-900">
+              <Package size={20} className="text-slate-500" />
               {t('nav.catalog')}
             </Link>
-            <Link href="/authenticity" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+            <Link href="/authenticity" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-900">
               <ShieldCheck size={20} className="text-slate-500" />
               {t('nav.auth')}
             </Link>
-            <Link href="/track" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+            <Link href="/track" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-900">
               <MapPin size={20} className="text-slate-500" />
               {t('nav.track')}
             </Link>
-            <Link href="/account" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+            <Link href="/account" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-900">
               <User size={20} className="text-slate-500" />
               {t('nav.account')}
-            </Link>
-            <Link href="/delivery" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
-              <Package size={20} className="text-slate-500" />
-              {t('nav.delivery')}
             </Link>
           </div>
         </div>
