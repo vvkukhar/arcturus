@@ -23,7 +23,7 @@ export default function StoreHomePage() {
         </div>
       </section>
 
-      <section className="py-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+      <section className="py-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="flex items-center gap-4">
@@ -57,7 +57,7 @@ export default function StoreHomePage() {
         </div>
       </section>
 
-      <section className="py-20 bg-slate-50 dark:bg-slate-900">
+      <section className="py-20 bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-8">Ready to build?</h2>
           <Link href="/store/catalog" className="inline-block px-10 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl transition-transform hover:scale-105 shadow-xl">

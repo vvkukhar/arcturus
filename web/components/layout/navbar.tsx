@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCart } from '../providers/cart-provider';
 import { useTheme } from '../providers/theme-provider';
 import { useI18n } from '../providers/i18n-provider';
-import { ShoppingCart, Menu, Search, Package, Sun, Moon, X, Globe, User, MapPin } from 'lucide-react';
+import { ShoppingCart, Menu, Search, Package, Sun, Moon, X, Globe, User, MapPin, ShieldCheck } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export function Navbar() {
@@ -48,11 +48,11 @@ export function Navbar() {
               <Link href="/store/catalog" className="text-sm lg:text-base font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                 {t('nav.catalog')}
               </Link>
+              <Link href="/authenticity" className="text-sm lg:text-base font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                {t('nav.auth')}
+              </Link>
               <Link href="/track" className="text-sm lg:text-base font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                 {t('nav.track')}
-              </Link>
-              <Link href="/delivery" className="text-sm lg:text-base font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                {t('nav.delivery')}
               </Link>
             </div>
           </div>
@@ -108,6 +108,10 @@ export function Navbar() {
             <Link href="/store/catalog" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
               <Search size={20} className="text-slate-500" />
               {t('nav.catalog')}
+            </Link>
+            <Link href="/authenticity" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+              <ShieldCheck size={20} className="text-slate-500" />
+              {t('nav.auth')}
             </Link>
             <Link href="/track" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
               <MapPin size={20} className="text-slate-500" />

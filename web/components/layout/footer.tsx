@@ -41,17 +41,18 @@ export function Footer() {
             <h3 className="font-bold text-slate-900 dark:text-white mb-4 uppercase text-sm tracking-wider">{t('footer.links')}</h3>
             <ul className="space-y-3">
               <li><Link href="/store/catalog" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('nav.catalog')}</Link></li>
-              <li><Link href="/about" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('nav.about')}</Link></li>
+              <li><Link href="/authenticity" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('nav.auth')}</Link></li>
               <li><Link href="/delivery" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('nav.delivery')}</Link></li>
-              <li><Link href="/faq" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('footer.faq')}</Link></li>
+              <li><Link href="/sell" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('footer.sell')}</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="font-bold text-slate-900 dark:text-white mb-4 uppercase text-sm tracking-wider">{t('footer.contact')}</h3>
             <ul className="space-y-3">
-              <li className="text-sm text-slate-500 dark:text-slate-400">Kyiv, Ukraine</li>
-              <li className="text-sm text-slate-500 dark:text-slate-400">support@arcturus.store</li>
+              <li><Link href="/contact" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('footer.contact')}</Link></li>
+              <li><Link href="/faq" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('footer.faq')}</Link></li>
+              <li className="text-sm text-slate-500 dark:text-slate-400 pt-2">support@arcturus.store</li>
               <li className="text-sm text-slate-500 dark:text-slate-400">+380 (50) 123-45-67</li>
             </ul>
           </div>
