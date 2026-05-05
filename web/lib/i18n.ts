@@ -119,6 +119,12 @@ export const dict = {
     'account.orders': 'Order History',
     'account.wishlist': 'Saved Items',
     'account.settings': 'Settings',
+    'valuation.title': 'Valuation Models',
+    'valuation.subtitle': 'Fair price estimation based on liquidity and box condition.',
+    'historical.title': 'Historical Data',
+    'historical.subtitle': 'Deep pricing history and ROI analysis for retired assets.',
+    'performance.title': 'Portfolio Performance',
+    'performance.subtitle': 'Analyze your collection\'s growth and asset allocation.',
   },
   uk: {
     'nav.catalog': 'Каталог',
@@ -240,6 +246,12 @@ export const dict = {
     'account.orders': 'Історія замовлень',
     'account.wishlist': 'Збережене',
     'account.settings': 'Налаштування',
+    'valuation.title': 'Моделі оцінки',
+    'valuation.subtitle': 'Оцінка справедливої ціни на основі ліквідності та стану коробки.',
+    'historical.title': 'Історичні дані',
+    'historical.subtitle': 'Глибока історія цін та ROI аналіз для раритетних активів.',
+    'performance.title': 'Ефективність портфеля',
+    'performance.subtitle': 'Аналізуйте ріст вашої колекції та розподіл активів.',
   }
 };
 
