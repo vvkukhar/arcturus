@@ -1,139 +1,81 @@
-import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
-import { publicApi } from '@/lib/public-api';
-import { OrderContactForm } from '@/components/store/order-contact-form';
-import { AvailabilityBadge } from '@/components/store/availability-badge';
-import { formatMoney } from '@/lib/format';
-import { ShieldCheck, Truck, RotateCcw } from 'lucide-react';
-import Image from 'next/image';
+import { InventoryItem } from '@/lib/types';
+import { Package, ShieldCheck, CheckCircle2, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { ProductCard } from '@/components/store/product-card';
 
-interface CatalogItemDetail {
-  id: string;
-  titleSnapshot?: string;
-  item?: { title?: string; setNumber?: string; theme?: string };
-  expectedSalePriceManual?: number;
-  totalCost?: number;
-  condition?: string;
-  sealed?: boolean;
-  quantity: number;
-  images?: { isPrimary?: boolean; imageUrl: string }[];
-}
-
-type Props = {
-  params: Promise<{ slug: string }>;
-};
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+async function getItem(id: string): Promise<InventoryItem | null> {
   try {
-    const data = await publicApi.getCatalogItem<CatalogItemDetail>(slug);
-    const title = data.titleSnapshot || data.item?.title || 'LEGO Set';
-    return {
-      title: `${title} | Arcturus Store`,
-      description: `Придбати ${title}. Стан: ${data.condition}. Оригінальне LEGO.`,
-    };
+    const res = await fetch(`${process.env.API_BASE_URL || 'http://localhost:4000/api'}/public/catalog/${id}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return res.json();
   } catch {
-    return { title: 'Not Found | Arcturus Store' };
+    return null;
   }
 }
 
-export default async function ProductDetailPage({ params }: Props) {
-  const { slug } = await params;
-  let product: CatalogItemDetail;
+export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
+  const item = await getItem(resolvedParams.slug);
 
-  try {
-    product = await publicApi.getCatalogItem<CatalogItemDetail>(slug);
-  } catch {
-    notFound();
+  if (!item) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-24 text-center">
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-4">Item not found</h1>
+        <Link href="/store/catalog" className="text-blue-600 hover:underline font-bold">Return to Catalog</Link>
+      </div>
+    );
   }
 
-  const title = product.titleSnapshot || product.item?.title || 'Unknown Product';
-  const price = product.expectedSalePriceManual ?? product.totalCost ?? 0;
-  const isAvailable = product.quantity > 0;
-  
-  const images = Array.isArray(product.images) && product.images.length > 0 
-    ? [...product.images].sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
-    : [];
+  const price = item.expectedSalePriceManual ?? item.totalCost;
+  const imageUrl = item.images?.[0]?.imageUrl;
 
   return (
-    <div className="mx-auto max-w-7xl animate-fade-in-up">
-      <div className="grid gap-12 lg:grid-cols-2">
-        <div className="space-y-4">
-          <div className="relative aspect-square w-full overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-sm">
-            {images.length > 0 ? (
-              <Image
-                src={images[0].imageUrl}
-                alt={title}
-                fill
-                priority
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-400 font-medium">
-                Немає фото
-              </div>
-            )}
-          </div>
-          {images.length > 1 && (
-            <div className="grid grid-cols-4 gap-4">
-              {images.slice(1).map((img, idx) => (
-                <div key={idx} className="relative aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                  <Image src={img.imageUrl} alt="" fill className="object-cover" sizes="25vw" />
-                </div>
-              ))}
-            </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <Link href="/store/catalog" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white mb-8 transition-colors">
+        <ArrowLeft size={16} /> Back to Catalog
+      </Link>
+
+      <div className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col md:flex-row shadow-sm">
+        <div className="w-full md:w-1/2 bg-slate-50 dark:bg-slate-900 p-8 sm:p-12 flex items-center justify-center min-h-[400px]">
+          {imageUrl ? (
+            <img src={imageUrl} alt={item.titleSnapshot} className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
+          ) : (
+            <Package size={80} className="text-slate-300 dark:text-slate-700" />
           )}
         </div>
 
-        <div className="flex flex-col pt-4 lg:pt-8">
-          <div className="mb-4 flex items-center gap-3">
-            <AvailabilityBadge quantity={product.quantity} />
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-600">
-              {product.condition} {product.sealed && '(Sealed)'}
+        <div className="w-full md:w-1/2 p-8 sm:p-12 flex flex-col justify-center">
+          <div className="flex gap-2 mb-4">
+            <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-black uppercase tracking-wider rounded-md">
+              {item.condition}
             </span>
-            {product.item?.theme && (
-              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-600">
-                {product.item.theme}
+            {item.sealed && (
+              <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-400 text-xs font-black uppercase tracking-wider rounded-md">
+                Sealed
               </span>
             )}
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 leading-tight">
-            {title}
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white leading-tight mb-4">
+            {item.titleSnapshot}
           </h1>
+          
+          <div className="text-5xl font-black text-slate-900 dark:text-white mb-8 tracking-tight">
+            {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', maximumFractionDigits: 0 }).format(price)}
+          </div>
 
-          <div className="mt-6 flex items-end gap-4">
-            <div className="text-5xl font-black text-blue-600 tracking-tighter">
-              {formatMoney(price)}
+          <div className="space-y-4 mb-10">
+            <div className="flex items-center gap-3 text-base text-slate-700 dark:text-slate-300 font-medium bg-slate-50 dark:bg-slate-900 p-4 rounded-xl">
+              <CheckCircle2 size={24} className="text-green-500 shrink-0" />
+              <span>In stock. Ships securely within 24 hours.</span>
+            </div>
+            <div className="flex items-center gap-3 text-base text-slate-700 dark:text-slate-300 font-medium bg-slate-50 dark:bg-slate-900 p-4 rounded-xl">
+              <ShieldCheck size={24} className="text-blue-500 shrink-0" />
+              <span>100% Authentic LEGO Guarantee. Checked parts.</span>
             </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 border-y border-slate-200 py-6">
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="h-8 w-8 text-emerald-500" />
-              <div className="text-sm font-semibold text-slate-700">100%<br/>Оригінал</div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Truck className="h-8 w-8 text-blue-500" />
-              <div className="text-sm font-semibold text-slate-700">Надійна<br/>Доставка</div>
-            </div>
-            <div className="flex items-center gap-3">
-              <RotateCcw className="h-8 w-8 text-indigo-500" />
-              <div className="text-sm font-semibold text-slate-700">Огляд при<br/>Отриманні</div>
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <h3 className="mb-4 text-lg font-black text-slate-900">Оформлення замовлення</h3>
-            {isAvailable ? (
-              <OrderContactForm inventoryItemId={product.id} productTitle={title} />
-            ) : (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center text-amber-800 font-semibold">
-                На жаль, цей товар вже продано або зарезервовано іншим клієнтом.
-              </div>
-            )}
-          </div>
+          <ProductCard item={item} />
         </div>
       </div>
     </div>
