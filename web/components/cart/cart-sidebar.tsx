@@ -1,7 +1,7 @@
 'use client';
 
 import { useCart } from '../providers/cart-provider';
-import { X, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, ArrowRight, Package } from 'lucide-react';
 import { useEffect } from 'react';
 
 export function CartSidebar() {
