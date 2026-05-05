@@ -2,7 +2,7 @@
 
 import { ProductCard } from '@/components/store/product-card';
 import { InventoryItem } from '@/lib/types';
-import { PackageSearch, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { PackageSearch, SlidersHorizontal } from 'lucide-react';
 import { useI18n } from '@/components/providers/i18n-provider';
 import { useEffect, useState, useMemo } from 'react';
 
@@ -47,7 +47,7 @@ export default function CatalogPage() {
         <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('catalog.subtitle')}</p>
       </div>
 
-      <div className="bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)] shadow-sm mb-10 flex flex-wrap items-center gap-4">
+      <div className="bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)] shadow-sm mb-10 flex flex-wrap items-center gap-4 transition-colors">
         <div className="flex items-center gap-2 font-bold px-2 border-r border-[var(--border)] pr-6 mr-2">
           <SlidersHorizontal size={18} className="text-blue-600" />
           {t('catalog.filters')}
@@ -57,7 +57,7 @@ export default function CatalogPage() {
           <select 
             value={filterTheme}
             onChange={(e) => setFilterTheme(e.target.value)}
-            className="bg-slate-100 dark:bg-slate-800 border-none text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
+            className="bg-slate-100 dark:bg-slate-800 border-none text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer transition-colors"
           >
             <option value="">{t('catalog.theme')}: {t('catalog.all')}</option>
             <option value="Star Wars">Star Wars</option>
@@ -68,7 +68,7 @@ export default function CatalogPage() {
           <select 
             value={filterCondition}
             onChange={(e) => setFilterCondition(e.target.value)}
-            className="bg-slate-100 dark:bg-slate-800 border-none text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
+            className="bg-slate-100 dark:bg-slate-800 border-none text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer transition-colors"
           >
             <option value="">{t('catalog.condition')}: {t('catalog.all')}</option>
             <option value="NEW">{t('catalog.new')}</option>
@@ -76,24 +76,32 @@ export default function CatalogPage() {
           </select>
         </div>
 
-        {filterTheme || filterCondition ? (
+        {(filterTheme || filterCondition) && (
           <button 
             onClick={() => { setFilterTheme(''); setFilterCondition(''); }}
             className="text-xs font-black text-blue-600 uppercase tracking-widest hover:underline ml-auto pr-4"
           >
             Clear Filters
           </button>
-        ) : null}
+        )}
       </div>
 
       {loading ? (
-        <div className="py-24 flex flex-col items-center gap-4">
-          <Loader2 className="animate-spin text-blue-600" size={40} />
-          <p className="font-bold text-slate-400">Loading Terminal Data...</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="flex flex-col bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden shadow-sm animate-pulse">
+              <div className="aspect-square bg-slate-200 dark:bg-slate-800" />
+              <div className="p-4 sm:p-5 flex flex-col flex-1 gap-3">
+                <div className="h-3 bg-slate-200 dark:bg-slate-800 w-1/4 rounded" />
+                <div className="h-4 bg-slate-200 dark:bg-slate-800 w-3/4 rounded" />
+                <div className="h-6 bg-slate-200 dark:bg-slate-800 w-1/3 rounded mt-auto" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="py-24 flex flex-col items-center justify-center bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm">
-          <div className="h-20 w-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300 dark:text-slate-600 mb-6">
+          <div className="h-20 w-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300 dark:text-slate-600 mb-6 transition-colors">
             <PackageSearch size={32} />
           </div>
           <h3 className="text-xl font-bold">{t('catalog.empty.title')}</h3>

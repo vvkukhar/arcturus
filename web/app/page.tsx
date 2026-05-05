@@ -1,9 +1,14 @@
+'use client';
+
 import Link from 'next/link';
 import { ArrowRight, ShieldCheck, Zap, PackageSearch, Gem } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Magnetic } from '@/components/ui/magnetic';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function HomePage() {
+  const { t } = useI18n();
+
   return (
     <main className="min-h-screen bg-transparent flex flex-col font-sans relative overflow-hidden">
       <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-400/20 blur-[120px] mix-blend-multiply pointer-events-none animate-float" />
@@ -18,10 +23,10 @@ export default function HomePage() {
         </div>
         <nav className="flex gap-6 items-center">
           <Link href="/store/catalog" className="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors">
-            Каталог
+            {t('nav.catalog')}
           </Link>
           <Button href="/store/catalog" className="rounded-full px-6 shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40">
-            Увійти в магазин
+            {t('landing.btn')}
           </Button>
         </nav>
       </header>
@@ -30,25 +35,24 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/50 bg-white/50 backdrop-blur-xl px-5 py-2 text-xs font-black tracking-[0.2em] text-blue-600 uppercase mb-8 shadow-sm animate-fade-in-up">
             <ShieldCheck size={16} />
-            Верифікований Інвентар
+            {t('landing.badge')}
           </div>
           
           <h1 className="text-6xl sm:text-[7rem] font-black tracking-tighter text-slate-900 leading-[1.05] animate-fade-in-up delay-100">
-            Мистецтво <br />
+            {t('landing.title1')} <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
-              LEGO Колекціонування
+              {t('landing.title2')}
             </span>
           </h1>
           
           <p className="mt-8 mx-auto max-w-2xl text-xl sm:text-2xl text-slate-600 leading-relaxed font-medium animate-fade-in-up delay-200">
-            Ексклюзивний доступ до раритетних наборів та лімітованих мініфігурок. 
-            Бездоганний стан, миттєве бронювання, абсолютна гарантія.
+            {t('landing.desc')}
           </p>
           
           <div className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-5 animate-fade-in-up delay-300">
             <Magnetic>
               <Button href="/store/catalog" size="lg" className="w-full sm:w-auto group rounded-[2rem] h-16 px-10 text-lg bg-slate-900 hover:bg-black transition-all">
-                Відкрити колекцію
+                {t('landing.btn')}
                 <ArrowRight className="ml-3 h-6 w-6 transition-transform group-hover:translate-x-2" />
               </Button>
             </Magnetic>
@@ -57,9 +61,9 @@ export default function HomePage() {
 
         <div className="mt-32 max-w-6xl mx-auto grid gap-6 md:grid-cols-3 animate-fade-in-up delay-300">
           {[
-            { icon: ShieldCheck, color: 'blue', title: 'Оригінальність', desc: 'Кожна деталь проходить жорстку автентифікацію. Жодних компромісів щодо якості.' },
-            { icon: PackageSearch, color: 'indigo', title: 'Раритети', desc: 'Доступ до наборів, які неможливо знайти у звичайному роздрібному продажі.' },
-            { icon: Zap, color: 'purple', title: 'Консьєрж-сервіс', desc: 'Миттєвий звʼязок та індивідуальний супровід кожної угоди для наших клієнтів.' }
+            { icon: ShieldCheck, color: 'blue', title: 'landing.feat1.title', desc: 'landing.feat1.desc' },
+            { icon: PackageSearch, color: 'indigo', title: 'landing.feat2.title', desc: 'landing.feat2.desc' },
+            { icon: Zap, color: 'purple', title: 'landing.feat3.title', desc: 'landing.feat3.desc' }
           ].map((feature, i) => {
             const Icon = feature.icon;
             return (
@@ -67,9 +71,9 @@ export default function HomePage() {
                 <div className={`h-14 w-14 rounded-2xl bg-${feature.color}-100 flex items-center justify-center text-${feature.color}-600 mb-6 transition-transform group-hover:scale-110`}>
                   <Icon size={28} strokeWidth={2.5} />
                 </div>
-                <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">{feature.title}</h3>
+                <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">{t(feature.title as any)}</h3>
                 <p className="text-slate-600 leading-relaxed font-medium">
-                  {feature.desc}
+                  {t(feature.desc as any)}
                 </p>
               </div>
             );

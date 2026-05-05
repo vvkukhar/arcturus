@@ -1,22 +1,48 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useI18n } from '@/components/providers/i18n-provider';
-import { User, Package, Heart, Settings, TrendingUp, TrendingDown } from 'lucide-react';
+import { User, Package, Heart, Settings, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-
-const mockPortfolioData = [
-  { month: 'Jan', value: 45000 },
-  { month: 'Feb', value: 46200 },
-  { month: 'Mar', value: 45800 },
-  { month: 'Apr', value: 48500 },
-  { month: 'May', value: 52400 },
-];
+import { apiFetch } from '@/lib/client-api';
+import { formatMoney } from '@/lib/format';
 
 export default function AccountPage() {
   const { t } = useI18n();
+  const [portfolio, setPortfolio] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([
+      apiFetch('/api/portfolio/summary').catch(() => null),
+      apiFetch('/api/profit/monthly').catch(() => []),
+      apiFetch('/api/auth/me').catch(() => null)
+    ]).then(([portfolioData, historyData, userData]) => {
+      if (mounted) {
+        setPortfolio(portfolioData);
+        if (Array.isArray(historyData)) {
+           setHistory(historyData.map((d: any) => ({ month: d.date || d.month, value: d.netProfit || d.revenue || 0 })));
+        }
+        setUser(userData);
+        setLoading(false);
+      }
+    });
+
+    return () => { mounted = false; };
+  }, []);
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
+  }
+
+  const portfolioValue = portfolio?.inventory?.expectedRevenue ?? 0;
+  const realizedProfit = portfolio?.sales?.realizedProfit ?? 0;
 
   return (
-    <div className="min-h-screen py-12 md:py-16">
+    <div className="min-h-screen py-12 md:py-16 animate-fade-in-up">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 border-b border-[var(--border)] pb-8">
           <div className="flex items-center gap-4">
@@ -25,16 +51,18 @@ export default function AccountPage() {
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-black tracking-tight">{t('account.title')}</h1>
-              <p className="text-slate-500 font-medium mt-1">investor@arcturus.store</p>
+              <p className="text-slate-500 font-medium mt-1">{user?.email || 'investor@arcturus.store'}</p>
             </div>
           </div>
           <div className="bg-[var(--card)] px-6 py-4 rounded-2xl border border-[var(--border)] shadow-sm">
-            <p className="text-sm text-slate-500 font-bold mb-1 uppercase tracking-wider">Portfolio Value</p>
+            <p className="text-sm text-slate-500 font-bold mb-1 uppercase tracking-wider">{t('account.portfolioValue')}</p>
             <div className="flex items-end gap-3">
-              <span className="text-3xl font-black">52,400 ₴</span>
-              <span className="flex items-center gap-1 text-green-500 font-bold text-sm mb-1">
-                <TrendingUp size={16} /> +16.4%
-              </span>
+              <span className="text-3xl font-black">{formatMoney(portfolioValue)}</span>
+              {realizedProfit > 0 && (
+                <span className="flex items-center gap-1 text-green-500 font-bold text-sm mb-1">
+                  <TrendingUp size={16} /> Realized: {formatMoney(realizedProfit)}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -54,25 +82,29 @@ export default function AccountPage() {
 
           <div className="lg:col-span-9 space-y-8">
             <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden p-6 md:p-8">
-              <h2 className="text-xl font-black mb-6">Asset Growth (YTD)</h2>
+              <h2 className="text-xl font-black mb-6">{t('account.assetGrowth')}</h2>
               <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={mockPortfolioData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis hide domain={['dataMin - 1000', 'dataMax + 1000']} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
-                      itemStyle={{ color: 'var(--foreground)' }}
-                    />
-                    <Area type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {history.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={history} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis hide domain={['auto', 'auto']} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
+                        itemStyle={{ color: 'var(--foreground)' }}
+                      />
+                      <Area type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-slate-400 font-medium">No historical data available yet.</div>
+                )}
               </div>
             </div>
 
@@ -84,8 +116,8 @@ export default function AccountPage() {
                 <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4">
                   <Package size={28} />
                 </div>
-                <p className="text-lg font-bold mb-2">No active positions</p>
-                <p className="text-slate-500 font-medium">Your acquired LEGO sets will appear here as assets.</p>
+                <p className="text-lg font-bold mb-2">{t('account.noPositions')}</p>
+                <p className="text-slate-500 font-medium">{t('account.noPositionsDesc')}</p>
               </div>
             </div>
           </div>

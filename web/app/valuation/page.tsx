@@ -13,7 +13,7 @@ export default function ValuationPage() {
 
   const handleValuation = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!setId) return;
+    if (!setId.trim()) return;
 
     setLoading(true);
     setTimeout(() => {
@@ -37,7 +37,7 @@ export default function ValuationPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 space-y-6">
-          <form onSubmit={handleValuation} className="bg-[var(--card)] p-6 md:p-8 rounded-3xl border border-[var(--border)] shadow-sm">
+          <form onSubmit={handleValuation} className="bg-[var(--card)] p-6 md:p-8 rounded-3xl border border-[var(--border)] shadow-sm transition-colors">
             <h3 className="text-lg font-black mb-6 flex items-center gap-2">
               <Calculator size={20} className="text-blue-600" />
               Price Estimator
@@ -53,14 +53,14 @@ export default function ValuationPage() {
                     value={setId}
                     onChange={(e) => setSetId(e.target.value)}
                     placeholder="e.g. 75192" 
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl outline-none focus:ring-2 focus:ring-blue-600 font-bold" 
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl outline-none focus:ring-2 focus:ring-blue-600 font-bold transition-shadow" 
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Condition</label>
-                  <select className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl font-bold outline-none cursor-pointer">
+                  <select className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl font-bold outline-none cursor-pointer transition-colors">
                     <option>Sealed (Mint)</option>
                     <option>Sealed (Damaged)</option>
                     <option>Used (Complete)</option>
@@ -68,15 +68,16 @@ export default function ValuationPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Inventory Status</label>
-                  <select className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl font-bold outline-none cursor-pointer">
+                  <select className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl font-bold outline-none cursor-pointer transition-colors">
                     <option>Retired</option>
                     <option>Active Retail</option>
                   </select>
                 </div>
               </div>
               <button 
-                disabled={loading}
-                className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-400 text-white font-black rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
+                type="submit"
+                disabled={loading || !setId.trim()}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-400 dark:disabled:bg-slate-700 text-white font-black rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
               >
                 {loading ? <Loader2 className="animate-spin" size={20} /> : 'Calculate Fair Value'}
               </button>
@@ -107,7 +108,7 @@ export default function ValuationPage() {
             </div>
           </div>
 
-          <div className="bg-[var(--card)] p-6 rounded-3xl border border-[var(--border)] shadow-sm">
+          <div className="bg-[var(--card)] p-6 rounded-3xl border border-[var(--border)] shadow-sm transition-colors">
             <div className="flex items-start gap-3">
               <Info size={20} className="text-blue-600 shrink-0" />
               <p className="text-sm text-slate-500 font-medium leading-relaxed">

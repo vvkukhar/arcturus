@@ -618,6 +618,7 @@ npm run start:dev
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\render.yaml =====
 
+# backend/api/render.yaml
 services:
   - type: web
     name: arcturus-api
@@ -631,6 +632,8 @@ services:
       - key: PORT
         value: 4000
       - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
         sync: false
       - key: SUPABASE_URL
         sync: false
@@ -672,7 +675,6 @@ wait
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\tsconfig.json =====
 
-// backend/api/tsconfig.json
 {
   "compilerOptions": {
     "module": "commonjs",
@@ -684,10 +686,11 @@ wait
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "strict": true,
     "skipLibCheck": true,
+    "moduleResolution": "node",
+    "ignoreDeprecations": "5.0",
     "types": ["node", "jest"]
   },
   "include": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"],
@@ -705,6 +708,7 @@ npm run openapi:export
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\prisma\schema.prisma =====
 
+// backend/api/prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -716,14 +720,13 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?  @unique
-  role      String   @default("operator")
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id                     String            @id @default(cuid())
+  name                   String
+  email                  String?           @unique
+  role                   String            @default("operator")
+  active                 Boolean           @default(true)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
   sessions               UserSession[]
   assignedInventoryItems InventoryItem[]
   assignedWatchlistItems WatchlistItem[]
@@ -742,25 +745,23 @@ model UserSession {
   token     String    @unique
   expiresAt DateTime?
   createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
   @@index([expiresAt])
 }
 
 model Item {
-  id               String   @id @default(cuid())
-  kind             String   @default("set")
-  title            String
-  setNumber        String?
-  theme            String?
-  conditionDefault String?  @default("used")
-  imageUrl         String?
-  notes            String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
+  id                String             @id @default(cuid())
+  kind              String             @default("set")
+  title             String
+  setNumber         String?
+  theme             String?
+  conditionDefault  String?            @default("used")
+  imageUrl          String?
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   inventoryItems    InventoryItem[]
   watchlistItems    WatchlistItem[]
   marketListings    MarketListing[]
@@ -776,14 +777,13 @@ model Item {
 }
 
 model Warehouse {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  address   String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id             String            @id @default(cuid())
+  code           String            @unique
+  name           String
+  address        String?
+  active         Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
   locations      StorageLocation[]
   stockMovements StockMovement[]
 
@@ -791,17 +791,16 @@ model Warehouse {
 }
 
 model StorageLocation {
-  id          String   @id @default(cuid())
-  warehouseId String
-  code        String
-  name        String
-  zone        String?
-  shelf       String?
-  box         String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id             String          @id @default(cuid())
+  warehouseId    String
+  code           String
+  name           String
+  zone           String?
+  shelf          String?
+  box            String?
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   warehouse      Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   inventoryItems InventoryItem[]
 
@@ -810,14 +809,14 @@ model StorageLocation {
 }
 
 model InventoryItem {
-  id                      String   @id @default(cuid())
+  id                      String            @id @default(cuid())
   itemId                  String
   titleSnapshot           String
   purchasePrice           Float
   totalCost               Float
-  quantity                Int      @default(1)
-  condition               String   @default("used")
-  sealed                  Boolean  @default(false)
+  quantity                Int               @default(1)
+  condition               String            @default("used")
+  sealed                  Boolean           @default(false)
   expectedSalePriceManual Float?
   source                  String?
   purchaseUrl             String?
@@ -825,24 +824,23 @@ model InventoryItem {
   storageLocationId       String?
   warehouseId             String?
   notes                   String?
-  priority                Int      @default(50)
+  priority                Int               @default(50)
   assignedUserId          String?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  item            Item              @relation(fields: [itemId], references: [id])
-  assignedUser    User?             @relation(fields: [assignedUserId], references: [id])
-  location        StorageLocation?  @relation(fields: [storageLocationId], references: [id])
-  images          InventoryImage[]
-  sales           Sale[]
-  repriceFlows    RepriceFlowItem[]
-  reviewFlows     ReviewFlowItem[]
-  stockMovements  StockMovement[]
-  reserveRequests ReserveRequest[]
-  orders          Order[]
-  purchaseOrders  PurchaseOrder[]
-  returns         ReturnRequest[]
-  expenses        Expense[]
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  item                    Item              @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  assignedUser            User?             @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  location                StorageLocation?  @relation(fields: [storageLocationId], references: [id], onDelete: SetNull)
+  images                  InventoryImage[]
+  sales                   Sale[]
+  repriceFlows            RepriceFlowItem[]
+  reviewFlows             ReviewFlowItem[]
+  stockMovements          StockMovement[]
+  reserveRequests         ReserveRequest[]
+  orders                  Order[]
+  purchaseOrders          PurchaseOrder[]
+  returns                 ReturnRequest[]
+  expenses                Expense[]
 
   @@index([itemId, quantity])
   @@index([assignedUserId, quantity])
@@ -852,58 +850,55 @@ model InventoryItem {
 }
 
 model StockMovement {
-  id                    String   @id @default(cuid())
+  id                    String         @id @default(cuid())
   inventoryItemId       String
   warehouseId           String?
   fromStorageLocationId String?
   toStorageLocationId   String?
   type                  String
-  quantity              Int      @default(1)
+  quantity              Int            @default(1)
   reason                String?
-  createdAt             DateTime @default(now())
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
-  warehouse     Warehouse?    @relation(fields: [warehouseId], references: [id])
+  createdAt             DateTime       @default(now())
+  inventoryItem         InventoryItem  @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  warehouse             Warehouse?     @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
 
   @@index([inventoryItemId, type])
   @@index([warehouseId, createdAt])
 }
 
 model InventoryImage {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
   imageUrl        String
   altText         String?
-  isPrimary       Boolean  @default(false)
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  isPrimary       Boolean       @default(false)
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([inventoryItemId, sortOrder])
   @@index([inventoryItemId, isPrimary])
 }
 
 model WatchlistItem {
-  id              String   @id @default(cuid())
+  id              String             @id @default(cuid())
   itemId          String
   titleSnapshot   String
   desiredBuyPrice Float
   maxBuyPrice     Float
   targetSellPrice Float?
-  active          Boolean  @default(true)
-  priority        Int      @default(50)
+  active          Boolean            @default(true)
+  priority        Int                @default(50)
   notes           String?
   assignedUserId  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  item          Item               @relation(fields: [itemId], references: [id])
-  assignedUser  User?              @relation(fields: [assignedUserId], references: [id])
-  purchaseFlows PurchaseFlowItem[]
-  deals         Deal[]
-  purchaseOrders PurchaseOrder[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  item            Item               @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  assignedUser    User?              @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  purchaseFlows   PurchaseFlowItem[]
+  deals           Deal[]
+  purchaseOrders  PurchaseOrder[]
 
   @@index([itemId, active])
   @@index([assignedUserId, active])
@@ -912,7 +907,7 @@ model WatchlistItem {
 }
 
 model PurchaseOrder {
-  id              String    @id @default(cuid())
+  id              String         @id @default(cuid())
   itemId          String
   watchlistItemId String?
   inventoryItemId String?
@@ -921,26 +916,25 @@ model PurchaseOrder {
   sourceCode      String?
   supplierName    String?
   sourceUrl       String?
-  status          String    @default("planned")
+  status          String         @default("planned")
   plannedPrice    Float?
   actualPrice     Float?
   shippingPrice   Float?
   totalCost       Float?
   targetSellPrice Float?
-  quantity        Int       @default(1)
-  condition       String    @default("used")
-  sealed          Boolean   @default(false)
+  quantity        Int            @default(1)
+  condition       String         @default("used")
+  sealed          Boolean        @default(false)
   notes           String?
   purchasedAt     DateTime?
   receivedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  item          Item           @relation(fields: [itemId], references: [id])
-  watchlistItem WatchlistItem? @relation(fields: [watchlistItemId], references: [id])
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
-  expenses      Expense[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  item            Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  watchlistItem   WatchlistItem? @relation(fields: [watchlistItemId], references: [id], onDelete: SetNull)
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  assignedUser    User?          @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  expenses        Expense[]
 
   @@index([status, createdAt])
   @@index([itemId, status])
@@ -948,22 +942,21 @@ model PurchaseOrder {
 }
 
 model MarketSource {
-  id        String   @id @default(cuid())
-  code      String   @unique
+  id        String          @id @default(cuid())
+  code      String          @unique
   name      String
-  type      String   @default("manual")
-  enabled   Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  listings MarketListing[]
-  runs     SourceRunLog[]
+  type      String          @default("manual")
+  enabled   Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  listings  MarketListing[]
+  runs      SourceRunLog[]
 
   @@index([enabled, type])
 }
 
 model MarketListing {
-  id                  String   @id
+  id                  String               @id
   sourceId            String
   sourceCode          String
   itemId              String
@@ -976,7 +969,7 @@ model MarketListing {
   sellerName          String?
   sellerRating        Float?
   price               Float
-  currency            String   @default("UAH")
+  currency            String               @default("UAH")
   shippingPrice       Float?
   shippingCurrency    String?
   country             String?
@@ -984,16 +977,16 @@ model MarketListing {
   sealed              Boolean?
   completenessPercent Int?
   quantityAvailable   Int?
-  status              String   @default("active")
-  fetchedAt           DateTime @default(now())
-  firstSeenAt         DateTime @default(now())
-  lastSeenAt          DateTime @default(now())
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  source MarketSource @relation(fields: [sourceId], references: [id])
-  item   Item         @relation(fields: [itemId], references: [id])
-  deals  Deal[]
+  status              String               @default("active")
+  fetchedAt           DateTime             @default(now())
+  firstSeenAt         DateTime             @default(now())
+  lastSeenAt          DateTime             @default(now())
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  source              MarketSource         @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  item                Item                 @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  deals               Deal[]
+  unresolvedMatches   UnresolvedMatchQueue[]
 
   @@index([itemId, status, price])
   @@index([sourceId, status, fetchedAt])
@@ -1017,8 +1010,7 @@ model MarketSnapshot {
   usedAvgPrice            Float?
   confidenceScore         Float    @default(0)
   computedAt              DateTime @default(now())
-
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item                    Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([itemId, computedAt])
 }
@@ -1038,8 +1030,7 @@ model DecisionSnapshot {
   executedAt      DateTime?
   ignoredAt       DateTime?
   createdAt       DateTime  @default(now())
-
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item            Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([contextType, contextId, createdAt])
   @@index([executionStatus, action, score])
@@ -1047,52 +1038,49 @@ model DecisionSnapshot {
 }
 
 model PurchaseFlowItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   watchlistItemId String
   selectedPrice   Float?
-  status          String   @default("pending")
+  status          String        @default("pending")
   reason          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([watchlistItemId, status])
 }
 
 model RepriceFlowItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
   currentPrice    Float?
   suggestedPrice  Float?
-  status          String   @default("pending")
+  status          String        @default("pending")
   reason          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([inventoryItemId, status])
 }
 
 model ReviewFlowItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
-  status          String   @default("pending")
+  status          String        @default("pending")
   reason          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([inventoryItemId, status])
 }
 
 model Deal {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   listingId       String
   watchlistItemId String
   buyPrice        Float
@@ -1101,12 +1089,11 @@ model Deal {
   roiPercent      Float
   action          String
   score           Float
-  status          String   @default("open")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  listing       MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
+  status          String        @default("open")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
   @@index([status, score])
   @@index([action, status])
@@ -1114,10 +1101,10 @@ model Deal {
 }
 
 model Sale {
-  id              String   @id @default(cuid())
+  id              String          @id @default(cuid())
   inventoryItemId String
   itemId          String
-  quantity        Int      @default(1)
+  quantity        Int             @default(1)
   sellPrice       Float
   costBasis       Float
   profit          Float
@@ -1125,89 +1112,85 @@ model Sale {
   channel         String?
   buyerName       String?
   notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  item          Item          @relation(fields: [itemId], references: [id])
-  orders        Order[]
-  returns       ReturnRequest[]
-  expenses      Expense[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  inventoryItem   InventoryItem   @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  item            Item            @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  orders          Order[]
+  returns         ReturnRequest[]
+  expenses        Expense[]
 
   @@index([itemId, createdAt])
   @@index([createdAt])
 }
 
 model Order {
-  id               String   @id @default(cuid())
+  id               String          @id @default(cuid())
   reserveRequestId String?
   inventoryItemId  String?
   saleId           String?
   productTitle     String
   buyerName        String
   contact          String
-  status           String   @default("pending")
+  status           String          @default("pending")
   sellPrice        Float?
-  quantity         Int      @default(1)
+  quantity         Int             @default(1)
   channel          String?
   adminNote        String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  reserveRequest ReserveRequest? @relation(fields: [reserveRequestId], references: [id])
-  inventoryItem  InventoryItem?  @relation(fields: [inventoryItemId], references: [id])
-  sale           Sale?           @relation(fields: [saleId], references: [id])
-  returns        ReturnRequest[]
-  expenses       Expense[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  reserveRequest   ReserveRequest? @relation(fields: [reserveRequestId], references: [id], onDelete: SetNull)
+  inventoryItem    InventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  sale             Sale?           @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  returns          ReturnRequest[]
+  expenses         Expense[]
 
   @@index([status, createdAt])
   @@index([inventoryItemId])
 }
 
 model ReturnRequest {
-  id              String    @id @default(cuid())
+  id              String        @id @default(cuid())
   saleId          String
   orderId         String?
   inventoryItemId String
-  status          String    @default("requested")
+  status          String        @default("requested")
   reason          String?
   refundAmount    Float?
-  restock         Boolean   @default(true)
-  quantity        Int       @default(1)
+  restock         Boolean       @default(true)
+  quantity        Int           @default(1)
   adminNote       String?
   resolvedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  sale          Sale          @relation(fields: [saleId], references: [id])
-  order         Order?        @relation(fields: [orderId], references: [id])
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  sale            Sale          @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  order           Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
 
   @@index([status, createdAt])
   @@index([saleId])
 }
 
 model Expense {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   type            String
   category        String
   amount          Float
-  currency        String   @default("UAH")
+  currency        String         @default("UAH")
   description     String?
   inventoryItemId String?
   purchaseOrderId String?
   saleId          String?
   orderId         String?
   assignedUserId  String?
-  incurredAt      DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
-  sale          Sale?          @relation(fields: [saleId], references: [id])
-  order         Order?         @relation(fields: [orderId], references: [id])
-  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
+  incurredAt      DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  sale            Sale?          @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  order           Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  assignedUser    User?          @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
 
   @@index([category, incurredAt])
   @@index([type, incurredAt])
@@ -1246,27 +1229,25 @@ model AuditLog {
   ipAddress   String?
   userAgent   String?
   createdAt   DateTime @default(now())
-
-  actor User? @relation(fields: [actorUserId], references: [id])
+  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([entityType, entityId, createdAt])
   @@index([action, createdAt])
 }
 
 model ReserveRequest {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   inventoryItemId String?
   productTitle    String
   name            String
   contact         String
   message         String?
-  status          String   @default("pending")
+  status          String         @default("pending")
   adminNote       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  orders        Order[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  orders          Order[]
 
   @@index([status, createdAt])
 }
@@ -1281,8 +1262,7 @@ model Notification {
   payloadJson  Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  targetUser User? @relation(fields: [targetUserId], references: [id])
+  targetUser   User?    @relation(fields: [targetUserId], references: [id], onDelete: SetNull)
 
   @@index([targetUserId, read, createdAt])
 }
@@ -1297,7 +1277,7 @@ model ActivityLog {
 }
 
 model UnresolvedMatchQueue {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   listingId       String
   sourceCode      String
   titleRaw        String
@@ -1305,29 +1285,29 @@ model UnresolvedMatchQueue {
   extractedSetNo  String?
   suggestedItemId String?
   resolvedItemId  String?
-  status          String   @default("pending")
+  status          String        @default("pending")
   resolutionNote  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([sourceCode, status])
 }
 
 model SourceRunLog {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   sourceId      String
-  startedAt     DateTime  @default(now())
+  startedAt     DateTime     @default(now())
   finishedAt    DateTime?
-  status        String    @default("running")
-  itemsSeen     Int       @default(0)
-  itemsMatched  Int       @default(0)
-  itemsInserted Int       @default(0)
-  itemsUpdated  Int       @default(0)
+  status        String       @default("running")
+  itemsSeen     Int          @default(0)
+  itemsMatched  Int          @default(0)
+  itemsInserted Int          @default(0)
+  itemsUpdated  Int          @default(0)
   errorMessage  String?
-  createdAt     DateTime  @default(now())
-
-  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+  source        MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@index([sourceId, startedAt])
 }
@@ -1346,16 +1326,16 @@ model SyncErrorLog {
 }
 
 model ScanJob {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   sourceCode   String
   query        String?
-  status       String    @default("queued")
-  resultCount  Int       @default(0)
+  status       String   @default("queued")
+  resultCount  Int      @default(0)
   errorMessage String?
   startedAt    DateTime?
   finishedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([status, createdAt])
 }
@@ -1375,8 +1355,7 @@ model SoldComp {
   imageUrl        String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  item            Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   @@unique([sourceCode, externalId])
   @@index([sourceCode])
@@ -3671,28 +3650,31 @@ async function bootstrap(): Promise<void> {
     cors: false,
   });
 
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+  const corsEnv = process.env.CORS_ORIGINS ?? '';
+  const isWildcard = corsEnv === '*';
+  const allowedOrigins = corsEnv
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
 
   app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
-
-      callback(new Error('Origin not allowed by CORS'), false);
-    },
+    origin: isWildcard
+      ? true
+      : (origin, callback) => {
+          if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+            callback(null, true);
+            return;
+          }
+          callback(new Error('Origin not allowed by CORS'), false);
+        },
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
   });
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(strictValidationPipe);
 
   const port = Number(process.env.PORT ?? 4000);
-
   await app.listen(port);
 }
 
@@ -7842,12 +7824,8 @@ export class DecisionActionService {
 
   private async getDecision(id: string) {
     const decision = await this.prisma.decisionSnapshot.findUnique({
-      where: {
-        id,
-      },
-      include: {
-        item: true,
-      },
+      where: { id },
+      include: { item: true },
     });
 
     if (!decision) {
@@ -7881,9 +7859,7 @@ export class DecisionActionService {
     }
 
     const updated = await this.prisma.decisionSnapshot.update({
-      where: {
-        id: decision.id,
-      },
+      where: { id: decision.id },
       data: {
         executionStatus: 'executed',
         executedAt: new Date(),
@@ -7899,19 +7875,14 @@ export class DecisionActionService {
     this.realtime.emitCustom('decision.executed', updated);
     this.realtime.emitDashboardRefresh('decision_executed');
 
-    return {
-      decision: updated,
-      result,
-    };
+    return { decision: updated, result };
   }
 
   async ignore(decisionSnapshotId: string, note?: string | null): Promise<unknown> {
     const decision = await this.getDecision(decisionSnapshotId);
 
     const updated = await this.prisma.decisionSnapshot.update({
-      where: {
-        id: decision.id,
-      },
+      where: { id: decision.id },
       data: {
         executionStatus: 'ignored',
         ignoredAt: new Date(),
@@ -7938,9 +7909,7 @@ export class DecisionActionService {
     const decision = await this.getDecision(decisionSnapshotId);
 
     const updated = await this.prisma.decisionSnapshot.update({
-      where: {
-        id: decision.id,
-      },
+      where: { id: decision.id },
       data: {
         executionStatus: 'reviewed',
         executedAt: new Date(),
@@ -7968,13 +7937,8 @@ export class DecisionActionService {
     const payload = (decision.payloadJson as Record<string, any>) ?? {};
 
     const existingWatchlist = await this.prisma.watchlistItem.findFirst({
-      where: {
-        itemId: decision.itemId,
-        active: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      where: { itemId: decision.itemId, active: true },
+      orderBy: { createdAt: 'desc' },
     });
 
     const buyPrice = toMoney(Number(payload.buyPrice ?? payload.totalCost ?? 0));
@@ -8000,17 +7964,10 @@ export class DecisionActionService {
         itemId: decision.itemId,
         watchlistItemId: watchlist.id,
         titleSnapshot: decision.item.title,
-        sourceCode: null,
-        supplierName: null,
-        sourceUrl: null,
         status: decision.action === 'BUY_NOW' ? 'approved' : 'planned',
         plannedPrice: buyPrice > 0 ? buyPrice : null,
-        actualPrice: null,
         shippingPrice: payload.shippingPrice != null ? toMoney(Number(payload.shippingPrice)) : null,
-        totalCost:
-          buyPrice > 0
-            ? toMoney(buyPrice + Number(payload.shippingPrice ?? 0))
-            : null,
+        totalCost: buyPrice > 0 ? toMoney(buyPrice + Number(payload.shippingPrice ?? 0)) : null,
         targetSellPrice: targetSellPrice > 0 ? targetSellPrice : null,
         quantity: 1,
         condition: decision.item.conditionDefault ?? 'used',
@@ -8039,23 +7996,16 @@ export class DecisionActionService {
       },
     });
 
-    return {
-      watchlist,
-      purchaseOrder,
-      purchaseFlow,
-    };
+    return { watchlist, purchaseOrder, purchaseFlow };
   }
 
   async executeInventoryDecision(decisionSnapshotId: string): Promise<unknown> {
     const decision = await this.getDecision(decisionSnapshotId);
     const payload = (decision.payloadJson as Record<string, any>) ?? {};
-
     const inventoryItemId = payload.inventoryItemId ?? decision.contextId;
 
     const inventory = await this.prisma.inventoryItem.findUnique({
-      where: {
-        id: inventoryItemId,
-      },
+      where: { id: inventoryItemId },
     });
 
     if (!inventory) {
@@ -8081,9 +8031,7 @@ export class DecisionActionService {
         },
       });
 
-      return {
-        reviewFlow,
-      };
+      return { reviewFlow };
     }
 
     const suggestedPrice = toMoney(
@@ -8110,27 +8058,16 @@ export class DecisionActionService {
       },
     });
 
-    return {
-      repriceFlow,
-    };
+    return { repriceFlow };
   }
 
   async executeTopPending(limit = 20): Promise<unknown> {
     const decisions = await this.prisma.decisionSnapshot.findMany({
       where: {
         executionStatus: 'pending',
-        action: {
-          in: ['BUY_NOW', 'REPRICE_UP', 'REPRICE_UP_OR_REVIEW', 'SELL_FAST'],
-        },
+        action: { in: ['BUY_NOW', 'REPRICE_UP', 'REPRICE_UP_OR_REVIEW', 'SELL_FAST'] },
       },
-      orderBy: [
-        {
-          score: 'desc',
-        },
-        {
-          createdAt: 'desc',
-        },
-      ],
+      orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
       take: limit,
     });
 
@@ -8139,11 +8076,7 @@ export class DecisionActionService {
     for (const decision of decisions) {
       try {
         const result = await this.execute(decision.id, 'Bulk top pending execution');
-        results.push({
-          id: decision.id,
-          ok: true,
-          result,
-        });
+        results.push({ id: decision.id, ok: true, result });
       } catch (error) {
         results.push({
           id: decision.id,
@@ -8153,10 +8086,7 @@ export class DecisionActionService {
       }
     }
 
-    return {
-      processed: results.length,
-      results,
-    };
+    return { processed: results.length, results };
   }
 }
 
@@ -8283,6 +8213,16 @@ import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { EvaluateBuyDto } from './dto/evaluate-buy.dto';
 import { EvaluateInventoryDto } from './dto/evaluate-inventory.dto';
 
+interface BuyScoreResult {
+  action: string;
+  score: number;
+  confidence: number;
+  reasonPrimary: string;
+  reasonSecondary?: string;
+  expectedProfit: number;
+  roiPercent: number;
+}
+
 @Injectable()
 export class DecisionEngineService {
   constructor(
@@ -8297,15 +8237,7 @@ export class DecisionEngineService {
     shippingPrice: number;
     targetSellPrice: number;
     historicalRoi: number;
-  }): {
-    action: string;
-    score: number;
-    confidence: number;
-    reasonPrimary: string;
-    reasonSecondary?: string;
-    expectedProfit: number;
-    roiPercent: number;
-  } {
+  }): BuyScoreResult {
     const totalCost = toMoney(params.buyPrice + params.shippingPrice);
     const expectedProfit = toMoney(params.targetSellPrice - totalCost);
     const roiPercent = totalCost > 0 ? toMoney((expectedProfit / totalCost) * 100) : 0;
@@ -18240,7 +18172,7 @@ export class UpdateOrderDto {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\src\modules\payments\payments.controller.ts =====
 
-import { Body, Controller, Post, Param } from '@nestjs/common';
+import { Body, Controller, Post, Param, Headers } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 
 @Controller('payments')
@@ -18248,8 +18180,11 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post('webhook')
-  async handleWebhook(@Body() body: any): Promise<{ received: boolean }> {
-    return this.paymentsService.handleWebhook(body);
+  async handleWebhook(
+    @Body() body: any,
+    @Headers('X-Sign') xSign?: string
+  ): Promise<{ received: boolean }> {
+    return this.paymentsService.handleWebhook(body, xSign);
   }
 
   @Post('checkout/:orderId')
@@ -18282,6 +18217,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymentsService {
@@ -18346,10 +18282,48 @@ export class PaymentsService {
     return { url: data.pageUrl };
   }
 
-  async handleWebhook(body: any): Promise<{ received: boolean }> {
-    if (body && body.status === 'success' && body.reference) {
+  verifySignature(pubKeyBase64: string, xSignBase64: string, body: any): boolean {
+    try {
+      const pubKeyBuf = Buffer.from(pubKeyBase64, 'base64');
+      const signatureBuf = Buffer.from(xSignBase64, 'base64');
+      const messageBuf = Buffer.from(JSON.stringify(body), 'utf8');
+
+      const verify = crypto.createVerify('SHA256');
+      verify.update(messageBuf);
+      verify.end();
+
+      const keyObj = crypto.createPublicKey({
+        key: pubKeyBuf,
+        format: 'der',
+        type: 'spki',
+      });
+
+      return verify.verify(keyObj, signatureBuf);
+    } catch {
+      return false;
+    }
+  }
+
+  async handleWebhook(body: any, xSignBase64?: string): Promise<{ received: boolean }> {
+    if (!xSignBase64) {
+      throw new BadRequestException('Missing X-Sign header');
+    }
+
+    const keyRes = await fetch('https://api.monobank.ua/api/merchant/pubkey', {
+      headers: { 'X-Token': this.monoToken },
+    });
+    
+    if (!keyRes.ok) throw new BadRequestException('Failed to fetch Mono pubkey');
+    const { key: pubKeyBase64 } = await keyRes.json();
+
+    if (!this.verifySignature(pubKeyBase64, xSignBase64, body)) {
+      throw new BadRequestException('Invalid signature');
+    }
+
+    if (body.status === 'success' && body.reference) {
       await this.processSuccessfulPayment(body.reference, body.amount);
     }
+
     return { received: true };
   }
 
@@ -21583,12 +21557,11 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
+const corsEnv = process.env.CORS_ORIGINS ?? '';
+
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') ?? [
-      'http://localhost:3000',
-      'http://localhost:3001',
-    ],
+    origin: corsEnv === '*' ? '*' : corsEnv.split(',').map((o) => o.trim()).filter(Boolean),
     credentials: true,
   },
 })
@@ -28461,21 +28434,24 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arcturus?schema=publi
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\tsconfig.json =====
 
 {
- "compilerOptions": {
- "module": "commonjs",
- "target": "es2021",
- "outDir": "./dist",
- "strict": true,
- "moduleResolution": "node",
- "esModuleInterop": true,
- "skipLibCheck": true
- },
- "include": ["src/**/*.ts"],
- "exclude": ["node_modules", "dist"]
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2021",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "ignoreDeprecations": "5.0"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\prisma\schema.prisma =====
 
+// backend/api/prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -28487,14 +28463,13 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?  @unique
-  role      String   @default("operator")
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id                     String            @id @default(cuid())
+  name                   String
+  email                  String?           @unique
+  role                   String            @default("operator")
+  active                 Boolean           @default(true)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
   sessions               UserSession[]
   assignedInventoryItems InventoryItem[]
   assignedWatchlistItems WatchlistItem[]
@@ -28513,25 +28488,23 @@ model UserSession {
   token     String    @unique
   expiresAt DateTime?
   createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
   @@index([expiresAt])
 }
 
 model Item {
-  id               String   @id @default(cuid())
-  kind             String   @default("set")
-  title            String
-  setNumber        String?
-  theme            String?
-  conditionDefault String?  @default("used")
-  imageUrl         String?
-  notes            String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
+  id                String             @id @default(cuid())
+  kind              String             @default("set")
+  title             String
+  setNumber         String?
+  theme             String?
+  conditionDefault  String?            @default("used")
+  imageUrl          String?
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   inventoryItems    InventoryItem[]
   watchlistItems    WatchlistItem[]
   marketListings    MarketListing[]
@@ -28547,14 +28520,13 @@ model Item {
 }
 
 model Warehouse {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  address   String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id             String            @id @default(cuid())
+  code           String            @unique
+  name           String
+  address        String?
+  active         Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
   locations      StorageLocation[]
   stockMovements StockMovement[]
 
@@ -28562,17 +28534,16 @@ model Warehouse {
 }
 
 model StorageLocation {
-  id          String   @id @default(cuid())
-  warehouseId String
-  code        String
-  name        String
-  zone        String?
-  shelf       String?
-  box         String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id             String          @id @default(cuid())
+  warehouseId    String
+  code           String
+  name           String
+  zone           String?
+  shelf          String?
+  box            String?
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   warehouse      Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   inventoryItems InventoryItem[]
 
@@ -28581,14 +28552,14 @@ model StorageLocation {
 }
 
 model InventoryItem {
-  id                      String   @id @default(cuid())
+  id                      String            @id @default(cuid())
   itemId                  String
   titleSnapshot           String
   purchasePrice           Float
   totalCost               Float
-  quantity                Int      @default(1)
-  condition               String   @default("used")
-  sealed                  Boolean  @default(false)
+  quantity                Int               @default(1)
+  condition               String            @default("used")
+  sealed                  Boolean           @default(false)
   expectedSalePriceManual Float?
   source                  String?
   purchaseUrl             String?
@@ -28596,24 +28567,23 @@ model InventoryItem {
   storageLocationId       String?
   warehouseId             String?
   notes                   String?
-  priority                Int      @default(50)
+  priority                Int               @default(50)
   assignedUserId          String?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  item            Item              @relation(fields: [itemId], references: [id])
-  assignedUser    User?             @relation(fields: [assignedUserId], references: [id])
-  location        StorageLocation?  @relation(fields: [storageLocationId], references: [id])
-  images          InventoryImage[]
-  sales           Sale[]
-  repriceFlows    RepriceFlowItem[]
-  reviewFlows     ReviewFlowItem[]
-  stockMovements  StockMovement[]
-  reserveRequests ReserveRequest[]
-  orders          Order[]
-  purchaseOrders  PurchaseOrder[]
-  returns         ReturnRequest[]
-  expenses        Expense[]
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  item                    Item              @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  assignedUser            User?             @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  location                StorageLocation?  @relation(fields: [storageLocationId], references: [id], onDelete: SetNull)
+  images                  InventoryImage[]
+  sales                   Sale[]
+  repriceFlows            RepriceFlowItem[]
+  reviewFlows             ReviewFlowItem[]
+  stockMovements          StockMovement[]
+  reserveRequests         ReserveRequest[]
+  orders                  Order[]
+  purchaseOrders          PurchaseOrder[]
+  returns                 ReturnRequest[]
+  expenses                Expense[]
 
   @@index([itemId, quantity])
   @@index([assignedUserId, quantity])
@@ -28623,58 +28593,55 @@ model InventoryItem {
 }
 
 model StockMovement {
-  id                    String   @id @default(cuid())
+  id                    String         @id @default(cuid())
   inventoryItemId       String
   warehouseId           String?
   fromStorageLocationId String?
   toStorageLocationId   String?
   type                  String
-  quantity              Int      @default(1)
+  quantity              Int            @default(1)
   reason                String?
-  createdAt             DateTime @default(now())
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
-  warehouse     Warehouse?    @relation(fields: [warehouseId], references: [id])
+  createdAt             DateTime       @default(now())
+  inventoryItem         InventoryItem  @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  warehouse             Warehouse?     @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
 
   @@index([inventoryItemId, type])
   @@index([warehouseId, createdAt])
 }
 
 model InventoryImage {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
   imageUrl        String
   altText         String?
-  isPrimary       Boolean  @default(false)
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  isPrimary       Boolean       @default(false)
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([inventoryItemId, sortOrder])
   @@index([inventoryItemId, isPrimary])
 }
 
 model WatchlistItem {
-  id              String   @id @default(cuid())
+  id              String             @id @default(cuid())
   itemId          String
   titleSnapshot   String
   desiredBuyPrice Float
   maxBuyPrice     Float
   targetSellPrice Float?
-  active          Boolean  @default(true)
-  priority        Int      @default(50)
+  active          Boolean            @default(true)
+  priority        Int                @default(50)
   notes           String?
   assignedUserId  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  item          Item               @relation(fields: [itemId], references: [id])
-  assignedUser  User?              @relation(fields: [assignedUserId], references: [id])
-  purchaseFlows PurchaseFlowItem[]
-  deals         Deal[]
-  purchaseOrders PurchaseOrder[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  item            Item               @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  assignedUser    User?              @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  purchaseFlows   PurchaseFlowItem[]
+  deals           Deal[]
+  purchaseOrders  PurchaseOrder[]
 
   @@index([itemId, active])
   @@index([assignedUserId, active])
@@ -28683,7 +28650,7 @@ model WatchlistItem {
 }
 
 model PurchaseOrder {
-  id              String    @id @default(cuid())
+  id              String         @id @default(cuid())
   itemId          String
   watchlistItemId String?
   inventoryItemId String?
@@ -28692,26 +28659,25 @@ model PurchaseOrder {
   sourceCode      String?
   supplierName    String?
   sourceUrl       String?
-  status          String    @default("planned")
+  status          String         @default("planned")
   plannedPrice    Float?
   actualPrice     Float?
   shippingPrice   Float?
   totalCost       Float?
   targetSellPrice Float?
-  quantity        Int       @default(1)
-  condition       String    @default("used")
-  sealed          Boolean   @default(false)
+  quantity        Int            @default(1)
+  condition       String         @default("used")
+  sealed          Boolean        @default(false)
   notes           String?
   purchasedAt     DateTime?
   receivedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  item          Item           @relation(fields: [itemId], references: [id])
-  watchlistItem WatchlistItem? @relation(fields: [watchlistItemId], references: [id])
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
-  expenses      Expense[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  item            Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  watchlistItem   WatchlistItem? @relation(fields: [watchlistItemId], references: [id], onDelete: SetNull)
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  assignedUser    User?          @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  expenses        Expense[]
 
   @@index([status, createdAt])
   @@index([itemId, status])
@@ -28719,22 +28685,21 @@ model PurchaseOrder {
 }
 
 model MarketSource {
-  id        String   @id @default(cuid())
-  code      String   @unique
+  id        String          @id @default(cuid())
+  code      String          @unique
   name      String
-  type      String   @default("manual")
-  enabled   Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  listings MarketListing[]
-  runs     SourceRunLog[]
+  type      String          @default("manual")
+  enabled   Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  listings  MarketListing[]
+  runs      SourceRunLog[]
 
   @@index([enabled, type])
 }
 
 model MarketListing {
-  id                  String   @id
+  id                  String               @id
   sourceId            String
   sourceCode          String
   itemId              String
@@ -28747,7 +28712,7 @@ model MarketListing {
   sellerName          String?
   sellerRating        Float?
   price               Float
-  currency            String   @default("UAH")
+  currency            String               @default("UAH")
   shippingPrice       Float?
   shippingCurrency    String?
   country             String?
@@ -28755,16 +28720,16 @@ model MarketListing {
   sealed              Boolean?
   completenessPercent Int?
   quantityAvailable   Int?
-  status              String   @default("active")
-  fetchedAt           DateTime @default(now())
-  firstSeenAt         DateTime @default(now())
-  lastSeenAt          DateTime @default(now())
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  source MarketSource @relation(fields: [sourceId], references: [id])
-  item   Item         @relation(fields: [itemId], references: [id])
-  deals  Deal[]
+  status              String               @default("active")
+  fetchedAt           DateTime             @default(now())
+  firstSeenAt         DateTime             @default(now())
+  lastSeenAt          DateTime             @default(now())
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  source              MarketSource         @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  item                Item                 @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  deals               Deal[]
+  unresolvedMatches   UnresolvedMatchQueue[]
 
   @@index([itemId, status, price])
   @@index([sourceId, status, fetchedAt])
@@ -28788,8 +28753,7 @@ model MarketSnapshot {
   usedAvgPrice            Float?
   confidenceScore         Float    @default(0)
   computedAt              DateTime @default(now())
-
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item                    Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([itemId, computedAt])
 }
@@ -28809,8 +28773,7 @@ model DecisionSnapshot {
   executedAt      DateTime?
   ignoredAt       DateTime?
   createdAt       DateTime  @default(now())
-
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item            Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([contextType, contextId, createdAt])
   @@index([executionStatus, action, score])
@@ -28818,52 +28781,49 @@ model DecisionSnapshot {
 }
 
 model PurchaseFlowItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   watchlistItemId String
   selectedPrice   Float?
-  status          String   @default("pending")
+  status          String        @default("pending")
   reason          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([watchlistItemId, status])
 }
 
 model RepriceFlowItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
   currentPrice    Float?
   suggestedPrice  Float?
-  status          String   @default("pending")
+  status          String        @default("pending")
   reason          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([inventoryItemId, status])
 }
 
 model ReviewFlowItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
-  status          String   @default("pending")
+  status          String        @default("pending")
   reason          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([inventoryItemId, status])
 }
 
 model Deal {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   listingId       String
   watchlistItemId String
   buyPrice        Float
@@ -28872,12 +28832,11 @@ model Deal {
   roiPercent      Float
   action          String
   score           Float
-  status          String   @default("open")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  listing       MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
+  status          String        @default("open")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
   @@index([status, score])
   @@index([action, status])
@@ -28885,10 +28844,10 @@ model Deal {
 }
 
 model Sale {
-  id              String   @id @default(cuid())
+  id              String          @id @default(cuid())
   inventoryItemId String
   itemId          String
-  quantity        Int      @default(1)
+  quantity        Int             @default(1)
   sellPrice       Float
   costBasis       Float
   profit          Float
@@ -28896,89 +28855,85 @@ model Sale {
   channel         String?
   buyerName       String?
   notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  item          Item          @relation(fields: [itemId], references: [id])
-  orders        Order[]
-  returns       ReturnRequest[]
-  expenses      Expense[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  inventoryItem   InventoryItem   @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  item            Item            @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  orders          Order[]
+  returns         ReturnRequest[]
+  expenses        Expense[]
 
   @@index([itemId, createdAt])
   @@index([createdAt])
 }
 
 model Order {
-  id               String   @id @default(cuid())
+  id               String          @id @default(cuid())
   reserveRequestId String?
   inventoryItemId  String?
   saleId           String?
   productTitle     String
   buyerName        String
   contact          String
-  status           String   @default("pending")
+  status           String          @default("pending")
   sellPrice        Float?
-  quantity         Int      @default(1)
+  quantity         Int             @default(1)
   channel          String?
   adminNote        String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  reserveRequest ReserveRequest? @relation(fields: [reserveRequestId], references: [id])
-  inventoryItem  InventoryItem?  @relation(fields: [inventoryItemId], references: [id])
-  sale           Sale?           @relation(fields: [saleId], references: [id])
-  returns        ReturnRequest[]
-  expenses       Expense[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  reserveRequest   ReserveRequest? @relation(fields: [reserveRequestId], references: [id], onDelete: SetNull)
+  inventoryItem    InventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  sale             Sale?           @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  returns          ReturnRequest[]
+  expenses         Expense[]
 
   @@index([status, createdAt])
   @@index([inventoryItemId])
 }
 
 model ReturnRequest {
-  id              String    @id @default(cuid())
+  id              String        @id @default(cuid())
   saleId          String
   orderId         String?
   inventoryItemId String
-  status          String    @default("requested")
+  status          String        @default("requested")
   reason          String?
   refundAmount    Float?
-  restock         Boolean   @default(true)
-  quantity        Int       @default(1)
+  restock         Boolean       @default(true)
+  quantity        Int           @default(1)
   adminNote       String?
   resolvedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  sale          Sale          @relation(fields: [saleId], references: [id])
-  order         Order?        @relation(fields: [orderId], references: [id])
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  sale            Sale          @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  order           Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
 
   @@index([status, createdAt])
   @@index([saleId])
 }
 
 model Expense {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   type            String
   category        String
   amount          Float
-  currency        String   @default("UAH")
+  currency        String         @default("UAH")
   description     String?
   inventoryItemId String?
   purchaseOrderId String?
   saleId          String?
   orderId         String?
   assignedUserId  String?
-  incurredAt      DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
-  sale          Sale?          @relation(fields: [saleId], references: [id])
-  order         Order?         @relation(fields: [orderId], references: [id])
-  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
+  incurredAt      DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  sale            Sale?          @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  order           Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  assignedUser    User?          @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
 
   @@index([category, incurredAt])
   @@index([type, incurredAt])
@@ -29017,27 +28972,25 @@ model AuditLog {
   ipAddress   String?
   userAgent   String?
   createdAt   DateTime @default(now())
-
-  actor User? @relation(fields: [actorUserId], references: [id])
+  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([entityType, entityId, createdAt])
   @@index([action, createdAt])
 }
 
 model ReserveRequest {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   inventoryItemId String?
   productTitle    String
   name            String
   contact         String
   message         String?
-  status          String   @default("pending")
+  status          String         @default("pending")
   adminNote       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  orders        Order[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  orders          Order[]
 
   @@index([status, createdAt])
 }
@@ -29052,8 +29005,7 @@ model Notification {
   payloadJson  Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  targetUser User? @relation(fields: [targetUserId], references: [id])
+  targetUser   User?    @relation(fields: [targetUserId], references: [id], onDelete: SetNull)
 
   @@index([targetUserId, read, createdAt])
 }
@@ -29068,7 +29020,7 @@ model ActivityLog {
 }
 
 model UnresolvedMatchQueue {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   listingId       String
   sourceCode      String
   titleRaw        String
@@ -29076,29 +29028,29 @@ model UnresolvedMatchQueue {
   extractedSetNo  String?
   suggestedItemId String?
   resolvedItemId  String?
-  status          String   @default("pending")
+  status          String        @default("pending")
   resolutionNote  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([sourceCode, status])
 }
 
 model SourceRunLog {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   sourceId      String
-  startedAt     DateTime  @default(now())
+  startedAt     DateTime     @default(now())
   finishedAt    DateTime?
-  status        String    @default("running")
-  itemsSeen     Int       @default(0)
-  itemsMatched  Int       @default(0)
-  itemsInserted Int       @default(0)
-  itemsUpdated  Int       @default(0)
+  status        String       @default("running")
+  itemsSeen     Int          @default(0)
+  itemsMatched  Int          @default(0)
+  itemsInserted Int          @default(0)
+  itemsUpdated  Int          @default(0)
   errorMessage  String?
-  createdAt     DateTime  @default(now())
-
-  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+  source        MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@index([sourceId, startedAt])
 }
@@ -29117,16 +29069,16 @@ model SyncErrorLog {
 }
 
 model ScanJob {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   sourceCode   String
   query        String?
-  status       String    @default("queued")
-  resultCount  Int       @default(0)
+  status       String   @default("queued")
+  resultCount  Int      @default(0)
   errorMessage String?
   startedAt    DateTime?
   finishedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([status, createdAt])
 }
@@ -29146,8 +29098,7 @@ model SoldComp {
   imageUrl        String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  item            Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   @@unique([sourceCode, externalId])
   @@index([sourceCode])
@@ -29163,6 +29114,9 @@ import 'dotenv/config';
 import { prisma } from './prisma';
 import { runBrickLinkSource } from './sources/bricklink/bricklink-source';
 import { runOlxSource } from './sources/olx/olx-source';
+import { runEbaySource } from './sources/ebay/ebay-source';
+import { runBrickowlSource } from './sources/brickowl/brickowl-source';
+import { runBrickeconomySource } from './sources/brickeconomy/brickeconomy-source';
 
 async function main(): Promise<void> {
   const mode = process.argv[2] ?? 'all';
@@ -29171,9 +29125,18 @@ async function main(): Promise<void> {
     await runOlxSource();
   } else if (mode === 'bricklink') {
     await runBrickLinkSource();
+  } else if (mode === 'ebay') {
+    await runEbaySource();
+  } else if (mode === 'brickowl') {
+    await runBrickowlSource();
+  } else if (mode === 'brickeconomy') {
+    await runBrickeconomySource();
   } else {
     await runOlxSource();
     await runBrickLinkSource();
+    await runEbaySource();
+    await runBrickowlSource();
+    await runBrickeconomySource();
   }
 
   await prisma.$disconnect();
@@ -29202,6 +29165,9 @@ import 'dotenv/config';
 import { prisma } from './prisma';
 import { runBrickLinkSource } from './sources/bricklink/bricklink-source';
 import { runOlxSource } from './sources/olx/olx-source';
+import { runEbaySource } from './sources/ebay/ebay-source';
+import { runBrickowlSource } from './sources/brickowl/brickowl-source';
+import { runBrickeconomySource } from './sources/brickeconomy/brickeconomy-source';
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -29210,6 +29176,9 @@ async function sleep(ms: number): Promise<void> {
 async function runAll(): Promise<void> {
   await runOlxSource();
   await runBrickLinkSource();
+  await runEbaySource();
+  await runBrickowlSource();
+  await runBrickeconomySource();
 }
 
 async function main(): Promise<void> {
@@ -29346,12 +29315,12 @@ export async function getOrCreatePlaceholderItemId(): Promise<string> {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\common\shipping-estimator.ts =====
 
 export function estimateUaShippingBySource(params: {
-  source: string;
+  sourceCode: string;
   itemPrice?: number | null;
   currency?: string | null;
   sealed?: boolean | null;
 }): number {
-  const source = params.source.toLowerCase();
+  const source = params.sourceCode.toLowerCase();
   const price = params.itemPrice ?? 0;
 
   if (source === 'olx') {
@@ -29523,6 +29492,179 @@ export async function enqueueUnresolvedMatch(params: {
   });
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\sources\brickeconomy\brickeconomy-parser.ts =====
+
+import * as cheerio from 'cheerio';
+import { BrickeconomyParsedListing } from './brickeconomy-types';
+
+function parsePrice(raw: string): { amount: number; currency: string } | null {
+  const normalized = raw.replace(/\s+/g, ' ').trim();
+  if (!normalized) return null;
+  const digits = normalized.replace(/[^\d.,]/g, '').replace(/\s/g, '').replace(',', '.');
+  const amount = Number(digits);
+  if (Number.isNaN(amount) || amount <= 0) return null;
+  const currency = normalized.includes('в‚¬') ? 'EUR' : normalized.includes('ВЈ') ? 'GBP' : 'USD';
+  return { amount, currency };
+}
+
+export function parseBrickeconomySearchHtml(html: string): BrickeconomyParsedListing[] {
+  const $ = cheerio.load(html);
+  const result: BrickeconomyParsedListing[] = [];
+  const seen = new Set<string>();
+
+  $('.searchlist-item').each((_, element) => {
+    const titleElement = $(element).find('h4 a');
+    const title = titleElement.text().replace(/\s+/g, ' ').trim();
+    const href = titleElement.attr('href')?.trim() ?? '';
+    if (!title || !href) return;
+
+    const externalListingId = href.split('/').pop() ?? href;
+    const priceText = $(element).find('.val-current').text();
+    const priceParsed = parsePrice(priceText);
+    if (!priceParsed) return;
+
+    const url = `https://www.brickeconomy.com${href}`;
+    if (seen.has(url)) return;
+    seen.add(url);
+
+    result.push({
+      externalListingId,
+      titleRaw: title,
+      url,
+      imageUrl: null,
+      price: priceParsed.amount,
+      currency: priceParsed.currency,
+    });
+  });
+
+  return result;
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\sources\brickeconomy\brickeconomy-source.ts =====
+
+import axios from 'axios';
+import { resolveItemIdFromTitle } from '../../common/item-matcher';
+import { stableListingId } from '../../common/listing-id';
+import { logSourceError } from '../../common/source-error-logger';
+import { finishSourceRun, startSourceRun } from '../../common/source-run-logger';
+import { enqueueUnresolvedMatch } from '../../common/unresolved-match-handler';
+import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
+import { prisma } from '../../prisma';
+import { parseBrickeconomySearchHtml } from './brickeconomy-parser';
+
+const searchQueries = ['70621', '75301', '71700'];
+
+export async function runBrickeconomySource(): Promise<void> {
+  let source = await prisma.marketSource.findUnique({ where: { code: 'brickeconomy' } });
+
+  if (!source) {
+    source = await prisma.marketSource.create({
+      data: { code: 'brickeconomy', name: 'BrickEconomy', type: 'analytics', enabled: true },
+    });
+  }
+
+  if (!source.enabled) return;
+
+  const runId = await startSourceRun('brickeconomy');
+
+  let itemsSeen = 0;
+  let itemsMatched = 0;
+  let itemsInserted = 0;
+  let itemsUpdated = 0;
+
+  try {
+    for (const query of searchQueries) {
+      const url = `https://www.brickeconomy.com/search?query=${encodeURIComponent(query)}`;
+
+      const response = await axios.get<string>(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          Accept: 'text/html',
+        },
+        timeout: 15000,
+      });
+
+      const listings = parseBrickeconomySearchHtml(response.data);
+
+      for (const listing of listings) {
+        itemsSeen += 1;
+
+        const resolvedItemId = await resolveItemIdFromTitle(listing.titleRaw);
+        const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
+        const listingId = stableListingId('brickeconomy', listing.externalListingId);
+        const now = new Date();
+
+        const existing = await prisma.marketListing.findUnique({ where: { id: listingId } });
+
+        const upserted = await prisma.marketListing.upsert({
+          where: { id: listingId },
+          update: {
+            sourceCode: source.code,
+            itemId,
+            externalListingId: listing.externalListingId,
+            externalId: listing.externalListingId,
+            titleRaw: listing.titleRaw,
+            title: listing.titleRaw,
+            url: listing.url,
+            price: listing.price,
+            currency: listing.currency,
+            status: 'active',
+            fetchedAt: now,
+            lastSeenAt: now,
+          },
+          create: {
+            id: listingId,
+            sourceId: source.id,
+            sourceCode: source.code,
+            itemId,
+            externalListingId: listing.externalListingId,
+            externalId: listing.externalListingId,
+            titleRaw: listing.titleRaw,
+            title: listing.titleRaw,
+            url: listing.url,
+            price: listing.price,
+            currency: listing.currency,
+            status: 'active',
+            fetchedAt: now,
+            firstSeenAt: now,
+            lastSeenAt: now,
+          },
+        });
+
+        if (resolvedItemId == null) {
+          await enqueueUnresolvedMatch({
+            listingId: upserted.id,
+            sourceCode: 'brickeconomy',
+            titleRaw: listing.titleRaw,
+          });
+        } else {
+          itemsMatched += 1;
+        }
+
+        if (existing == null) itemsInserted += 1;
+        else itemsUpdated += 1;
+      }
+    }
+
+    await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await logSourceError({ scope: 'scraper', sourceCode: 'brickeconomy', message: 'Brickeconomy source failed', detailsJson: { error: message } });
+    await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\sources\brickeconomy\brickeconomy-types.ts =====
+
+export type BrickeconomyParsedListing = {
+  externalListingId: string;
+  titleRaw: string;
+  url: string;
+  imageUrl: string | null;
+  price: number;
+  currency: string;
+};
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\sources\bricklink\bricklink-parser.ts =====
 
 import * as cheerio from 'cheerio';
@@ -29656,9 +29798,7 @@ const searchQueries = [
 
 export async function runBrickLinkSource(): Promise<void> {
   const source = await prisma.marketSource.findUnique({
-    where: {
-      code: 'bricklink',
-    },
+    where: { code: 'bricklink' },
   });
 
   if (!source || !source.enabled) {
@@ -29678,10 +29818,8 @@ export async function runBrickLinkSource(): Promise<void> {
 
       const response = await axios.get<string>(url, {
         headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
-          Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         },
         timeout: 15000,
       });
@@ -29697,27 +29835,22 @@ export async function runBrickLinkSource(): Promise<void> {
         const now = new Date();
 
         const existing = await prisma.marketListing.findUnique({
-          where: {
-            id: listingId,
-          },
+          where: { id: listingId },
         });
 
         const shippingPrice =
           listing.shippingPrice ??
           estimateUaShippingBySource({
-            source: 'bricklink',
+            sourceCode: 'bricklink',
             itemPrice: listing.price,
             currency: listing.currency,
             sealed: listing.sealed,
           });
 
-        const shippingCurrency =
-          listing.shippingCurrency ?? listing.currency ?? 'USD';
+        const shippingCurrency = listing.shippingCurrency ?? listing.currency ?? 'USD';
 
         const upserted = await prisma.marketListing.upsert({
-          where: {
-            id: listingId,
-          },
+          where: { id: listingId },
           update: {
             sourceCode: source.code,
             itemId,
@@ -29804,9 +29937,7 @@ export async function runBrickLinkSource(): Promise<void> {
       scope: 'scraper',
       sourceCode: 'bricklink',
       message: 'BrickLink source failed',
-      detailsJson: {
-        error: message,
-      },
+      detailsJson: { error: message },
     });
 
     await finishSourceRun({
@@ -29826,6 +29957,463 @@ export async function runBrickLinkSource(): Promise<void> {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\sources\bricklink\bricklink-types.ts =====
 
 export type BrickLinkParsedListing = {
+  externalListingId: string;
+  titleRaw: string;
+  url: string;
+  imageUrl: string | null;
+  sellerName: string | null;
+  sellerRating: number | null;
+  price: number;
+  currency: string;
+  shippingPrice: number | null;
+  shippingCurrency: string | null;
+  country: string;
+  condition: string | null;
+  sealed: boolean | null;
+  completenessPercent: number | null;
+  quantityAvailable: number | null;
+};
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\sources\brickowl\brickowl-parser.ts =====
+
+import * as cheerio from 'cheerio';
+import { BrickowlParsedListing } from './brickowl-types';
+
+function parsePrice(raw: string): { amount: number; currency: string } | null {
+  const normalized = raw.replace(/\s+/g, ' ').trim();
+  if (!normalized) return null;
+  const digits = normalized.replace(/[^\d.,]/g, '').replace(/\s/g, '').replace(',', '.');
+  const amount = Number(digits);
+  if (Number.isNaN(amount) || amount <= 0) return null;
+  const currency = normalized.includes('в‚¬') ? 'EUR' : normalized.includes('ВЈ') ? 'GBP' : 'USD';
+  return { amount, currency };
+}
+
+export function parseBrickowlSearchHtml(html: string): BrickowlParsedListing[] {
+  const $ = cheerio.load(html);
+  const result: BrickowlParsedListing[] = [];
+  const seen = new Set<string>();
+
+  $('.ws_item').each((_, element) => {
+    const titleElement = $(element).find('.name a');
+    const title = titleElement.text().replace(/\s+/g, ' ').trim();
+    const href = titleElement.attr('href')?.trim() ?? '';
+    if (!title || !href) return;
+
+    const externalListingId = href.split('/').pop() ?? href;
+    const priceText = $(element).find('.price').text();
+    const priceParsed = parsePrice(priceText);
+    if (!priceParsed) return;
+
+    const url = `https://www.brickowl.com${href}`;
+    if (seen.has(url)) return;
+    seen.add(url);
+
+    const imageUrl = $(element).find('.image img').attr('src') ?? null;
+    const isNew = title.toLowerCase().includes('new');
+
+    result.push({
+      externalListingId,
+      titleRaw: title,
+      url,
+      imageUrl,
+      sellerName: null,
+      sellerRating: null,
+      price: priceParsed.amount,
+      currency: priceParsed.currency,
+      shippingPrice: null,
+      shippingCurrency: null,
+      country: 'EU',
+      condition: isNew ? 'new' : 'used',
+      sealed: isNew,
+      completenessPercent: isNew ? 100 : null,
+      quantityAvailable: 1,
+    });
+  });
+
+  return result;
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\sources\brickowl\brickowl-source.ts =====
+
+import axios from 'axios';
+import { estimateUaShippingBySource } from '../../common/shipping-estimator';
+import { resolveItemIdFromTitle } from '../../common/item-matcher';
+import { stableListingId } from '../../common/listing-id';
+import { logSourceError } from '../../common/source-error-logger';
+import { finishSourceRun, startSourceRun } from '../../common/source-run-logger';
+import { enqueueUnresolvedMatch } from '../../common/unresolved-match-handler';
+import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
+import { prisma } from '../../prisma';
+import { parseBrickowlSearchHtml } from './brickowl-parser';
+
+const searchQueries = ['70621', '75301', '71700'];
+
+export async function runBrickowlSource(): Promise<void> {
+  let source = await prisma.marketSource.findUnique({ where: { code: 'brickowl' } });
+
+  if (!source) {
+    source = await prisma.marketSource.create({
+      data: { code: 'brickowl', name: 'BrickOwl', type: 'marketplace', enabled: true },
+    });
+  }
+
+  if (!source.enabled) return;
+
+  const runId = await startSourceRun('brickowl');
+
+  let itemsSeen = 0;
+  let itemsMatched = 0;
+  let itemsInserted = 0;
+  let itemsUpdated = 0;
+
+  try {
+    for (const query of searchQueries) {
+      const url = `https://www.brickowl.com/search/catalog?query=${encodeURIComponent(query)}`;
+
+      const response = await axios.get<string>(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          Accept: 'text/html',
+        },
+        timeout: 15000,
+      });
+
+      const listings = parseBrickowlSearchHtml(response.data);
+
+      for (const listing of listings) {
+        itemsSeen += 1;
+
+        const resolvedItemId = await resolveItemIdFromTitle(listing.titleRaw);
+        const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
+        const listingId = stableListingId('brickowl', listing.externalListingId);
+        const now = new Date();
+
+        const existing = await prisma.marketListing.findUnique({ where: { id: listingId } });
+
+        const shippingPrice = listing.shippingPrice ?? estimateUaShippingBySource({
+          sourceCode: 'brickowl',
+          itemPrice: listing.price,
+          currency: listing.currency,
+          sealed: listing.sealed,
+        });
+
+        const upserted = await prisma.marketListing.upsert({
+          where: { id: listingId },
+          update: {
+            sourceCode: source.code,
+            itemId,
+            externalListingId: listing.externalListingId,
+            externalId: listing.externalListingId,
+            titleRaw: listing.titleRaw,
+            title: listing.titleRaw,
+            url: listing.url,
+            imageUrl: listing.imageUrl,
+            price: listing.price,
+            currency: listing.currency,
+            shippingPrice,
+            shippingCurrency: listing.currency,
+            status: 'active',
+            fetchedAt: now,
+            lastSeenAt: now,
+          },
+          create: {
+            id: listingId,
+            sourceId: source.id,
+            sourceCode: source.code,
+            itemId,
+            externalListingId: listing.externalListingId,
+            externalId: listing.externalListingId,
+            titleRaw: listing.titleRaw,
+            title: listing.titleRaw,
+            url: listing.url,
+            imageUrl: listing.imageUrl,
+            price: listing.price,
+            currency: listing.currency,
+            shippingPrice,
+            shippingCurrency: listing.currency,
+            status: 'active',
+            fetchedAt: now,
+            firstSeenAt: now,
+            lastSeenAt: now,
+          },
+        });
+
+        if (resolvedItemId == null) {
+          await enqueueUnresolvedMatch({
+            listingId: upserted.id,
+            sourceCode: 'brickowl',
+            titleRaw: listing.titleRaw,
+          });
+        } else {
+          itemsMatched += 1;
+        }
+
+        if (existing == null) itemsInserted += 1;
+        else itemsUpdated += 1;
+      }
+    }
+
+    await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await logSourceError({ scope: 'scraper', sourceCode: 'brickowl', message: 'BrickOwl source failed', detailsJson: { error: message } });
+    await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\sources\brickowl\brickowl-types.ts =====
+
+export type BrickowlParsedListing = {
+  externalListingId: string;
+  titleRaw: string;
+  url: string;
+  imageUrl: string | null;
+  sellerName: string | null;
+  sellerRating: number | null;
+  price: number;
+  currency: string;
+  shippingPrice: number | null;
+  shippingCurrency: string | null;
+  country: string;
+  condition: string | null;
+  sealed: boolean | null;
+  completenessPercent: number | null;
+  quantityAvailable: number | null;
+};
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\sources\ebay\ebay-parser.ts =====
+
+import * as cheerio from 'cheerio';
+import { EbayParsedListing } from './ebay-types';
+
+function parsePrice(raw: string): { amount: number; currency: string } | null {
+  const normalized = raw.replace(/\s+/g, ' ').trim();
+  if (!normalized) return null;
+
+  const digits = normalized.replace(/[^\d.,]/g, '').replace(/\s/g, '').replace(',', '.');
+  const amount = Number(digits);
+
+  if (Number.isNaN(amount) || amount <= 0) return null;
+
+  const currency = normalized.includes('ВЈ') ? 'GBP' : normalized.includes('в‚¬') ? 'EUR' : 'USD';
+
+  return { amount, currency };
+}
+
+export function parseEbaySearchHtml(html: string): EbayParsedListing[] {
+  const $ = cheerio.load(html);
+  const result: EbayParsedListing[] = [];
+  const seen = new Set<string>();
+
+  $('.s-item').each((_, element) => {
+    const titleElement = $(element).find('.s-item__title');
+    const title = titleElement.text().replace(/\s+/g, ' ').trim();
+    const href = $(element).find('a.s-item__link').attr('href')?.trim() ?? '';
+    
+    if (!title || !href || title.toLowerCase().includes('shop on ebay')) return;
+
+    const idMatch = href.match(/itm\/(\d+)/);
+    const externalListingId = idMatch ? idMatch[1] : href.split('?')[0];
+
+    const priceText = $(element).find('.s-item__price').text();
+    const priceParsed = parsePrice(priceText);
+    if (!priceParsed) return;
+
+    const url = href.split('?')[0];
+    if (seen.has(url)) return;
+    seen.add(url);
+
+    const imageUrl = $(element).find('.s-item__image-img').attr('src') ?? null;
+    const conditionText = $(element).find('.SECONDARY_INFO').text().toLowerCase();
+    const isSealed = conditionText.includes('new') || conditionText.includes('sealed');
+
+    result.push({
+      externalListingId,
+      titleRaw: title,
+      url,
+      imageUrl,
+      sellerName: null,
+      sellerRating: null,
+      price: priceParsed.amount,
+      currency: priceParsed.currency,
+      shippingPrice: null,
+      shippingCurrency: null,
+      country: 'US',
+      condition: isSealed ? 'new' : 'used',
+      sealed: isSealed,
+      completenessPercent: isSealed ? 100 : null,
+      quantityAvailable: 1,
+    });
+  });
+
+  return result;
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\sources\ebay\ebay-source.ts =====
+
+import axios from 'axios';
+import { estimateUaShippingBySource } from '../../common/shipping-estimator';
+import { resolveItemIdFromTitle } from '../../common/item-matcher';
+import { stableListingId } from '../../common/listing-id';
+import { logSourceError } from '../../common/source-error-logger';
+import { finishSourceRun, startSourceRun } from '../../common/source-run-logger';
+import { enqueueUnresolvedMatch } from '../../common/unresolved-match-handler';
+import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
+import { prisma } from '../../prisma';
+import { parseEbaySearchHtml } from './ebay-parser';
+
+const searchQueries = [
+  'lego star wars lot',
+  'lego ninjago collection',
+  'lego minifigures lot',
+];
+
+export async function runEbaySource(): Promise<void> {
+  let source = await prisma.marketSource.findUnique({ where: { code: 'ebay' } });
+
+  if (!source) {
+    source = await prisma.marketSource.create({
+      data: { code: 'ebay', name: 'eBay', type: 'marketplace', enabled: true },
+    });
+  }
+
+  if (!source.enabled) return;
+
+  const runId = await startSourceRun('ebay');
+
+  let itemsSeen = 0;
+  let itemsMatched = 0;
+  let itemsInserted = 0;
+  let itemsUpdated = 0;
+
+  try {
+    for (const query of searchQueries) {
+      const url = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&_sacat=19006&LH_BIN=1`;
+
+      const response = await axios.get<string>(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+        },
+        timeout: 15000,
+      });
+
+      const listings = parseEbaySearchHtml(response.data);
+
+      for (const listing of listings) {
+        itemsSeen += 1;
+
+        const resolvedItemId = await resolveItemIdFromTitle(listing.titleRaw);
+        const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
+        const listingId = stableListingId('ebay', listing.externalListingId);
+        const now = new Date();
+
+        const existing = await prisma.marketListing.findUnique({ where: { id: listingId } });
+
+        const shippingPrice = listing.shippingPrice ?? estimateUaShippingBySource({
+          sourceCode: 'ebay',
+          itemPrice: listing.price,
+          currency: listing.currency,
+          sealed: listing.sealed,
+        });
+
+        const shippingCurrency = listing.shippingCurrency ?? listing.currency ?? 'USD';
+
+        const upserted = await prisma.marketListing.upsert({
+          where: { id: listingId },
+          update: {
+            sourceCode: source.code,
+            itemId,
+            externalListingId: listing.externalListingId,
+            externalId: listing.externalListingId,
+            titleRaw: listing.titleRaw,
+            title: listing.titleRaw,
+            url: listing.url,
+            imageUrl: listing.imageUrl,
+            price: listing.price,
+            currency: listing.currency,
+            shippingPrice,
+            shippingCurrency,
+            country: listing.country,
+            condition: listing.condition,
+            sealed: listing.sealed,
+            status: 'active',
+            fetchedAt: now,
+            lastSeenAt: now,
+          },
+          create: {
+            id: listingId,
+            sourceId: source.id,
+            sourceCode: source.code,
+            itemId,
+            externalListingId: listing.externalListingId,
+            externalId: listing.externalListingId,
+            titleRaw: listing.titleRaw,
+            title: listing.titleRaw,
+            url: listing.url,
+            imageUrl: listing.imageUrl,
+            price: listing.price,
+            currency: listing.currency,
+            shippingPrice,
+            shippingCurrency,
+            country: listing.country,
+            condition: listing.condition,
+            sealed: listing.sealed,
+            status: 'active',
+            fetchedAt: now,
+            firstSeenAt: now,
+            lastSeenAt: now,
+          },
+        });
+
+        if (resolvedItemId == null) {
+          await enqueueUnresolvedMatch({
+            listingId: upserted.id,
+            sourceCode: 'ebay',
+            titleRaw: listing.titleRaw,
+          });
+        } else {
+          itemsMatched += 1;
+        }
+
+        if (existing == null) itemsInserted += 1;
+        else itemsUpdated += 1;
+      }
+    }
+
+    await finishSourceRun({
+      runId,
+      itemsSeen,
+      itemsMatched,
+      itemsInserted,
+      itemsUpdated,
+      status: 'success',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await logSourceError({
+      scope: 'scraper',
+      sourceCode: 'ebay',
+      message: 'eBay source failed',
+      detailsJson: { error: message },
+    });
+    await finishSourceRun({
+      runId,
+      itemsSeen,
+      itemsMatched,
+      itemsInserted,
+      itemsUpdated,
+      status: 'failed',
+      errorMessage: message,
+    });
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scrapers\src\sources\ebay\ebay-types.ts =====
+
+export type EbayParsedListing = {
   externalListingId: string;
   titleRaw: string;
   url: string;
@@ -29973,9 +30561,7 @@ const searchQueries = [
 
 export async function runOlxSource(): Promise<void> {
   const source = await prisma.marketSource.findUnique({
-    where: {
-      code: 'olx',
-    },
+    where: { code: 'olx' },
   });
 
   if (!source || !source.enabled) {
@@ -29995,10 +30581,8 @@ export async function runOlxSource(): Promise<void> {
 
       const response = await axios.get<string>(url, {
         headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
-          Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         },
         timeout: 15000,
       });
@@ -30014,27 +30598,22 @@ export async function runOlxSource(): Promise<void> {
         const now = new Date();
 
         const existing = await prisma.marketListing.findUnique({
-          where: {
-            id: listingId,
-          },
+          where: { id: listingId },
         });
 
         const shippingPrice =
           listing.shippingPrice ??
           estimateUaShippingBySource({
-            source: 'olx',
+            sourceCode: 'olx',
             itemPrice: listing.price,
             currency: listing.currency,
             sealed: listing.sealed,
           });
 
-        const shippingCurrency =
-          listing.shippingCurrency ?? listing.currency ?? 'UAH';
+        const shippingCurrency = listing.shippingCurrency ?? listing.currency ?? 'UAH';
 
         const upserted = await prisma.marketListing.upsert({
-          where: {
-            id: listingId,
-          },
+          where: { id: listingId },
           update: {
             sourceCode: source.code,
             itemId,
@@ -30121,9 +30700,7 @@ export async function runOlxSource(): Promise<void> {
       scope: 'scraper',
       sourceCode: 'olx',
       message: 'OLX source failed',
-      detailsJson: {
-        error: message,
-      },
+      detailsJson: { error: message },
     });
 
     await finishSourceRun({
@@ -31815,7 +32392,6 @@ CMD ["node", "dist/main.js"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\workers\tsconfig.json =====
 
-// backend/workers/tsconfig.json
 {
   "compilerOptions": {
     "module": "commonjs",
@@ -31825,7 +32401,8 @@ CMD ["node", "dist/main.js"]
     "strict": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "ignoreDeprecations": "5.0"
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
@@ -31833,6 +32410,7 @@ CMD ["node", "dist/main.js"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\workers\prisma\schema.prisma =====
 
+// backend/api/prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -31844,14 +32422,13 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?  @unique
-  role      String   @default("operator")
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id                     String            @id @default(cuid())
+  name                   String
+  email                  String?           @unique
+  role                   String            @default("operator")
+  active                 Boolean           @default(true)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
   sessions               UserSession[]
   assignedInventoryItems InventoryItem[]
   assignedWatchlistItems WatchlistItem[]
@@ -31870,25 +32447,23 @@ model UserSession {
   token     String    @unique
   expiresAt DateTime?
   createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
   @@index([expiresAt])
 }
 
 model Item {
-  id               String   @id @default(cuid())
-  kind             String   @default("set")
-  title            String
-  setNumber        String?
-  theme            String?
-  conditionDefault String?  @default("used")
-  imageUrl         String?
-  notes            String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
+  id                String             @id @default(cuid())
+  kind              String             @default("set")
+  title             String
+  setNumber         String?
+  theme             String?
+  conditionDefault  String?            @default("used")
+  imageUrl          String?
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   inventoryItems    InventoryItem[]
   watchlistItems    WatchlistItem[]
   marketListings    MarketListing[]
@@ -31904,14 +32479,13 @@ model Item {
 }
 
 model Warehouse {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  address   String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id             String            @id @default(cuid())
+  code           String            @unique
+  name           String
+  address        String?
+  active         Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
   locations      StorageLocation[]
   stockMovements StockMovement[]
 
@@ -31919,17 +32493,16 @@ model Warehouse {
 }
 
 model StorageLocation {
-  id          String   @id @default(cuid())
-  warehouseId String
-  code        String
-  name        String
-  zone        String?
-  shelf       String?
-  box         String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id             String          @id @default(cuid())
+  warehouseId    String
+  code           String
+  name           String
+  zone           String?
+  shelf          String?
+  box            String?
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   warehouse      Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   inventoryItems InventoryItem[]
 
@@ -31938,14 +32511,14 @@ model StorageLocation {
 }
 
 model InventoryItem {
-  id                      String   @id @default(cuid())
+  id                      String            @id @default(cuid())
   itemId                  String
   titleSnapshot           String
   purchasePrice           Float
   totalCost               Float
-  quantity                Int      @default(1)
-  condition               String   @default("used")
-  sealed                  Boolean  @default(false)
+  quantity                Int               @default(1)
+  condition               String            @default("used")
+  sealed                  Boolean           @default(false)
   expectedSalePriceManual Float?
   source                  String?
   purchaseUrl             String?
@@ -31953,24 +32526,23 @@ model InventoryItem {
   storageLocationId       String?
   warehouseId             String?
   notes                   String?
-  priority                Int      @default(50)
+  priority                Int               @default(50)
   assignedUserId          String?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  item            Item              @relation(fields: [itemId], references: [id])
-  assignedUser    User?             @relation(fields: [assignedUserId], references: [id])
-  location        StorageLocation?  @relation(fields: [storageLocationId], references: [id])
-  images          InventoryImage[]
-  sales           Sale[]
-  repriceFlows    RepriceFlowItem[]
-  reviewFlows     ReviewFlowItem[]
-  stockMovements  StockMovement[]
-  reserveRequests ReserveRequest[]
-  orders          Order[]
-  purchaseOrders  PurchaseOrder[]
-  returns         ReturnRequest[]
-  expenses        Expense[]
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  item                    Item              @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  assignedUser            User?             @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  location                StorageLocation?  @relation(fields: [storageLocationId], references: [id], onDelete: SetNull)
+  images                  InventoryImage[]
+  sales                   Sale[]
+  repriceFlows            RepriceFlowItem[]
+  reviewFlows             ReviewFlowItem[]
+  stockMovements          StockMovement[]
+  reserveRequests         ReserveRequest[]
+  orders                  Order[]
+  purchaseOrders          PurchaseOrder[]
+  returns                 ReturnRequest[]
+  expenses                Expense[]
 
   @@index([itemId, quantity])
   @@index([assignedUserId, quantity])
@@ -31980,58 +32552,55 @@ model InventoryItem {
 }
 
 model StockMovement {
-  id                    String   @id @default(cuid())
+  id                    String         @id @default(cuid())
   inventoryItemId       String
   warehouseId           String?
   fromStorageLocationId String?
   toStorageLocationId   String?
   type                  String
-  quantity              Int      @default(1)
+  quantity              Int            @default(1)
   reason                String?
-  createdAt             DateTime @default(now())
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
-  warehouse     Warehouse?    @relation(fields: [warehouseId], references: [id])
+  createdAt             DateTime       @default(now())
+  inventoryItem         InventoryItem  @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  warehouse             Warehouse?     @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
 
   @@index([inventoryItemId, type])
   @@index([warehouseId, createdAt])
 }
 
 model InventoryImage {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
   imageUrl        String
   altText         String?
-  isPrimary       Boolean  @default(false)
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  isPrimary       Boolean       @default(false)
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([inventoryItemId, sortOrder])
   @@index([inventoryItemId, isPrimary])
 }
 
 model WatchlistItem {
-  id              String   @id @default(cuid())
+  id              String             @id @default(cuid())
   itemId          String
   titleSnapshot   String
   desiredBuyPrice Float
   maxBuyPrice     Float
   targetSellPrice Float?
-  active          Boolean  @default(true)
-  priority        Int      @default(50)
+  active          Boolean            @default(true)
+  priority        Int                @default(50)
   notes           String?
   assignedUserId  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  item          Item               @relation(fields: [itemId], references: [id])
-  assignedUser  User?              @relation(fields: [assignedUserId], references: [id])
-  purchaseFlows PurchaseFlowItem[]
-  deals         Deal[]
-  purchaseOrders PurchaseOrder[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  item            Item               @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  assignedUser    User?              @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  purchaseFlows   PurchaseFlowItem[]
+  deals           Deal[]
+  purchaseOrders  PurchaseOrder[]
 
   @@index([itemId, active])
   @@index([assignedUserId, active])
@@ -32040,7 +32609,7 @@ model WatchlistItem {
 }
 
 model PurchaseOrder {
-  id              String    @id @default(cuid())
+  id              String         @id @default(cuid())
   itemId          String
   watchlistItemId String?
   inventoryItemId String?
@@ -32049,26 +32618,25 @@ model PurchaseOrder {
   sourceCode      String?
   supplierName    String?
   sourceUrl       String?
-  status          String    @default("planned")
+  status          String         @default("planned")
   plannedPrice    Float?
   actualPrice     Float?
   shippingPrice   Float?
   totalCost       Float?
   targetSellPrice Float?
-  quantity        Int       @default(1)
-  condition       String    @default("used")
-  sealed          Boolean   @default(false)
+  quantity        Int            @default(1)
+  condition       String         @default("used")
+  sealed          Boolean        @default(false)
   notes           String?
   purchasedAt     DateTime?
   receivedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  item          Item           @relation(fields: [itemId], references: [id])
-  watchlistItem WatchlistItem? @relation(fields: [watchlistItemId], references: [id])
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
-  expenses      Expense[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  item            Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  watchlistItem   WatchlistItem? @relation(fields: [watchlistItemId], references: [id], onDelete: SetNull)
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  assignedUser    User?          @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  expenses        Expense[]
 
   @@index([status, createdAt])
   @@index([itemId, status])
@@ -32076,22 +32644,21 @@ model PurchaseOrder {
 }
 
 model MarketSource {
-  id        String   @id @default(cuid())
-  code      String   @unique
+  id        String          @id @default(cuid())
+  code      String          @unique
   name      String
-  type      String   @default("manual")
-  enabled   Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  listings MarketListing[]
-  runs     SourceRunLog[]
+  type      String          @default("manual")
+  enabled   Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  listings  MarketListing[]
+  runs      SourceRunLog[]
 
   @@index([enabled, type])
 }
 
 model MarketListing {
-  id                  String   @id
+  id                  String               @id
   sourceId            String
   sourceCode          String
   itemId              String
@@ -32104,7 +32671,7 @@ model MarketListing {
   sellerName          String?
   sellerRating        Float?
   price               Float
-  currency            String   @default("UAH")
+  currency            String               @default("UAH")
   shippingPrice       Float?
   shippingCurrency    String?
   country             String?
@@ -32112,16 +32679,16 @@ model MarketListing {
   sealed              Boolean?
   completenessPercent Int?
   quantityAvailable   Int?
-  status              String   @default("active")
-  fetchedAt           DateTime @default(now())
-  firstSeenAt         DateTime @default(now())
-  lastSeenAt          DateTime @default(now())
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  source MarketSource @relation(fields: [sourceId], references: [id])
-  item   Item         @relation(fields: [itemId], references: [id])
-  deals  Deal[]
+  status              String               @default("active")
+  fetchedAt           DateTime             @default(now())
+  firstSeenAt         DateTime             @default(now())
+  lastSeenAt          DateTime             @default(now())
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  source              MarketSource         @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  item                Item                 @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  deals               Deal[]
+  unresolvedMatches   UnresolvedMatchQueue[]
 
   @@index([itemId, status, price])
   @@index([sourceId, status, fetchedAt])
@@ -32145,8 +32712,7 @@ model MarketSnapshot {
   usedAvgPrice            Float?
   confidenceScore         Float    @default(0)
   computedAt              DateTime @default(now())
-
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item                    Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([itemId, computedAt])
 }
@@ -32166,8 +32732,7 @@ model DecisionSnapshot {
   executedAt      DateTime?
   ignoredAt       DateTime?
   createdAt       DateTime  @default(now())
-
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item            Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([contextType, contextId, createdAt])
   @@index([executionStatus, action, score])
@@ -32175,52 +32740,49 @@ model DecisionSnapshot {
 }
 
 model PurchaseFlowItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   watchlistItemId String
   selectedPrice   Float?
-  status          String   @default("pending")
+  status          String        @default("pending")
   reason          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([watchlistItemId, status])
 }
 
 model RepriceFlowItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
   currentPrice    Float?
   suggestedPrice  Float?
-  status          String   @default("pending")
+  status          String        @default("pending")
   reason          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([inventoryItemId, status])
 }
 
 model ReviewFlowItem {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   inventoryItemId String
-  status          String   @default("pending")
+  status          String        @default("pending")
   reason          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([inventoryItemId, status])
 }
 
 model Deal {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   listingId       String
   watchlistItemId String
   buyPrice        Float
@@ -32229,12 +32791,11 @@ model Deal {
   roiPercent      Float
   action          String
   score           Float
-  status          String   @default("open")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  listing       MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  watchlistItem WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
+  status          String        @default("open")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
   @@index([status, score])
   @@index([action, status])
@@ -32242,10 +32803,10 @@ model Deal {
 }
 
 model Sale {
-  id              String   @id @default(cuid())
+  id              String          @id @default(cuid())
   inventoryItemId String
   itemId          String
-  quantity        Int      @default(1)
+  quantity        Int             @default(1)
   sellPrice       Float
   costBasis       Float
   profit          Float
@@ -32253,89 +32814,85 @@ model Sale {
   channel         String?
   buyerName       String?
   notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  item          Item          @relation(fields: [itemId], references: [id])
-  orders        Order[]
-  returns       ReturnRequest[]
-  expenses      Expense[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  inventoryItem   InventoryItem   @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  item            Item            @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  orders          Order[]
+  returns         ReturnRequest[]
+  expenses        Expense[]
 
   @@index([itemId, createdAt])
   @@index([createdAt])
 }
 
 model Order {
-  id               String   @id @default(cuid())
+  id               String          @id @default(cuid())
   reserveRequestId String?
   inventoryItemId  String?
   saleId           String?
   productTitle     String
   buyerName        String
   contact          String
-  status           String   @default("pending")
+  status           String          @default("pending")
   sellPrice        Float?
-  quantity         Int      @default(1)
+  quantity         Int             @default(1)
   channel          String?
   adminNote        String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  reserveRequest ReserveRequest? @relation(fields: [reserveRequestId], references: [id])
-  inventoryItem  InventoryItem?  @relation(fields: [inventoryItemId], references: [id])
-  sale           Sale?           @relation(fields: [saleId], references: [id])
-  returns        ReturnRequest[]
-  expenses       Expense[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  reserveRequest   ReserveRequest? @relation(fields: [reserveRequestId], references: [id], onDelete: SetNull)
+  inventoryItem    InventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  sale             Sale?           @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  returns          ReturnRequest[]
+  expenses         Expense[]
 
   @@index([status, createdAt])
   @@index([inventoryItemId])
 }
 
 model ReturnRequest {
-  id              String    @id @default(cuid())
+  id              String        @id @default(cuid())
   saleId          String
   orderId         String?
   inventoryItemId String
-  status          String    @default("requested")
+  status          String        @default("requested")
   reason          String?
   refundAmount    Float?
-  restock         Boolean   @default(true)
-  quantity        Int       @default(1)
+  restock         Boolean       @default(true)
+  quantity        Int           @default(1)
   adminNote       String?
   resolvedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  sale          Sale          @relation(fields: [saleId], references: [id])
-  order         Order?        @relation(fields: [orderId], references: [id])
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  sale            Sale          @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  order           Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
 
   @@index([status, createdAt])
   @@index([saleId])
 }
 
 model Expense {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   type            String
   category        String
   amount          Float
-  currency        String   @default("UAH")
+  currency        String         @default("UAH")
   description     String?
   inventoryItemId String?
   purchaseOrderId String?
   saleId          String?
   orderId         String?
   assignedUserId  String?
-  incurredAt      DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
-  sale          Sale?          @relation(fields: [saleId], references: [id])
-  order         Order?         @relation(fields: [orderId], references: [id])
-  assignedUser  User?          @relation(fields: [assignedUserId], references: [id])
+  incurredAt      DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  sale            Sale?          @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  order           Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  assignedUser    User?          @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
 
   @@index([category, incurredAt])
   @@index([type, incurredAt])
@@ -32374,27 +32931,25 @@ model AuditLog {
   ipAddress   String?
   userAgent   String?
   createdAt   DateTime @default(now())
-
-  actor User? @relation(fields: [actorUserId], references: [id])
+  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([entityType, entityId, createdAt])
   @@index([action, createdAt])
 }
 
 model ReserveRequest {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   inventoryItemId String?
   productTitle    String
   name            String
   contact         String
   message         String?
-  status          String   @default("pending")
+  status          String         @default("pending")
   adminNote       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  orders        Order[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  orders          Order[]
 
   @@index([status, createdAt])
 }
@@ -32409,8 +32964,7 @@ model Notification {
   payloadJson  Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  targetUser User? @relation(fields: [targetUserId], references: [id])
+  targetUser   User?    @relation(fields: [targetUserId], references: [id], onDelete: SetNull)
 
   @@index([targetUserId, read, createdAt])
 }
@@ -32425,7 +32979,7 @@ model ActivityLog {
 }
 
 model UnresolvedMatchQueue {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   listingId       String
   sourceCode      String
   titleRaw        String
@@ -32433,29 +32987,29 @@ model UnresolvedMatchQueue {
   extractedSetNo  String?
   suggestedItemId String?
   resolvedItemId  String?
-  status          String   @default("pending")
+  status          String        @default("pending")
   resolutionNote  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([sourceCode, status])
 }
 
 model SourceRunLog {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   sourceId      String
-  startedAt     DateTime  @default(now())
+  startedAt     DateTime     @default(now())
   finishedAt    DateTime?
-  status        String    @default("running")
-  itemsSeen     Int       @default(0)
-  itemsMatched  Int       @default(0)
-  itemsInserted Int       @default(0)
-  itemsUpdated  Int       @default(0)
+  status        String       @default("running")
+  itemsSeen     Int          @default(0)
+  itemsMatched  Int          @default(0)
+  itemsInserted Int          @default(0)
+  itemsUpdated  Int          @default(0)
   errorMessage  String?
-  createdAt     DateTime  @default(now())
-
-  source MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+  source        MarketSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@index([sourceId, startedAt])
 }
@@ -32474,16 +33028,16 @@ model SyncErrorLog {
 }
 
 model ScanJob {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   sourceCode   String
   query        String?
-  status       String    @default("queued")
-  resultCount  Int       @default(0)
+  status       String   @default("queued")
+  resultCount  Int      @default(0)
   errorMessage String?
   startedAt    DateTime?
   finishedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([status, createdAt])
 }
@@ -32503,8 +33057,7 @@ model SoldComp {
   imageUrl        String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  item            Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   @@unique([sourceCode, externalId])
   @@index([sourceCode])
@@ -33361,10 +33914,6 @@ export async function autoQueueOpportunitiesJob(params?: {
 
 import { prisma } from '../prisma';
 
-type IdRow = {
-  id: string;
-};
-
 export async function cleanupOldSnapshotsJob(params?: {
   keepPerItem?: number;
 }): Promise<{
@@ -33374,64 +33923,49 @@ export async function cleanupOldSnapshotsJob(params?: {
   const keepPerItem = params?.keepPerItem ?? 30;
 
   const items = await prisma.item.findMany({
-    select: {
-      id: true,
-    },
+    select: { id: true },
   });
 
   let deletedSnapshots = 0;
   let deletedDecisions = 0;
 
-  for (const item of items) {
-    const snapshots: IdRow[] = await prisma.marketSnapshot.findMany({
-      where: {
-        itemId: item.id,
-      },
-      orderBy: {
-        computedAt: 'desc',
-      },
-      skip: keepPerItem,
-      select: {
-        id: true,
-      },
-    });
+  const chunkSize = 50;
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize);
+    
+    await Promise.all(
+      chunk.map(async (item) => {
+        const snapshots = await prisma.marketSnapshot.findMany({
+          where: { itemId: item.id },
+          orderBy: { computedAt: 'desc' },
+          skip: keepPerItem,
+          select: { id: true },
+        });
 
-    if (snapshots.length > 0) {
-      const result = await prisma.marketSnapshot.deleteMany({
-        where: {
-          id: {
-            in: snapshots.map((snapshot: IdRow) => snapshot.id),
-          },
-        },
-      });
+        if (snapshots.length > 0) {
+          const snapshotIds = snapshots.map((s) => s.id);
+          const result = await prisma.marketSnapshot.deleteMany({
+            where: { id: { in: snapshotIds } },
+          });
+          deletedSnapshots += result.count;
+        }
 
-      deletedSnapshots += result.count;
-    }
+        const decisions = await prisma.decisionSnapshot.findMany({
+          where: { itemId: item.id },
+          orderBy: { createdAt: 'desc' },
+          skip: keepPerItem,
+          select: { id: true },
+        });
 
-    const decisions: IdRow[] = await prisma.decisionSnapshot.findMany({
-      where: {
-        itemId: item.id,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      skip: keepPerItem,
-      select: {
-        id: true,
-      },
-    });
-
-    if (decisions.length > 0) {
-      const result = await prisma.decisionSnapshot.deleteMany({
-        where: {
-          id: {
-            in: decisions.map((decision: IdRow) => decision.id),
-          },
-        },
-      });
-
-      deletedDecisions += result.count;
-    }
+        if (decisions.length > 0) {
+          const decisionIds = decisions.map((d) => d.id);
+          const result = await prisma.decisionSnapshot.deleteMany({
+            where: { id: { in: decisionIds } },
+          });
+          deletedDecisions += result.count;
+        }
+      })
+    );
   }
 
   return {
@@ -33622,14 +34156,14 @@ export async function recomputeDecisionsJob(): Promise<{
     where: { quantity: { gt: 0 } },
     include: { item: true },
     orderBy: { updatedAt: 'desc' },
-    take: 500,
+    take: 1000,
   });
 
   const listings = await prisma.marketListing.findMany({
     where: { status: 'active' },
     include: { item: true },
     orderBy: { fetchedAt: 'desc' },
-    take: 500,
+    take: 1000,
   });
 
   const listingItemIds = [...new Set(listings.map(l => l.itemId))];
@@ -33769,7 +34303,11 @@ export async function recomputeDecisionsJob(): Promise<{
   }
 
   if (dbOperations.length > 0) {
-    await prisma.$transaction(dbOperations);
+    const chunkSize = 100;
+    for (let i = 0; i < dbOperations.length; i += chunkSize) {
+      const chunk = dbOperations.slice(i, i + chunkSize);
+      await prisma.$transaction(chunk);
+    }
   }
 
   await prisma.activityLog.create({
@@ -33822,16 +34360,20 @@ export async function recomputeMarketSnapshotsJob(): Promise<{
     listingsByItem.set(listing.itemId, arr);
   }
 
-  const snapshotData = items.map((item) => {
+  const snapshotData = [];
+
+  for (const item of items) {
     const listings = listingsByItem.get(item.id) || [];
 
     if (listings.length === 0) {
-      return {
+      snapshotData.push({
         itemId: item.id,
         scope: 'ua',
         listingsCount: 0,
         confidenceScore: 0,
-      };
+        computedAt: new Date(),
+      });
+      continue;
     }
 
     const prices: number[] = [];
@@ -33870,7 +34412,7 @@ export async function recomputeMarketSnapshotsJob(): Promise<{
     const confidenceScore =
       listings.length >= 10 ? 0.95 : listings.length >= 5 ? 0.8 : listings.length >= 2 ? 0.65 : 0.45;
 
-    return {
+    snapshotData.push({
       itemId: item.id,
       scope: 'ua',
       listingsCount: listings.length,
@@ -33884,12 +34426,15 @@ export async function recomputeMarketSnapshotsJob(): Promise<{
       sealedAvgPrice: avg(sealedPrices),
       usedAvgPrice: avg(usedPrices),
       confidenceScore,
-    };
-  });
+      computedAt: new Date(),
+    });
+  }
 
-  if (snapshotData.length > 0) {
+  const chunkSize = 100;
+  for (let i = 0; i < snapshotData.length; i += chunkSize) {
+    const chunk = snapshotData.slice(i, i + chunkSize);
     await prisma.marketSnapshot.createMany({
-      data: snapshotData,
+      data: chunk,
     });
   }
 
