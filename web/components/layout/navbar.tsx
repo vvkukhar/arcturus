@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCart } from '../providers/cart-provider';
 import { useTheme } from '../providers/theme-provider';
 import { useI18n } from '../providers/i18n-provider';
-import { ShoppingCart, Menu, Search, Package, Sun, Moon, X, Globe } from 'lucide-react';
+import { ShoppingCart, Menu, Search, Package, Sun, Moon, X, Globe, User, MapPin } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export function Navbar() {
@@ -48,8 +48,8 @@ export function Navbar() {
               <Link href="/store/catalog" className="text-sm lg:text-base font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                 {t('nav.catalog')}
               </Link>
-              <Link href="/about" className="text-sm lg:text-base font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                {t('nav.about')}
+              <Link href="/track" className="text-sm lg:text-base font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                {t('nav.track')}
               </Link>
               <Link href="/delivery" className="text-sm lg:text-base font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                 {t('nav.delivery')}
@@ -73,9 +73,9 @@ export function Navbar() {
               {theme === 'dark' ? <Sun size={20} className="w-5 h-5 md:w-6 md:h-6" /> : <Moon size={20} className="w-5 h-5 md:w-6 md:h-6" />}
             </button>
 
-            <button className="hidden sm:flex p-2 md:p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-              <Search size={20} className="w-5 h-5 md:w-6 md:h-6" />
-            </button>
+            <Link href="/account" className="hidden sm:flex p-2 md:p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+              <User size={20} className="w-5 h-5 md:w-6 md:h-6" />
+            </Link>
 
             <button
               onClick={() => setIsCartOpen(true)}
@@ -105,20 +105,21 @@ export function Navbar() {
             </button>
           </div>
           <div className="flex flex-col p-4 space-y-2 overflow-y-auto">
-            <Link href="/store/catalog" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+            <Link href="/store/catalog" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+              <Search size={20} className="text-slate-500" />
               {t('nav.catalog')}
             </Link>
-            <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
-              {t('nav.about')}
+            <Link href="/track" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+              <MapPin size={20} className="text-slate-500" />
+              {t('nav.track')}
             </Link>
-            <Link href="/delivery" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+            <Link href="/account" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+              <User size={20} className="text-slate-500" />
+              {t('nav.account')}
+            </Link>
+            <Link href="/delivery" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+              <Package size={20} className="text-slate-500" />
               {t('nav.delivery')}
-            </Link>
-            <Link href="/store/catalog?theme=Star+Wars" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
-              Star Wars
-            </Link>
-            <Link href="/store/catalog?theme=Ninjago" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
-              Ninjago
             </Link>
           </div>
         </div>
