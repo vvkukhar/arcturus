@@ -3,90 +3,126 @@
 import Link from 'next/link';
 import { useCart } from '../providers/cart-provider';
 import { useTheme } from '../providers/theme-provider';
-import { ShoppingCart, Menu, Search, Package, Sun, Moon } from 'lucide-react';
-import { useState } from 'react';
+import { useI18n } from '../providers/i18n-provider';
+import { ShoppingCart, Menu, Search, Package, Sun, Moon, X, Globe } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 export function Navbar() {
   const { totalItems, setIsCartOpen } = useCart();
   const { theme, setTheme } = useTheme();
+  const { lang, setLang, t } = useI18n();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  useEffect(() => {
+    if (isMobileMenuOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isMobileMenuOpen]);
+
+  const toggleLanguage = () => {
+    setLang(lang === 'en' ? 'uk' : 'en');
+  };
+
   return (
-    <nav className="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 shadow-sm">
+    <nav className="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/90 dark:bg-slate-950/90 border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center gap-8">
+        <div className="flex justify-between items-center h-16 md:h-20">
+          <div className="flex items-center gap-4 lg:gap-8">
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden p-2 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+            >
+              <Menu size={24} />
+            </button>
+
             <Link href="/store" className="flex items-center gap-2 group">
-              <div className="bg-slate-900 dark:bg-blue-600 text-white p-1.5 rounded-lg group-hover:scale-105 transition-transform">
-                <Package size={20} />
+              <div className="bg-slate-900 dark:bg-blue-600 text-white p-1.5 md:p-2 rounded-lg lg:rounded-xl group-hover:scale-105 transition-transform">
+                <Package size={20} className="w-5 h-5 md:w-6 md:h-6" />
               </div>
-              <span className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">
+              <span className="font-extrabold text-lg md:text-xl lg:text-2xl tracking-tight text-slate-900 dark:text-white">
                 Arcturus
               </span>
             </Link>
             
-            <div className="hidden md:flex items-center gap-6">
-              <Link href="/store/catalog" className="text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                Catalog
+            <div className="hidden md:flex items-center gap-4 lg:gap-8">
+              <Link href="/store/catalog" className="text-sm lg:text-base font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                {t('nav.catalog')}
               </Link>
-              <Link href="/store/catalog?theme=Star+Wars" className="text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                Star Wars
+              <Link href="/about" className="text-sm lg:text-base font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                {t('nav.about')}
               </Link>
-              <Link href="/store/catalog?theme=Ninjago" className="text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                Ninjago
+              <Link href="/delivery" className="text-sm lg:text-base font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                {t('nav.delivery')}
               </Link>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 md:gap-3">
             <button 
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+              onClick={toggleLanguage}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-3 md:py-2 text-xs md:text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors uppercase"
             >
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+              <Globe size={16} className="w-4 h-4 md:w-5 md:h-5" />
+              {lang}
             </button>
 
-            <button className="hidden md:flex p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-              <Search size={20} />
+            <button 
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 md:p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+            >
+              {theme === 'dark' ? <Sun size={20} className="w-5 h-5 md:w-6 md:h-6" /> : <Moon size={20} className="w-5 h-5 md:w-6 md:h-6" />}
+            </button>
+
+            <button className="hidden sm:flex p-2 md:p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+              <Search size={20} className="w-5 h-5 md:w-6 md:h-6" />
             </button>
 
             <button
               onClick={() => setIsCartOpen(true)}
-              className="relative p-2 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors group"
+              className="relative p-2 md:p-2.5 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors group"
             >
-              <ShoppingCart size={22} className="group-hover:scale-110 transition-transform" />
+              <ShoppingCart size={22} className="w-5 h-5 md:w-6 md:h-6 group-hover:scale-110 transition-transform" />
               {totalItems > 0 && (
-                <span className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shadow-sm animate-fade-in-up">
+                <span className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 flex h-4 w-4 md:h-5 md:w-5 items-center justify-center rounded-full bg-blue-600 text-[9px] md:text-[11px] font-bold text-white shadow-sm animate-fade-in-up">
                   {totalItems}
                 </span>
               )}
-            </button>
-
-            <button 
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
-            >
-              <Menu size={24} />
             </button>
           </div>
         </div>
       </div>
 
-      {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-          <div className="px-4 pt-2 pb-4 space-y-1">
-            <Link href="/store/catalog" className="block px-3 py-2 rounded-md text-base font-bold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-900">
-              All Catalog
+      <div className={`fixed inset-0 z-50 flex transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:hidden`}>
+        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+        <div className="relative w-4/5 max-w-sm bg-white dark:bg-slate-950 h-full shadow-2xl flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
+            <span className="font-extrabold text-xl text-slate-900 dark:text-white flex items-center gap-2">
+              <Package size={20} className="text-blue-600" />
+              {t('nav.menu')}
+            </span>
+            <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+              <X size={24} />
+            </button>
+          </div>
+          <div className="flex flex-col p-4 space-y-2 overflow-y-auto">
+            <Link href="/store/catalog" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+              {t('nav.catalog')}
             </Link>
-            <Link href="/store/catalog?theme=Star+Wars" className="block px-3 py-2 rounded-md text-base font-bold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-900">
+            <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+              {t('nav.about')}
+            </Link>
+            <Link href="/delivery" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+              {t('nav.delivery')}
+            </Link>
+            <Link href="/store/catalog?theme=Star+Wars" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
               Star Wars
             </Link>
-            <Link href="/store/catalog?theme=Ninjago" className="block px-3 py-2 rounded-md text-base font-bold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-900">
+            <Link href="/store/catalog?theme=Ninjago" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-xl text-lg font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30">
               Ninjago
             </Link>
           </div>
         </div>
-      )}
+      </div>
     </nav>
   );
 }

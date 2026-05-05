@@ -27,44 +27,44 @@ export function ProductCard({ item }: { item: InventoryItem }) {
     <>
       <div 
         onClick={() => setIsModalOpen(true)}
-        className="group relative flex flex-col bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+        className="group relative flex flex-col bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full"
       >
-        <div className="aspect-square bg-slate-50 relative p-6 flex items-center justify-center">
+        <div className="aspect-square bg-slate-50 dark:bg-slate-900 relative p-4 sm:p-6 flex items-center justify-center">
           {item.sealed && (
-            <span className="absolute top-4 left-4 z-10 px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-black tracking-wider uppercase rounded-md">
+            <span className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 px-2 py-1 sm:px-2.5 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-400 text-[10px] sm:text-xs font-black tracking-wider uppercase rounded-md">
               Sealed
             </span>
           )}
           
-          <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300">
+          <div className="absolute bottom-3 right-3 sm:top-4 sm:right-4 sm:bottom-auto z-10 flex flex-row sm:flex-col gap-2 sm:opacity-0 sm:group-hover:opacity-100 sm:translate-x-4 sm:group-hover:translate-x-0 transition-all duration-300">
             <button 
               onClick={handleAddToCart}
-              className="p-2.5 bg-white text-slate-900 hover:bg-blue-600 hover:text-white rounded-full shadow-lg transition-colors"
+              className="p-2.5 sm:p-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white rounded-full shadow-lg transition-colors border border-slate-100 dark:border-slate-700"
             >
-              <ShoppingCart size={18} />
+              <ShoppingCart size={18} className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
             <button 
-              className="p-2.5 bg-white text-slate-900 hover:bg-slate-900 hover:text-white rounded-full shadow-lg transition-colors"
+              className="hidden sm:flex p-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-900 dark:hover:bg-white hover:text-white dark:hover:text-slate-900 rounded-full shadow-lg transition-colors border border-slate-100 dark:border-slate-700"
             >
               <Eye size={18} />
             </button>
           </div>
 
           {imageUrl ? (
-            <img src={imageUrl} alt={item.titleSnapshot} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
+            <img src={imageUrl} alt={item.titleSnapshot} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 mix-blend-multiply dark:mix-blend-normal" />
           ) : (
-            <Package size={48} className="text-slate-300" />
+            <Package size={48} className="text-slate-300 dark:text-slate-700" />
           )}
         </div>
 
-        <div className="p-5 flex flex-col flex-1">
-          <div className="text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">{item.condition}</div>
-          <h3 className="font-bold text-slate-900 text-base leading-tight mb-4 line-clamp-2 group-hover:text-blue-600 transition-colors">
+        <div className="p-4 sm:p-5 flex flex-col flex-1">
+          <div className="text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wider">{item.condition}</div>
+          <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base leading-tight mb-3 sm:mb-4 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             {item.titleSnapshot}
           </h3>
           
           <div className="mt-auto flex items-center justify-between">
-            <span className="text-xl font-black text-slate-900">
+            <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
               {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', maximumFractionDigits: 0 }).format(price)}
             </span>
           </div>
