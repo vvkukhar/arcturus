@@ -6,6 +6,7 @@ import { I18nProvider } from "@/components/providers/i18n-provider";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { CartSidebar } from "@/components/cart/cart-sidebar";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Arcturus | Premium LEGO Store",
@@ -32,6 +33,7 @@ export default function RootLayout({
             </CartProvider>
           </I18nProvider>
         </ThemeProvider>
+        <Toaster position="bottom-right" theme="system" richColors closeButton />
       </body>
     </html>
   );

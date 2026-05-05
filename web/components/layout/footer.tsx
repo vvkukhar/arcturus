@@ -43,6 +43,7 @@ export function Footer() {
               <li><Link href="/store/catalog" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('nav.catalog')}</Link></li>
               <li><Link href="/about" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('nav.about')}</Link></li>
               <li><Link href="/delivery" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('nav.delivery')}</Link></li>
+              <li><Link href="/faq" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('footer.faq')}</Link></li>
             </ul>
           </div>
 
@@ -58,8 +59,8 @@ export function Footer() {
           <div>
             <h3 className="font-bold text-slate-900 dark:text-white mb-4 uppercase text-sm tracking-wider">{t('footer.legal')}</h3>
             <ul className="space-y-3">
-              <li><Link href="#" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('footer.privacy')}</Link></li>
-              <li><Link href="#" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('footer.terms')}</Link></li>
+              <li><Link href="/privacy" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('footer.privacy')}</Link></li>
+              <li><Link href="/terms" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('footer.terms')}</Link></li>
             </ul>
           </div>
         </div>
