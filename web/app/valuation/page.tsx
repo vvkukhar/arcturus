@@ -4,6 +4,16 @@ import { useI18n } from '@/components/providers/i18n-provider';
 import { Calculator, Info, Search, ShieldCheck, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/client-api';
+import { formatMoney } from '@/lib/format';
+
+interface CompSummary {
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  median: number | null;
+  count: number;
+}
 
 export default function ValuationPage() {
   const { t } = useI18n();
@@ -11,25 +21,44 @@ export default function ValuationPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ price: number; liquidity: string; confidence: number } | null>(null);
 
-  const handleValuation = (e: React.FormEvent) => {
+  const handleValuation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!setId.trim()) return;
 
     setLoading(true);
-    setTimeout(() => {
-      const basePrice = Math.floor(Math.random() * (45000 - 5000) + 5000);
-      setResult({
-        price: basePrice,
-        liquidity: basePrice > 25000 ? 'High' : 'Moderate',
-        confidence: 94 + Math.random() * 5,
+    setResult(null);
+    
+    try {
+      const data = await apiFetch<CompSummary>('/api/comps/summary', {
+        method: 'POST',
+        body: JSON.stringify({ setNumber: setId.trim() }),
       });
+
+      if (data.count === 0 || !data.median) {
+        toast.error('Not enough market data found for this Set ID.');
+        setLoading(false);
+        return;
+      }
+
+      const liquidity = data.count >= 10 ? 'High' : data.count >= 4 ? 'Moderate' : 'Low';
+      const confidence = data.count >= 10 ? 98.5 : data.count >= 4 ? 82.0 : 45.0;
+
+      setResult({
+        price: data.median,
+        liquidity,
+        confidence,
+      });
+
+      toast.success('Valuation complete based on real comps.');
+    } catch (err) {
+      toast.error('Failed to fetch valuation data.');
+    } finally {
       setLoading(false);
-      toast.success('Valuation complete');
-    }, 1200);
+    }
   };
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl mx-auto">
+    <div className="p-6 md:p-10 max-w-5xl mx-auto animate-fade-in-up">
       <div className="mb-10">
         <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('valuation.title')}</h1>
         <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('valuation.subtitle')}</p>
@@ -44,7 +73,7 @@ export default function ValuationPage() {
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Set ID</label>
+                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Set ID / Item Number</label>
                 <div className="relative">
                   <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input 
@@ -92,8 +121,8 @@ export default function ValuationPage() {
                 <p className="text-sm font-bold uppercase tracking-widest opacity-70">Arcturus Fair Price</p>
                 <ShieldCheck size={24} />
               </div>
-              <p className="text-5xl font-black mb-2">{result ? result.price.toLocaleString() : '---'} ₴</p>
-              <p className="text-sm font-medium opacity-80">Estimated market value based on liquidity index.</p>
+              <p className="text-5xl font-black mb-2">{result ? formatMoney(result.price) : '--- ₴'}</p>
+              <p className="text-sm font-medium opacity-80">Estimated market value based on real secondary market sales.</p>
               
               <div className="mt-8 pt-8 border-t border-white/10 grid grid-cols-2 gap-4">
                 <div>
@@ -113,8 +142,8 @@ export default function ValuationPage() {
               <Info size={20} className="text-blue-600 shrink-0" />
               <p className="text-sm text-slate-500 font-medium leading-relaxed">
                 {result 
-                  ? `Valuation for set #${setId} was generated using real-time secondary market sales and historic ROI cycles.` 
-                  : 'Enter a set ID to see our institutional valuation model in action.'}
+                  ? `Valuation for set #${setId} was generated using real-time secondary market sales from our global tracking database.` 
+                  : 'Enter a set ID to query our institutional valuation database.'}
               </p>
             </div>
           </div>

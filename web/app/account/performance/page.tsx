@@ -85,7 +85,7 @@ export default function PerformancePage() {
                   </Pie>
                   <Tooltip 
                     contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
-                    formatter={(value: any) => [`${value} ₴`, 'Profit']}
+                    formatter={(value: any) => [`${value} ₴`, 'Profit'] as any}
                   />
                   <Legend verticalAlign="bottom" height={36}/>
                 </PieChart>

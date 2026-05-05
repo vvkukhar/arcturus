@@ -21,16 +21,25 @@ export function Ticker() {
       const res = await fetch('/api/public/catalog?limit=15', { cache: 'no-store' });
       const items = await res.json();
       if (Array.isArray(items) && items.length > 0) {
-        const formatted = items.map((item: any) => ({
-          id: item.item?.setNumber || item.id.slice(0, 6),
-          name: item.titleSnapshot,
-          price: item.expectedSalePriceManual ?? item.totalCost ?? 0,
-          change: (Math.random() * 5).toFixed(2), 
-          isUp: Math.random() > 0.3
-        }));
+        const formatted = items.map((item: any) => {
+          const cost = item.totalCost || 1;
+          const price = item.expectedSalePriceManual ?? cost;
+          const change = (((price - cost) / cost) * 100);
+          return {
+            id: item.item?.setNumber || item.itemId.slice(0, 6),
+            name: item.titleSnapshot,
+            price: price,
+            change: Math.abs(change).toFixed(2), 
+            isUp: change >= 0
+          };
+        });
         setData(formatted);
+      } else {
+        setData([]);
       }
-    } catch (e) {}
+    } catch (e) {
+      setData([]);
+    }
   };
 
   useEffect(() => {
@@ -49,8 +58,16 @@ export function Ticker() {
     };
   }, []);
 
-  if (!mounted || data.length === 0) {
+  if (!mounted) {
     return <div className="h-8 sm:h-10 bg-slate-950 dark:bg-black border-b border-slate-800" />;
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="bg-slate-950 dark:bg-black text-slate-500 border-b border-slate-800 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center justify-center h-8 sm:h-10 relative z-50">
+        SYSTEM AWAITING MARKET DATA...
+      </div>
+    );
   }
 
   return (

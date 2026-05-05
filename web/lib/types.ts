@@ -42,6 +42,8 @@ export interface WatchlistItem {
   notes?: string | null;
   assignedUserId?: string | null;
   assignedUser?: User | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface OpportunityItem {

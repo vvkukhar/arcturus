@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useI18n } from '@/components/providers/i18n-provider';
-import { Filter, Search, Download, ChevronDown, Loader2 } from 'lucide-react';
+import { Filter, Search, Download, Loader2 } from 'lucide-react';
 import { apiFetch } from '@/lib/client-api';
-import { formatMoney, formatPercent } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
 
 export default function ScreenerPage() {
   const { t } = useI18n();
@@ -65,6 +65,31 @@ export default function ScreenerPage() {
     return result;
   }, [data, query, themeFilter, sort]);
 
+  const exportCSV = () => {
+    const headers = ['Set ID', 'Name', 'Theme', 'Cost Basis', 'Market Target', 'Est. ROI'];
+    const csvData = filtered.map(row => {
+      const cost = row.totalCost || 0;
+      const target = row.expectedSalePriceManual ?? cost;
+      const roi = cost > 0 ? ((target - cost) / cost) * 100 : 0;
+      return [
+        row.item?.setNumber || row.itemId.slice(0,8),
+        `"${row.titleSnapshot}"`,
+        row.item?.theme || '—',
+        cost,
+        target,
+        `${roi.toFixed(2)}%`
+      ].join(',');
+    });
+    
+    const blob = new Blob([headers.join(','), '\n', ...csvData].join('\n'), { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `screener_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-6 md:p-10 max-w-[1600px] mx-auto h-full flex flex-col animate-fade-in-up">
       <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -73,7 +98,7 @@ export default function ScreenerPage() {
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('screener.subtitle')}</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-[var(--card)] border border-[var(--border)] rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors shadow-sm">
+          <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2.5 bg-[var(--card)] border border-[var(--border)] rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors shadow-sm">
             <Download size={16} /> Export CSV
           </button>
         </div>

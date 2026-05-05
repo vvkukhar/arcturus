@@ -84,7 +84,7 @@ export default async function AdminWatchlistDetailPage({ params }: { params: Pro
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-slate-500">Added</span>
                 <span className="text-sm font-mono text-slate-700">
-                  {(item as any).createdAt ? new Date((item as any).createdAt).toLocaleDateString('uk-UA') : 'N/A'}
+                  {item.createdAt ? new Date(item.createdAt).toLocaleDateString('uk-UA') : 'N/A'}
                 </span>
               </div>
             </div>
