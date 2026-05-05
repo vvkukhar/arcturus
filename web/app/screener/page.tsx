@@ -81,7 +81,7 @@ export default function ScreenerPage() {
       ].join(',');
     });
     
-    const blob = new Blob([headers.join(','), '\n', ...csvData].join('\n'), { type: 'text/csv' });
+    const blob = new Blob([[headers.join(','), ...csvData].join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
