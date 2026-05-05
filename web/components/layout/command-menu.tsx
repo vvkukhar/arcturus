@@ -1,40 +1,46 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Package, User, ShoppingCart, MapPin, X } from 'lucide-react';
-import { useI18n } from '../providers/i18n-provider';
+import { Search, Package, User, ShoppingCart, MapPin, X, LineChart, ShieldCheck } from 'lucide-react';
 import { useCart } from '../providers/cart-provider';
 
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const router = useRouter();
-  const { t } = useI18n();
   const { setIsCartOpen } = useCart();
+
+  const commands = [
+    { name: 'Catalog', path: '/store/catalog', icon: Package, category: 'Navigation' },
+    { name: 'Market Overview', path: '/market', icon: LineChart, category: 'Trading' },
+    { name: 'Account Dashboard', path: '/account', icon: User, category: 'Account' },
+    { name: 'Order Tracking', path: '/track', icon: MapPin, category: 'Navigation' },
+    { name: 'Authenticity Checks', path: '/authenticity', icon: ShieldCheck, category: 'Information' },
+  ];
+
+  const filteredCommands = useMemo(() => {
+    if (!query) return commands;
+    return commands.filter(c => c.name.toLowerCase().includes(query.toLowerCase()));
+  }, [query]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((open) => !open);
+        setOpen((o) => !open);
       }
       if (e.key === 'Escape') setOpen(false);
     };
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
-  }, []);
+  }, [open]);
 
   if (!open) return null;
 
   const navigate = (path: string) => {
     setOpen(false);
     router.push(path);
-  };
-
-  const openCart = () => {
-    setOpen(false);
-    setIsCartOpen(true);
   };
 
   return (
@@ -47,43 +53,37 @@ export function CommandMenu() {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search sets, themes, or commands..."
+            placeholder="Type a command or search..."
             className="flex-1 bg-transparent border-none outline-none text-lg text-slate-900 dark:text-white placeholder-slate-400 font-medium"
           />
-          <div className="hidden sm:flex items-center gap-1 text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md uppercase tracking-wider">
+          <div className="hidden sm:flex items-center gap-1 text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
             ESC
           </div>
-          <button onClick={() => setOpen(false)} className="sm:hidden p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-full">
-            <X size={20} />
-          </button>
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto p-2">
-          <div className="px-3 py-2 text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Suggestions</div>
-          <div className="space-y-1">
-            <button onClick={() => navigate('/store/catalog?theme=Star+Wars')} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors text-left font-bold">
-              <Search size={18} className="text-blue-500" /> Star Wars Catalog
-            </button>
-            <button onClick={() => navigate('/store/catalog?theme=Ninjago')} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors text-left font-bold">
-              <Search size={18} className="text-blue-500" /> Ninjago Collection
-            </button>
-          </div>
-
-          <div className="px-3 py-2 mt-4 text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Quick Actions</div>
-          <div className="space-y-1">
-            <button onClick={() => navigate('/store/catalog')} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors text-left font-bold">
-              <Package size={18} className="text-slate-400" /> View All Inventory
-            </button>
-            <button onClick={openCart} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors text-left font-bold">
-              <ShoppingCart size={18} className="text-slate-400" /> Open Cart
-            </button>
-            <button onClick={() => navigate('/track')} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors text-left font-bold">
-              <MapPin size={18} className="text-slate-400" /> Track Order
-            </button>
-            <button onClick={() => navigate('/account')} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors text-left font-bold">
-              <User size={18} className="text-slate-400" /> Account Dashboard
-            </button>
-          </div>
+          {filteredCommands.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 font-medium">No results found for "{query}"</div>
+          ) : (
+            <div className="space-y-1">
+              {filteredCommands.map((cmd, idx) => {
+                const Icon = cmd.icon;
+                return (
+                  <button 
+                    key={idx}
+                    onClick={() => navigate(cmd.path)}
+                    className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-blue-600 hover:text-white text-slate-700 dark:text-slate-300 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon size={18} className="group-hover:text-white" />
+                      <span className="font-bold">{cmd.name}</span>
+                    </div>
+                    <span className="text-[10px] font-black uppercase opacity-40 group-hover:opacity-100">{cmd.category}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
