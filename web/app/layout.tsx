@@ -10,7 +10,7 @@ import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Arcturus | Premium LEGO Store",
-  description: "Rare and retired LEGO. Verified parts, fair prices, fast delivery.",
+  description: "Rare and retired LEGO. Verified items, safe shipping.",
 };
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased text-slate-900 bg-slate-50 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-300">
+      <body className="antialiased min-h-screen flex flex-col">
         <ThemeProvider>
           <I18nProvider>
             <CartProvider>
