@@ -1,15 +1,18 @@
 'use client';
 
 import { useCart } from '@/components/providers/cart-provider';
-import { Package, ShieldCheck, MapPin, CreditCard } from 'lucide-react';
+import { Package, ShieldCheck, MapPin, CreditCard, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/client-api';
+import type { ApiResponse } from '@/lib/types';
 
 export default function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCart();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -27,10 +30,46 @@ export default function CheckoutPage() {
     if (items.length === 0) return;
     
     setLoading(true);
-    setTimeout(() => {
+    setError(null);
+    
+    try {
+      const message = `Cart Checkout. Delivery: ${formData.city}, NP: ${formData.novaPoshta}. Items: ${items.map(i => `${i.title} (x${i.quantity})`).join(', ')}`;
+      const name = `${formData.firstName.trim()} ${formData.lastName.trim()}`;
+      
+      const reserveResponse = await apiFetch<ApiResponse<any>>('/api/store/contact', {
+        method: 'POST',
+        body: JSON.stringify({
+          inventoryItemId: items[0].id, 
+          productTitle: items.length > 1 ? `Multi-item Order (${items.length} sets)` : items[0].title,
+          name,
+          contact: formData.phone,
+          message,
+        }),
+      });
+
+      const data = reserveResponse.data || reserveResponse;
+      const orderId = data?.orders?.[0]?.id || data?.id;
+
+      if (!orderId) {
+        throw new Error('Failed to generate order ID from server.');
+      }
+
+      const checkoutResponse = await apiFetch<{ url: string }>('/api/store/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ orderId }),
+      });
+
       clearCart();
-      router.push('/success');
-    }, 1500);
+      
+      if (checkoutResponse?.url) {
+        window.location.href = checkoutResponse.url;
+      } else {
+        router.push('/success?orderId=' + orderId);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Checkout failed');
+      setLoading(false);
+    }
   };
 
   if (items.length === 0) {
@@ -54,6 +93,11 @@ export default function CheckoutPage() {
       
       <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-12">
         <div className="flex-1 w-full">
+          {error && (
+            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-600">
+              {error}
+            </div>
+          )}
           <form id="checkout-form" onSubmit={handleCheckout} className="space-y-6 md:space-y-8">
             <div className="bg-white dark:bg-slate-950 p-5 sm:p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white mb-4 md:mb-6 flex items-center gap-2">
@@ -98,7 +142,8 @@ export default function CheckoutPage() {
                 disabled={loading}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-400 dark:disabled:bg-slate-700 text-white font-black rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
               >
-                {loading ? 'Processing...' : <><CreditCard size={20} /> Proceed to Payment</>}
+                {loading ? <Loader2 className="animate-spin" size={20} /> : <CreditCard size={20} />} 
+                {loading ? 'Processing...' : 'Proceed to Payment'}
               </button>
             </div>
           </form>
@@ -144,7 +189,8 @@ export default function CheckoutPage() {
                 disabled={loading}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-400 dark:disabled:bg-slate-700 text-white font-black rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-blue-600/20"
               >
-                {loading ? 'Processing...' : <><CreditCard size={20} /> Proceed to Payment</>}
+                {loading ? <Loader2 className="animate-spin" size={20} /> : <CreditCard size={20} />} 
+                {loading ? 'Processing...' : 'Proceed to Payment'}
               </button>
               <p className="text-xs text-center text-slate-500 dark:text-slate-400 mt-4 font-medium">Payments processed securely via Monobank.</p>
             </div>

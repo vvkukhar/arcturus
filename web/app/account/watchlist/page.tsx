@@ -1,56 +1,82 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useI18n } from '@/components/providers/i18n-provider';
-import { Heart, TrendingUp, TrendingDown, Bell, Search } from 'lucide-react';
-
-const watchlist = [
-  { id: '75192', name: 'Millennium Falcon', price: '34,500', change: '+1.2%', isUp: true },
-  { id: '10305', name: 'Lion Knights\' Castle', price: '16,800', change: '-0.5%', isUp: false },
-  { id: '71741', name: 'Ninjago City Gardens', price: '14,200', change: '+2.8%', isUp: true },
-  { id: '10294', name: 'Titanic', price: '26,500', change: '0.0%', isUp: true },
-];
+import { Heart, TrendingUp, TrendingDown, Bell, Search, Loader2 } from 'lucide-react';
+import { apiFetch } from '@/lib/client-api';
+import { formatMoney } from '@/lib/format';
+import Link from 'next/link';
 
 export default function WatchlistPage() {
   const { t } = useI18n();
+  const [watchlist, setWatchlist] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    apiFetch<any[]>('/api/watchlist')
+      .then((data) => {
+        if (mounted) {
+          setWatchlist(Array.isArray(data) ? data.filter(x => x.active) : []);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => { mounted = false; };
+  }, []);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
 
   return (
-    <div className="p-6 md:p-10 max-w-4xl mx-auto">
+    <div className="p-6 md:p-10 max-w-4xl mx-auto animate-fade-in-up">
       <div className="mb-10 flex flex-col md:flex-row justify-between items-end gap-6">
         <div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('sidebar.watchlist')}</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">Monitoring active assets for potential entry points.</p>
         </div>
-        <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-black rounded-xl shadow-lg shadow-blue-600/20">
-          <Search size={18} /> Add New
-        </button>
+        <Link href="/store/catalog" className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors">
+          <Search size={18} /> Find Sets
+        </Link>
       </div>
 
       <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden">
-        {watchlist.map((item, idx) => (
-          <div key={idx} className="flex items-center justify-between p-6 border-b border-[var(--border)] last:border-none hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors group">
-            <div className="flex items-center gap-4">
-              <div className="p-2 text-slate-300 group-hover:text-red-500 transition-colors cursor-pointer">
-                <Heart size={24} fill={idx === 0 ? 'currentColor' : 'none'} className={idx === 0 ? 'text-red-500' : ''} />
+        {watchlist.length === 0 ? (
+          <div className="p-12 text-center text-slate-500 font-medium">Your watchlist is currently empty.</div>
+        ) : (
+          watchlist.map((item, idx) => {
+            const spread = (item.targetSellPrice ?? item.maxBuyPrice) - item.maxBuyPrice;
+            const roi = item.maxBuyPrice > 0 ? (spread / item.maxBuyPrice) * 100 : 0;
+            const isUp = roi > 0;
+
+            return (
+              <div key={item.id} className="flex items-center justify-between p-6 border-b border-[var(--border)] last:border-none hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors group">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 text-red-500 transition-colors cursor-pointer">
+                    <Heart size={24} fill="currentColor" />
+                  </div>
+                  <div>
+                    <p className="font-black text-lg leading-tight line-clamp-1">{item.titleSnapshot}</p>
+                    <p className="text-xs text-slate-500 font-bold mt-1">ID: {item.itemId}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-8">
+                  <div className="text-right">
+                    <p className="font-black text-lg">{formatMoney(item.maxBuyPrice)} Max</p>
+                    <p className={`text-xs font-bold flex items-center justify-end gap-1 ${isUp ? 'text-green-500' : 'text-red-500'}`}>
+                      {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                      {isUp ? '+' : ''}{roi.toFixed(1)}% Est. ROI
+                    </p>
+                  </div>
+                  <button className="p-3 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                    <Bell size={20} className={item.priority > 70 ? 'text-blue-500 fill-current' : ''} />
+                  </button>
+                </div>
               </div>
-              <div>
-                <p className="font-black text-lg leading-tight">{item.name}</p>
-                <p className="text-xs text-slate-500 font-bold mt-1">ID: {item.id}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-8">
-              <div className="text-right">
-                <p className="font-black text-lg">{item.price} ₴</p>
-                <p className={`text-xs font-bold flex items-center justify-end gap-1 ${item.isUp ? 'text-green-500' : 'text-red-500'}`}>
-                  {item.isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                  {item.change}
-                </p>
-              </div>
-              <button className="p-3 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-                <Bell size={20} />
-              </button>
-            </div>
-          </div>
-        ))}
+            );
+          })
+        )}
       </div>
     </div>
   );

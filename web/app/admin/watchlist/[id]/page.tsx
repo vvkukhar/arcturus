@@ -1,15 +1,11 @@
-import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
-import type { WatchlistItem } from '@/lib/types';
 import { WatchlistInlineEditor } from '@/components/admin/watchlist-inline-editor';
 import { SectionCard } from '@/components/admin/section-card';
-import { AddToPurchaseFlowButton } from '@/components/admin/add-to-purchase-flow-button';
-import { ArrowLeft } from 'lucide-react';
+import { StatusPill } from '@/components/admin/status-pill';
+import { formatMoney } from '@/lib/format';
+import type { WatchlistItem } from '@/lib/types';
 import Link from 'next/link';
-
-type Props = {
-  params: Promise<{ id: string }>;
-};
+import { ArrowLeft } from 'lucide-react';
 
 async function getWatchlistItem(id: string): Promise<WatchlistItem | null> {
   try {
@@ -19,43 +15,77 @@ async function getWatchlistItem(id: string): Promise<WatchlistItem | null> {
   }
 }
 
-export default async function WatchlistDetailPage({ params }: Props) {
+export default async function AdminWatchlistDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const item = await getWatchlistItem(id);
 
   if (!item) {
-    notFound();
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <h2 className="text-2xl font-black text-slate-900">Watchlist Item Not Found</h2>
+        <Link href="/admin/watchlist" className="mt-4 text-blue-600 hover:underline">
+          Return to Watchlist
+        </Link>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex items-center gap-4">
-        <Link 
-          href="/admin/watchlist" 
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
-        >
-          <ArrowLeft className="h-5 w-5" />
+    <div className="space-y-6 animate-fade-in-up pb-10">
+      <div className="flex items-center gap-4 mb-2">
+        <Link href="/admin/watchlist" className="p-2 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors">
+          <ArrowLeft size={20} className="text-slate-600" />
         </Link>
         <div>
-          <h1 className="text-3xl font-black text-slate-900">{item.titleSnapshot || item.itemId}</h1>
-          <p className="mt-1 font-mono text-sm font-medium text-slate-500">ID: {item.id}</p>
+          <h1 className="text-3xl font-black text-slate-900">{item.titleSnapshot}</h1>
+          <p className="text-sm font-mono text-slate-500 mt-1">ID: {item.id} | Base Item: {item.itemId}</p>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2 space-y-6">
-          <SectionCard title="Watchlist Configuration">
+          <SectionCard title="Configuration">
             <WatchlistInlineEditor item={item} />
+          </SectionCard>
+
+          <SectionCard title="Target Metrics">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Desired Buy</div>
+                <div className="text-xl font-black text-emerald-600">{formatMoney(item.desiredBuyPrice)}</div>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Max Buy</div>
+                <div className="text-xl font-black text-slate-900">{formatMoney(item.maxBuyPrice)}</div>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Target Sell</div>
+                <div className="text-xl font-black text-blue-600">{formatMoney(item.targetSellPrice)}</div>
+              </div>
+            </div>
           </SectionCard>
         </div>
 
         <div className="space-y-6">
-          <SectionCard title="Actions">
+          <SectionCard title="Properties">
             <div className="space-y-4">
-              <AddToPurchaseFlowButton watchlistItemId={item.id} />
-              <div className="pt-4 border-t border-slate-100">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Priority Level</div>
-                <div className="text-2xl font-black text-slate-900">{item.priority} / 10</div>
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                <span className="text-sm font-semibold text-slate-500">Status</span>
+                <StatusPill value={item.active ? 'Active' : 'Inactive'} />
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                <span className="text-sm font-semibold text-slate-500">Priority</span>
+                <span className="font-mono font-bold text-lg">{item.priority}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                <span className="text-sm font-semibold text-slate-500">Assigned To</span>
+                <span className="font-semibold">{item.assignedUser?.name ?? 'Unassigned'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-slate-500">Added</span>
+                <span className="text-sm font-mono text-slate-700">
+                  {(item as any).createdAt ? new Date((item as any).createdAt).toLocaleDateString('uk-UA') : 'N/A'}
+                </span>
               </div>
             </div>
           </SectionCard>

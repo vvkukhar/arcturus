@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { appConfig } from '@/lib/config';
 import { getAdminToken } from '@/lib/server-auth';
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest) {
   const token = await getAdminToken();
-  const { id } = await params;
+  const itemId = request.nextUrl.searchParams.get('itemId');
+  
+  if (!itemId) {
+    return NextResponse.json([], { status: 200 });
+  }
 
-  const res = await fetch(`${appConfig.apiBaseUrl}/watchlist/${id}`, {
+  const res = await fetch(`${appConfig.apiBaseUrl}/market/item/${itemId}/listings`, {
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
@@ -14,7 +18,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   });
 
   if (!res.ok) {
-    return NextResponse.json({ ok: false }, { status: res.status });
+    return NextResponse.json([], { status: 200 });
   }
 
   return NextResponse.json(await res.json());

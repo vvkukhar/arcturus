@@ -3,9 +3,11 @@
 import { useCart } from '../providers/cart-provider';
 import { X, Plus, Minus, ShoppingBag, ArrowRight, Package } from 'lucide-react';
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export function CartSidebar() {
   const { isCartOpen, setIsCartOpen, items, updateQuantity, removeItem, totalPrice } = useCart();
+  const router = useRouter();
 
   useEffect(() => {
     if (isCartOpen) {
@@ -17,6 +19,11 @@ export function CartSidebar() {
   }, [isCartOpen]);
 
   if (!isCartOpen) return null;
+
+  const handleCheckout = () => {
+    setIsCartOpen(false);
+    router.push('/store/checkout');
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -50,7 +57,7 @@ export function CartSidebar() {
                 <p className="text-sm text-slate-500 mt-1">Looks like you haven't added any LEGO yet.</p>
               </div>
               <button 
-                onClick={() => setIsCartOpen(false)}
+                onClick={() => { setIsCartOpen(false); router.push('/store/catalog'); }}
                 className="mt-4 px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
               >
                 Start Browsing
@@ -108,7 +115,7 @@ export function CartSidebar() {
               </span>
             </div>
             
-            <button className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-slate-900/20">
+            <button onClick={handleCheckout} className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-slate-900/20">
               Checkout Now <ArrowRight size={20} />
             </button>
           </div>
