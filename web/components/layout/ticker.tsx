@@ -3,6 +3,7 @@
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getSocket } from '@/lib/socket';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface TickerItem {
   id: string;
@@ -13,6 +14,7 @@ interface TickerItem {
 }
 
 export function Ticker() {
+  const { t } = useI18n();
   const [data, setData] = useState<TickerItem[]>([]);
   const [mounted, setMounted] = useState(false);
 
@@ -65,7 +67,7 @@ export function Ticker() {
   if (data.length === 0) {
     return (
       <div className="bg-slate-950 dark:bg-black text-slate-500 border-b border-slate-800 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center justify-center h-8 sm:h-10 relative z-50">
-        SYSTEM AWAITING MARKET DATA...
+        {t('ticker.awaiting')}
       </div>
     );
   }

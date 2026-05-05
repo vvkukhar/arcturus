@@ -44,7 +44,7 @@ export default function HistoricalPage() {
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('historical.subtitle')}</p>
         </div>
         <div className="bg-[var(--card)] px-4 py-2 border border-[var(--border)] rounded-xl font-bold text-sm">
-          Arcturus Global History
+          {t('historical.global')}
         </div>
       </div>
 
@@ -53,7 +53,7 @@ export default function HistoricalPage() {
           <div className="flex justify-between items-center mb-8">
             <h3 className="font-black text-lg flex items-center gap-2">
               <Calendar size={20} className="text-blue-600" />
-              Realized Revenue Timeline
+              {t('historical.timeline')}
             </h3>
           </div>
           <div className="h-[400px] w-full">
@@ -75,21 +75,21 @@ export default function HistoricalPage() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 font-medium">No sales data recorded yet.</div>
+              <div className="h-full flex items-center justify-center text-slate-400 font-medium">{t('historical.noData')}</div>
             )}
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="bg-slate-50 dark:bg-slate-900 p-8 rounded-3xl border border-[var(--border)]">
-            <h4 className="text-xs font-black uppercase text-slate-400 mb-6 tracking-widest">Key Metrics</h4>
+            <h4 className="text-xs font-black uppercase text-slate-400 mb-6 tracking-widest">{t('historical.metrics')}</h4>
             <div className="space-y-6">
               <div>
-                <p className="text-sm font-bold text-slate-500 mb-1">Total Realized Revenue</p>
+                <p className="text-sm font-bold text-slate-500 mb-1">{t('historical.totalRev')}</p>
                 <p className="text-2xl font-black">{totalRevenue.toLocaleString()} ₴</p>
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-500 mb-1">Active Trading Periods</p>
+                <p className="text-sm font-bold text-slate-500 mb-1">{t('historical.activePeriods')}</p>
                 <p className="text-2xl font-black">{history.length}</p>
               </div>
             </div>
@@ -97,8 +97,8 @@ export default function HistoricalPage() {
           
           <button className="w-full p-6 bg-[var(--card)] border border-[var(--border)] hover:border-blue-600 rounded-3xl transition-all flex items-center justify-between group">
             <div className="text-left">
-              <p className="font-black text-lg">Compare with Indices</p>
-              <p className="text-sm text-slate-500 font-medium">Relative to S&P 500 & LEGO 100</p>
+              <p className="font-black text-lg">{t('historical.compare')}</p>
+              <p className="text-sm text-slate-500 font-medium">{t('historical.relative')}</p>
             </div>
             <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
           </button>

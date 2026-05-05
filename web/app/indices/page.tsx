@@ -43,7 +43,7 @@ export default function IndicesPage() {
 
   const chartData = themes.slice(0, 8).map(t => ({
     name: t.theme,
-    profit: parseFloat(t.profit.replace(/[^0-9.-]+/g,"")) || t.profit
+    profit: typeof t.profit === 'string' ? parseFloat(t.profit.replace(/[^0-9.-]+/g,"")) : t.profit
   }));
 
   return (
@@ -57,31 +57,31 @@ export default function IndicesPage() {
         <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
           <div className="flex items-center gap-3 mb-4 text-blue-500">
             <Star size={24} />
-            <span className="font-bold">Star Wars Performance</span>
+            <span className="font-bold">{t('indices.swPerf')}</span>
           </div>
           <p className="text-3xl font-black">{starwars.roi}% ROI</p>
-          <p className="text-sm font-bold text-green-500 mt-1">Realized Profit: {starwars.profit} ₴</p>
+          <p className="text-sm font-bold text-green-500 mt-1">{t('indices.realized')}: {starwars.profit}</p>
         </div>
         <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
           <div className="flex items-center gap-3 mb-4 text-red-500">
             <Zap size={24} />
-            <span className="font-bold">Ninjago Performance</span>
+            <span className="font-bold">{t('indices.njPerf')}</span>
           </div>
           <p className="text-3xl font-black">{ninjago.roi}% ROI</p>
-          <p className="text-sm font-bold text-green-500 mt-1">Realized Profit: {ninjago.profit} ₴</p>
+          <p className="text-sm font-bold text-green-500 mt-1">{t('indices.realized')}: {ninjago.profit}</p>
         </div>
         <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
           <div className="flex items-center gap-3 mb-4 text-orange-500">
             <Activity size={24} />
-            <span className="font-bold">Technic Performance</span>
+            <span className="font-bold">{t('indices.tcPerf')}</span>
           </div>
           <p className="text-3xl font-black">{technic.roi}% ROI</p>
-          <p className="text-sm font-bold text-green-500 mt-1">Realized Profit: {technic.profit} ₴</p>
+          <p className="text-sm font-bold text-green-500 mt-1">{t('indices.realized')}: {technic.profit}</p>
         </div>
       </div>
 
       <div className="bg-[var(--card)] p-6 rounded-3xl border border-[var(--border)] shadow-sm">
-        <h3 className="font-black text-xl mb-6 ml-4">Profit by Theme</h3>
+        <h3 className="font-black text-xl mb-6 ml-4">{t('indices.profitByTheme')}</h3>
         <div className="h-[500px] w-full mt-4">
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
@@ -97,7 +97,7 @@ export default function IndicesPage() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex items-center justify-center text-slate-400 font-medium">Not enough theme data to display.</div>
+            <div className="h-full flex items-center justify-center text-slate-400 font-medium">{t('indices.noData')}</div>
           )}
         </div>
       </div>

@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useI18n } from '@/components/providers/i18n-provider';
 import { FileText, Download, Loader2 } from 'lucide-react';
 import { apiFetch } from '@/lib/client-api';
 
 export default function ReportsPage() {
+  const { t } = useI18n();
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,13 +30,13 @@ export default function ReportsPage() {
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto animate-fade-in-up">
       <div className="mb-10">
-        <h1 className="text-3xl md:text-5xl font-black tracking-tight">Investment Reports</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">In-depth institutional research and market forecasts.</p>
+        <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('sidebar.reports')}</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('historical.subtitle')}</p>
       </div>
 
       {reports.length === 0 ? (
         <div className="text-center py-20 bg-[var(--card)] border border-[var(--border)] rounded-3xl text-slate-500 font-medium">
-          No financial reports generated yet.
+          {t('reports.empty')}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -45,7 +47,7 @@ export default function ReportsPage() {
                   <FileText size={32} />
                 </div>
                 <div>
-                  <span className="text-xs font-black text-slate-400 uppercase tracking-wider">{report.type || 'System Report'}</span>
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-wider">{report.type || t('reports.system')}</span>
                   <h3 className="text-xl font-bold mt-1 mb-2 leading-tight">Financial Snapshot {new Date(report.createdAt).toLocaleDateString()}</h3>
                   <p className="text-sm text-slate-500 font-medium">From {new Date(report.periodStart).toLocaleDateString()} to {new Date(report.periodEnd).toLocaleDateString()}</p>
                 </div>

@@ -66,7 +66,7 @@ export default function ScreenerPage() {
   }, [data, query, themeFilter, sort]);
 
   const exportCSV = () => {
-    const headers = ['Set ID', 'Name', 'Theme', 'Cost Basis', 'Market Target', 'Est. ROI'];
+    const headers = [t('screener.col.id'), t('screener.col.name'), t('screener.col.theme'), t('screener.col.cost'), t('screener.col.target'), t('screener.col.roi')];
     const csvData = filtered.map(row => {
       const cost = row.totalCost || 0;
       const target = row.expectedSalePriceManual ?? cost;
@@ -99,7 +99,7 @@ export default function ScreenerPage() {
         </div>
         <div className="flex gap-3">
           <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2.5 bg-[var(--card)] border border-[var(--border)] rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors shadow-sm">
-            <Download size={16} /> Export CSV
+            <Download size={16} /> {t('screener.export')}
           </button>
         </div>
       </div>
@@ -111,7 +111,7 @@ export default function ScreenerPage() {
             type="text" 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by ID or Name..." 
+            placeholder={t('screener.search')} 
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl focus:ring-2 focus:ring-blue-600 outline-none text-sm font-medium" 
           />
         </div>
@@ -120,7 +120,7 @@ export default function ScreenerPage() {
           onChange={(e) => setThemeFilter(e.target.value)}
           className="bg-slate-50 dark:bg-slate-950 border border-[var(--border)] text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
         >
-          <option value="">All Themes</option>
+          <option value="">{t('screener.allThemes')}</option>
           {themes.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
         <select 
@@ -128,13 +128,13 @@ export default function ScreenerPage() {
           onChange={(e) => setSort(e.target.value)}
           className="bg-slate-50 dark:bg-slate-950 border border-[var(--border)] text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
         >
-          <option value="roi_desc">Highest ROI</option>
-          <option value="roi_asc">Lowest ROI</option>
-          <option value="price_desc">Highest Price</option>
-          <option value="price_asc">Lowest Price</option>
+          <option value="roi_desc">{t('screener.highestRoi')}</option>
+          <option value="roi_asc">{t('screener.lowestRoi')}</option>
+          <option value="price_desc">{t('screener.highestPrice')}</option>
+          <option value="price_asc">{t('screener.lowestPrice')}</option>
         </select>
         <button onClick={() => { setQuery(''); setThemeFilter(''); setSort('roi_desc'); }} className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-md hover:bg-black transition-colors">
-          <Filter size={14} /> Clear Filters
+          <Filter size={14} /> {t('screener.clearFilters')}
         </button>
       </div>
 
@@ -145,18 +145,18 @@ export default function ScreenerPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex h-full items-center justify-center py-20 text-slate-500 font-medium">
-            No assets match your criteria.
+            {t('screener.noAssets')}
           </div>
         ) : (
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
               <tr className="border-b border-[var(--border)] bg-slate-50/50 dark:bg-slate-900/50 text-xs uppercase tracking-wider text-slate-500">
-                <th className="p-4 font-black">Set ID / Item ID</th>
-                <th className="p-4 font-black">Name</th>
-                <th className="p-4 font-black">Theme</th>
-                <th className="p-4 font-black">Cost Basis</th>
-                <th className="p-4 font-black">Market Target</th>
-                <th className="p-4 font-black text-right">Est. ROI</th>
+                <th className="p-4 font-black">{t('screener.col.id')}</th>
+                <th className="p-4 font-black">{t('screener.col.name')}</th>
+                <th className="p-4 font-black">{t('screener.col.theme')}</th>
+                <th className="p-4 font-black">{t('screener.col.cost')}</th>
+                <th className="p-4 font-black">{t('screener.col.target')}</th>
+                <th className="p-4 font-black text-right">{t('screener.col.roi')}</th>
               </tr>
             </thead>
             <tbody className="text-sm font-medium">

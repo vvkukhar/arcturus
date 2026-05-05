@@ -35,7 +35,7 @@ export default function ValuationPage() {
       });
 
       if (data.count === 0 || !data.median) {
-        toast.error('Not enough market data found for this Set ID.');
+        toast.error(t('valuation.errorNoData'));
         setLoading(false);
         return;
       }
@@ -49,9 +49,9 @@ export default function ValuationPage() {
         confidence,
       });
 
-      toast.success('Valuation complete based on real comps.');
+      toast.success(t('valuation.success'));
     } catch (err) {
-      toast.error('Failed to fetch valuation data.');
+      toast.error(t('valuation.errorFetch'));
     } finally {
       setLoading(false);
     }
@@ -69,11 +69,11 @@ export default function ValuationPage() {
           <form onSubmit={handleValuation} className="bg-[var(--card)] p-6 md:p-8 rounded-3xl border border-[var(--border)] shadow-sm transition-colors">
             <h3 className="text-lg font-black mb-6 flex items-center gap-2">
               <Calculator size={20} className="text-blue-600" />
-              Price Estimator
+              {t('valuation.estimator')}
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Set ID / Item Number</label>
+                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">{t('valuation.setId')}</label>
                 <div className="relative">
                   <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input 
@@ -81,25 +81,25 @@ export default function ValuationPage() {
                     type="text" 
                     value={setId}
                     onChange={(e) => setSetId(e.target.value)}
-                    placeholder="e.g. 75192" 
+                    placeholder={t('valuation.setIdPlaceholder')} 
                     className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl outline-none focus:ring-2 focus:ring-blue-600 font-bold transition-shadow" 
                   />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Condition</label>
+                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">{t('valuation.condition')}</label>
                   <select className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl font-bold outline-none cursor-pointer transition-colors">
-                    <option>Sealed (Mint)</option>
-                    <option>Sealed (Damaged)</option>
-                    <option>Used (Complete)</option>
+                    <option>{t('valuation.cond.sealedMint')}</option>
+                    <option>{t('valuation.cond.sealedDamaged')}</option>
+                    <option>{t('valuation.cond.used')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Inventory Status</label>
+                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">{t('valuation.status')}</label>
                   <select className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl font-bold outline-none cursor-pointer transition-colors">
-                    <option>Retired</option>
-                    <option>Active Retail</option>
+                    <option>{t('valuation.stat.retired')}</option>
+                    <option>{t('valuation.stat.active')}</option>
                   </select>
                 </div>
               </div>
@@ -108,7 +108,7 @@ export default function ValuationPage() {
                 disabled={loading || !setId.trim()}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-400 dark:disabled:bg-slate-700 text-white font-black rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
               >
-                {loading ? <Loader2 className="animate-spin" size={20} /> : 'Calculate Fair Value'}
+                {loading ? <Loader2 className="animate-spin" size={20} /> : t('valuation.calculate')}
               </button>
             </div>
           </form>
@@ -118,19 +118,19 @@ export default function ValuationPage() {
           <div className={`transition-all duration-500 ${result ? 'opacity-100 scale-100' : 'opacity-50 scale-95 grayscale'}`}>
             <div className="bg-slate-900 dark:bg-blue-600 text-white p-8 rounded-3xl shadow-xl">
               <div className="flex justify-between items-start mb-8">
-                <p className="text-sm font-bold uppercase tracking-widest opacity-70">Arcturus Fair Price</p>
+                <p className="text-sm font-bold uppercase tracking-widest opacity-70">{t('valuation.fairPrice')}</p>
                 <ShieldCheck size={24} />
               </div>
               <p className="text-5xl font-black mb-2">{result ? formatMoney(result.price) : '--- ₴'}</p>
-              <p className="text-sm font-medium opacity-80">Estimated market value based on real secondary market sales.</p>
+              <p className="text-sm font-medium opacity-80">{t('valuation.fairPriceDesc')}</p>
               
               <div className="mt-8 pt-8 border-t border-white/10 grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase opacity-60">Liquidity</p>
+                  <p className="text-[10px] font-black uppercase opacity-60">{t('valuation.liquidity')}</p>
                   <p className="font-black">{result ? result.liquidity : '---'}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase opacity-60">Confidence</p>
+                  <p className="text-[10px] font-black uppercase opacity-60">{t('valuation.confidence')}</p>
                   <p className="font-black">{result ? `${result.confidence.toFixed(1)}%` : '---'}</p>
                 </div>
               </div>
@@ -142,8 +142,8 @@ export default function ValuationPage() {
               <Info size={20} className="text-blue-600 shrink-0" />
               <p className="text-sm text-slate-500 font-medium leading-relaxed">
                 {result 
-                  ? `Valuation for set #${setId} was generated using real-time secondary market sales from our global tracking database.` 
-                  : 'Enter a set ID to query our institutional valuation database.'}
+                  ? t('valuation.infoSuccess').replace('{id}', setId)
+                  : t('valuation.infoDefault')}
               </p>
             </div>
           </div>

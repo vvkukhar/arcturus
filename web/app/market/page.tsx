@@ -79,10 +79,10 @@ export default function MarketPage() {
               <Activity size={24} />
             </div>
             <span className="flex items-center gap-1 text-green-500 font-bold text-sm bg-green-500/10 px-2 py-1 rounded-md">
-              <TrendingUp size={14} /> Active
+              <TrendingUp size={14} /> {t('market.active')}
             </span>
           </div>
-          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">Global Market Cap</h3>
+          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">{t('market.globalCap')}</h3>
           <p className="text-3xl font-black">{formatMoney(marketCap)}</p>
         </div>
         <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
@@ -91,10 +91,10 @@ export default function MarketPage() {
               <DollarSign size={24} />
             </div>
             <span className="flex items-center gap-1 text-green-500 font-bold text-sm bg-green-500/10 px-2 py-1 rounded-md">
-              <TrendingUp size={14} /> Growth
+              <TrendingUp size={14} /> {t('market.growth')}
             </span>
           </div>
-          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">Realized Trading Volume</h3>
+          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">{t('market.tradingVol')}</h3>
           <p className="text-3xl font-black">{formatMoney(realizedRevenue)}</p>
         </div>
         <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
@@ -103,14 +103,14 @@ export default function MarketPage() {
               <Package size={24} />
             </div>
           </div>
-          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">Active Positions</h3>
+          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">{t('market.activePos')}</h3>
           <p className="text-3xl font-black">{activeListings}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-[var(--card)] p-6 rounded-3xl border border-[var(--border)] shadow-sm">
-          <h2 className="text-xl font-black mb-6">Arcturus Index (Revenue Timeline)</h2>
+          <h2 className="text-xl font-black mb-6">{t('market.chartTitle')}</h2>
           <div className="h-[400px] w-full">
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -131,21 +131,21 @@ export default function MarketPage() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 font-medium">Insufficient data for chart</div>
+              <div className="h-full flex items-center justify-center text-slate-400 font-medium">{t('market.noData')}</div>
             )}
           </div>
         </div>
 
         <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden flex flex-col">
           <div className="p-6 border-b border-[var(--border)]">
-            <h2 className="text-xl font-black">Top Movers</h2>
+            <h2 className="text-xl font-black">{t('market.topMovers')}</h2>
           </div>
           <div className="p-2 flex-1 overflow-y-auto">
             {movers.length > 0 ? movers.map((mover, idx) => (
               <div key={idx} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-xl transition-colors cursor-pointer">
                 <div>
                   <p className="font-bold text-sm line-clamp-1">{mover.name}</p>
-                  <p className="text-xs text-slate-500 font-medium">Set #{mover.id}</p>
+                  <p className="text-xs text-slate-500 font-medium">ID #{mover.id}</p>
                 </div>
                 <div className="text-right ml-4 shrink-0">
                   <p className="font-black text-sm">{mover.price}</p>
@@ -156,7 +156,7 @@ export default function MarketPage() {
                 </div>
               </div>
             )) : (
-              <div className="p-6 text-center text-slate-400 font-medium">No active movers found.</div>
+              <div className="p-6 text-center text-slate-400 font-medium">{t('market.noMovers')}</div>
             )}
           </div>
         </div>
