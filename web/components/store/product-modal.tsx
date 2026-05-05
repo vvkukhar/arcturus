@@ -2,11 +2,13 @@
 
 import { InventoryItem } from '@/lib/types';
 import { useCart } from '../providers/cart-provider';
+import { useI18n } from '../providers/i18n-provider';
 import { X, ShoppingCart, CheckCircle2, ShieldCheck, Package } from 'lucide-react';
 import { useEffect } from 'react';
 
 export function ProductModal({ item, isOpen, onClose }: { item: InventoryItem; isOpen: boolean; onClose: () => void }) {
   const { addItem } = useCart();
+  const { t } = useI18n();
   
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
@@ -61,11 +63,11 @@ export function ProductModal({ item, isOpen, onClose }: { item: InventoryItem; i
           <div className="space-y-3 mb-6 md:mb-8">
             <div className="flex items-center gap-3 text-sm md:text-base text-slate-600 dark:text-slate-300 font-medium">
               <CheckCircle2 size={18} className="text-green-500 shrink-0 w-5 h-5 md:w-6 md:h-6" />
-              In stock, ready to ship
+              {t('product.inStock')}
             </div>
             <div className="flex items-center gap-3 text-sm md:text-base text-slate-600 dark:text-slate-300 font-medium">
               <ShieldCheck size={18} className="text-blue-500 shrink-0 w-5 h-5 md:w-6 md:h-6" />
-              100% Authentic LEGO Guarantee
+              {t('product.authentic')}
             </div>
           </div>
 
@@ -78,7 +80,7 @@ export function ProductModal({ item, isOpen, onClose }: { item: InventoryItem; i
               className="w-full py-4 md:py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl lg:rounded-2xl font-black text-base md:text-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-600/30"
             >
               <ShoppingCart size={20} className="w-5 h-5 md:w-6 md:h-6" />
-              Add to Cart
+              {t('product.addToCart')}
             </button>
           </div>
         </div>

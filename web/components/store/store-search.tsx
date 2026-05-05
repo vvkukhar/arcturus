@@ -4,10 +4,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export function StoreSearch() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   const [value, setValue] = useState(searchParams.get('q') ?? '');
 
   const submit = (event: FormEvent) => {
@@ -33,12 +35,12 @@ export function StoreSearch() {
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="Search LEGO sets, minifigures, themes..."
+          placeholder={t('search.placeholder')}
           className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-sm text-slate-900 shadow-sm transition-all focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
         />
       </div>
       <Button type="submit" className="py-3.5 px-8 sm:w-auto w-full text-base h-[50px]">
-        Search
+        {t('search.button')}
       </Button>
     </form>
   );

@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Gem } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export function SmartHeader() {
+  const { t } = useI18n();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
 
@@ -48,8 +50,8 @@ export function SmartHeader() {
           <span className="text-xl font-black tracking-tight text-slate-900">ARCTURUS</span>
         </Link>
         <nav className="flex items-center gap-8 text-sm font-bold">
-          <Link href="/" className="text-slate-600 hover:text-blue-600 transition-colors">Головна</Link>
-          <Link href="/store/catalog" className="text-slate-600 hover:text-blue-600 transition-colors">Каталог</Link>
+          <Link href="/" className="text-slate-600 hover:text-blue-600 transition-colors">{t('header.home')}</Link>
+          <Link href="/store/catalog" className="text-slate-600 hover:text-blue-600 transition-colors">{t('nav.catalog')}</Link>
         </nav>
       </div>
     </header>

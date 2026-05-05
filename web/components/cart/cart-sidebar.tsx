@@ -1,12 +1,14 @@
 'use client';
 
 import { useCart } from '../providers/cart-provider';
+import { useI18n } from '../providers/i18n-provider';
 import { X, Plus, Minus, ShoppingBag, ArrowRight, Package } from 'lucide-react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export function CartSidebar() {
   const { isCartOpen, setIsCartOpen, items, updateQuantity, removeItem, totalPrice } = useCart();
+  const { t } = useI18n();
   const router = useRouter();
 
   useEffect(() => {
@@ -26,7 +28,7 @@ export function CartSidebar() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-[100] flex justify-end">
       <div 
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity animate-in fade-in"
         onClick={() => setIsCartOpen(false)}
@@ -36,7 +38,7 @@ export function CartSidebar() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
             <ShoppingBag size={20} />
-            Your Cart
+            {t('cart.title')}
           </h2>
           <button 
             onClick={() => setIsCartOpen(false)}
@@ -53,14 +55,14 @@ export function CartSidebar() {
                 <ShoppingBag size={40} />
               </div>
               <div>
-                <p className="text-lg font-bold text-slate-900">Your cart is empty</p>
-                <p className="text-sm text-slate-500 mt-1">Looks like you haven't added any LEGO yet.</p>
+                <p className="text-lg font-bold text-slate-900">{t('cart.empty')}</p>
+                <p className="text-sm text-slate-500 mt-1">{t('cart.addItems')}</p>
               </div>
               <button 
                 onClick={() => { setIsCartOpen(false); router.push('/store/catalog'); }}
                 className="mt-4 px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
               >
-                Start Browsing
+                {t('cart.startBrowsing')}
               </button>
             </div>
           ) : (
@@ -109,14 +111,14 @@ export function CartSidebar() {
         {items.length > 0 && (
           <div className="border-t border-slate-100 p-6 bg-slate-50/50">
             <div className="flex justify-between items-center mb-6">
-              <span className="text-slate-500 font-medium">Subtotal</span>
+              <span className="text-slate-500 font-medium">{t('cart.subtotal')}</span>
               <span className="text-2xl font-black text-slate-900">
                 {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', maximumFractionDigits: 0 }).format(totalPrice)}
               </span>
             </div>
             
             <button onClick={handleCheckout} className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-slate-900/20">
-              Checkout Now <ArrowRight size={20} />
+              {t('cart.checkoutNow')} <ArrowRight size={20} />
             </button>
           </div>
         )}

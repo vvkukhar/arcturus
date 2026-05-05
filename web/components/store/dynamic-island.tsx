@@ -3,30 +3,32 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Sparkles } from 'lucide-react';
-
-const MESSAGES = [
-  'Щойно зарезервовано: LEGO Star Wars 75192',
-  'Нове надходження у каталозі',
-  'Оформлено покупку: LEGO Ninjago City Gardens'
-];
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export function DynamicIsland() {
+  const { t } = useI18n();
   const [active, setActive] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
+    const messages = [
+      t('dynamic.msg1'),
+      t('dynamic.msg2'),
+      t('dynamic.msg3')
+    ];
+
     let currentIndex = 0;
     let timeoutId: NodeJS.Timeout;
 
     const runSequence = () => {
-      setMessage(MESSAGES[currentIndex]);
+      setMessage(messages[currentIndex]);
       setActive(true);
       
       timeoutId = setTimeout(() => {
         setActive(false);
       }, 5000);
 
-      currentIndex = (currentIndex + 1) % MESSAGES.length;
+      currentIndex = (currentIndex + 1) % messages.length;
     };
 
     const intervalId = setInterval(runSequence, 15000);
@@ -35,7 +37,7 @@ export function DynamicIsland() {
       clearInterval(intervalId);
       clearTimeout(timeoutId);
     };
-  }, []);
+  }, [t]);
 
   return (
     <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">

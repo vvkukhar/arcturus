@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { getSocket } from '@/lib/socket';
 import { PackageCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface FomoEvent {
   title: string;
@@ -16,6 +17,7 @@ interface SalePayload {
 }
 
 export function FomoTicker() {
+  const { t } = useI18n();
   const [event, setEvent] = useState<FomoEvent | null>(null);
   const [visible, setVisible] = useState(false);
 
@@ -25,7 +27,7 @@ export function FomoTicker() {
 
     const onSale = (payload: SalePayload) => {
       setEvent({ 
-        title: payload?.title || 'Ексклюзивний набір', 
+        title: payload?.title || t('fomo.exclusive'), 
         time: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }) 
       });
       setVisible(true);
@@ -42,7 +44,7 @@ export function FomoTicker() {
       socket.off('sale_registered', onSale); 
       clearTimeout(timeoutId);
     };
-  }, []);
+  }, [t]);
 
   return (
     <div className={cn(
@@ -54,7 +56,7 @@ export function FomoTicker() {
           <PackageCheck size={24} className="text-white" />
         </div>
         <div>
-          <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Щойно придбано</div>
+          <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">{t('fomo.justBought')}</div>
           <div className="text-sm font-black text-slate-900 line-clamp-1 max-w-[200px]">{event?.title}</div>
         </div>
         <div className="ml-2 text-xs font-bold text-slate-400">{event?.time}</div>
