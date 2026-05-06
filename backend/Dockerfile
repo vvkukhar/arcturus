@@ -14,15 +14,12 @@ WORKDIR /backend/packages/shared
 RUN npm run build
 
 WORKDIR /backend/apps/api
-RUN npx prisma generate
 RUN npm run build
 
 WORKDIR /backend/apps/workers
-RUN npx prisma generate
 RUN npm run build
 
 WORKDIR /backend/apps/scrapers
-RUN npx prisma generate
 RUN npm run build
 
 FROM node:22-alpine AS runner
