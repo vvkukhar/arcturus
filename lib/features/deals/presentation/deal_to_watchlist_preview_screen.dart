@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/deals/application/deal_to_watchlist_draft_model.dart';
 
-class DealToWatchlistPreviewScreen extends StatelessWidget {
+class DealToWatchlistPreviewScreen extends ConsumerWidget {
   final DealToWatchlistDraftModel draft;
 
   const DealToWatchlistPreviewScreen({
@@ -31,10 +33,11 @@ class DealToWatchlistPreviewScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Watchlist Draft Preview'),
+        title: Text(i18n.t('draft.title')),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -45,10 +48,10 @@ class DealToWatchlistPreviewScreen extends StatelessWidget {
               child: Column(
                 children: [
                   _row('Title', draft.title),
-                  _row('Desired', draft.desiredBuyPrice.toStringAsFixed(2)),
-                  _row('Max', draft.maxBuyPrice.toStringAsFixed(2)),
-                  _row('Market', draft.marketPrice.toStringAsFixed(2)),
-                  _row('Comment', draft.comment),
+                  _row(i18n.t('draft.desired'), draft.desiredBuyPrice.toStringAsFixed(2)),
+                  _row(i18n.t('draft.max'), draft.maxBuyPrice.toStringAsFixed(2)),
+                  _row(i18n.t('eval.marketPrice'), draft.marketPrice.toStringAsFixed(2)),
+                  _row(i18n.t('draft.comment'), draft.comment),
                 ],
               ),
             ),

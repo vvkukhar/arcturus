@@ -1,5 +1,3 @@
-// lib/features/item_details/application/item_detail_insights_service.dart
-
 import 'package:lego_trading_manager/data/models/item_model.dart';
 import 'package:lego_trading_manager/features/item_details/application/item_detail_insight_model.dart';
 

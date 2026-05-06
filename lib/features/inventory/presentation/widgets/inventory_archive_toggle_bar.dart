@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryArchiveToggleBar extends StatelessWidget {
+class InventoryArchiveToggleBar extends ConsumerWidget {
   final bool showArchived;
   final ValueChanged<bool> onChanged;
 
@@ -11,13 +13,14 @@ class InventoryArchiveToggleBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: SwitchListTile(
         value: showArchived,
         onChanged: onChanged,
-        title: const Text('Show archived items'),
-        subtitle: const Text('Include archived inventory in visible list'),
+        title: Text(i18n.t('Show archived items')),
+        subtitle: Text(i18n.t('Include archived inventory in visible list')),
       ),
     );
   }

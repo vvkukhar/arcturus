@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class ManualActionReportsSearchField extends StatelessWidget {
+class ManualActionReportsSearchField extends ConsumerWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
@@ -13,14 +15,15 @@ class ManualActionReportsSearchField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final hasValue = controller.text.trim().isNotEmpty;
 
     return TextField(
       controller: controller,
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: 'Search manual reports...',
+        hintText: i18n.t('Search manual reports...'),
         prefixIcon: const Icon(Icons.search),
         suffixIcon: hasValue
             ? IconButton(

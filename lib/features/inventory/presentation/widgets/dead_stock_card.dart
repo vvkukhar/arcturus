@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/dead_stock_entry_model.dart';
 
-class DeadStockCard extends StatelessWidget {
+class DeadStockCard extends ConsumerWidget {
   final DeadStockEntryModel entry;
 
   const DeadStockCard({
@@ -21,18 +23,19 @@ class DeadStockCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = _color();
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: ListTile(
         leading: Icon(Icons.warning_amber_rounded, color: color),
         title: Text(entry.title),
         subtitle: Text(
-          '${entry.days} days • capital ${entry.capital.toStringAsFixed(2)}',
+          '${entry.days} ${i18n.t('days')} • ${i18n.t('capital')} ${entry.capital.toStringAsFixed(2)}',
         ),
         trailing: Text(
-          entry.severity,
+          i18n.t(entry.severity),
           style: TextStyle(
             color: color,
             fontWeight: FontWeight.w800,

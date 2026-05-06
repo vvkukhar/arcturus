@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InfoSectionCard extends StatelessWidget {
+class InfoSectionCard extends ConsumerWidget {
   final String title;
   final List<Widget> children;
 
@@ -11,7 +13,8 @@ class InfoSectionCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -20,7 +23,7 @@ class InfoSectionCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                title,
+                i18n.t(title),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,

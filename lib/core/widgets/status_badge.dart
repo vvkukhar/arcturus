@@ -1,9 +1,9 @@
-// lib/core/widgets/status_badge.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class StatusBadge extends StatelessWidget {
+class StatusBadge extends ConsumerWidget {
   final ItemStatus status;
 
   const StatusBadge({
@@ -25,8 +25,9 @@ class StatusBadge extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = _color();
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -35,7 +36,7 @@ class StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        status.name,
+        i18n.t(status.name),
         style: TextStyle(
           color: color,
           fontWeight: FontWeight.w700,

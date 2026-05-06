@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_readiness_pressure_compare_model.dart';
 
-class InventoryReadinessPressureCompareCard extends StatelessWidget {
+class InventoryReadinessPressureCompareCard extends ConsumerWidget {
   final InventoryReadinessPressureCompareModel model;
 
   const InventoryReadinessPressureCompareCard({
@@ -10,9 +12,10 @@ class InventoryReadinessPressureCompareCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final positive = model.readiness >= model.pressure;
     final color = positive ? Colors.green : Colors.redAccent;
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -21,7 +24,7 @@ class InventoryReadinessPressureCompareCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              model.label,
+              i18n.t(model.label),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
@@ -29,7 +32,7 @@ class InventoryReadinessPressureCompareCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Readiness ${model.readiness.toStringAsFixed(0)} • Pressure ${model.pressure.toStringAsFixed(0)}',
+              '${i18n.t('Readiness')} ${model.readiness.toStringAsFixed(0)} • ${i18n.t('Pressure')} ${model.pressure.toStringAsFixed(0)}',
               style: TextStyle(color: color),
             ),
           ],

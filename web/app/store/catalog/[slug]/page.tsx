@@ -1,83 +1,86 @@
-import { InventoryItem } from '@/lib/types';
-import { Package, ShieldCheck, CheckCircle2, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
-import { ProductCard } from '@/components/store/product-card';
+import { notFound } from 'next/navigation';
+import { publicApi } from '@/lib/public-api';
+import { OrderContactForm } from '@/components/store/order-contact-form';
+import { RelatedProducts } from '@/components/store/related-products';
+import { AvailabilityBadge } from '@/components/store/availability-badge';
 
-async function getItem(id: string): Promise<InventoryItem | null> {
+type Props = {
+  params: Promise<{ slug: string }>;
+};
+
+export default async function ProductPage({ params }: Props) {
+  const { slug } = await params;
+  let product: any;
+
   try {
-    const res = await fetch(`${process.env.API_BASE_URL || 'http://localhost:4000/api'}/public/catalog/${id}`, { cache: 'no-store' });
-    if (!res.ok) return null;
-    return res.json();
+    product = await publicApi.getCatalogItem(slug);
   } catch {
-    return null;
-  }
-}
-
-export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const resolvedParams = await params;
-  const item = await getItem(resolvedParams.slug);
-
-  if (!item) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-24 text-center">
-        <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-4">Item not found</h1>
-        <Link href="/store/catalog" className="text-blue-600 hover:underline font-bold">Return to Catalog</Link>
-      </div>
-    );
+    notFound();
   }
 
-  const price = item.expectedSalePriceManual ?? item.totalCost;
-  const imageUrl = item.images?.[0]?.imageUrl;
+  if (!product) notFound();
+
+  const images = product.images || [];
+  const primaryImage = images.find((img: any) => img.isPrimary)?.imageUrl || images[0]?.imageUrl;
+  const price = product.expectedSalePriceManual ?? product.totalCost;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <Link href="/store/catalog" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white mb-8 transition-colors">
-        <ArrowLeft size={16} /> Back to Catalog
-      </Link>
-
-      <div className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col md:flex-row shadow-sm">
-        <div className="w-full md:w-1/2 bg-slate-50 dark:bg-slate-900 p-8 sm:p-12 flex items-center justify-center min-h-[400px]">
-          {imageUrl ? (
-            <img src={imageUrl} alt={item.titleSnapshot} className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
-          ) : (
-            <Package size={80} className="text-slate-300 dark:text-slate-700" />
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-fade-in-up">
+      <div className="grid gap-12 lg:grid-cols-2">
+        <div className="flex flex-col gap-4">
+          <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-50 border border-slate-100">
+            {primaryImage ? (
+              <img src={primaryImage} alt={product.titleSnapshot} className="h-full w-full object-contain mix-blend-multiply" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-slate-300 font-bold uppercase">No Image</div>
+            )}
+          </div>
+          {images.length > 1 && (
+            <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
+              {images.map((img: any) => (
+                <div key={img.id} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                  <img src={img.imageUrl} alt="" className="h-full w-full object-contain mix-blend-multiply" />
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
-        <div className="w-full md:w-1/2 p-8 sm:p-12 flex flex-col justify-center">
-          <div className="flex gap-2 mb-4">
-            <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-black uppercase tracking-wider rounded-md">
-              {item.condition}
+        <div className="flex flex-col">
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <AvailabilityBadge quantity={product.quantity} />
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-600">
+              {product.condition}
             </span>
-            {item.sealed && (
-              <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-400 text-xs font-black uppercase tracking-wider rounded-md">
+            {product.sealed && (
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-700">
                 Sealed
               </span>
             )}
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white leading-tight mb-4">
-            {item.titleSnapshot}
+          <h1 className="mb-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+            {product.titleSnapshot}
           </h1>
           
-          <div className="text-5xl font-black text-slate-900 dark:text-white mb-8 tracking-tight">
+          <div className="mb-8 flex items-center gap-4 text-sm font-semibold text-slate-500">
+            <span>ID: {product.item?.setNumber || product.itemId.slice(0, 8)}</span>
+            <span>&bull;</span>
+            <span>{product.item?.theme || 'Unknown Theme'}</span>
+          </div>
+
+          <div className="mb-10 text-4xl font-black text-slate-900">
             {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', maximumFractionDigits: 0 }).format(price)}
           </div>
 
-          <div className="space-y-4 mb-10">
-            <div className="flex items-center gap-3 text-base text-slate-700 dark:text-slate-300 font-medium bg-slate-50 dark:bg-slate-900 p-4 rounded-xl">
-              <CheckCircle2 size={24} className="text-green-500 shrink-0" />
-              <span>In stock. Ships securely within 24 hours.</span>
-            </div>
-            <div className="flex items-center gap-3 text-base text-slate-700 dark:text-slate-300 font-medium bg-slate-50 dark:bg-slate-900 p-4 rounded-xl">
-              <ShieldCheck size={24} className="text-blue-500 shrink-0" />
-              <span>100% Authentic LEGO Guarantee. Checked parts.</span>
-            </div>
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h3 className="mb-6 text-lg font-black text-slate-900">Fast Checkout / Reserve</h3>
+            <OrderContactForm inventoryItemId={product.id} productTitle={product.titleSnapshot} />
           </div>
-
-          <ProductCard item={item} />
         </div>
       </div>
+
+      <RelatedProducts items={product.related || []} />
     </div>
   );
 }

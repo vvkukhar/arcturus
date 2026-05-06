@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_priority_queue_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_priority_queue_action_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_priority_queue_item_action_bar.dart';
@@ -31,11 +32,13 @@ class DashboardPriorityQueueCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dashboardPriorityQueueActionProvider);
     final controller = ref.read(dashboardPriorityQueueActionProvider.notifier);
+    final i18n = ref.watch(i18nProvider.notifier);
+
     if (items.isEmpty) {
-      return const Card(
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(14),
-          child: Text('No priority actions right now.'),
+          padding: const EdgeInsets.all(14),
+          child: Text(i18n.t('No priority actions right now.')),
         ),
       );
     }
@@ -45,9 +48,9 @@ class DashboardPriorityQueueCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Priority Queue',
-              style: TextStyle(
+            Text(
+              i18n.t('Priority Queue'),
+              style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
               ),
@@ -93,7 +96,7 @@ class DashboardPriorityQueueCard extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
-                                item.type,
+                                i18n.t(item.type),
                                 style: TextStyle(
                                   color: color,
                                   fontWeight: FontWeight.w800,
@@ -118,20 +121,20 @@ class DashboardPriorityQueueCard extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(item.reason),
+                        Text(i18n.t(item.reason)),
                         const SizedBox(height: 10),
                         if (isDone)
-                          const Text(
-                            'Status: done',
-                            style: TextStyle(
+                          Text(
+                            i18n.t('Status: done'),
+                            style: const TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.w800,
                             ),
                           )
                         else if (isSkipped)
-                          const Text(
-                            'Status: skipped',
-                            style: TextStyle(
+                          Text(
+                            i18n.t('Status: skipped'),
+                            style: const TextStyle(
                               color: Colors.orange,
                               fontWeight: FontWeight.w800,
                             ),

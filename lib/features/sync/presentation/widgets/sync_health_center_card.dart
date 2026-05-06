@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/sync/application/sync_health_center_provider.dart';
 
-class SyncHealthCenterCard extends StatelessWidget {
+class SyncHealthCenterCard extends ConsumerWidget {
   final SyncHealthCenterModel model;
   final VoidCallback onOpenSyncQueue;
   final VoidCallback onOpenConflicts;
@@ -14,7 +16,9 @@ class SyncHealthCenterCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+    
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -22,7 +26,7 @@ class SyncHealthCenterCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              model.headline,
+              i18n.t(model.headline),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
@@ -33,8 +37,8 @@ class SyncHealthCenterCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                Chip(label: Text('Queue ${model.pendingQueueItems}')),
-                Chip(label: Text('Conflicts ${model.pendingConflicts}')),
+                Chip(label: Text('${i18n.t('Queue')} ${model.pendingQueueItems}')),
+                Chip(label: Text('${i18n.t('Conflicts')} ${model.pendingConflicts}')),
               ],
             ),
             const SizedBox(height: 12),
@@ -44,11 +48,11 @@ class SyncHealthCenterCard extends StatelessWidget {
               children: [
                 FilledButton.tonal(
                   onPressed: onOpenSyncQueue,
-                  child: const Text('Open Sync Queue'),
+                  child: Text(i18n.t('Open Sync Queue')),
                 ),
                 FilledButton.tonal(
                   onPressed: onOpenConflicts,
-                  child: const Text('Open Conflicts'),
+                  child: Text(i18n.t('Open Conflicts')),
                 ),
               ],
             ),

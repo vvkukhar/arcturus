@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_breakdown_model.dart';
 
-class AnalyticsBreakdownCard extends StatelessWidget {
+class AnalyticsBreakdownCard extends ConsumerWidget {
   final String title;
   final List<AnalyticsBreakdownEntry> items;
   final String currency;
@@ -15,7 +17,8 @@ class AnalyticsBreakdownCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -24,21 +27,21 @@ class AnalyticsBreakdownCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    i18n.t(title),
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text('No data'),
+                  Text(i18n.t('common.none')),
                 ],
               )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    i18n.t(title),
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,

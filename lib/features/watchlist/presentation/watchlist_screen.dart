@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
 import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
@@ -101,7 +102,7 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
     ref.read(watchlistControllerProvider.notifier).addItem(result);
   }
 
-  Future<void> _openDetails(WatchlistItemModel item) async {
+  Future<void> _openDetails(WatchlistItemModel item, I18nNotifier i18n) async {
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
         builder: (_) => WatchlistItemDetailsScreen(item: item),
@@ -118,7 +119,7 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Watchlist item deleted')),
+        SnackBar(content: Text(i18n.t('Watchlist item deleted'))),
       );
       return;
     }
@@ -129,12 +130,12 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Watchlist item updated')),
+        SnackBar(content: Text(i18n.t('Watchlist item updated'))),
       );
     }
   }
 
-  Future<void> _createPurchaseFromWatchlist(WatchlistItemModel item) async {
+  Future<void> _createPurchaseFromWatchlist(WatchlistItemModel item, I18nNotifier i18n) async {
     final result = ref.read(watchlistPurchaseCreateProvider).build(item);
 
     ref.read(inventoryControllerProvider.notifier).addItem(result.item);
@@ -145,28 +146,28 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Purchase created: ${item.title}')),
+      SnackBar(content: Text('${i18n.t('Purchase created:')} ${item.title}')),
     );
   }
 
-  Future<void> _saveReportForItem(WatchlistItemModel item) async {
+  Future<void> _saveReportForItem(WatchlistItemModel item, I18nNotifier i18n) async {
     final result = await ref.read(saveActionReportFlowProvider).openDialog(
           context,
-          initialTitle: 'Watchlist Item Review',
+          initialTitle: i18n.t('Watchlist Item Review'),
           initialNote:
-              'Reviewed ${item.title} | desired=${item.desiredBuyPrice.toStringAsFixed(2)} | max=${item.maxBuyPrice.toStringAsFixed(2)}',
+              '${i18n.t('Reviewed')} ${item.title} | desired=${item.desiredBuyPrice.toStringAsFixed(2)} | max=${item.maxBuyPrice.toStringAsFixed(2)}',
         );
 
     if (result == null) return;
 
     await ref.read(actionReportHelperProvider).save(
-          title: result['title'] ?? 'Watchlist Item Review',
+          title: result['title'] ?? i18n.t('Watchlist Item Review'),
           note: result['note'] ?? '',
         );
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Watchlist report saved')),
+      SnackBar(content: Text(i18n.t('Watchlist report saved'))),
     );
   }
 
@@ -195,13 +196,13 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
     ref.read(watchlistControllerProvider.notifier).setSort(value);
   }
 
-  Future<void> _buySelectedReviewQueue() async {
+  Future<void> _buySelectedReviewQueue(I18nNotifier i18n) async {
     final reviewQueue = ref.read(watchlistReviewQueueProvider);
     final selected = ref.read(watchlistReviewQueueSelectionProvider);
 
     for (final item in reviewQueue) {
       if (!selected.contains(item.id)) continue;
-      await _createPurchaseFromWatchlist(item);
+      await _createPurchaseFromWatchlist(item, i18n);
     }
 
     ref.read(watchlistReviewQueueSelectionProvider.notifier).clear();
@@ -219,23 +220,23 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
     ref.read(watchlistSelectionControllerProvider.notifier).clear();
   }
 
-  Future<void> _deleteSelected() async {
+  Future<void> _deleteSelected(I18nNotifier i18n) async {
     final selected = ref.read(watchlistSelectionControllerProvider).selectedIds;
     if (selected.isEmpty) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete selected items'),
-        content: Text('Delete ${selected.length} selected watchlist items?'),
+        title: Text(i18n.t('Delete selected items')),
+        content: Text(i18n.t('common.deleteConfirmText', {'title': '${selected.length} ${i18n.t('selected watchlist items')}'})),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(i18n.t('common.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(i18n.t('common.delete')),
           ),
         ],
       ),
@@ -293,9 +294,11 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
     final commitDurability = ref.watch(watchlistCommitDurabilityProvider);
     final allocationStability = ref.watch(watchlistAllocationStabilityProvider);
 
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Watchlist'),
+        title: Text(i18n.t('cc.watch')),
         actions: [
           IconButton(
             onPressed: _openFilters,
@@ -333,14 +336,14 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
             WatchlistSummaryBar(
               visibleCount: items.length,
               totalCount: allItems.length,
-              sortLabel: ui.sort.label,
+              sortLabel: i18n.t(ui.sort.label),
             ),
             const SizedBox(height: 12),
             WatchlistBulkActionBar(
               selectedCount: selected.length,
               onActivate: _activateSelected,
               onDeactivate: _deactivateSelected,
-              onDelete: _deleteSelected,
+              onDelete: () => _deleteSelected(i18n),
               onClear: () {
                 ref.read(watchlistSelectionControllerProvider.notifier).clear();
               },
@@ -361,9 +364,9 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                           onAddItem: _openAdd,
                         ),
                         const SizedBox(height: 14),
-                        const WatchlistSectionTitle(
-                          title: 'Queue Control',
-                          subtitle: 'Cash pressure, readiness and execution state.',
+                        WatchlistSectionTitle(
+                          title: i18n.t('Queue Control'),
+                          subtitle: i18n.t('Cash pressure, readiness and execution state.'),
                         ),
                         WatchlistQueueDashboardSection(
                           availableCash: availableCash,
@@ -400,9 +403,9 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                           allocationStability: allocationStability,
                         ),
                         const SizedBox(height: 16),
-                        const WatchlistSectionTitle(
-                          title: 'Review Queue',
-                          subtitle: 'Actionable items under max buy price.',
+                        WatchlistSectionTitle(
+                          title: i18n.t('Review Queue'),
+                          subtitle: i18n.t('Actionable items under max buy price.'),
                         ),
                         WatchlistQueueSelectAllBar(
                           total: reviewQueue.length,
@@ -425,7 +428,7 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                         const SizedBox(height: 8),
                         WatchlistReviewQueueBatchBar(
                           selectedCount: reviewQueueSelected.length,
-                          onBuySelected: _buySelectedReviewQueue,
+                          onBuySelected: () => _buySelectedReviewQueue(i18n),
                           onClear: () {
                             ref
                                 .read(
@@ -451,14 +454,14 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                               AppRouter.opportunityCenter,
                             );
                           },
-                          onOpen: _openDetails,
-                          onQuickBuy: _createPurchaseFromWatchlist,
+                          onOpen: (item) => _openDetails(item, i18n),
+                          onQuickBuy: (item) => _createPurchaseFromWatchlist(item, i18n),
                         ),
                         const SizedBox(height: 16),
                         if (priorities.isNotEmpty) ...[
-                          const WatchlistSectionTitle(
-                            title: 'Priority Queue',
-                            subtitle: 'Strongest candidates by priority score.',
+                          WatchlistSectionTitle(
+                            title: i18n.t('Priority Queue'),
+                            subtitle: i18n.t('Strongest candidates by priority score.'),
                           ),
                           const WatchlistPriorityExplainerCard(),
                           const SizedBox(height: 12),
@@ -473,19 +476,19 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                                 model: priority,
                                 onQuickBuy: source == null
                                     ? null
-                                    : () => _createPurchaseFromWatchlist(source),
+                                    : () => _createPurchaseFromWatchlist(source, i18n),
                                 onReview: source == null
                                     ? null
-                                    : () => _openDetails(source),
+                                    : () => _openDetails(source, i18n),
                               ),
                             );
                           }),
                           const SizedBox(height: 16),
                         ],
                         if (opportunities.isNotEmpty) ...[
-                          const WatchlistSectionTitle(
-                            title: 'Opportunities',
-                            subtitle: 'Items currently under desired or max price.',
+                          WatchlistSectionTitle(
+                            title: i18n.t('Opportunities'),
+                            subtitle: i18n.t('Items currently under desired or max price.'),
                           ),
                           ...opportunities.take(5).map(
                                 (item) => Padding(
@@ -494,23 +497,23 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                                     item: item,
                                     onQuickBuy: () =>
                                         _createPurchaseFromWatchlist(
-                                      item.sourceItem,
+                                      item.sourceItem, i18n
                                     ),
                                     onOpenWatchlist: () =>
-                                        _openDetails(item.sourceItem),
+                                        _openDetails(item.sourceItem, i18n),
                                   ),
                                 ),
                               ),
                           const SizedBox(height: 16),
                         ],
-                        const WatchlistSectionTitle(
-                          title: 'All Watchlist Items',
+                        WatchlistSectionTitle(
+                          title: i18n.t('All Watchlist Items'),
                         ),
                         if (items.isEmpty)
-                          const Card(
+                          Card(
                             child: Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Text('No items match current filters.'),
+                              padding: const EdgeInsets.all(16),
+                              child: Text(i18n.t('No items match current filters.')),
                             ),
                           )
                         else
@@ -539,11 +542,11 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                                       item: item,
                                       priorityLabel: priorityLabel,
                                       smartRankLabel: smartRankLabel,
-                                      onOpenDetails: () => _openDetails(item),
+                                      onOpenDetails: () => _openDetails(item, i18n),
                                       onCreatePurchase: () =>
-                                          _createPurchaseFromWatchlist(item),
+                                          _createPurchaseFromWatchlist(item, i18n),
                                       onSaveReport: () =>
-                                          _saveReportForItem(item),
+                                          _saveReportForItem(item, i18n),
                                     ),
                                     if (selected.contains(item.id))
                                       Positioned(

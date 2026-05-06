@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryRepriceSheet extends StatefulWidget {
+class InventoryRepriceSheet extends ConsumerStatefulWidget {
   const InventoryRepriceSheet({super.key});
 
   @override
-  State<InventoryRepriceSheet> createState() => _InventoryRepriceSheetState();
+  ConsumerState<InventoryRepriceSheet> createState() => _InventoryRepriceSheetState();
 }
 
-class _InventoryRepriceSheetState extends State<InventoryRepriceSheet> {
+class _InventoryRepriceSheetState extends ConsumerState<InventoryRepriceSheet> {
   String mode = 'market';
   final percentController = TextEditingController(text: '3');
 
@@ -27,6 +29,8 @@ class _InventoryRepriceSheetState extends State<InventoryRepriceSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -38,40 +42,40 @@ class _InventoryRepriceSheetState extends State<InventoryRepriceSheet> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const Text(
-              'Bulk Reprice',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            Text(
+              i18n.t('Bulk Reprice'),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 16),
             RadioListTile<String>(
               value: 'market',
               groupValue: mode,
               onChanged: (value) => setState(() => mode = value!),
-              title: const Text('Set expected = market average'),
+              title: Text(i18n.t('Set expected = market average')),
             ),
             RadioListTile<String>(
               value: 'minus',
               groupValue: mode,
               onChanged: (value) => setState(() => mode = value!),
-              title: const Text('Set expected = market minus %'),
+              title: Text(i18n.t('Set expected = market minus %')),
             ),
             RadioListTile<String>(
               value: 'plus',
               groupValue: mode,
               onChanged: (value) => setState(() => mode = value!),
-              title: const Text('Set expected = market plus %'),
+              title: Text(i18n.t('Set expected = market plus %')),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: percentController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Percent'),
+              decoration: InputDecoration(labelText: i18n.t('Percent')),
             ),
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _submit,
-              child: const Text('Apply'),
+              child: Text(i18n.t('common.apply')),
             ),
           ],
         ),

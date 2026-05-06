@@ -1,6 +1,6 @@
-// lib/features/market/presentation/market_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/empty_state_view.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
@@ -35,17 +35,17 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   String _itemTitle(String itemRef) {
-    return ref.read(inventoryRepositoryProvider).getById(itemRef)?.title ?? 'Unknown item';
+    return ref.read(inventoryRepositoryProvider).getById(itemRef)?.title ?? itemRef;
   }
 
-  String _sortLabel(MarketSortOption option) {
+  String _sortLabel(MarketSortOption option, I18nNotifier i18n) {
     switch (option) {
-      case MarketSortOption.newest: return 'Newest';
-      case MarketSortOption.oldest: return 'Oldest';
-      case MarketSortOption.averageHighToLow: return 'Average High-Low';
-      case MarketSortOption.lowHighToLow: return 'Low High-Low';
-      case MarketSortOption.highHighToLow: return 'High High-Low';
-      case MarketSortOption.sourceAsc: return 'Source A-Z';
+      case MarketSortOption.newest: return i18n.t('Newest');
+      case MarketSortOption.oldest: return i18n.t('Oldest');
+      case MarketSortOption.averageHighToLow: return i18n.t('Average High-Low');
+      case MarketSortOption.lowHighToLow: return i18n.t('Low High-Low');
+      case MarketSortOption.highHighToLow: return i18n.t('High High-Low');
+      case MarketSortOption.sourceAsc: return i18n.t('Source A-Z');
     }
   }
 
@@ -107,10 +107,11 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
     final visibleSnapshots = ref.watch(marketVisibleSnapshotsProvider);
     final ui = ref.watch(marketUiControllerProvider);
     final selected = ref.watch(marketBulkSelectionProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Market'),
+        title: Text(i18n.t('market.title')),
         actions: [
           IconButton(onPressed: () => _openAdd(context), icon: const Icon(Icons.add)),
         ],
@@ -120,8 +121,8 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: snapshots.isEmpty
-            ? const EmptyStateView(
-                title: 'No market snapshots yet',
+            ? EmptyStateView(
+                title: 'market.empty',
                 subtitle: 'Capture low / avg / high references over time.',
               )
             : Column(
@@ -148,7 +149,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                   MarketSummaryBar(
                     visibleCount: visibleSnapshots.length,
                     totalCount: snapshots.length,
-                    sortLabel: _sortLabel(ui.sortOption),
+                    sortLabel: _sortLabel(ui.sortOption, i18n),
                   ),
                   const SizedBox(height: 12),
                   MarketBulkActionBar(
@@ -168,7 +169,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                   const SizedBox(height: 12),
                   Expanded(
                     child: visibleSnapshots.isEmpty
-                        ? const Center(child: Text('Nothing found for current market filters.'))
+                        ? Center(child: Text(i18n.t('Nothing found for current market filters.')))
                         : ListView.builder(
                             itemCount: visibleSnapshots.length,
                             itemBuilder: (context, index) {

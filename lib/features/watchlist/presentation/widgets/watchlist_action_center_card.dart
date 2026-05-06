@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_action_center_provider.dart';
 
-class WatchlistActionCenterCard extends StatelessWidget {
+class WatchlistActionCenterCard extends ConsumerWidget {
   final WatchlistActionCenterModel model;
 
   const WatchlistActionCenterCard({
@@ -10,16 +12,18 @@ class WatchlistActionCenterCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Watchlist Action Center',
-              style: TextStyle(
+            Text(
+              i18n.t('Watchlist Action Center'),
+              style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
               ),
@@ -29,13 +33,13 @@ class WatchlistActionCenterCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                Chip(label: Text('Ready ${model.readyToBuy}')),
-                Chip(label: Text('Wait ${model.wait}')),
+                Chip(label: Text('${i18n.t('Ready')} ${model.readyToBuy}')),
+                Chip(label: Text('${i18n.t('Wait')} ${model.wait}')),
               ],
             ),
             const SizedBox(height: 10),
             Text(
-              model.topAction,
+              i18n.t(model.topAction),
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
               ),

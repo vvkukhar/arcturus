@@ -1,10 +1,10 @@
-// lib/features/partout/presentation/widgets/partout_visible_metrics_card.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/features/partout/application/partout_visible_metrics_provider.dart';
 
-class PartOutVisibleMetricsCard extends StatelessWidget {
+class PartOutVisibleMetricsCard extends ConsumerWidget {
   final PartOutVisibleMetricsModel metrics;
   final String currency;
 
@@ -15,13 +15,15 @@ class PartOutVisibleMetricsCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     Widget row(String label, String value) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           children: [
-            Expanded(child: Text(label)),
+            Expanded(child: Text(i18n.t(label))),
             Text(
               value,
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -38,7 +40,7 @@ class PartOutVisibleMetricsCard extends StatelessWidget {
           children: [
             row('Visible Projects', metrics.visibleCount.toString()),
             row(
-              'Total Cost',
+              'inv.totalCost',
               CurrencyFormatter.format(metrics.totalCost, currency: currency),
             ),
             row(
@@ -51,7 +53,7 @@ class PartOutVisibleMetricsCard extends StatelessWidget {
               CurrencyFormatter.format(metrics.totalActual, currency: currency),
             ),
             row(
-              'Expected Profit',
+              'inv.expectedProfit',
               CurrencyFormatter.format(
                 metrics.totalExpectedProfit,
                 currency: currency,

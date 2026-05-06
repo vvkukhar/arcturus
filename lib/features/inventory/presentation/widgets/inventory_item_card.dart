@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/widgets/status_badge.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/widgets/inventory_item_profit_row.dart';
@@ -25,6 +26,7 @@ class InventoryItemCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final expectedProfit = (item.expectedSalePrice ?? 0) - item.totalCost;
     final currency = ref.watch(appSettingsControllerProvider).baseCurrency;
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -69,7 +71,7 @@ class InventoryItemCard extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '${item.type.name} • ${item.theme ?? '-'} • ${item.ownershipType.name}',
+                '${i18n.t(item.type.name)} • ${item.theme ?? '-'} • ${i18n.t(item.ownershipType.name)}',
               ),
               const SizedBox(height: 8),
               InventoryItemProfitRow(

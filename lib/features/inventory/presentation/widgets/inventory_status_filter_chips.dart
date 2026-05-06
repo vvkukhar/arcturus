@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryStatusFilterChips extends StatelessWidget {
+class InventoryStatusFilterChips extends ConsumerWidget {
   final ItemStatus? value;
   final ValueChanged<ItemStatus?> onChanged;
 
@@ -12,12 +14,13 @@ class InventoryStatusFilterChips extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final allStatuses = <ItemStatus?>[null, ...ItemStatus.values];
 
     String label(ItemStatus? status) {
-      if (status == null) return 'All';
-      return status.name;
+      if (status == null) return i18n.t('All');
+      return i18n.t(status.name);
     }
 
     return Wrap(

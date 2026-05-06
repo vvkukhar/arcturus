@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/storage/app_data_integrity_cleanup_service.dart';
 import 'package:lego_trading_manager/core/storage/app_data_integrity_provider.dart';
 
@@ -33,7 +34,7 @@ class _AppDataIntegrityCardState extends ConsumerState<AppDataIntegrityCard> {
     );
   }
 
-  Future<void> _cleanup() async {
+  Future<void> _cleanup(I18nNotifier i18n) async {
     setState(() {
       _busy = true;
       _lastCleanupReport = null;
@@ -56,7 +57,7 @@ class _AppDataIntegrityCardState extends ConsumerState<AppDataIntegrityCard> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cleanup failed: $error')),
+        SnackBar(content: Text('${i18n.t('Cleanup failed:')} $error')),
       );
     } finally {
       if (mounted) {
@@ -70,6 +71,7 @@ class _AppDataIntegrityCardState extends ConsumerState<AppDataIntegrityCard> {
   @override
   Widget build(BuildContext context) {
     final integrity = ref.watch(appDataIntegrityProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     final color = integrity.isHealthy ? Colors.green : Colors.orange;
 
@@ -91,8 +93,8 @@ class _AppDataIntegrityCardState extends ConsumerState<AppDataIntegrityCard> {
                 Expanded(
                   child: Text(
                     integrity.isHealthy
-                        ? 'Data Integrity Healthy'
-                        : 'Data Integrity Needs Review',
+                        ? i18n.t('Data Integrity Healthy')
+                        : i18n.t('Data Integrity Needs Review'),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
@@ -102,28 +104,28 @@ class _AppDataIntegrityCardState extends ConsumerState<AppDataIntegrityCard> {
               ],
             ),
             const SizedBox(height: 12),
-            _row('Purchases', integrity.purchasesCount),
-            _row('Sales', integrity.salesCount),
-            _row('Allocations', integrity.allocationsCount),
-            _row('Sale-purchase links', integrity.linksCount),
+            _row(i18n.t('drawer.purchases'), integrity.purchasesCount),
+            _row(i18n.t('drawer.sales'), integrity.salesCount),
+            _row(i18n.t('Allocations'), integrity.allocationsCount),
+            _row(i18n.t('Sale-purchase links'), integrity.linksCount),
             const Divider(),
             _row(
-              'Orphan allocations',
+              i18n.t('Orphan allocations'),
               integrity.orphanAllocationsCount,
               warning: true,
             ),
             _row(
-              'Orphan links',
+              i18n.t('Orphan links'),
               integrity.orphanLinksCount,
               warning: true,
             ),
             _row(
-              'Overallocated sales',
+              i18n.t('Overallocated sales'),
               integrity.overAllocatedSalesCount,
               warning: true,
             ),
             _row(
-              'Oversold purchases',
+              i18n.t('Oversold purchases'),
               integrity.overSoldPurchasesCount,
               warning: true,
             ),
@@ -132,9 +134,9 @@ class _AppDataIntegrityCardState extends ConsumerState<AppDataIntegrityCard> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: _busy ? null : _cleanup,
+                  onPressed: _busy ? null : () => _cleanup(i18n),
                   icon: const Icon(Icons.cleaning_services_outlined),
-                  label: const Text('Cleanup Integrity Issues'),
+                  label: Text(i18n.t('Cleanup Integrity Issues')),
                 ),
               ),
             ],

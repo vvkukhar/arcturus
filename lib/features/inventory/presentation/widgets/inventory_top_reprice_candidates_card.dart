@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_top_reprice_candidates_provider.dart';
 
-class InventoryTopRepriceCandidatesCard extends StatelessWidget {
+class InventoryTopRepriceCandidatesCard extends ConsumerWidget {
   final List<InventoryTopRepriceCandidateModel> items;
 
   const InventoryTopRepriceCandidatesCard({
@@ -10,12 +12,14 @@ class InventoryTopRepriceCandidatesCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     if (items.isEmpty) {
-      return const Card(
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(14),
-          child: Text('No strong repricing candidates right now.'),
+          padding: const EdgeInsets.all(14),
+          child: Text(i18n.t('No strong repricing candidates right now.')),
         ),
       );
     }
@@ -26,9 +30,9 @@ class InventoryTopRepriceCandidatesCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Top Reprice Candidates',
-              style: TextStyle(
+            Text(
+              i18n.t('Top Reprice Candidates'),
+              style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
               ),
@@ -40,7 +44,7 @@ class InventoryTopRepriceCandidatesCard extends StatelessWidget {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text('${item.title} • ${item.reason}'),
+                          child: Text('${item.title} • ${i18n.t(item.reason)}'),
                         ),
                         Text(
                           item.score.toStringAsFixed(0),

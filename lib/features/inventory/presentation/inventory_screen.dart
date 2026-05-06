@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
@@ -60,12 +61,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
     final deleted = result['deleted'] == true;
     final duplicated = result['duplicated'] as ItemModel?;
+    final i18n = ref.read(i18nProvider.notifier);
 
     if (deleted) {
       ref.read(inventoryControllerProvider.notifier).deleteItem(item.id);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inventory item deleted')),
+        SnackBar(content: Text('${i18n.t('inv.details')} ${i18n.t('common.delete')}')),
       );
       return;
     }
@@ -74,7 +76,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       ref.read(inventoryControllerProvider.notifier).addItem(duplicated);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inventory item duplicated')),
+        SnackBar(content: Text(i18n.t('inv.itemDuplicated'))),
       );
     }
   }
@@ -83,10 +85,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   Widget build(BuildContext context) {
     final ui = ref.watch(inventoryUiControllerProvider);
     final items = ref.watch(inventoryVisibleItemsProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inventory'),
+        title: Text(i18n.t('inv.title')),
         actions: [
           IconButton(
             onPressed: _openFilters,
@@ -142,15 +145,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Text('Visible inventory items: ${items.length}'),
+              child: Text(i18n.t('inv.visible', {'count': items.length.toString()})),
             ),
           ),
           const SizedBox(height: 12),
           if (items.isEmpty)
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No inventory items found for current filters.'),
+                padding: const EdgeInsets.all(16),
+                child: Text(i18n.t('inv.empty')),
               ),
             )
           else

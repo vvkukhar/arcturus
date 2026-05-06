@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/sale_allocation_summary_model.dart';
 
-class SaleAllocationSummaryCard extends StatelessWidget {
+class SaleAllocationSummaryCard extends ConsumerWidget {
   final SaleAllocationSummaryModel model;
   final String currency;
   final VoidCallback onAllocate;
@@ -16,21 +18,23 @@ class SaleAllocationSummaryCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     if (!model.hasAllocation) {
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.inventory_2_outlined),
-                  SizedBox(width: 12),
+                  const Icon(Icons.inventory_2_outlined),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'No stock allocated',
-                      style: TextStyle(
+                      i18n.t('No stock allocated'),
+                      style: const TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 16,
                       ),
@@ -39,9 +43,9 @@ class SaleAllocationSummaryCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              const Text(
-                'Allocate purchase stock to this sale to track real stock movement and unit cost.',
-                style: TextStyle(color: Colors.white70),
+              Text(
+                i18n.t('Allocate purchase stock to this sale to track real stock movement and unit cost.'),
+                style: const TextStyle(color: Colors.white70),
               ),
               const SizedBox(height: 14),
               SizedBox(
@@ -49,7 +53,7 @@ class SaleAllocationSummaryCard extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: onAllocate,
                   icon: const Icon(Icons.add_link_outlined),
-                  label: const Text('Allocate Stock'),
+                  label: Text(i18n.t('Allocate Stock')),
                 ),
               ),
             ],
@@ -63,14 +67,14 @@ class SaleAllocationSummaryCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.inventory_2_outlined),
-                SizedBox(width: 12),
+                const Icon(Icons.inventory_2_outlined),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Stock Allocation',
-                    style: TextStyle(
+                    i18n.t('Stock Allocation'),
+                    style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 16,
                     ),
@@ -81,7 +85,7 @@ class SaleAllocationSummaryCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                const Expanded(child: Text('Allocated quantity')),
+                Expanded(child: Text(i18n.t('Allocated quantity'))),
                 Text(
                   model.allocatedQuantity.toString(),
                   style: const TextStyle(fontWeight: FontWeight.w900),
@@ -91,7 +95,7 @@ class SaleAllocationSummaryCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Expanded(child: Text('Allocated cost')),
+                Expanded(child: Text(i18n.t('Allocated cost'))),
                 Text(
                   '${model.allocatedCost.toStringAsFixed(2)} $currency',
                   style: const TextStyle(fontWeight: FontWeight.w900),
@@ -105,7 +109,7 @@ class SaleAllocationSummaryCard extends StatelessWidget {
                   child: FilledButton.tonalIcon(
                     onPressed: onAllocate,
                     icon: const Icon(Icons.swap_horiz_outlined),
-                    label: const Text('Change Allocation'),
+                    label: Text(i18n.t('Change Allocation')),
                   ),
                 ),
                 if (onClearAllocation != null) ...[
@@ -114,7 +118,7 @@ class SaleAllocationSummaryCard extends StatelessWidget {
                     child: OutlinedButton.icon(
                       onPressed: onClearAllocation,
                       icon: const Icon(Icons.clear_outlined),
-                      label: const Text('Clear'),
+                      label: Text(i18n.t('common.clear')),
                     ),
                   ),
                 ],

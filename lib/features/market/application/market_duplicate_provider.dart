@@ -1,5 +1,3 @@
-// lib/features/market/application/market_duplicate_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/market/application/market_duplicate_service.dart';
 

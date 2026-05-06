@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_metrics_summary_model.dart';
 
-class InventoryMetricsSummaryCard extends StatelessWidget {
+class InventoryMetricsSummaryCard extends ConsumerWidget {
   final InventoryMetricsSummaryModel model;
 
   const InventoryMetricsSummaryCard({
@@ -32,7 +34,9 @@ class InventoryMetricsSummaryCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -40,16 +44,16 @@ class InventoryMetricsSummaryCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                _cell('Items', model.totalItems.toString()),
-                _cell('Tracked', model.trackedItems.toString()),
+                _cell(i18n.t('Items'), model.totalItems.toString()),
+                _cell(i18n.t('Tracked'), model.trackedItems.toString()),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                _cell('Cost', model.totalCost.toStringAsFixed(2)),
-                _cell('Revenue', model.expectedRevenue.toStringAsFixed(2)),
-                _cell('Profit', model.expectedProfit.toStringAsFixed(2)),
+                _cell(i18n.t('Cost'), model.totalCost.toStringAsFixed(2)),
+                _cell(i18n.t('Revenue'), model.expectedRevenue.toStringAsFixed(2)),
+                _cell(i18n.t('Profit'), model.expectedProfit.toStringAsFixed(2)),
               ],
             ),
           ],

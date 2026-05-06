@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_market_pulse_provider.dart';
 
-class DashboardMarketPulseCard extends StatelessWidget {
+class DashboardMarketPulseCard extends ConsumerWidget {
   final DashboardMarketPulseModel model;
   final VoidCallback onOpenBuy;
   final VoidCallback onOpenSell;
@@ -18,7 +20,8 @@ class DashboardMarketPulseCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -26,7 +29,7 @@ class DashboardMarketPulseCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              model.headline,
+              i18n.t(model.headline),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
@@ -39,19 +42,19 @@ class DashboardMarketPulseCard extends StatelessWidget {
               children: [
                 FilledButton(
                   onPressed: onOpenBuy,
-                  child: Text('Buy ${model.buyCount}'),
+                  child: Text('${i18n.t('Buy')} ${model.buyCount}'),
                 ),
                 FilledButton.tonal(
                   onPressed: onOpenSell,
-                  child: Text('Sell ${model.sellCount}'),
+                  child: Text('${i18n.t('Sell')} ${model.sellCount}'),
                 ),
                 FilledButton.tonal(
                   onPressed: onOpenReprice,
-                  child: Text('Reprice ${model.repriceCount}'),
+                  child: Text('${i18n.t('Reprice')} ${model.repriceCount}'),
                 ),
                 FilledButton.tonal(
                   onPressed: onOpenReview,
-                  child: Text('Review ${model.reviewCount}'),
+                  child: Text('${i18n.t('Review')} ${model.reviewCount}'),
                 ),
               ],
             ),

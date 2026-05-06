@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/opportunities/application/profitability_breakdown_provider.dart';
 
 class ProfitabilityBreakdownScreen extends ConsumerWidget {
@@ -20,16 +21,17 @@ class ProfitabilityBreakdownScreen extends ConsumerWidget {
         contextId: contextId,
       )),
     );
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profitability Breakdown'),
+        title: Text(i18n.t('Profitability Breakdown')),
       ),
       body: breakdown.when(
         data: (item) {
           if (item == null) {
-            return const Center(
-              child: Text('No breakdown available'),
+            return Center(
+              child: Text(i18n.t('No breakdown available')),
             );
           }
 
@@ -87,7 +89,7 @@ class ProfitabilityBreakdownScreen extends ConsumerWidget {
           child: CircularProgressIndicator(),
         ),
         error: (error, _) => Center(
-          child: Text('Error: $error'),
+          child: Text('${i18n.t('common.error', {'error': error.toString()})}'),
         ),
       ),
     );

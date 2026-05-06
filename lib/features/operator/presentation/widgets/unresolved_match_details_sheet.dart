@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class UnresolvedMatchDetailsSheet extends StatelessWidget {
+class UnresolvedMatchDetailsSheet extends ConsumerWidget {
   final Map<String, dynamic> item;
   final VoidCallback onResolve;
   final VoidCallback onDismiss;
@@ -13,8 +15,10 @@ class UnresolvedMatchDetailsSheet extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final listing = Map<String, dynamic>.from(item['listing'] as Map? ?? {});
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(16),
@@ -27,7 +31,7 @@ class UnresolvedMatchDetailsSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text('Source: ${item['sourceCode'] ?? '-'}'),
+          Text('${i18n.t('Source')}: ${item['sourceCode'] ?? '-'}'),
           Text('Normalized: ${item['normalizedTitle'] ?? '-'}'),
           Text('Extracted set: ${item['extractedSetNo'] ?? '-'}'),
           Text('Suggested item: ${item['suggestedItemId'] ?? '-'}'),
@@ -35,8 +39,8 @@ class UnresolvedMatchDetailsSheet extends StatelessWidget {
           Text('Listing URL: ${listing['url'] ?? '-'}'),
           Text(
               'Raw price: ${listing['price'] ?? '-'} ${listing['currency'] ?? ''}'),
-          Text('Seller: ${listing['sellerName'] ?? '-'}'),
-          Text('Condition: ${listing['condition'] ?? '-'}'),
+          Text('${i18n.t('pur.seller')}: ${listing['sellerName'] ?? '-'}'),
+          Text('${i18n.t('inv.condition')}: ${listing['condition'] ?? '-'}'),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
@@ -44,11 +48,11 @@ class UnresolvedMatchDetailsSheet extends StatelessWidget {
             children: [
               FilledButton(
                 onPressed: onResolve,
-                child: const Text('Resolve'),
+                child: Text(i18n.t('Resolve')),
               ),
               FilledButton.tonal(
                 onPressed: onDismiss,
-                child: const Text('Dismiss'),
+                child: Text(i18n.t('Dismiss')),
               ),
             ],
           ),

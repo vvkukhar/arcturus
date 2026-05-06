@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/sale_allocation_lot_view_model.dart';
 
-class SaleAllocationLotsCard extends StatelessWidget {
+class SaleAllocationLotsCard extends ConsumerWidget {
   final List<SaleAllocationLotViewModel> lots;
   final void Function(SaleAllocationLotViewModel lot)? onEditLot;
   final void Function(SaleAllocationLotViewModel lot)? onRemoveLot;
@@ -14,8 +16,10 @@ class SaleAllocationLotsCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (lots.isEmpty) return const SizedBox.shrink();
+
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -23,9 +27,9 @@ class SaleAllocationLotsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Allocated Lots',
-              style: TextStyle(
+            Text(
+              i18n.t('Allocated Lots'),
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
               ),
@@ -38,7 +42,7 @@ class SaleAllocationLotsCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        '${lot.source} • qty ${lot.quantity}',
+                        '${lot.source} • ${i18n.t('qty')} ${lot.quantity}',
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -51,7 +55,7 @@ class SaleAllocationLotsCard extends StatelessWidget {
                       IconButton(
                         onPressed: () => onEditLot!(lot),
                         icon: const Icon(Icons.edit_outlined),
-                        tooltip: 'Edit lot',
+                        tooltip: i18n.t('Edit lot'),
                       ),
                     ],
                     if (onRemoveLot != null) ...[
@@ -59,7 +63,7 @@ class SaleAllocationLotsCard extends StatelessWidget {
                       IconButton(
                         onPressed: () => onRemoveLot!(lot),
                         icon: const Icon(Icons.close),
-                        tooltip: 'Remove lot',
+                        tooltip: i18n.t('Remove lot'),
                       ),
                     ],
                   ],

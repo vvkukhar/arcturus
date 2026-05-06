@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/market/application/market_bulk_action_type.dart';
 
-class MarketBulkActionBar extends StatelessWidget {
+class MarketBulkActionBar extends ConsumerWidget {
   final int selectedCount;
   final ValueChanged<MarketBulkActionType> onAction;
   final VoidCallback onClear;
@@ -14,8 +16,9 @@ class MarketBulkActionBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (selectedCount == 0) return const SizedBox.shrink();
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -26,15 +29,15 @@ class MarketBulkActionBar extends StatelessWidget {
           children: [
             FilledButton.tonal(
               onPressed: () => onAction(MarketBulkActionType.delete),
-              child: const Text('Delete selected'),
+              child: Text(i18n.t('Delete selected')),
             ),
             FilledButton.tonal(
               onPressed: () => onAction(MarketBulkActionType.duplicate),
-              child: const Text('Duplicate selected'),
+              child: Text(i18n.t('Duplicate selected')),
             ),
             OutlinedButton(
               onPressed: onClear,
-              child: const Text('Clear'),
+              child: Text(i18n.t('common.clear')),
             ),
           ],
         ),

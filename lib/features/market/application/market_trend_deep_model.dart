@@ -1,4 +1,3 @@
-// lib/features/market/application/market_trend_deep_model.dart
 class MarketTrendDeepModel {
   final String itemTitle;
   final double low;

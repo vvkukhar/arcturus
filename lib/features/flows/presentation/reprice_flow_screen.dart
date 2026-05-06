@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/flows/application/reprice_flow_provider.dart';
 import 'package:lego_trading_manager/features/flows/data/flows_api_repository_provider.dart';
 
@@ -20,18 +21,19 @@ class _RepriceFlowScreenState extends ConsumerState<RepriceFlowScreen> {
   Widget build(BuildContext context) {
     final flow = ref.watch(repriceFlowProvider);
     final repo = ref.watch(flowsApiRepositoryProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Reprice Flow')),
+      appBar: AppBar(title: Text(i18n.t('flow.reprice.title'))),
       body: flow.when(
         data: (items) {
           if (items.isEmpty) {
             return RefreshIndicator(
               onRefresh: _reload,
               child: ListView(
-                children: const [
-                  SizedBox(height: 250),
-                  Center(child: Text('Reprice flow is empty')),
+                children: [
+                  const SizedBox(height: 250),
+                  Center(child: Text(i18n.t('flow.reprice.empty'))),
                 ],
               ),
             );
@@ -56,7 +58,7 @@ class _RepriceFlowScreenState extends ConsumerState<RepriceFlowScreen> {
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 6),
-                        Text('Status: ${item.status}'),
+                        Text('${i18n.t('flow.purchase.status')} ${item.status}'),
                         const SizedBox(height: 10),
                         FilledButton(
                           onPressed: item.status == 'listed'
@@ -68,16 +70,16 @@ class _RepriceFlowScreenState extends ConsumerState<RepriceFlowScreen> {
                                     context: context,
                                     builder: (dialogContext) {
                                       return AlertDialog(
-                                        title: const Text('Mark Listed'),
+                                        title: Text(i18n.t('flow.reprice.markListed')),
                                         content: TextField(
                                           controller: priceController,
                                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                          decoration: const InputDecoration(labelText: 'Listing price'),
+                                          decoration: InputDecoration(labelText: i18n.t('flow.reprice.listingPrice')),
                                         ),
                                         actions: [
                                           TextButton(
                                             onPressed: () => Navigator.of(dialogContext).pop(),
-                                            child: const Text('Cancel'),
+                                            child: Text(i18n.t('flow.purchase.cancel')),
                                           ),
                                           FilledButton(
                                             onPressed: () async {
@@ -94,17 +96,17 @@ class _RepriceFlowScreenState extends ConsumerState<RepriceFlowScreen> {
                                               if (!mounted) return;
 
                                               messenger.showSnackBar(
-                                                const SnackBar(content: Text('Marked listed')),
+                                                SnackBar(content: Text(i18n.t('flow.reprice.marked'))),
                                               );
                                             },
-                                            child: const Text('Confirm'),
+                                            child: Text(i18n.t('flow.purchase.confirm')),
                                           ),
                                         ],
                                       );
                                     },
                                   );
                                 },
-                          child: const Text('Mark listed'),
+                          child: Text(i18n.t('flow.reprice.markListed')),
                         ),
                       ],
                     ),
@@ -115,7 +117,7 @@ class _RepriceFlowScreenState extends ConsumerState<RepriceFlowScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Error: $error')),
+        error: (error, _) => Center(child: Text('${i18n.t('common.error', {'error': error.toString()})}')),
       ),
     );
   }

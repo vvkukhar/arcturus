@@ -1,7 +1,8 @@
-// lib/features/inventory/presentation/widgets/inventory_action_center_bar.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryActionCenterBar extends StatelessWidget {
+class InventoryActionCenterBar extends ConsumerWidget {
   final VoidCallback onOpenInventory;
   final VoidCallback onSaveReport;
 
@@ -12,7 +13,8 @@ class InventoryActionCenterBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -23,12 +25,12 @@ class InventoryActionCenterBar extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: onOpenInventory,
               icon: const Icon(Icons.inventory_2_outlined),
-              label: const Text('Open Inventory'),
+              label: Text(i18n.t('Open Inventory')),
             ),
             FilledButton.tonalIcon(
               onPressed: onSaveReport,
               icon: const Icon(Icons.note_alt_outlined),
-              label: const Text('Save Report'),
+              label: Text(i18n.t('Save Report')),
             ),
           ],
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import '../data/strategy_api_repository_provider.dart';
 
 class ProfitScreen extends ConsumerStatefulWidget {
@@ -64,10 +65,11 @@ class _ProfitScreenState extends ConsumerState<ProfitScreen> {
   @override
   Widget build(BuildContext context) {
     final data = result;
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profit Tracker'),
+        title: Text(i18n.t('Profit Tracker')),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _loading ? null : run,
@@ -82,9 +84,9 @@ class _ProfitScreenState extends ConsumerState<ProfitScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text('Error: $_error'))
+              ? Center(child: Text('${i18n.t('common.error', {'error': _error!})}'))
               : data == null
-                  ? const Center(child: Text('Run profit calc'))
+                  ? Center(child: Text(i18n.t('Run profit calc')))
                   : Padding(
                       padding: const EdgeInsets.all(16),
                       child: Card(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class AnalyticsBulkRepriceBar extends StatelessWidget {
+class AnalyticsBulkRepriceBar extends ConsumerWidget {
   final VoidCallback onApply98;
 
   const AnalyticsBulkRepriceBar({
@@ -9,7 +11,8 @@ class AnalyticsBulkRepriceBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -20,7 +23,7 @@ class AnalyticsBulkRepriceBar extends StatelessWidget {
             FilledButton.icon(
               onPressed: onApply98,
               icon: const Icon(Icons.auto_fix_high_outlined),
-              label: const Text('Apply 98% Market To All'),
+              label: Text(i18n.t('Apply 98% Market To All')),
             ),
           ],
         ),

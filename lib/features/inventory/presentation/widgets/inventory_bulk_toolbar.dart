@@ -1,7 +1,8 @@
-// lib/features/inventory/presentation/widgets/inventory_bulk_toolbar.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryBulkToolbar extends StatelessWidget {
+class InventoryBulkToolbar extends ConsumerWidget {
   final int totalCount;
   final int selectedCount;
   final VoidCallback onSelectAll;
@@ -16,7 +17,9 @@ class InventoryBulkToolbar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -24,17 +27,17 @@ class InventoryBulkToolbar extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Selected $selectedCount of $totalCount',
+                '${i18n.t('Selected')} $selectedCount ${i18n.t('of')} $totalCount',
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
             ),
             TextButton(
               onPressed: onSelectAll,
-              child: const Text('Select all'),
+              child: Text(i18n.t('Select all')),
             ),
             TextButton(
               onPressed: onClearSelection,
-              child: const Text('Clear'),
+              child: Text(i18n.t('common.clear')),
             ),
           ],
         ),

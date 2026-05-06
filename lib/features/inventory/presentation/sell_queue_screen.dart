@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_top_sell_candidates_provider.dart';
 
 class SellQueueScreen extends ConsumerWidget {
@@ -8,14 +9,15 @@ class SellQueueScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(inventoryTopSellCandidatesProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sell Queue'),
+        title: Text(i18n.t('Sell Queue')),
       ),
       body: items.isEmpty
-          ? const Center(
-              child: Text('No sell candidates right now.'),
+          ? Center(
+              child: Text(i18n.t('No sell candidates right now.')),
             )
           : ListView.separated(
               padding: const EdgeInsets.all(16),
@@ -40,7 +42,7 @@ class SellQueueScreen extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              Text(item.reason),
+                              Text(i18n.t(item.reason)),
                             ],
                           ),
                         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/market/application/market_snapshot_note_provider.dart';
 import 'package:lego_trading_manager/features/market/presentation/widgets/market_snapshot_notes_list.dart';
 import 'package:lego_trading_manager/features/market/presentation/widgets/market_note_search_field.dart';
@@ -30,10 +31,11 @@ class _MarketNotesCenterScreenState extends ConsumerState<MarketNotesCenterScree
   @override
   Widget build(BuildContext context) {
     final notesAsync = ref.watch(marketVisibleSnapshotNotesProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Market Notes Center'),
+        title: Text(i18n.t('Market Notes Center')),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -54,7 +56,7 @@ class _MarketNotesCenterScreenState extends ConsumerState<MarketNotesCenterScree
               child: notesAsync.when(
                 data: (notes) => MarketSnapshotNotesList(notes: notes),
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, stack) => Center(child: Text('Error: $err')),
+                error: (err, stack) => Center(child: Text('${i18n.t('common.error', {'error': err.toString()})}')),
               ),
             ),
           ],

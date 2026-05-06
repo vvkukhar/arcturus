@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/operator/application/operator_health_summary_provider.dart';
 
-class DashboardOperatorHealthCard extends StatelessWidget {
+class DashboardOperatorHealthCard extends ConsumerWidget {
   final OperatorHealthSummaryModel model;
 
   const DashboardOperatorHealthCard({
@@ -10,7 +12,8 @@ class DashboardOperatorHealthCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -18,7 +21,7 @@ class DashboardOperatorHealthCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              model.headline,
+              i18n.t(model.headline),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
@@ -29,9 +32,9 @@ class DashboardOperatorHealthCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                Chip(label: Text('Pending ${model.pendingMatches}')),
-                Chip(label: Text('Stale sources ${model.staleSources}')),
-                Chip(label: Text('Error sources ${model.errorSources}')),
+                Chip(label: Text('${i18n.t('Pending')} ${model.pendingMatches}')),
+                Chip(label: Text('${i18n.t('Stale sources')} ${model.staleSources}')),
+                Chip(label: Text('${i18n.t('Error sources')} ${model.errorSources}')),
               ],
             ),
           ],

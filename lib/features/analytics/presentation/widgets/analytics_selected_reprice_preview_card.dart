@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_selected_reprice_preview_model.dart';
 
-class AnalyticsSelectedRepricePreviewCard extends StatelessWidget {
+class AnalyticsSelectedRepricePreviewCard extends ConsumerWidget {
   final AnalyticsSelectedRepricePreviewModel model;
 
   const AnalyticsSelectedRepricePreviewCard({
@@ -10,8 +12,10 @@ class AnalyticsSelectedRepricePreviewCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (model.count == 0) return const SizedBox.shrink();
+
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -20,7 +24,7 @@ class AnalyticsSelectedRepricePreviewCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Selected items preview (${model.count})',
+              '${i18n.t('Selected items preview')} (${model.count})',
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,

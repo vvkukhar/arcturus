@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_completeness.dart';
 import 'package:lego_trading_manager/core/enums/item_condition.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/profit_calculator.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
 
-class AddItemScreen extends StatefulWidget {
+class AddItemScreen extends ConsumerStatefulWidget {
   const AddItemScreen({super.key});
 
   @override
-  State<AddItemScreen> createState() => _AddItemScreenState();
+  ConsumerState<AddItemScreen> createState() => _AddItemScreenState();
 }
 
-class _AddItemScreenState extends State<AddItemScreen> {
+class _AddItemScreenState extends ConsumerState<AddItemScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _titleController = TextEditingController();
@@ -161,12 +163,13 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final expectedSale = _parseDouble(_expectedSalePriceController.text);
     final expectedProfit = expectedSale - _calculatedTotalCost;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Item'),
+        title: Text(i18n.t('inv.add')),
       ),
       body: Form(
         key: _formKey,
@@ -175,17 +178,17 @@ class _AddItemScreenState extends State<AddItemScreen> {
           children: [
             TextFormField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Title *'),
+              decoration: InputDecoration(labelText: '${i18n.t('inv.title')} *'),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Title is required';
+                  return i18n.t('inv.titleReq');
                 }
                 return null;
               },
             ),
             const SizedBox(height: 12),
             _buildDropdown<ItemType>(
-              label: 'Type',
+              label: i18n.t('inv.type'),
               value: _selectedType,
               values: ItemType.values,
               onChanged: (value) {
@@ -196,31 +199,31 @@ class _AddItemScreenState extends State<AddItemScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _themeController,
-              decoration: const InputDecoration(labelText: 'Theme'),
+              decoration: InputDecoration(labelText: i18n.t('inv.theme')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _subthemeController,
-              decoration: const InputDecoration(labelText: 'Subtheme'),
+              decoration: InputDecoration(labelText: i18n.t('inv.subtheme')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _legoNumberController,
-              decoration: const InputDecoration(labelText: 'LEGO Number'),
+              decoration: InputDecoration(labelText: i18n.t('inv.legoNumber')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _minifigIdController,
-              decoration: const InputDecoration(labelText: 'Minifig ID'),
+              decoration: InputDecoration(labelText: i18n.t('inv.minifigId')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _setIdController,
-              decoration: const InputDecoration(labelText: 'Set ID'),
+              decoration: InputDecoration(labelText: i18n.t('inv.setId')),
             ),
             const SizedBox(height: 12),
             _buildDropdown<ItemCondition>(
-              label: 'Condition',
+              label: i18n.t('inv.condition'),
               value: _selectedCondition,
               values: ItemCondition.values,
               onChanged: (value) {
@@ -230,7 +233,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
             ),
             const SizedBox(height: 12),
             _buildDropdown<ItemCompleteness>(
-              label: 'Completeness',
+              label: i18n.t('inv.completeness'),
               value: _selectedCompleteness,
               values: ItemCompleteness.values,
               onChanged: (value) {
@@ -240,7 +243,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
             ),
             const SizedBox(height: 12),
             _buildDropdown<OwnershipType>(
-              label: 'Ownership Type',
+              label: i18n.t('inv.ownership'),
               value: _selectedOwnershipType,
               values: OwnershipType.values,
               onChanged: (value) {
@@ -250,7 +253,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
             ),
             const SizedBox(height: 12),
             _buildDropdown<ItemStatus>(
-              label: 'Status',
+              label: i18n.t('inv.status'),
               value: _selectedStatus,
               values: ItemStatus.values,
               onChanged: (value) {
@@ -259,17 +262,17 @@ class _AddItemScreenState extends State<AddItemScreen> {
               },
             ),
             const SizedBox(height: 12),
-            _buildNumberField('Purchase Price', _purchasePriceController),
+            _buildNumberField(i18n.t('inv.price'), _purchasePriceController),
             const SizedBox(height: 12),
-            _buildNumberField('Shipping To Me', _shippingToMeController),
+            _buildNumberField(i18n.t('inv.shipping'), _shippingToMeController),
             const SizedBox(height: 12),
-            _buildNumberField('Extra Costs', _extraCostsController),
+            _buildNumberField(i18n.t('inv.extra'), _extraCostsController),
             const SizedBox(height: 12),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Calculated Total Cost: ${_calculatedTotalCost.toStringAsFixed(2)}',
+                  i18n.t('inv.calcTotalCost', {'val': _calculatedTotalCost.toStringAsFixed(2)}),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -278,17 +281,17 @@ class _AddItemScreenState extends State<AddItemScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildNumberField('Market Low', _marketLowController),
+            _buildNumberField(i18n.t('inv.marketLow'), _marketLowController),
             const SizedBox(height: 12),
-            _buildNumberField('Market Average', _marketAverageController),
+            _buildNumberField(i18n.t('inv.marketAvg'), _marketAverageController),
             const SizedBox(height: 12),
-            _buildNumberField('Expected Sale Price', _expectedSalePriceController),
+            _buildNumberField(i18n.t('inv.expectedPrice'), _expectedSalePriceController),
             const SizedBox(height: 12),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Expected Profit: ${expectedProfit.toStringAsFixed(2)}',
+                  '${i18n.t('inv.expectedProfit')}: ${expectedProfit.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -299,8 +302,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _tagsController,
-              decoration: const InputDecoration(
-                labelText: 'Tags',
+              decoration: InputDecoration(
+                labelText: i18n.t('inv.tags'),
                 hintText: 'rare, fast sell, villain',
               ),
             ),
@@ -308,12 +311,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
             TextFormField(
               controller: _notesController,
               maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Notes'),
+              decoration: InputDecoration(labelText: i18n.t('inv.notes')),
             ),
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _save,
-              child: const Text('Save Item'),
+              child: Text(i18n.t('common.save')),
             ),
           ],
         ),

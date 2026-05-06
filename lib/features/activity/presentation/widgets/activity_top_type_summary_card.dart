@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_top_type_summary_model.dart';
 
-class ActivityTopTypeSummaryCard extends StatelessWidget {
+class ActivityTopTypeSummaryCard extends ConsumerWidget {
   final List<ActivityTopTypeSummaryModel> items;
 
   const ActivityTopTypeSummaryCard({
@@ -10,7 +12,9 @@ class ActivityTopTypeSummaryCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     if (items.isEmpty) return const SizedBox.shrink();
     return Card(
       child: Padding(
@@ -19,7 +23,7 @@ class ActivityTopTypeSummaryCard extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: items.take(5).map((item) {
-            return Chip(label: Text('${item.type}: ${item.count}'));
+            return Chip(label: Text('${i18n.t(item.type)}: ${item.count}'));
           }).toList(),
         ),
       ),

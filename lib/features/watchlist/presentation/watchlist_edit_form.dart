@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class WatchlistEditForm extends StatefulWidget {
+class WatchlistEditForm extends ConsumerStatefulWidget {
   final Map<String, dynamic> item;
   final Future<void> Function(Map<String, dynamic>) onSave;
 
@@ -11,10 +13,10 @@ class WatchlistEditForm extends StatefulWidget {
   });
 
   @override
-  State<WatchlistEditForm> createState() => _WatchlistEditFormState();
+  ConsumerState<WatchlistEditForm> createState() => _WatchlistEditFormState();
 }
 
-class _WatchlistEditFormState extends State<WatchlistEditForm> {
+class _WatchlistEditFormState extends ConsumerState<WatchlistEditForm> {
   late final TextEditingController _priceController;
   String? _error;
 
@@ -32,12 +34,12 @@ class _WatchlistEditFormState extends State<WatchlistEditForm> {
     super.dispose();
   }
 
-  Future<void> _save() async {
+  Future<void> _save(I18nNotifier i18n) async {
     final parsed = double.tryParse(_priceController.text.replaceAll(',', '.'));
 
     if (parsed == null) {
       setState(() {
-        _error = 'Enter valid target sell price';
+        _error = i18n.t('Enter valid target sell price');
       });
       return;
     }
@@ -55,24 +57,26 @@ class _WatchlistEditFormState extends State<WatchlistEditForm> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return AlertDialog(
-      title: const Text('Edit Watchlist'),
+      title: Text(i18n.t('Edit Watchlist')),
       content: TextField(
         controller: _priceController,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         decoration: InputDecoration(
-          labelText: 'Target Sell Price',
+          labelText: i18n.t('Target Sell Price'),
           errorText: _error,
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(i18n.t('common.cancel')),
         ),
         FilledButton(
-          onPressed: _save,
-          child: const Text('Save'),
+          onPressed: () => _save(i18n),
+          child: Text(i18n.t('common.save')),
         ),
       ],
     );

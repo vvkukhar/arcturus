@@ -1,10 +1,10 @@
-// lib/features/analytics/presentation/widgets/analytics_theme_profit_card.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_theme_profit_provider.dart';
 
-class AnalyticsThemeProfitCard extends StatelessWidget {
+class AnalyticsThemeProfitCard extends ConsumerWidget {
   final AnalyticsThemeProfitEntry entry;
   final String currency;
 
@@ -15,11 +15,12 @@ class AnalyticsThemeProfitCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: ListTile(
         title: Text(entry.theme),
-        subtitle: Text('Items: ${entry.count}'),
+        subtitle: Text('${i18n.t('Items:')} ${entry.count}'),
         trailing: Text(
           CurrencyFormatter.format(entry.expectedProfit, currency: currency),
           style: const TextStyle(fontWeight: FontWeight.w800),

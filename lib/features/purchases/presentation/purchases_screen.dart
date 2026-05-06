@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
 import 'package:lego_trading_manager/data/models/purchase_model.dart';
@@ -48,13 +49,13 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
     super.dispose();
   }
 
-  String _sortLabel(PurchasesSortOption option) {
+  String _sortLabel(PurchasesSortOption option, I18nNotifier i18n) {
     switch (option) {
-      case PurchasesSortOption.newest: return 'Newest';
-      case PurchasesSortOption.oldest: return 'Oldest';
-      case PurchasesSortOption.totalHighToLow: return 'Total High-Low';
-      case PurchasesSortOption.totalLowToHigh: return 'Total Low-High';
-      case PurchasesSortOption.sourceAsc: return 'Source A-Z';
+      case PurchasesSortOption.newest: return i18n.t('Newest');
+      case PurchasesSortOption.oldest: return i18n.t('Oldest');
+      case PurchasesSortOption.totalHighToLow: return i18n.t('Total High-Low');
+      case PurchasesSortOption.totalLowToHigh: return i18n.t('Total Low-High');
+      case PurchasesSortOption.sourceAsc: return i18n.t('Source A-Z');
     }
   }
 
@@ -117,10 +118,11 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
     final metrics = ref.watch(purchasesMetricsWithStockProvider);
     final selectedIds = ref.watch(purchasesSelectionControllerProvider);
     final selection = ref.read(purchasesSelectionControllerProvider.notifier);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Purchases'),
+        title: Text(i18n.t('pur.title')),
         actions: [
           IconButton(onPressed: _openFilters, icon: const Icon(Icons.filter_alt_outlined)),
           IconButton(onPressed: _openAdd, icon: const Icon(Icons.add)),
@@ -155,7 +157,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                 FilledButton.tonalIcon(
                   onPressed: _openFilters,
                   icon: const Icon(Icons.tune),
-                  label: const Text('Filters'),
+                  label: Text(i18n.t('common.filters')),
                 ),
               ],
             ),
@@ -163,49 +165,49 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
             PurchasesSummaryBar(
               visibleCount: metrics.visibleCount,
               totalCount: metrics.totalCount,
-              sortLabel: _sortLabel(ui.sort),
+              sortLabel: _sortLabel(ui.sort, i18n),
             ),
             const SizedBox(height: 12),
             PurchasesActiveFilterChips(filter: ui.filter),
             const SizedBox(height: 12),
-            PurchasesMetricsCard(model: metrics),
-            const SizedBox(height: 12),
-            PurchasesSelectionToolbar(
-              visibleCount: visible.length,
-              selectedCount: selectedIds.length,
-              onSelectAll: () => selection.selectAll(visible.map((item) => item.id)),
-              onClear: selection.clear,
-            ),
-            const SizedBox(height: 8),
-            PurchasesBulkActionBar(
-              selectedCount: selectedIds.length,
-              onDeleteSelected: () => _deleteSelected(selectedIds),
-              onClear: selection.clear,
-            ),
-            const SizedBox(height: 12),
             Expanded(
               child: visible.isEmpty
                   ? PurchasesEmptyStateCard(onAddPurchase: _openAdd)
-                  : ListView.builder(
-                      itemCount: visible.length,
-                      itemBuilder: (context, index) {
-                        final purchase = visible[index];
-                        final statusLabel = ref.watch(purchaseStatusLabelProvider(purchase));
-                        final selected = selectedIds.contains(purchase.id);
+                  : ListView(
+                      children: [
+                        PurchasesMetricsCard(model: metrics),
+                        const SizedBox(height: 12),
+                        PurchasesSelectionToolbar(
+                          visibleCount: visible.length,
+                          selectedCount: selectedIds.length,
+                          onSelectAll: () => selection.selectAll(visible.map((item) => item.id)),
+                          onClear: selection.clear,
+                        ),
+                        const SizedBox(height: 8),
+                        PurchasesBulkActionBar(
+                          selectedCount: selectedIds.length,
+                          onDeleteSelected: () => _deleteSelected(selectedIds),
+                          onClear: selection.clear,
+                        ),
+                        const SizedBox(height: 12),
+                        ...visible.map((purchase) {
+                          final statusLabel = ref.watch(purchaseStatusLabelProvider(purchase));
+                          final selected = selectedIds.contains(purchase.id);
 
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: PurchaseSelectableCard(
-                            purchase: purchase,
-                            statusLabel: statusLabel,
-                            selected: selected,
-                            onSelected: (_) => selection.toggle(purchase.id),
-                            onOpenDetails: () => _openDetails(purchase),
-                            onDuplicate: () => _duplicate(purchase),
-                            onSaveReport: () {}, // Removed unnecessary dependencies for clarity
-                          ),
-                        );
-                      },
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: PurchaseSelectableCard(
+                              purchase: purchase,
+                              statusLabel: statusLabel,
+                              selected: selected,
+                              onSelected: (_) => selection.toggle(purchase.id),
+                              onOpenDetails: () => _openDetails(purchase),
+                              onDuplicate: () => _duplicate(purchase),
+                              onSaveReport: () {},
+                            ),
+                          );
+                        }),
+                      ],
                     ),
             ),
           ],

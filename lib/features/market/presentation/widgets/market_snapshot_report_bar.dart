@@ -1,7 +1,8 @@
-// lib/features/market/presentation/widgets/market_snapshot_report_bar.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class MarketSnapshotReportBar extends StatelessWidget {
+class MarketSnapshotReportBar extends ConsumerWidget {
   final VoidCallback onSaveNote;
   final VoidCallback onSaveReport;
 
@@ -12,7 +13,9 @@ class MarketSnapshotReportBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -23,12 +26,12 @@ class MarketSnapshotReportBar extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: onSaveNote,
               icon: const Icon(Icons.sticky_note_2_outlined),
-              label: const Text('Save Note'),
+              label: Text(i18n.t('Save Note')),
             ),
             FilledButton.tonalIcon(
               onPressed: onSaveReport,
               icon: const Icon(Icons.note_add_outlined),
-              label: const Text('Save Report'),
+              label: Text(i18n.t('Save Report')),
             ),
           ],
         ),

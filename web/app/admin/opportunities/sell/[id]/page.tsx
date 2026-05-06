@@ -1,114 +1,93 @@
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
 import { SectionCard } from '@/components/admin/section-card';
 import { StatusPill } from '@/components/admin/status-pill';
-import { OpportunityStrategyBlock } from '@/components/admin/opportunity-strategy-block';
 import { AddToRepriceFlowButton } from '@/components/admin/add-to-reprice-flow-button';
-import { formatMoney } from '@/lib/format';
-import { DataTable } from '@/components/admin/data-table';
+import { formatMoney, formatPercent } from '@/lib/format';
 
-async function getSellDetail(itemId: string) {
-  try {
-    return await api.get<any>(`/opportunities/sell/${itemId}`);
-  } catch {
-    return null;
-  }
-}
+type Props = { params: Promise<{ id: string }> };
 
-export default async function AdminSellOpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function SellOpportunityDetail({ params }: Props) {
   const { id } = await params;
-  const data = await getSellDetail(id);
+  let data: any;
 
-  if (!data || !data.opportunity) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <h2 className="text-2xl font-black text-slate-900">Opportunity Not Found</h2>
-        <Link href="/admin/opportunities/sell" className="mt-4 text-blue-600 hover:underline">
-          Return to Sell Opportunities
-        </Link>
-      </div>
-    );
+  try {
+    data = await api.get<any>(`/opportunities/sell/${id}`);
+  } catch {
+    notFound();
   }
 
-  const { opportunity, item, inventory, listings, soldComps } = data;
+  if (!data || !data.opportunity) notFound();
+
+  const opp = data.opportunity;
 
   return (
-    <div className="space-y-6 animate-fade-in-up pb-10">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <Link href="/admin/opportunities/sell" className="p-2 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors">
-            <ArrowLeft size={20} className="text-slate-600" />
-          </Link>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900">{opportunity.title}</h1>
-            <p className="text-sm font-mono text-slate-500 mt-1">Item ID: {opportunity.itemId} | Set: {item?.setNumber ?? 'N/A'}</p>
-          </div>
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900">{opp.title}</h1>
+          <p className="mt-1 text-sm text-slate-500 font-mono">Inventory ID: {opp.inventoryItemId}</p>
         </div>
         <div className="flex items-center gap-3">
-          <StatusPill value={opportunity.action} />
-          {opportunity.inventoryItemId && (
-            <AddToRepriceFlowButton inventoryItemId={opportunity.inventoryItemId} />
-          )}
+          <StatusPill value={opp.action} />
+          {opp.inventoryItemId && <AddToRepriceFlowButton inventoryItemId={opp.inventoryItemId} />}
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-2 space-y-6">
-          <SectionCard title="Strategy & Economics">
-            <OpportunityStrategyBlock item={opportunity} />
-          </SectionCard>
-
-          <SectionCard title="Your Inventory Positions">
-             <DataTable
-              rows={inventory}
-              emptyText="No active inventory found."
-              getRowKey={(row: any) => row.id}
-              columns={[
-                {
-                  key: 'id',
-                  header: 'Inventory ID',
-                  render: (row: any) => <span className="font-mono text-sm">{row.id}</span>,
-                },
-                {
-                  key: 'qty',
-                  header: 'Qty',
-                  render: (row: any) => <span className="font-bold">{row.quantity}</span>,
-                },
-                {
-                  key: 'cost',
-                  header: 'Cost Basis',
-                  render: (row: any) => <span className="text-slate-700">{formatMoney(row.totalCost)}</span>,
-                },
-                {
-                  key: 'manual',
-                  header: 'Current Price',
-                  render: (row: any) => <span className="font-bold text-blue-600">{formatMoney(row.expectedSalePriceManual)}</span>,
-                },
-              ]}
-            />
-          </SectionCard>
-        </div>
-
-        <div className="space-y-6">
-          <SectionCard title="Market Competition">
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-              {listings.length === 0 ? (
-                <div className="text-sm text-slate-500">No active listings</div>
-              ) : (
-                listings.slice(0, 15).map((listing: any) => (
-                  <div key={listing.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <div>
-                      <div className="font-bold text-sm text-slate-900 line-clamp-1">{listing.title}</div>
-                      <div className="text-xs text-slate-500 mt-1">{listing.sourceCode} • {listing.condition}</div>
-                    </div>
-                    <div className="font-black text-slate-900">{formatMoney(listing.price)}</div>
-                  </div>
-                ))
-              )}
+      <div className="grid gap-6 md:grid-cols-3">
+        <SectionCard title="Financials">
+          <div className="space-y-4">
+            <div>
+              <div className="text-xs font-bold text-slate-500 uppercase">Cost Basis</div>
+              <div className="text-xl font-bold text-slate-900">{formatMoney(opp.totalCostBasis)}</div>
             </div>
-          </SectionCard>
-        </div>
+            <div>
+              <div className="text-xs font-bold text-slate-500 uppercase">Target Sell</div>
+              <div className="text-xl font-bold text-blue-600">{formatMoney(opp.targetSellPrice)}</div>
+            </div>
+            <div className="pt-2 border-t border-slate-100">
+              <div className="text-xs font-bold text-slate-500 uppercase">Est. Profit</div>
+              <div className="text-2xl font-black text-emerald-600">{formatMoney(opp.profit)}</div>
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-500 uppercase">ROI</div>
+              <div className="text-xl font-black text-emerald-600">{formatPercent(opp.roi)}</div>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Pricing Intel" className="md:col-span-2">
+          <div className="space-y-4">
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+              <div className="text-sm font-bold text-slate-900 mb-1">{opp.actionReasonPrimary}</div>
+              <div className="text-sm text-slate-500">{opp.actionReasonSecondary}</div>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Market Median</div>
+                <div className="text-sm font-bold text-slate-900">{formatMoney(opp.market?.medianPrice)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Market Lowest</div>
+                <div className="text-sm font-bold text-slate-900">{formatMoney(opp.market?.lowestPriceWithShipping)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Smart Floor</div>
+                <div className="text-sm font-bold text-amber-600">{formatMoney(opp.floorPrice)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Smart Stretch</div>
+                <div className="text-sm font-bold text-purple-600">{formatMoney(opp.stretchPrice)}</div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100">
+              <div className="text-xs font-bold text-slate-500 uppercase mb-2">Strategy Applied</div>
+              <StatusPill value={opp.flipStrategy || 'Unknown'} />
+            </div>
+          </div>
+        </SectionCard>
       </div>
     </div>
   );

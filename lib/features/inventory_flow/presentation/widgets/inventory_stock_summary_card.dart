@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/inventory_stock_summary_model.dart';
 
-class InventoryStockSummaryCard extends StatelessWidget {
+class InventoryStockSummaryCard extends ConsumerWidget {
   final InventoryStockSummaryModel model;
 
   const InventoryStockSummaryCard({
@@ -34,7 +36,9 @@ class InventoryStockSummaryCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -42,16 +46,16 @@ class InventoryStockSummaryCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                _cell('Purchased', model.totalPurchasedUnits.toString()),
-                _cell('Sold', model.totalSoldUnits.toString()),
-                _cell('Remaining', model.totalRemainingUnits.toString()),
+                _cell(i18n.t('Purchased'), model.totalPurchasedUnits.toString()),
+                _cell(i18n.t('Sold'), model.totalSoldUnits.toString()),
+                _cell(i18n.t('Remaining'), model.totalRemainingUnits.toString()),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                _cell('Open lots', model.openPurchaseLots.toString()),
-                _cell('Closed lots', model.fullySoldLots.toString()),
+                _cell(i18n.t('Open lots'), model.openPurchaseLots.toString()),
+                _cell(i18n.t('Closed lots'), model.fullySoldLots.toString()),
               ],
             ),
           ],

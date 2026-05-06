@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/conflicts/presentation/conflict_queue_screen.dart';
 import 'package:lego_trading_manager/features/sync/application/sync_health_center_provider.dart';
 import 'package:lego_trading_manager/features/sync/presentation/manual_sync_queue_screen.dart';
@@ -10,10 +11,11 @@ class AppSyncCenterScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final health = ref.watch(syncHealthCenterProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('App Sync Center'),
+        title: Text(i18n.t('App Sync Center')),
       ),
       body: health.when(
         data: (data) {
@@ -49,7 +51,7 @@ class AppSyncCenterScreen extends ConsumerWidget {
                     ),
                   );
                 },
-                child: const Text('Open Manual Sync Queue'),
+                child: Text(i18n.t('Open Manual Sync Queue')),
               ),
               const SizedBox(height: 12),
               FilledButton.tonal(
@@ -60,7 +62,7 @@ class AppSyncCenterScreen extends ConsumerWidget {
                     ),
                   );
                 },
-                child: const Text('Open Conflict Queue'),
+                child: Text(i18n.t('Open Conflict Queue')),
               ),
             ],
           );
@@ -69,7 +71,7 @@ class AppSyncCenterScreen extends ConsumerWidget {
           child: CircularProgressIndicator(),
         ),
         error: (error, _) => Center(
-          child: Text('Error: $error'),
+          child: Text('${i18n.t('common.error', {'error': error.toString()})}'),
         ),
       ),
     );

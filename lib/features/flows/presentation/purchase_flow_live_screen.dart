@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/flows/data/flows_api_repository_provider.dart';
 
 class PurchaseFlowLiveScreen extends ConsumerWidget {
@@ -7,8 +8,10 @@ class PurchaseFlowLiveScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repository = ref.watch(flowsApiRepositoryProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
+    
     return Scaffold(
-      appBar: AppBar(title: const Text('Purchase Flow Live')),
+      appBar: AppBar(title: Text(i18n.t('Purchase Flow Live'))),
       body: FutureBuilder(
         future: repository.getPurchaseFlow(),
         builder: (context, snapshot) {
@@ -16,11 +19,11 @@ class PurchaseFlowLiveScreen extends ConsumerWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('${i18n.t('common.error', {'error': snapshot.error.toString()})}'));
           }
           final items = snapshot.data ?? [];
           if (items.isEmpty) {
-            return const Center(child: Text('Empty purchase flow'));
+            return Center(child: Text(i18n.t('Empty purchase flow')));
           }
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -43,7 +46,7 @@ class PurchaseFlowLiveScreen extends ConsumerWidget {
                             'bought',
                           );
                         },
-                        child: const Text('Bought'),
+                        child: Text(i18n.t('Bought')),
                       ),
                     ],
                   ),

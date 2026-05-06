@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_quick_navigation_provider.dart';
 
-class DashboardQuickNavigationCard extends StatelessWidget {
+class DashboardQuickNavigationCard extends ConsumerWidget {
   final List<DashboardQuickNavigationItemModel> items;
 
   const DashboardQuickNavigationCard({
@@ -41,7 +43,8 @@ class DashboardQuickNavigationCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -70,7 +73,7 @@ class DashboardQuickNavigationCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      item.title,
+                      i18n.t(item.title),
                       style: TextStyle(
                         color: color,
                         fontWeight: FontWeight.w800,

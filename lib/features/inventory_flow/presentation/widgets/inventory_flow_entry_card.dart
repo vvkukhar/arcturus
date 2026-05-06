@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryFlowEntryCard extends StatelessWidget {
+class InventoryFlowEntryCard extends ConsumerWidget {
   final VoidCallback onOpen;
 
   const InventoryFlowEntryCard({
@@ -9,16 +11,18 @@ class InventoryFlowEntryCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: ListTile(
         leading: const Icon(Icons.account_tree_outlined),
-        title: const Text(
-          'Inventory Flow',
-          style: TextStyle(fontWeight: FontWeight.w900),
+        title: Text(
+          i18n.t('drawer.inventoryFlow'),
+          style: const TextStyle(fontWeight: FontWeight.w900),
         ),
-        subtitle: const Text(
-          'Track purchased units, sold units, remaining stock and allocated profit.',
+        subtitle: Text(
+          i18n.t('drawer.inventoryFlowSub'),
         ),
         trailing: const Icon(Icons.chevron_right),
         onTap: onOpen,

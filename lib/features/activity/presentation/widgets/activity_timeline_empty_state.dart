@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class ActivityTimelineEmptyState extends StatelessWidget {
+class ActivityTimelineEmptyState extends ConsumerWidget {
   final VoidCallback onShowAll;
   final VoidCallback onShowReports;
   final VoidCallback onShowPurchases;
@@ -13,7 +15,9 @@ class ActivityTimelineEmptyState extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Center(
       child: Card(
         child: Padding(
@@ -21,9 +25,9 @@ class ActivityTimelineEmptyState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'No timeline entries found',
-                style: TextStyle(
+              Text(
+                i18n.t('activity.timeline.empty'),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                 ),
@@ -35,15 +39,15 @@ class ActivityTimelineEmptyState extends StatelessWidget {
                 children: [
                   FilledButton.tonal(
                     onPressed: onShowAll,
-                    child: const Text('Show All'),
+                    child: Text(i18n.t('Show All')),
                   ),
                   FilledButton.tonal(
                     onPressed: onShowReports,
-                    child: const Text('Reports'),
+                    child: Text(i18n.t('Reports')),
                   ),
                   FilledButton.tonal(
                     onPressed: onShowPurchases,
-                    child: const Text('Purchases'),
+                    child: Text(i18n.t('Purchases')),
                   ),
                 ],
               ),

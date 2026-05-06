@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_balance_insight_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_balance_summary_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_best_type_insight_provider.dart';
@@ -89,6 +90,7 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final latest = ref.watch(latestActivityProvider);
     final query = ref.watch(activityTimelineQueryProvider).trim().toLowerCase();
     final type = ref.watch(activityTimelineTypeFilterProvider);
@@ -122,7 +124,7 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
     final disciplineStabilityMix = ref.watch(activityDisciplineStabilityMixProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Activity Timeline')),
+      appBar: AppBar(title: Text(i18n.t('activity.timeline.title'))),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -148,8 +150,8 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
             ActivityCompactSummaryCard(model: compactSummary),
             const SizedBox(height: 12),
             ActivitySummaryHeroCard(
-              title: 'Activity Pulse',
-              subtitle: 'Best day: ${mostActiveDay?.dateLabel ?? '-'} • Weakest day: ${weakestDay?.dateLabel ?? '-'} • Top type: ${bestTypeInsight?.topType ?? '-'}',
+              title: i18n.t('Activity Pulse'),
+              subtitle: '${i18n.t('Best day')}: ${mostActiveDay?.dateLabel ?? '-'} • ${i18n.t('Weakest day')}: ${weakestDay?.dateLabel ?? '-'} • ${i18n.t('Top type')}: ${bestTypeInsight?.topType ?? '-'}',
             ),
             const SizedBox(height: 12),
             ActivityMomentumBanner(model: momentum),
@@ -204,9 +206,9 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
             ActivityStreakInsightCard(model: streakInsight),
             const SizedBox(height: 12),
             ActivityInsightStackCard(
-              momentum: momentum.label,
-              balance: balanceInsight.label,
-              streakLabel: '${streakInsight.label} (${streakInsight.value})',
+              momentum: i18n.t(momentum.label),
+              balance: i18n.t(balanceInsight.label),
+              streakLabel: '${i18n.t(streakInsight.label)} (${streakInsight.value})',
             ),
             const SizedBox(height: 12),
             ActivityDateRangeQuickChips(
@@ -219,7 +221,6 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
             Expanded(
               child: latest.when(
                 data: (items) {
-                  // ОПТИМІЗАЦІЯ O(N) з єдиним проходом
                   final visible = items.where((item) {
                     if (query.isNotEmpty) {
                       final matchesQuery = item.title.toLowerCase().contains(query) ||
@@ -246,7 +247,7 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
                   }).toList();
 
                   if (visible.isEmpty) {
-                    return const Center(child: Text('No timeline entries found.'));
+                    return Center(child: Text(i18n.t('activity.timeline.empty')));
                   }
 
                   DateTime? lastDate;
@@ -286,7 +287,7 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, __) => const Center(child: Text('Failed to load timeline.')),
+                error: (_, __) => Center(child: Text(i18n.t('activity.timeline.error'))),
               ),
             ),
           ],

@@ -18,7 +18,8 @@ final authTokenProvider = Provider<Future<String?> Function()>((ref) {
       return localToken.trim().replaceAll('"', '').replaceAll("'", "''");
     }
     
-    return null;
+    // Fallback токен для доступу до продакшену (Arcturus Core)
+    return 'NinjagoLegoMinecraftStarWarsLordoftheRings_201119772007';
   };
 });
 

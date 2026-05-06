@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/widgets/details_action_bar.dart';
@@ -56,7 +57,7 @@ class _MarketSnapshotDetailsScreenState
   }
 
   String _itemTitle(String itemRef) {
-    return ref.read(inventoryRepositoryProvider).getById(itemRef)?.title ?? 'Unknown item';
+    return ref.read(inventoryRepositoryProvider).getById(itemRef)?.title ?? itemRef;
   }
 
   Widget _infoRow(String label, String value) {
@@ -104,7 +105,7 @@ class _MarketSnapshotDetailsScreenState
     Navigator.of(context).pop({'duplicated': duplicate});
   }
 
-  Future<void> _saveNote() async {
+  Future<void> _saveNote(I18nNotifier i18n) async {
     final result = await showDialog<String>(
       context: context,
       builder: (_) => const MarketSnapshotNoteDialog(initialValue: ''),
@@ -127,21 +128,21 @@ class _MarketSnapshotDetailsScreenState
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Market note saved')),
+      SnackBar(content: Text(i18n.t('Market note saved'))),
     );
   }
 
-  Future<void> _saveReport() async {
+  Future<void> _saveReport(I18nNotifier i18n) async {
     final result = await ref.read(saveActionReportFlowProvider).openDialog(
           context,
-          initialTitle: 'Market Snapshot Review',
+          initialTitle: i18n.t('Market Snapshot Review'),
           initialNote:
-              'Reviewed ${snapshot.source} | avg=${snapshot.averagePrice.toStringAsFixed(2)} | spread=${(snapshot.highPrice - snapshot.lowPrice).toStringAsFixed(2)}',
+              '${i18n.t('Reviewed')} ${snapshot.source} | avg=${snapshot.averagePrice.toStringAsFixed(2)} | spread=${(snapshot.highPrice - snapshot.lowPrice).toStringAsFixed(2)}',
         );
 
     if (result == null) return;
 
-    final title = result['title'] ?? 'Market Snapshot Review';
+    final title = result['title'] ?? i18n.t('Market Snapshot Review');
     final note = result['note'] ?? '';
 
     await ref.read(actionReportHelperProvider).save(
@@ -157,25 +158,25 @@ class _MarketSnapshotDetailsScreenState
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Market report saved')),
+      SnackBar(content: Text(i18n.t('Market report saved'))),
     );
   }
 
-  Future<void> _confirmDelete() async {
+  Future<void> _confirmDelete(I18nNotifier i18n) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (_) {
         return AlertDialog(
-          title: const Text('Delete snapshot'),
-          content: const Text('Delete this market snapshot?'),
+          title: Text(i18n.t('common.deleteConfirmTitle')),
+          content: Text(i18n.t('common.deleteConfirmText', {'title': snapshot.source})),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(i18n.t('common.cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(i18n.t('common.delete')),
             ),
           ],
         );
@@ -197,14 +198,15 @@ class _MarketSnapshotDetailsScreenState
     final insights = ref.watch(marketSnapshotInsightsServiceProvider);
     final currency =
         snapshot.currency.isEmpty ? settings.baseCurrency : snapshot.currency;
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Snapshot Details'),
+        title: Text(i18n.t('market.details')),
         actions: [
           DetailsActionBar(
             onEdit: _openEdit,
-            onDelete: _confirmDelete,
+            onDelete: () => _confirmDelete(i18n),
             onDuplicate: _duplicate,
           ),
         ],
@@ -226,8 +228,8 @@ class _MarketSnapshotDetailsScreenState
           ),
           const SizedBox(height: 16),
           MarketSnapshotReportBar(
-            onSaveNote: _saveNote,
-            onSaveReport: _saveReport,
+            onSaveNote: () => _saveNote(i18n),
+            onSaveReport: () => _saveReport(i18n),
           ),
           const SizedBox(height: 16),
           GridView.count(
@@ -239,7 +241,7 @@ class _MarketSnapshotDetailsScreenState
             childAspectRatio: 1.3,
             children: [
               MarketSnapshotInsightCard(
-                title: 'Spread',
+                title: i18n.t('Spread'),
                 value: CurrencyFormatter.format(
                   double.parse(insights.spread(snapshot)),
                   currency: currency,
@@ -247,7 +249,7 @@ class _MarketSnapshotDetailsScreenState
                 subtitle: 'high - low',
               ),
               MarketSnapshotInsightCard(
-                title: 'Midpoint',
+                title: i18n.t('Midpoint'),
                 value: CurrencyFormatter.format(
                   double.parse(insights.midpoint(snapshot)),
                   currency: currency,
@@ -255,12 +257,12 @@ class _MarketSnapshotDetailsScreenState
                 subtitle: 'between low and high',
               ),
               MarketSnapshotInsightCard(
-                title: 'Avg vs Low',
+                title: i18n.t('Avg vs Low'),
                 value: '${insights.avgVsLow(snapshot)}%',
                 subtitle: 'average premium',
               ),
               MarketSnapshotInsightCard(
-                title: 'Source',
+                title: i18n.t('Source'),
                 value: snapshot.source,
                 subtitle: 'captured source',
               ),
@@ -272,50 +274,50 @@ class _MarketSnapshotDetailsScreenState
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _infoRow('Source', snapshot.source),
+                  _infoRow(i18n.t('Source'), snapshot.source),
                   _infoRow(
-                    'Low Price',
+                    i18n.t('inv.marketLow'),
                     CurrencyFormatter.format(
                       snapshot.lowPrice,
                       currency: currency,
                     ),
                   ),
                   _infoRow(
-                    'Average Price',
+                    i18n.t('inv.marketAvg'),
                     CurrencyFormatter.format(
                       snapshot.averagePrice,
                       currency: currency,
                     ),
                   ),
                   _infoRow(
-                    'High Price',
+                    i18n.t('High Price'),
                     CurrencyFormatter.format(
                       snapshot.highPrice,
                       currency: currency,
                     ),
                   ),
-                  _infoRow('Currency', snapshot.currency),
+                  _infoRow(i18n.t('pur.currency'), snapshot.currency),
                   _infoRow(
-                    'Seller Count',
+                    i18n.t('Seller Count'),
                     snapshot.sellerCount?.toString() ?? '-',
                   ),
                   _infoRow(
-                    'Available Qty',
+                    i18n.t('Available Qty'),
                     snapshot.availableQty?.toString() ?? '-',
                   ),
                   _infoRow(
-                    'Captured At',
+                    i18n.t('Captured At'),
                     snapshot.capturedAt.toIso8601String().split('T').first,
                   ),
-                  _infoRow('URL', snapshot.url ?? '-'),
+                  _infoRow(i18n.t('URL'), snapshot.url ?? '-'),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Notes',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          Text(
+            i18n.t('inv.notes'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           _loadingNotes

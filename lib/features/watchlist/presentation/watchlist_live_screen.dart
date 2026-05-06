@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/decisions/data/decisions_api_repository_provider.dart';
 import 'package:lego_trading_manager/features/market/data/market_api_repository_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/data/watchlist_api_repository_provider.dart';
@@ -34,9 +35,10 @@ class _WatchlistLiveScreenState extends ConsumerState<WatchlistLiveScreen> {
     final marketRepository = ref.watch(marketApiRepositoryProvider);
     final decisionsRepository = ref.watch(decisionsApiRepositoryProvider);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Watchlist Live')),
+      appBar: AppBar(title: Text(i18n.t('Watchlist Live'))),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
         builder: (context, snapshot) {
@@ -45,7 +47,7 @@ class _WatchlistLiveScreenState extends ConsumerState<WatchlistLiveScreen> {
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('${i18n.t('common.error', {'error': snapshot.error.toString()})}'));
           }
 
           final items = snapshot.data ?? [];
@@ -54,9 +56,9 @@ class _WatchlistLiveScreenState extends ConsumerState<WatchlistLiveScreen> {
             return RefreshIndicator(
               onRefresh: _reload,
               child: ListView(
-                children: const [
-                  SizedBox(height: 250),
-                  Center(child: Text('No watchlist items')),
+                children: [
+                  const SizedBox(height: 250),
+                  Center(child: Text(i18n.t('No watchlist items'))),
                 ],
               ),
             );
@@ -101,13 +103,13 @@ class _WatchlistLiveScreenState extends ConsumerState<WatchlistLiveScreen> {
 
                                       if (!mounted) return;
                                       scaffoldMessenger.showSnackBar(
-                                        const SnackBar(
+                                        SnackBar(
                                           content:
-                                              Text('Added to purchase flow'),
+                                              Text(i18n.t('Added to purchase flow')),
                                         ),
                                       );
                                     },
-                              child: const Text('Buy'),
+                              child: Text(i18n.t('Buy')),
                             ),
                             FilledButton.tonal(
                               onPressed: id.isEmpty
@@ -121,14 +123,14 @@ class _WatchlistLiveScreenState extends ConsumerState<WatchlistLiveScreen> {
 
                                       if (!mounted) return;
                                       scaffoldMessenger.showSnackBar(
-                                        const SnackBar(
+                                        SnackBar(
                                           content: Text(
-                                            'Watchlist item refreshed',
+                                            i18n.t('Watchlist item refreshed'),
                                           ),
                                         ),
                                       );
                                     },
-                              child: const Text('Refresh'),
+                              child: Text(i18n.t('Refresh')),
                             ),
                           ],
                         ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/sales_allocated_profit_summary_model.dart';
 
-class SalesAllocatedProfitSummaryCard extends StatelessWidget {
+class SalesAllocatedProfitSummaryCard extends ConsumerWidget {
   final SalesAllocatedProfitSummaryModel model;
   final String currency;
 
@@ -43,8 +45,9 @@ class SalesAllocatedProfitSummaryCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = _color();
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -52,9 +55,9 @@ class SalesAllocatedProfitSummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Allocated Profit',
-              style: TextStyle(
+            Text(
+              i18n.t('Allocated Profit'),
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
               ),
@@ -62,27 +65,27 @@ class SalesAllocatedProfitSummaryCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                _cell('Sales', model.totalSales.toString()),
-                _cell('Allocated', model.allocatedSales.toString()),
-                _cell('Open', model.unallocatedSales.toString()),
+                _cell(i18n.t('Sales'), model.totalSales.toString()),
+                _cell(i18n.t('Allocated'), model.allocatedSales.toString()),
+                _cell(i18n.t('Open'), model.unallocatedSales.toString()),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                _cell('Units', '${model.allocatedUnits}/${model.totalUnits}'),
-                _cell('Open units', model.unallocatedUnits.toString()),
+                _cell(i18n.t('Units'), '${model.allocatedUnits}/${model.totalUnits}'),
+                _cell(i18n.t('Open units'), model.unallocatedUnits.toString()),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
                 _cell(
-                  'Cost',
+                  i18n.t('Cost'),
                   '${model.allocatedCost.toStringAsFixed(2)} $currency',
                 ),
                 _cell(
-                  'Profit',
+                  i18n.t('Profit'),
                   '${model.allocatedProfit.toStringAsFixed(2)} $currency',
                   color: color,
                 ),
@@ -92,12 +95,12 @@ class SalesAllocatedProfitSummaryCard extends StatelessWidget {
             Row(
               children: [
                 _cell(
-                  'Avg ROI',
+                  i18n.t('Avg ROI'),
                   '${model.averageAllocatedRoiPercent.toStringAsFixed(1)}%',
                   color: color,
                 ),
                 _cell(
-                  'Avg unit profit',
+                  i18n.t('Avg unit profit'),
                   '${model.averageUnitProfit.toStringAsFixed(2)} $currency',
                   color: color,
                 ),

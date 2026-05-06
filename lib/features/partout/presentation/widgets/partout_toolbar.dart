@@ -1,8 +1,8 @@
-// lib/features/partout/presentation/widgets/partout_toolbar.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class PartOutToolbar extends StatelessWidget {
+class PartOutToolbar extends ConsumerWidget {
   final VoidCallback onOpenFilters;
   final Widget sortDropdown;
 
@@ -13,7 +13,9 @@ class PartOutToolbar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Row(
       children: [
         Expanded(child: sortDropdown),
@@ -21,7 +23,7 @@ class PartOutToolbar extends StatelessWidget {
         FilledButton.tonalIcon(
           onPressed: onOpenFilters,
           icon: const Icon(Icons.tune),
-          label: const Text('Filters'),
+          label: Text(i18n.t('common.filters')),
         ),
       ],
     );

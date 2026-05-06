@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_operating_cadence_model.dart';
 
-class ActivityOperatingCadenceCard extends StatelessWidget {
+class ActivityOperatingCadenceCard extends ConsumerWidget {
   final ActivityOperatingCadenceModel model;
 
   const ActivityOperatingCadenceCard({
@@ -10,7 +12,9 @@ class ActivityOperatingCadenceCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -18,7 +22,7 @@ class ActivityOperatingCadenceCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              model.label,
+              i18n.t(model.label),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
@@ -26,7 +30,7 @@ class ActivityOperatingCadenceCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Weekly active ${model.weeklyActiveDays} • control ${model.controlScore.toStringAsFixed(0)}',
+              '${i18n.t('Weekly active')} ${model.weeklyActiveDays} • ${i18n.t('control')} ${model.controlScore.toStringAsFixed(0)}',
             ),
           ],
         ),

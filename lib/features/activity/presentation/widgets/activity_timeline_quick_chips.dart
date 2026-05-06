@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class ActivityTimelineQuickChips extends StatelessWidget {
+class ActivityTimelineQuickChips extends ConsumerWidget {
   final String? value;
   final ValueChanged<String?> onChanged;
   final VoidCallback onClear;
@@ -13,23 +15,24 @@ class ActivityTimelineQuickChips extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     const values = <String?>[null, 'report', 'purchase', 'sale', 'watchlist'];
 
     String label(String? v) {
       switch (v) {
         case null:
-          return 'All';
+          return i18n.t('All');
         case 'report':
-          return 'Reports';
+          return i18n.t('Reports');
         case 'purchase':
-          return 'Purchases';
+          return i18n.t('Purchases');
         case 'sale':
-          return 'Sales';
+          return i18n.t('Sales');
         case 'watchlist':
-          return 'Watchlist';
+          return i18n.t('Watchlist');
         default:
-          return v;
+          return v ?? '';
       }
     }
 
@@ -49,7 +52,7 @@ class ActivityTimelineQuickChips extends StatelessWidget {
             ),
             TextButton(
               onPressed: onClear,
-              child: const Text('Clear'),
+              child: Text(i18n.t('common.clear')),
             ),
           ],
         ),

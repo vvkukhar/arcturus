@@ -1,9 +1,9 @@
-// lib/features/market/presentation/widgets/market_selectable_snapshot_card.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/data/models/market_snapshot_model.dart';
 
-class MarketSelectableSnapshotCard extends StatelessWidget {
+class MarketSelectableSnapshotCard extends ConsumerWidget {
   final MarketSnapshotModel snapshot;
   final String itemTitle;
   final bool selected;
@@ -20,7 +20,9 @@ class MarketSelectableSnapshotCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Stack(
       children: [
         InkWell(
@@ -40,20 +42,20 @@ class MarketSelectableSnapshotCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text('Source: ${snapshot.source}'),
+                  Text('${i18n.t('Source')}: ${snapshot.source}'),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 12,
                     runSpacing: 8,
                     children: [
                       Text(
-                        'Low: ${snapshot.lowPrice.toStringAsFixed(2)} ${snapshot.currency}',
+                        '${i18n.t('inv.marketLow')}: ${snapshot.lowPrice.toStringAsFixed(2)} ${snapshot.currency}',
                       ),
                       Text(
-                        'Avg: ${snapshot.averagePrice.toStringAsFixed(2)} ${snapshot.currency}',
+                        '${i18n.t('inv.marketAvg')}: ${snapshot.averagePrice.toStringAsFixed(2)} ${snapshot.currency}',
                       ),
                       Text(
-                        'High: ${snapshot.highPrice.toStringAsFixed(2)} ${snapshot.currency}',
+                        '${i18n.t('High Price')}: ${snapshot.highPrice.toStringAsFixed(2)} ${snapshot.currency}',
                       ),
                     ],
                   ),

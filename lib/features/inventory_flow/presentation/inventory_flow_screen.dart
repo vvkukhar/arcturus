@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/inventory_stock_health_provider.dart';
@@ -28,6 +29,7 @@ class InventoryFlowScreen extends ConsumerWidget {
     final stockFlow = ref.watch(salesStockFlowSummaryProvider);
     final purchases = ref.watch(purchasesWithStockProvider);
     final currency = ref.watch(appSettingsControllerProvider).baseCurrency;
+    final i18n = ref.watch(i18nProvider.notifier);
 
     final openLots = purchases.where((purchase) {
       return purchase.remainingQuantity > 0;
@@ -39,7 +41,7 @@ class InventoryFlowScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inventory Flow'),
+        title: Text(i18n.t('drawer.inventoryFlow')),
       ),
       drawer: const AppDrawer(),
       floatingActionButton: const GlobalQuickAddFab(),
@@ -62,19 +64,19 @@ class InventoryFlowScreen extends ConsumerWidget {
             currency: currency,
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Open Purchase Lots',
-            style: TextStyle(
+          Text(
+            i18n.t('Open Purchase Lots'),
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 12),
           if (openLots.isEmpty)
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No open purchase lots.'),
+                padding: const EdgeInsets.all(16),
+                child: Text(i18n.t('No open purchase lots.')),
               ),
             )
           else
@@ -85,19 +87,19 @@ class InventoryFlowScreen extends ConsumerWidget {
               ),
             ),
           const SizedBox(height: 20),
-          const Text(
-            'Closed Purchase Lots',
-            style: TextStyle(
+          Text(
+            i18n.t('Closed Purchase Lots'),
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 12),
           if (closedLots.isEmpty)
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No fully sold lots yet.'),
+                padding: const EdgeInsets.all(16),
+                child: Text(i18n.t('No fully sold lots yet.')),
               ),
             )
           else

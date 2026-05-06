@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/number_parser.dart';
 import 'package:lego_trading_manager/core/utils/partout_calculator.dart';
 import 'package:lego_trading_manager/data/models/partout_project_model.dart';
 
-class EditPartOutProjectScreen extends StatefulWidget {
+class EditPartOutProjectScreen extends ConsumerStatefulWidget {
   final PartOutProjectModel project;
 
   const EditPartOutProjectScreen({
@@ -12,11 +14,11 @@ class EditPartOutProjectScreen extends StatefulWidget {
   });
 
   @override
-  State<EditPartOutProjectScreen> createState() =>
+  ConsumerState<EditPartOutProjectScreen> createState() =>
       _EditPartOutProjectScreenState();
 }
 
-class _EditPartOutProjectScreenState extends State<EditPartOutProjectScreen> {
+class _EditPartOutProjectScreenState extends ConsumerState<EditPartOutProjectScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _purchaseCostController;
@@ -82,9 +84,11 @@ class _EditPartOutProjectScreenState extends State<EditPartOutProjectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Part-out Project'),
+        title: Text(i18n.t('Edit Part-out Project')),
       ),
       body: Form(
         key: _formKey,
@@ -103,7 +107,7 @@ class _EditPartOutProjectScreenState extends State<EditPartOutProjectScreen> {
               controller: _purchaseCostController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Purchase Cost'),
+              decoration: InputDecoration(labelText: i18n.t('pur.price')),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -111,7 +115,7 @@ class _EditPartOutProjectScreenState extends State<EditPartOutProjectScreen> {
               controller: _shippingCostController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Shipping Cost'),
+              decoration: InputDecoration(labelText: i18n.t('pur.shipping')),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -119,7 +123,7 @@ class _EditPartOutProjectScreenState extends State<EditPartOutProjectScreen> {
               controller: _extraCostsController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Extra Costs'),
+              decoration: InputDecoration(labelText: i18n.t('pur.extra')),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -127,7 +131,7 @@ class _EditPartOutProjectScreenState extends State<EditPartOutProjectScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Total Cost: ${_totalCost.toStringAsFixed(2)}',
+                  '${i18n.t('inv.totalCost')}: ${_totalCost.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
@@ -140,25 +144,25 @@ class _EditPartOutProjectScreenState extends State<EditPartOutProjectScreen> {
               controller: _expectedValueController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Expected Value'),
+              decoration: InputDecoration(labelText: i18n.t('Expected Value')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _actualValueController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Actual Value'),
+              decoration: InputDecoration(labelText: i18n.t('Actual Value')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _notesController,
               maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Notes'),
+              decoration: InputDecoration(labelText: i18n.t('inv.notes')),
             ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _save,
-              child: const Text('Save Changes'),
+              child: Text(i18n.t('common.saveChanges')),
             ),
           ],
         ),

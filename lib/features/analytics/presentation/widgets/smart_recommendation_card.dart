@@ -1,9 +1,9 @@
-// lib/features/analytics/presentation/widgets/smart_recommendation_card.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/smart_recommendation_model.dart';
 
-class SmartRecommendationCard extends StatelessWidget {
+class SmartRecommendationCard extends ConsumerWidget {
   final SmartRecommendationModel model;
 
   const SmartRecommendationCard({
@@ -25,14 +25,15 @@ class SmartRecommendationCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final color = _color();
 
     return Card(
       child: ListTile(
         leading: Icon(Icons.tips_and_updates_outlined, color: color),
-        title: Text(model.title),
-        subtitle: Text(model.message),
+        title: Text(i18n.t(model.title)),
+        subtitle: Text(i18n.t(model.message)),
       ),
     );
   }

@@ -1,7 +1,8 @@
-// lib/features/activity/presentation/widgets/activity_log_search_field.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class ActivityLogSearchField extends StatelessWidget {
+class ActivityLogSearchField extends ConsumerWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
@@ -14,14 +15,15 @@ class ActivityLogSearchField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final hasValue = controller.text.trim().isNotEmpty;
 
     return TextField(
       controller: controller,
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: 'Search activity...',
+        hintText: i18n.t('activity.log.search'),
         prefixIcon: const Icon(Icons.search),
         suffixIcon: hasValue
             ? IconButton(

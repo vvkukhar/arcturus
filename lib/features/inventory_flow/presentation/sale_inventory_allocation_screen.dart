@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/data/models/purchase_model.dart';
 import 'package:lego_trading_manager/data/models/sale_model.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/available_purchases_for_sale_provider.dart';
@@ -54,10 +55,11 @@ class _SaleInventoryAllocationScreenState
 
   Future<void> _allocateSingleLot(PurchaseModel purchase) async {
     final quantity = _parseQuantity();
+    final i18n = ref.read(i18nProvider.notifier);
 
     if (quantity <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Quantity must be greater than zero')),
+        SnackBar(content: Text(i18n.t('Quantity must be greater than zero'))),
       );
       return;
     }
@@ -66,7 +68,7 @@ class _SaleInventoryAllocationScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Cannot allocate more than sale quantity (${widget.sale.quantity})',
+            '${i18n.t('Cannot allocate more than sale quantity')} (${widget.sale.quantity})',
           ),
         ),
       );
@@ -77,7 +79,7 @@ class _SaleInventoryAllocationScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Only ${purchase.remainingQuantity} units available in this lot',
+            '${i18n.t('Only')} ${purchase.remainingQuantity} ${i18n.t('units available in this lot')}',
           ),
         ),
       );
@@ -94,7 +96,7 @@ class _SaleInventoryAllocationScreenState
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Stock allocated to sale')),
+      SnackBar(content: Text(i18n.t('Stock allocated to sale'))),
     );
 
     Navigator.of(context).pop();
@@ -103,6 +105,7 @@ class _SaleInventoryAllocationScreenState
   Future<void> _allocateFifo() async {
     final purchases = ref.read(availablePurchasesForSaleProvider(widget.sale));
     final fifo = ref.read(inventoryFifoAllocationProvider);
+    final i18n = ref.read(i18nProvider.notifier);
 
     final result = fifo.allocate(
       sale: widget.sale,
@@ -111,7 +114,7 @@ class _SaleInventoryAllocationScreenState
 
     if (result.allocations.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.message)),
+        SnackBar(content: Text(i18n.t(result.message))),
       );
       return;
     }
@@ -129,8 +132,8 @@ class _SaleInventoryAllocationScreenState
       SnackBar(
         content: Text(
           result.success
-              ? 'FIFO allocated ${result.allocatedQuantity}/${result.requestedQuantity}'
-              : 'Partial FIFO: ${result.allocatedQuantity}/${result.requestedQuantity}, missing ${result.missingQuantity}',
+              ? '${i18n.t('FIFO allocated')} ${result.allocatedQuantity}/${result.requestedQuantity}'
+              : '${i18n.t('Partial FIFO:')} ${result.allocatedQuantity}/${result.requestedQuantity}, ${i18n.t('missing')} ${result.missingQuantity}',
         ),
       ),
     );
@@ -144,6 +147,7 @@ class _SaleInventoryAllocationScreenState
     final currentAllocation = ref.watch(
       saleAllocationSummaryProvider(widget.sale),
     );
+    final i18n = ref.watch(i18nProvider.notifier);
 
     final totalAvailable = purchases.fold<int>(
       0,
@@ -152,12 +156,12 @@ class _SaleInventoryAllocationScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Allocate Stock'),
+        title: Text(i18n.t('Allocate Stock')),
         actions: [
           IconButton(
             onPressed: purchases.isEmpty ? null : _allocateFifo,
             icon: const Icon(Icons.auto_mode_outlined),
-            tooltip: 'FIFO allocate',
+            tooltip: i18n.t('FIFO allocate'),
           ),
         ],
       ),
@@ -171,17 +175,17 @@ class _SaleInventoryAllocationScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Sale item: ${widget.sale.itemId}',
+                    '${i18n.t('Sale item:')} ${widget.sale.itemId}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text('Sale quantity: ${widget.sale.quantity}'),
+                  Text('${i18n.t('Sale quantity:')} ${widget.sale.quantity}'),
                   Text(
-                    'Currently allocated: ${currentAllocation.allocatedQuantity}',
+                    '${i18n.t('Currently allocated:')} ${currentAllocation.allocatedQuantity}',
                   ),
-                  Text('Available stock: $totalAvailable'),
+                  Text('${i18n.t('Available stock:')} $totalAvailable'),
                 ],
               ),
             ),
@@ -190,22 +194,22 @@ class _SaleInventoryAllocationScreenState
           FilledButton.icon(
             onPressed: purchases.isEmpty ? null : _allocateFifo,
             icon: const Icon(Icons.auto_mode_outlined),
-            label: const Text('Auto FIFO Allocate'),
+            label: Text(i18n.t('Auto FIFO Allocate')),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _quantityController,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Quantity for single-lot allocation',
+            decoration: InputDecoration(
+              labelText: i18n.t('Quantity for single-lot allocation'),
             ),
           ),
           const SizedBox(height: 16),
           if (purchases.isEmpty)
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No available purchase stock for this item.'),
+                padding: const EdgeInsets.all(16),
+                child: Text(i18n.t('No available purchase stock for this item.')),
               ),
             )
           else

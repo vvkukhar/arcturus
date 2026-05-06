@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/item_timeline_event_model.dart';
 
-class ItemTimelineCard extends StatelessWidget {
+class ItemTimelineCard extends ConsumerWidget {
   final ItemTimelineEventModel event;
 
   const ItemTimelineCard({
@@ -23,7 +25,8 @@ class ItemTimelineCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final dateText = event.date == null
         ? '-'
         : event.date!.toIso8601String().split('T').first;
@@ -31,8 +34,8 @@ class ItemTimelineCard extends StatelessWidget {
     return Card(
       child: ListTile(
         leading: Icon(_icon()),
-        title: Text(event.title),
-        subtitle: Text(event.subtitle),
+        title: Text(i18n.t(event.title)),
+        subtitle: Text(i18n.t(event.subtitle)),
         trailing: Text(dateText),
       ),
     );

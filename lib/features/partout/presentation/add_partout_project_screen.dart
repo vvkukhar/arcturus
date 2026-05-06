@@ -1,8 +1,8 @@
-// lib/features/partout/presentation/add_partout_project_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/local_datasources_provider.dart';
 import 'package:lego_trading_manager/core/enums/partout_project_status.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/id_generator.dart';
 import 'package:lego_trading_manager/core/utils/number_parser.dart';
 import 'package:lego_trading_manager/core/utils/partout_calculator.dart';
@@ -87,10 +87,11 @@ class _AddPartOutProjectScreenState extends ConsumerState<AddPartOutProjectScree
         .getAllItems()
         .where((item) => item.type.name == 'set')
         .toList();
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Part-out Project'),
+        title: Text(i18n.t('partout.add')),
       ),
       body: Form(
         key: _formKey,
@@ -99,7 +100,7 @@ class _AddPartOutProjectScreenState extends ConsumerState<AddPartOutProjectScree
           children: [
             DropdownButtonFormField<String>(
               value: _selectedItemId,
-              decoration: const InputDecoration(labelText: 'Source Set *'),
+              decoration: InputDecoration(labelText: '${i18n.t('Source Set')} *'),
               items: setItems
                   .map(
                     (item) => DropdownMenuItem(
@@ -113,14 +114,14 @@ class _AddPartOutProjectScreenState extends ConsumerState<AddPartOutProjectScree
                   _selectedItemId = value;
                 });
               },
-              validator: (value) => value == null ? 'Select source set' : null,
+              validator: (value) => value == null ? i18n.t('Select source set') : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _purchaseCostController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Purchase Cost'),
+              decoration: InputDecoration(labelText: i18n.t('pur.price')),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -128,7 +129,7 @@ class _AddPartOutProjectScreenState extends ConsumerState<AddPartOutProjectScree
               controller: _shippingCostController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Shipping Cost'),
+              decoration: InputDecoration(labelText: i18n.t('pur.shipping')),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -136,7 +137,7 @@ class _AddPartOutProjectScreenState extends ConsumerState<AddPartOutProjectScree
               controller: _extraCostsController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Extra Costs'),
+              decoration: InputDecoration(labelText: i18n.t('pur.extra')),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -144,7 +145,7 @@ class _AddPartOutProjectScreenState extends ConsumerState<AddPartOutProjectScree
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Total Cost: ${_totalCost.toStringAsFixed(2)}',
+                  '${i18n.t('inv.totalCost')}: ${_totalCost.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
@@ -156,12 +157,12 @@ class _AddPartOutProjectScreenState extends ConsumerState<AddPartOutProjectScree
             TextFormField(
               controller: _notesController,
               maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Notes'),
+              decoration: InputDecoration(labelText: i18n.t('inv.notes')),
             ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _save,
-              child: const Text('Save Project'),
+              child: Text(i18n.t('common.save')),
             ),
           ],
         ),

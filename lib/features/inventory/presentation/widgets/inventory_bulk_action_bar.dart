@@ -1,8 +1,9 @@
-// lib/features/inventory/presentation/widgets/inventory_bulk_action_bar.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_bulk_action_type.dart';
 
-class InventoryBulkActionBar extends StatelessWidget {
+class InventoryBulkActionBar extends ConsumerWidget {
   final int selectedCount;
   final ValueChanged<InventoryBulkActionType> onAction;
   final VoidCallback onClear;
@@ -15,35 +16,36 @@ class InventoryBulkActionBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (selectedCount == 0) return const SizedBox.shrink();
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return PopupMenuButton<InventoryBulkActionType>(
       onSelected: onAction,
-      itemBuilder: (context) => const [
+      itemBuilder: (context) => [
         PopupMenuItem(
           value: InventoryBulkActionType.markInStock,
-          child: Text('Mark In Stock'),
+          child: Text(i18n.t('Mark In Stock')),
         ),
         PopupMenuItem(
           value: InventoryBulkActionType.markListed,
-          child: Text('Mark Listed'),
+          child: Text(i18n.t('Mark Listed')),
         ),
         PopupMenuItem(
           value: InventoryBulkActionType.markSold,
-          child: Text('Mark Sold'),
+          child: Text(i18n.t('Mark Sold')),
         ),
         PopupMenuItem(
           value: InventoryBulkActionType.setMarketPrice,
-          child: Text('Set = Market'),
+          child: Text(i18n.t('Set = Market')),
         ),
         PopupMenuItem(
           value: InventoryBulkActionType.setMarketMinus5,
-          child: Text('Set = Market -5%'),
+          child: Text(i18n.t('Set = Market -5%')),
         ),
         PopupMenuItem(
           value: InventoryBulkActionType.setMarketMinus10,
-          child: Text('Set = Market -10%'),
+          child: Text(i18n.t('Set = Market -10%')),
         ),
       ],
       child: Card(
@@ -53,13 +55,13 @@ class InventoryBulkActionBar extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Selected: $selectedCount',
+                  '${i18n.t('Selected')}: $selectedCount',
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
               TextButton(
                 onPressed: onClear,
-                child: const Text('Clear'),
+                child: Text(i18n.t('common.clear')),
               ),
               const SizedBox(width: 8),
               const Icon(Icons.tune),

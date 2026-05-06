@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/home/application/home_launch_block_provider.dart';
 import 'package:lego_trading_manager/features/home/presentation/widgets/home_launch_block_card.dart';
 
@@ -10,9 +11,10 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final launchBlock = ref.watch(homeLaunchBlockProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home'),
+        title: Text(i18n.t('home.title')),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

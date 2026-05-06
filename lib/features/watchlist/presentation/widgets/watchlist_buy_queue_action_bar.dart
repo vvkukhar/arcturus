@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class WatchlistBuyQueueActionBar extends StatelessWidget {
+class WatchlistBuyQueueActionBar extends ConsumerWidget {
   final VoidCallback onAddToPurchaseFlow;
 
   const WatchlistBuyQueueActionBar({
@@ -9,12 +11,14 @@ class WatchlistBuyQueueActionBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Row(
       children: [
         FilledButton(
           onPressed: onAddToPurchaseFlow,
-          child: const Text('Add to purchase flow'),
+          child: Text(i18n.t('Add to purchase flow')),
         ),
       ],
     );

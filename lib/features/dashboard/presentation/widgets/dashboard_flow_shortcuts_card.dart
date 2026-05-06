@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class DashboardFlowShortcutsCard extends StatelessWidget {
+class DashboardFlowShortcutsCard extends ConsumerWidget {
   final VoidCallback onOpenPurchase;
   final VoidCallback onOpenReprice;
   final VoidCallback onOpenReview;
@@ -13,7 +15,8 @@ class DashboardFlowShortcutsCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -23,15 +26,15 @@ class DashboardFlowShortcutsCard extends StatelessWidget {
           children: [
             FilledButton.tonal(
               onPressed: onOpenPurchase,
-              child: const Text('Purchase Flow'),
+              child: Text(i18n.t('Purchase Flow')),
             ),
             FilledButton.tonal(
               onPressed: onOpenReprice,
-              child: const Text('Reprice Flow'),
+              child: Text(i18n.t('Reprice Flow')),
             ),
             FilledButton.tonal(
               onPressed: onOpenReview,
-              child: const Text('Review Flow'),
+              child: Text(i18n.t('Review Flow')),
             ),
           ],
         ),

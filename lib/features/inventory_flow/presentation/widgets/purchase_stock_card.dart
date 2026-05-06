@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/data/models/purchase_model.dart';
 
-class PurchaseStockCard extends StatelessWidget {
+class PurchaseStockCard extends ConsumerWidget {
   final PurchaseModel purchase;
   final VoidCallback? onTap;
 
@@ -19,7 +21,8 @@ class PurchaseStockCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final color = _color();
     final date = purchase.purchaseDate.toIso8601String().split('T').first;
 
@@ -31,7 +34,7 @@ class PurchaseStockCard extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         subtitle: Text(
-          'Item ${purchase.itemId} • $date • unit ${CurrencyFormatter.format(purchase.unitCost, currency: purchase.currency)}',
+          '${i18n.t('Item')} ${purchase.itemId} • $date • ${i18n.t('unit')} ${CurrencyFormatter.format(purchase.unitCost, currency: purchase.currency)}',
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

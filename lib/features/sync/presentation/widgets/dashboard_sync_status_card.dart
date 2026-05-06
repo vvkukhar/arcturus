@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/sync/application/dashboard_sync_summary_provider.dart';
 
-class DashboardSyncStatusCard extends StatelessWidget {
+class DashboardSyncStatusCard extends ConsumerWidget {
   final DashboardSyncSummaryModel model;
 
   const DashboardSyncStatusCard({
@@ -10,7 +12,8 @@ class DashboardSyncStatusCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final headline = model.stale + model.veryStale + model.missing > 0
         ? 'Some market data needs refresh'
         : 'Market sync looks healthy';
@@ -22,7 +25,7 @@ class DashboardSyncStatusCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              headline,
+              i18n.t(headline),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
@@ -33,12 +36,12 @@ class DashboardSyncStatusCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                Chip(label: Text('Fresh ${model.fresh}')),
-                Chip(label: Text('Recent ${model.recent}')),
-                Chip(label: Text('Aging ${model.aging}')),
-                Chip(label: Text('Stale ${model.stale}')),
+                Chip(label: Text('${i18n.t('Fresh')} ${model.fresh}')),
+                Chip(label: Text('${i18n.t('Recent')} ${model.recent}')),
+                Chip(label: Text('${i18n.t('Aging')} ${model.aging}')),
+                Chip(label: Text('${i18n.t('Stale')} ${model.stale}')),
                 Chip(label: Text('Very stale ${model.veryStale}')),
-                Chip(label: Text('Missing ${model.missing}')),
+                Chip(label: Text('${i18n.t('Missing')} ${model.missing}')),
               ],
             ),
           ],

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_filter_model.dart';
 
-class InventoryFilterSheet extends StatefulWidget {
+class InventoryFilterSheet extends ConsumerStatefulWidget {
   final InventoryFilterModel initialFilter;
 
   const InventoryFilterSheet({
@@ -11,10 +13,10 @@ class InventoryFilterSheet extends StatefulWidget {
   });
 
   @override
-  State<InventoryFilterSheet> createState() => _InventoryFilterSheetState();
+  ConsumerState<InventoryFilterSheet> createState() => _InventoryFilterSheetState();
 }
 
-class _InventoryFilterSheetState extends State<InventoryFilterSheet> {
+class _InventoryFilterSheetState extends ConsumerState<InventoryFilterSheet> {
   late InventoryFilterModel _filter;
   late final TextEditingController _themeController;
 
@@ -48,6 +50,8 @@ class _InventoryFilterSheetState extends State<InventoryFilterSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -59,9 +63,9 @@ class _InventoryFilterSheetState extends State<InventoryFilterSheet> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const Text(
-              'Inventory Filters',
-              style: TextStyle(
+            Text(
+              i18n.t('Inventory Filters'),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
               ),
@@ -69,16 +73,16 @@ class _InventoryFilterSheetState extends State<InventoryFilterSheet> {
             const SizedBox(height: 16),
             DropdownButtonFormField<ItemStatus?>(
               value: _filter.status,
-              decoration: const InputDecoration(labelText: 'Status'),
+              decoration: InputDecoration(labelText: i18n.t('Status')),
               items: [
-                const DropdownMenuItem<ItemStatus?>(
+                DropdownMenuItem<ItemStatus?>(
                   value: null,
-                  child: Text('All statuses'),
+                  child: Text(i18n.t('All statuses')),
                 ),
                 ...ItemStatus.values.map(
                   (status) => DropdownMenuItem<ItemStatus?>(
                     value: status,
-                    child: Text(status.name),
+                    child: Text(i18n.t(status.name)),
                   ),
                 ),
               ],
@@ -94,14 +98,14 @@ class _InventoryFilterSheetState extends State<InventoryFilterSheet> {
             const SizedBox(height: 12),
             TextField(
               controller: _themeController,
-              decoration: const InputDecoration(
-                labelText: 'Theme contains',
+              decoration: InputDecoration(
+                labelText: i18n.t('Theme contains'),
               ),
             ),
             const SizedBox(height: 12),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Tracked only'),
+              title: Text(i18n.t('Tracked only')),
               value: _filter.trackedOnly,
               onChanged: (value) {
                 setState(() {
@@ -115,14 +119,14 @@ class _InventoryFilterSheetState extends State<InventoryFilterSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _clear,
-                    child: const Text('Clear'),
+                    child: Text(i18n.t('common.clear')),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
                     onPressed: _apply,
-                    child: const Text('Apply'),
+                    child: Text(i18n.t('common.apply')),
                   ),
                 ),
               ],

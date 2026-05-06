@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_filter_model.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_sort_option.dart';
 
-class InventoryActiveFilterChips extends StatelessWidget {
+class InventoryActiveFilterChips extends ConsumerWidget {
   final InventoryFilterModel filter;
   final InventorySortOption sort;
   final VoidCallback onClearAll;
@@ -14,39 +16,40 @@ class InventoryActiveFilterChips extends StatelessWidget {
     required this.onClearAll,
   });
 
-  String _sortLabel() {
+  String _sortLabel(I18nNotifier i18n) {
     switch (sort) {
       case InventorySortOption.newest:
-        return 'Newest';
+        return i18n.t('Newest');
       case InventorySortOption.oldest:
-        return 'Oldest';
+        return i18n.t('Oldest');
       case InventorySortOption.titleAsc:
-        return 'Title A-Z';
+        return i18n.t('Title A-Z');
       case InventorySortOption.costHighToLow:
-        return 'Cost High-Low';
+        return i18n.t('Cost High-Low');
       case InventorySortOption.costLowToHigh:
-        return 'Cost Low-High';
+        return i18n.t('Cost Low-High');
       case InventorySortOption.expectedProfitHighToLow:
-        return 'Profit High-Low';
+        return i18n.t('Profit High-Low');
       case InventorySortOption.daysInInventoryHighToLow:
-        return 'Oldest Held';
+        return i18n.t('Oldest Held');
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final chips = <Widget>[
-      Chip(label: Text('Sort: ${_sortLabel()}')),
+      Chip(label: Text('${i18n.t('Sort')}: ${_sortLabel(i18n)}')),
     ];
 
     if (filter.status != null) {
-      chips.add(Chip(label: Text('Status: ${filter.status!.name}')));
+      chips.add(Chip(label: Text('${i18n.t('Status')}: ${i18n.t(filter.status!.name)}')));
     }
     if (filter.trackedOnly) {
-      chips.add(const Chip(label: Text('Tracked only')));
+      chips.add(Chip(label: Text(i18n.t('Tracked only'))));
     }
     if ((filter.themeContains ?? '').trim().isNotEmpty) {
-      chips.add(Chip(label: Text('Theme: ${filter.themeContains}')));
+      chips.add(Chip(label: Text('${i18n.t('Theme')}: ${filter.themeContains}')));
     }
 
     final hasExtraFilters = filter.status != null ||
@@ -70,7 +73,7 @@ class InventoryActiveFilterChips extends StatelessWidget {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: onClearAll,
-                  child: const Text('Clear filters'),
+                  child: Text(i18n.t('Clear filters')),
                 ),
               ),
             ],

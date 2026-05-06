@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_auto_trigger_candidate_model.dart';
 
-class WatchlistAutoTriggerCandidatesCard extends StatelessWidget {
+class WatchlistAutoTriggerCandidatesCard extends ConsumerWidget {
   final List<WatchlistAutoTriggerCandidateModel> items;
 
   const WatchlistAutoTriggerCandidatesCard({
@@ -10,12 +12,14 @@ class WatchlistAutoTriggerCandidatesCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     if (items.isEmpty) {
-      return const Card(
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(14),
-          child: Text('No auto-trigger candidates right now.'),
+          padding: const EdgeInsets.all(14),
+          child: Text(i18n.t('No auto-trigger candidates right now.')),
         ),
       );
     }
@@ -26,9 +30,9 @@ class WatchlistAutoTriggerCandidatesCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Auto-trigger buy candidates',
-              style: TextStyle(
+            Text(
+              i18n.t('Auto-trigger buy candidates'),
+              style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
               ),
@@ -38,7 +42,7 @@ class WatchlistAutoTriggerCandidatesCard extends StatelessWidget {
                   (item) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
-                      '${item.title} • market ${item.marketPrice.toStringAsFixed(2)} / target ${item.desiredPrice.toStringAsFixed(2)}',
+                      '${item.title} • ${i18n.t('market')} ${item.marketPrice.toStringAsFixed(2)} / ${i18n.t('target')} ${item.desiredPrice.toStringAsFixed(2)}',
                     ),
                   ),
                 ),

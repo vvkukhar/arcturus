@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/features/search/application/global_search_provider.dart';
 import 'package:lego_trading_manager/features/search/application/global_search_query_provider.dart';
@@ -33,10 +34,11 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
     final query = ref.watch(globalSearchQueryProvider);
     final typeFilter = ref.watch(globalSearchTypeFilterProvider);
     final searchResults = ref.watch(globalSearchProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Global Search'),
+        title: Text(i18n.t('cc.searchGlob')),
       ),
       drawer: const AppDrawer(),
       body: Padding(
@@ -47,7 +49,7 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search inventory, purchases, sales...',
+                hintText: i18n.t('cc.search'),
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: query.isNotEmpty
                     ? IconButton(
@@ -66,14 +68,14 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String?>(
               value: typeFilter,
-              decoration: const InputDecoration(labelText: 'Type Filter'),
-              items: const [
-                DropdownMenuItem(value: null, child: Text('All')),
-                DropdownMenuItem(value: 'inventory', child: Text('Inventory')),
-                DropdownMenuItem(value: 'purchase', child: Text('Purchases')),
-                DropdownMenuItem(value: 'sale', child: Text('Sales')),
-                DropdownMenuItem(value: 'watchlist', child: Text('Watchlist')),
-                DropdownMenuItem(value: 'market', child: Text('Market')),
+              decoration: InputDecoration(labelText: i18n.t('common.filters')),
+              items: [
+                DropdownMenuItem(value: null, child: Text(i18n.t('common.none'))),
+                DropdownMenuItem(value: 'inventory', child: Text(i18n.t('inv.title'))),
+                DropdownMenuItem(value: 'purchase', child: Text(i18n.t('pur.title'))),
+                DropdownMenuItem(value: 'sale', child: Text(i18n.t('sale.title'))),
+                DropdownMenuItem(value: 'watchlist', child: Text(i18n.t('cc.watch'))),
+                DropdownMenuItem(value: 'market', child: Text(i18n.t('market.title'))),
               ],
               onChanged: (val) {
                 ref.read(globalSearchTypeFilterProvider.notifier).set(val);
@@ -82,17 +84,17 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
             const SizedBox(height: 16),
             Expanded(
               child: query.trim().isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
-                        'Start typing to search across the system...',
-                        style: TextStyle(color: Colors.white70),
+                        i18n.t('cc.search'),
+                        style: const TextStyle(color: Colors.white70),
                       ),
                     )
                   : searchResults.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
-                            'No results found.',
-                            style: TextStyle(color: Colors.white70),
+                            i18n.t('inv.empty'),
+                            style: const TextStyle(color: Colors.white70),
                           ),
                         )
                       : ListView.builder(

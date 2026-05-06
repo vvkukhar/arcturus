@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/widgets/inventory_item_card.dart';
 
-class InventorySelectableItemCard extends StatelessWidget {
+class InventorySelectableItemCard extends ConsumerWidget {
   final ItemModel item;
   final bool selected;
   final VoidCallback onTap;
@@ -17,7 +18,7 @@ class InventorySelectableItemCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Stack(
       children: [
         InventoryItemCard(

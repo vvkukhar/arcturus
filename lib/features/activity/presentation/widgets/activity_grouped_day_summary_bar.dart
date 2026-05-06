@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_grouped_day_summary_model.dart';
 
-class ActivityGroupedDaySummaryBar extends StatelessWidget {
+class ActivityGroupedDaySummaryBar extends ConsumerWidget {
   final List<ActivityGroupedDaySummaryModel> items;
 
   const ActivityGroupedDaySummaryBar({
@@ -10,8 +12,10 @@ class ActivityGroupedDaySummaryBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (items.isEmpty) return const SizedBox.shrink();
+
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -21,7 +25,7 @@ class ActivityGroupedDaySummaryBar extends StatelessWidget {
           runSpacing: 8,
           children: items.take(3).map((item) {
             return Chip(
-              label: Text('${item.dateLabel}: ${item.total}'),
+              label: Text('${i18n.t(item.dateLabel)}: ${item.total}'),
             );
           }).toList(),
         ),

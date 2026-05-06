@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
@@ -142,6 +143,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 
   Future<void> _executeAutoRules(ScaffoldMessengerState messenger) async {
+    final i18n = ref.read(i18nProvider.notifier);
     final result = await ref.read(analyticsAutoRuleExecutionProvider).run();
 
     ref.read(analyticsRuleExecutionHistoryProvider.notifier).add(
@@ -169,7 +171,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          'Auto-rules done: repriced ${result.repricedItems}, old stock ${result.highlightedOldStock}',
+          '${i18n.t('Auto-rules done')}: repriced ${result.repricedItems}, old stock ${result.highlightedOldStock}',
         ),
       ),
     );
@@ -178,12 +180,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Future<void> _applySelectedRepricing(
     ScaffoldMessengerState messenger,
   ) async {
+    final i18n = ref.read(i18nProvider.notifier);
     final selectedSummary = ref.read(analyticsSelectedRepriceSummaryProvider);
 
     final approved = await _confirm(
       context,
-      title: 'Apply selected repricing?',
-      subtitle: 'Apply repricing for ${selectedSummary.count} selected items with total delta ${selectedSummary.delta.toStringAsFixed(2)}?',
+      title: i18n.t('Apply selected repricing?'),
+      subtitle: '${i18n.t('Apply repricing for')} ${selectedSummary.count} ${i18n.t('selected items with total delta')} ${selectedSummary.delta.toStringAsFixed(2)}?',
     );
     if (!approved) return;
 
@@ -193,12 +196,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     messenger.showSnackBar(
       SnackBar(
-        content: Text('Applied repricing to $affected selected items'),
+        content: Text('${i18n.t('Applied repricing to')} $affected ${i18n.t('selected items')}'),
       ),
     );
   }
 
   Widget _buildProfitSection(String currency) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final profitSummary = ref.watch(analyticsProfitSummaryProvider);
     final capitalAllocation = ref.watch(capitalAllocationProvider);
     final monthlyProfit = ref.watch(analyticsMonthlyProfitProvider);
@@ -211,10 +215,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AnalyticsSectionTitle(title: 'Profit Summary'),
+        AnalyticsSectionTitle(title: i18n.t('Profit Summary')),
         AnalyticsProfitSummaryCard(model: profitSummary),
         const SizedBox(height: 20),
-        const AnalyticsSectionTitle(title: 'Capital Allocation'),
+        AnalyticsSectionTitle(title: i18n.t('Capital Allocation')),
         ...capitalAllocation.map(
           (entry) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -222,9 +226,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        const AnalyticsSectionTitle(title: 'Monthly Profit'),
+        AnalyticsSectionTitle(title: i18n.t('Monthly Profit')),
         if (monthlyProfit.isEmpty)
-          const AnalyticsEmptyCard(message: 'No monthly sales data yet.')
+          AnalyticsEmptyCard(message: i18n.t('No monthly sales data yet.'))
         else
           ...monthlyProfit.take(compactLimit).map(
                 (entry) => Padding(
@@ -236,22 +240,22 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 ),
               ),
         const SizedBox(height: 20),
-        const AnalyticsSectionTitle(title: 'Breakdowns'),
+        AnalyticsSectionTitle(title: i18n.t('Breakdowns')),
         AnalyticsBreakdownCard(
-          title: 'Platform Net Breakdown',
+          title: i18n.t('Platform Net Breakdown'),
           items: platformBreakdown,
           currency: currency,
         ),
         const SizedBox(height: 12),
         AnalyticsBreakdownCard(
-          title: 'Theme Cost Breakdown',
+          title: i18n.t('Theme Cost Breakdown'),
           items: themeBreakdown,
           currency: currency,
         ),
         const SizedBox(height: 20),
-        const AnalyticsSectionTitle(title: 'Theme Profit'),
+        AnalyticsSectionTitle(title: i18n.t('Theme Profit')),
         if (themeProfit.isEmpty)
-          const AnalyticsEmptyCard(message: 'No theme profit data yet.')
+          AnalyticsEmptyCard(message: i18n.t('No theme profit data yet.'))
         else
           ...themeProfit.take(compactLimit).map(
                 (entry) => Padding(
@@ -263,9 +267,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 ),
               ),
         const SizedBox(height: 20),
-        const AnalyticsSectionTitle(title: 'Profit Bands'),
+        AnalyticsSectionTitle(title: i18n.t('Profit Bands')),
         if (profitBands.isEmpty)
-          const AnalyticsEmptyCard(message: 'No sold-item profit bands yet.')
+          AnalyticsEmptyCard(message: i18n.t('No sold-item profit bands yet.'))
         else
           ...profitBands.map(
             (band) => Padding(
@@ -274,9 +278,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             ),
           ),
         const SizedBox(height: 20),
-        const AnalyticsSectionTitle(title: 'Turnover Buckets'),
+        AnalyticsSectionTitle(title: i18n.t('Turnover Buckets')),
         if (turnoverBuckets.isEmpty)
-          const AnalyticsEmptyCard(message: 'No turnover data yet.')
+          AnalyticsEmptyCard(message: i18n.t('No turnover data yet.'))
         else
           ...turnoverBuckets.map(
             (bucket) => Padding(
@@ -289,6 +293,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 
   Widget _buildAutomationSection(ScaffoldMessengerState messenger) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final autoRules = ref.watch(analyticsAutoRulesProvider);
     final bestPresetHint = ref.watch(analyticsBestPresetHintProvider);
     final autoRuleHealth = ref.watch(analyticsAutoRuleHealthProvider);
@@ -318,12 +323,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AnalyticsSectionTitle(title: 'Automation'),
+        AnalyticsSectionTitle(title: i18n.t('Automation')),
         AnalyticsRulePresetsBar(
           onApply: (preset) {
             ref.read(analyticsRulePresetsProvider).applyPreset(preset);
             messenger.showSnackBar(
-              SnackBar(content: Text('Preset applied: ${preset.title}')),
+              SnackBar(content: Text('${i18n.t('Preset applied')}: ${preset.title}')),
             );
           },
         ),
@@ -413,6 +418,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     String currency,
     ScaffoldMessengerState messenger,
   ) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final repriceSuggestions = ref.watch(marketInventoryRepriceSuggestionProvider);
     final repriceDiffTotals = ref.watch(analyticsRepriceDiffTotalsProvider);
     final selectedRepricePreview = ref.watch(analyticsSelectedRepricePreviewProvider);
@@ -423,13 +429,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AnalyticsSectionTitle(title: 'Inventory Reprice Suggestions'),
+        AnalyticsSectionTitle(title: i18n.t('Inventory Reprice Suggestions')),
         AnalyticsBulkRepriceBar(
           onApply98: () async {
             final approved = await _confirm(
               context,
-              title: 'Apply bulk repricing?',
-              subtitle: 'This will set expected sale price to 98% of market average for all eligible items.',
+              title: i18n.t('Apply bulk repricing?'),
+              subtitle: i18n.t('This will set expected sale price to 98% of market average for all eligible items.'),
             );
             if (!approved) return;
 
@@ -439,7 +445,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
             messenger.showSnackBar(
               SnackBar(
-                content: Text('Bulk repricing applied to $affected items'),
+                content: Text('${i18n.t('Bulk repricing applied to')} $affected ${i18n.t('items')}'),
               ),
             );
           },
@@ -477,8 +483,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
         const SizedBox(height: 12),
         if (repriceSuggestions.isEmpty)
-          const AnalyticsEmptyCard(
-            message: 'No market-based repricing suggestions yet.',
+          AnalyticsEmptyCard(
+            message: i18n.t('No market-based repricing suggestions yet.'),
           )
         else if (previewMode == AnalyticsRepricePreviewMode.table)
           AnalyticsRepricePreviewTable(
@@ -490,8 +496,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             onApply: (item) async {
               final approved = await _confirm(
                 context,
-                title: 'Apply repricing?',
-                subtitle: 'Update "${item.title}" from ${item.currentExpected.toStringAsFixed(2)} to ${item.suggestedPrice.toStringAsFixed(2)}?',
+                title: i18n.t('Apply repricing?'),
+                subtitle: '${i18n.t('Update')} "${item.title}" ${i18n.t('from')} ${item.currentExpected.toStringAsFixed(2)} ${i18n.t('to')} ${item.suggestedPrice.toStringAsFixed(2)}?',
               );
               if (!approved) return;
 
@@ -505,7 +511,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
               messenger.showSnackBar(
                 SnackBar(
-                  content: Text('Repricing applied for ${item.title}'),
+                  content: Text('${i18n.t('Repricing applied for')} ${item.title}'),
                 ),
               );
             },
@@ -523,8 +529,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     onApply: () async {
                       final approved = await _confirm(
                         context,
-                        title: 'Apply repricing?',
-                        subtitle: 'Update "${item.title}" from ${item.currentExpected.toStringAsFixed(2)} to ${item.suggestedPrice.toStringAsFixed(2)}?',
+                        title: i18n.t('Apply repricing?'),
+                        subtitle: '${i18n.t('Update')} "${item.title}" ${i18n.t('from')} ${item.currentExpected.toStringAsFixed(2)} ${i18n.t('to')} ${item.suggestedPrice.toStringAsFixed(2)}?',
                       );
                       if (!approved) return;
 
@@ -538,7 +544,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
                       messenger.showSnackBar(
                         SnackBar(
-                          content: Text('Repricing applied for ${item.title}'),
+                          content: Text('${i18n.t('Repricing applied for')} ${item.title}'),
                         ),
                       );
                     },
@@ -546,14 +552,14 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 ),
               ),
         const SizedBox(height: 20),
-        const AnalyticsSectionTitle(title: 'Auto Price Suggestions'),
+        AnalyticsSectionTitle(title: i18n.t('Auto Price Suggestions')),
         Builder(
           builder: (_) {
             final priceSuggestions = ref.watch(autoPriceSuggestionsProvider);
 
             if (priceSuggestions.isEmpty) {
-              return const AnalyticsEmptyCard(
-                message: 'No pricing suggestions yet.',
+              return AnalyticsEmptyCard(
+                message: i18n.t('No pricing suggestions yet.'),
               );
             }
 
@@ -575,6 +581,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 
   Widget _buildSmartSection(String currency) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final recommendations = ref.watch(smartRecommendationsProvider);
     final flipScoreBands = ref.watch(flipScoreBandsProvider);
     final flipScores = ref.watch(flipScoresProvider);
@@ -583,7 +590,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AnalyticsSectionTitle(title: 'Smart Recommendations'),
+        AnalyticsSectionTitle(title: i18n.t('Smart Recommendations')),
         ...recommendations.map(
           (item) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -591,7 +598,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        const AnalyticsSectionTitle(title: 'Flip Score Bands'),
+        AnalyticsSectionTitle(title: i18n.t('Flip Score Bands')),
         ...flipScoreBands.map(
           (band) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -599,9 +606,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        const AnalyticsSectionTitle(title: 'Top Flip Scores'),
+        AnalyticsSectionTitle(title: i18n.t('Top Flip Scores')),
         if (flipScores.isEmpty)
-          const AnalyticsEmptyCard(message: 'No flip score data yet.')
+          AnalyticsEmptyCard(message: i18n.t('No flip score data yet.'))
         else
           ...flipScores.take(previewLimit).map(
                 (item) => Padding(
@@ -610,7 +617,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 ),
               ),
         const SizedBox(height: 20),
-        const AnalyticsSectionTitle(title: 'Velocity Buckets'),
+        AnalyticsSectionTitle(title: i18n.t('Velocity Buckets')),
         ...velocityBuckets.map(
           (bucket) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -622,7 +629,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Top flip score now: '
+              '${i18n.t('Top flip score now')}: '
               '${flipScores.isEmpty ? '-' : flipScores.first.title} '
               '${flipScores.isEmpty ? '' : '(${flipScores.first.score.toStringAsFixed(1)})'}',
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -638,7 +645,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Best suggested price delta: '
+                  '${i18n.t('Best suggested price delta')}: '
                   '${priceSuggestions.isEmpty ? '-' : CurrencyFormatter.format(priceSuggestions.first.suggestedPrice - priceSuggestions.first.currentExpected, currency: currency)}',
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
@@ -652,12 +659,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final currency = ref.watch(appSettingsControllerProvider).baseCurrency;
     final messenger = ScaffoldMessenger.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Analytics'),
+        title: Text(i18n.t('analytics.title')),
       ),
       drawer: const AppDrawer(),
       floatingActionButton: const GlobalQuickAddFab(),

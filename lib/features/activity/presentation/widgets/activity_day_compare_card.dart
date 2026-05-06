@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class ActivityDayCompareCard extends StatelessWidget {
+class ActivityDayCompareCard extends ConsumerWidget {
   final String bestLabel;
   final int bestCount;
   final String weakestLabel;
@@ -15,7 +17,8 @@ class ActivityDayCompareCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -23,10 +26,10 @@ class ActivityDayCompareCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Best day',
-                    style: TextStyle(color: Colors.white70),
+                    i18n.t('Best day'),
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ),
                 Text(
@@ -38,10 +41,10 @@ class ActivityDayCompareCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Weakest day',
-                    style: TextStyle(color: Colors.white70),
+                    i18n.t('Weakest day'),
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ),
                 Text(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryInlineActionBar extends StatelessWidget {
+class InventoryInlineActionBar extends ConsumerWidget {
   final VoidCallback? onMarkListed;
   final VoidCallback? onMarkSold;
   final VoidCallback? onArchive;
@@ -13,7 +15,9 @@ class InventoryInlineActionBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -21,17 +25,17 @@ class InventoryInlineActionBar extends StatelessWidget {
         FilledButton.tonalIcon(
           onPressed: onMarkListed,
           icon: const Icon(Icons.sell_outlined),
-          label: const Text('List'),
+          label: Text(i18n.t('List')),
         ),
         FilledButton.tonalIcon(
           onPressed: onMarkSold,
           icon: const Icon(Icons.check_circle_outline),
-          label: const Text('Sold'),
+          label: Text(i18n.t('Sold')),
         ),
         FilledButton.tonalIcon(
           onPressed: onArchive,
           icon: const Icon(Icons.archive_outlined),
-          label: const Text('Archive'),
+          label: Text(i18n.t('Archive')),
         ),
       ],
     );

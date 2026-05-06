@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/source_health/application/source_health_summary_provider.dart';
 
-class SourceHealthSummaryCard extends StatelessWidget {
+class SourceHealthSummaryCard extends ConsumerWidget {
   final List<SourceHealthSummaryItemModel> items;
 
   const SourceHealthSummaryCard({
@@ -34,12 +36,14 @@ class SourceHealthSummaryCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     if (items.isEmpty) {
-      return const Card(
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(14),
-          child: Text('No source health data available'),
+          padding: const EdgeInsets.all(14),
+          child: Text(i18n.t('No source health data available')),
         ),
       );
     }
@@ -50,9 +54,9 @@ class SourceHealthSummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Source Health Summary',
-              style: TextStyle(
+            Text(
+              i18n.t('Source Health Summary'),
+              style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
               ),

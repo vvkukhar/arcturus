@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/operator/data/operator_api_repository_provider.dart';
 
 class InventoryFormScreen extends ConsumerStatefulWidget {
@@ -27,25 +28,26 @@ class _InventoryFormScreenState extends ConsumerState<InventoryFormScreen> {
   @override
   Widget build(BuildContext context) {
     final api = ref.watch(operatorApiRepositoryProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Inventory')),
+      appBar: AppBar(title: Text(i18n.t('inv.add'))),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             TextField(
               controller: _priceController,
-              decoration: const InputDecoration(labelText: 'Purchase Price'),
+              decoration: InputDecoration(labelText: i18n.t('inv.price')),
             ),
             TextField(
               controller: _qtyController,
-              decoration: const InputDecoration(labelText: 'Quantity'),
+              decoration: InputDecoration(labelText: i18n.t('inv.qty')),
             ),
             SwitchListTile(
               value: _sealed,
               onChanged: (v) => setState(() => _sealed = v),
-              title: const Text('Sealed'),
+              title: Text(i18n.t('inv.condition')),
             ),
             const SizedBox(height: 12),
             FilledButton(
@@ -64,7 +66,7 @@ class _InventoryFormScreenState extends ConsumerState<InventoryFormScreen> {
                 if (!mounted) return;
                 navigator.pop();
               },
-              child: const Text('Save'),
+              child: Text(i18n.t('common.save')),
             ),
           ],
         ),

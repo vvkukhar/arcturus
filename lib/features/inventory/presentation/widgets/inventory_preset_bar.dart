@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_preset_model.dart';
 
-class InventoryPresetBar extends StatelessWidget {
+class InventoryPresetBar extends ConsumerWidget {
   final String? selectedPresetId;
   final ValueChanged<InventoryPresetModel> onApplyPreset;
   final VoidCallback onClearPreset;
@@ -14,7 +16,9 @@ class InventoryPresetBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -24,7 +28,7 @@ class InventoryPresetBar extends StatelessWidget {
           children: [
             ...InventoryPresetModel.presets.map(
               (preset) => ChoiceChip(
-                label: Text(preset.title),
+                label: Text(i18n.t(preset.title)),
                 selected: selectedPresetId == preset.id,
                 onSelected: (_) => onApplyPreset(preset),
               ),
@@ -32,7 +36,7 @@ class InventoryPresetBar extends StatelessWidget {
             if (selectedPresetId != null)
               TextButton(
                 onPressed: onClearPreset,
-                child: const Text('Clear preset'),
+                child: Text(i18n.t('Clear preset')),
               ),
           ],
         ),

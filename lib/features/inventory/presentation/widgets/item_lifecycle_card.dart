@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/item_lifecycle_step_model.dart';
 
-class ItemLifecycleCard extends StatelessWidget {
+class ItemLifecycleCard extends ConsumerWidget {
   final List<ItemLifecycleStepModel> steps;
 
   const ItemLifecycleCard({
@@ -10,7 +12,9 @@ class ItemLifecycleCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -31,7 +35,7 @@ class ItemLifecycleCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    step.label,
+                    i18n.t(step.label),
                     style: TextStyle(
                       color: step.active ? Colors.green : Colors.white70,
                       fontWeight: FontWeight.w700,

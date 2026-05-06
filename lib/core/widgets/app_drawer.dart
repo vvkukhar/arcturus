@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/inventory_screen.dart';
 import 'package:lego_trading_manager/features/inventory_flow/presentation/inventory_flow_screen.dart';
@@ -7,7 +9,7 @@ import 'package:lego_trading_manager/features/sales/presentation/sales_screen.da
 import 'package:lego_trading_manager/features/settings/presentation/settings_screen.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_screen.dart';
 
-class AppDrawer extends StatelessWidget {
+class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
 
   void _open(BuildContext context, Widget screen) {
@@ -21,68 +23,70 @@ class AppDrawer extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Drawer(
       child: SafeArea(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
+            DrawerHeader(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.inventory_2_outlined, size: 42),
-                  SizedBox(height: 12),
+                  const Icon(Icons.inventory_2_outlined, size: 42),
+                  const SizedBox(height: 12),
                   Text(
-                    'LEGO Trading Manager',
-                    style: TextStyle(
+                    i18n.t('drawer.title'),
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
-                    'Arcturus Operations',
-                    style: TextStyle(color: Colors.white70),
+                    i18n.t('drawer.subtitle'),
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ],
               ),
             ),
             ListTile(
               leading: const Icon(Icons.dashboard_outlined),
-              title: const Text('Dashboard'),
+              title: Text(i18n.t('drawer.dashboard')),
               onTap: () => _open(context, const DashboardScreen()),
             ),
             ListTile(
               leading: const Icon(Icons.inventory_2_outlined),
-              title: const Text('Inventory'),
+              title: Text(i18n.t('drawer.inventory')),
               onTap: () => _open(context, const InventoryScreen()),
             ),
             ListTile(
               leading: const Icon(Icons.account_tree_outlined),
-              title: const Text('Inventory Flow'),
-              subtitle: const Text('Stock, allocations, ROI'),
+              title: Text(i18n.t('drawer.inventoryFlow')),
+              subtitle: Text(i18n.t('drawer.inventoryFlowSub')),
               onTap: () => _open(context, const InventoryFlowScreen()),
             ),
             ListTile(
               leading: const Icon(Icons.shopping_cart_outlined),
-              title: const Text('Purchases'),
+              title: Text(i18n.t('drawer.purchases')),
               onTap: () => _open(context, const PurchasesScreen()),
             ),
             ListTile(
               leading: const Icon(Icons.point_of_sale_outlined),
-              title: const Text('Sales'),
+              title: Text(i18n.t('drawer.sales')),
               onTap: () => _open(context, const SalesScreen()),
             ),
             ListTile(
               leading: const Icon(Icons.visibility_outlined),
-              title: const Text('Watchlist'),
+              title: Text(i18n.t('drawer.watchlist')),
               onTap: () => _open(context, const WatchlistScreen()),
             ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.settings_outlined),
-              title: const Text('Settings'),
+              title: Text(i18n.t('drawer.settings')),
               onTap: () => _open(context, const SettingsScreen()),
             ),
           ],

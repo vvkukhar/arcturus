@@ -1,8 +1,8 @@
-// lib/core/widgets/empty_state_view.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class EmptyStateView extends StatelessWidget {
+class EmptyStateView extends ConsumerWidget {
   final String title;
   final String subtitle;
 
@@ -13,7 +13,9 @@ class EmptyStateView extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -21,13 +23,13 @@ class EmptyStateView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              title,
+              i18n.t(title),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 10),
             Text(
-              subtitle,
+              i18n.t(subtitle),
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70),
             ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class PurchasesActionBar extends StatelessWidget {
+class PurchasesActionBar extends ConsumerWidget {
   final VoidCallback onAdd;
   final VoidCallback onExport;
   final VoidCallback onSaveReport;
@@ -13,7 +15,9 @@ class PurchasesActionBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -24,17 +28,17 @@ class PurchasesActionBar extends StatelessWidget {
             FilledButton.icon(
               onPressed: onAdd,
               icon: const Icon(Icons.add),
-              label: const Text('Add Purchase'),
+              label: Text(i18n.t('Add Purchase')),
             ),
             FilledButton.tonalIcon(
               onPressed: onExport,
               icon: const Icon(Icons.file_download_outlined),
-              label: const Text('Export'),
+              label: Text(i18n.t('Export')),
             ),
             FilledButton.tonalIcon(
               onPressed: onSaveReport,
               icon: const Icon(Icons.note_add_outlined),
-              label: const Text('Save Report'),
+              label: Text(i18n.t('Save Report')),
             ),
           ],
         ),

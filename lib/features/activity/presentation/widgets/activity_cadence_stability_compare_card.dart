@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_cadence_stability_compare_model.dart';
 
-class ActivityCadenceStabilityCompareCard extends StatelessWidget {
+class ActivityCadenceStabilityCompareCard extends ConsumerWidget {
   final ActivityCadenceStabilityCompareModel model;
 
   const ActivityCadenceStabilityCompareCard({
@@ -10,7 +12,8 @@ class ActivityCadenceStabilityCompareCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -18,7 +21,7 @@ class ActivityCadenceStabilityCompareCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              model.label,
+              i18n.t(model.label),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
@@ -26,7 +29,7 @@ class ActivityCadenceStabilityCompareCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Weekly ${model.weeklyActiveDays} • ${model.stabilityLabel}',
+              '${i18n.t('Weekly')} ${model.weeklyActiveDays} • ${i18n.t(model.stabilityLabel)}',
             ),
           ],
         ),

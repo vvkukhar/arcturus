@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_rule_execution_history_entry_model.dart';
 
-class AnalyticsRuleExecutionHistoryCard extends StatelessWidget {
+class AnalyticsRuleExecutionHistoryCard extends ConsumerWidget {
   final List<AnalyticsRuleExecutionHistoryEntryModel> items;
   final VoidCallback onClear;
 
@@ -12,12 +14,14 @@ class AnalyticsRuleExecutionHistoryCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     if (items.isEmpty) {
-      return const Card(
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(14),
-          child: Text('No rule execution history yet.'),
+          padding: const EdgeInsets.all(14),
+          child: Text(i18n.t('No rule execution history yet.')),
         ),
       );
     }
@@ -30,10 +34,10 @@ class AnalyticsRuleExecutionHistoryCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Rule Execution History',
-                    style: TextStyle(
+                    i18n.t('Rule Execution History'),
+                    style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                     ),
@@ -41,7 +45,7 @@ class AnalyticsRuleExecutionHistoryCard extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: onClear,
-                  child: const Text('Clear'),
+                  child: Text(i18n.t('common.clear')),
                 ),
               ],
             ),
@@ -51,9 +55,9 @@ class AnalyticsRuleExecutionHistoryCard extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
                       '${item.createdAt.toIso8601String().split("T").first} • '
-                      'repriced ${item.repricedItems} • '
-                      'old stock ${item.highlightedOldStock} • '
-                      'priority ${item.profitPriorityEnabled ? "on" : "off"}',
+                      '${i18n.t('repriced')} ${item.repricedItems} • '
+                      '${i18n.t('old stock')} ${item.highlightedOldStock} • '
+                      '${i18n.t('priority')} ${item.profitPriorityEnabled ? i18n.t("on") : i18n.t("off")}',
                     ),
                   ),
                 ),

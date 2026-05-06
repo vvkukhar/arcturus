@@ -1,7 +1,8 @@
-// lib/features/market/presentation/widgets/market_snapshot_note_dialog.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class MarketSnapshotNoteDialog extends StatefulWidget {
+class MarketSnapshotNoteDialog extends ConsumerStatefulWidget {
   final String initialValue;
 
   const MarketSnapshotNoteDialog({
@@ -10,11 +11,11 @@ class MarketSnapshotNoteDialog extends StatefulWidget {
   });
 
   @override
-  State<MarketSnapshotNoteDialog> createState() =>
+  ConsumerState<MarketSnapshotNoteDialog> createState() =>
       _MarketSnapshotNoteDialogState();
 }
 
-class _MarketSnapshotNoteDialogState extends State<MarketSnapshotNoteDialog> {
+class _MarketSnapshotNoteDialogState extends ConsumerState<MarketSnapshotNoteDialog> {
   late final TextEditingController _controller;
 
   @override
@@ -35,25 +36,27 @@ class _MarketSnapshotNoteDialogState extends State<MarketSnapshotNoteDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return AlertDialog(
-      title: const Text('Save Market Note'),
+      title: Text(i18n.t('Save Market Note')),
       content: TextField(
         controller: _controller,
         minLines: 4,
         maxLines: 8,
-        decoration: const InputDecoration(
-          labelText: 'Note',
+        decoration: InputDecoration(
+          labelText: i18n.t('inv.notes'),
           alignLabelWithHint: true,
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(i18n.t('common.cancel')),
         ),
         FilledButton(
           onPressed: _save,
-          child: const Text('Save'),
+          child: Text(i18n.t('common.save')),
         ),
       ],
     );

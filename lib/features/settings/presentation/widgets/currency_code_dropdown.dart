@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class CurrencyCodeDropdown extends StatelessWidget {
+class CurrencyCodeDropdown extends ConsumerWidget {
   final String value;
   final List<String> items;
   final ValueChanged<String?> onChanged;
@@ -15,10 +17,12 @@ class CurrencyCodeDropdown extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return DropdownButtonFormField<String>(
       value: value,
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(labelText: i18n.t(label)),
       items: items
           .map(
             (e) => DropdownMenuItem<String>(

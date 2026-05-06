@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class DealCreateWatchlistButton extends StatelessWidget {
+class DealCreateWatchlistButton extends ConsumerWidget {
   final VoidCallback onPressed;
 
   const DealCreateWatchlistButton({
@@ -9,11 +11,12 @@ class DealCreateWatchlistButton extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return FilledButton.icon(
       onPressed: onPressed,
       icon: const Icon(Icons.playlist_add_outlined),
-      label: const Text('Create Watchlist Item'),
+      label: Text(i18n.t('eval.itemCreated')),
     );
   }
 }

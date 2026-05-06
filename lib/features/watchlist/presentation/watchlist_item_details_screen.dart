@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/core/widgets/details_action_bar.dart';
 import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
@@ -75,21 +76,21 @@ class _WatchlistItemDetailsScreenState
     Navigator.of(context).pop({'updated': result});
   }
 
-  Future<void> _confirmDelete() async {
+  Future<void> _confirmDelete(I18nNotifier i18n) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (_) {
         return AlertDialog(
-          title: const Text('Delete watchlist item'),
-          content: const Text('Delete this watchlist item?'),
+          title: Text(i18n.t('Delete watchlist item')),
+          content: Text(i18n.t('Delete this watchlist item?')),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(i18n.t('common.cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(i18n.t('common.delete')),
             ),
           ],
         );
@@ -104,12 +105,12 @@ class _WatchlistItemDetailsScreenState
     }
   }
 
-  void _convertToInventory() {
+  void _convertToInventory(I18nNotifier i18n) {
     final inventoryItem = ref.read(watchlistConvertFlowProvider).convert(item);
     ref.read(inventoryControllerProvider.notifier).addItem(inventoryItem);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      WatchlistConvertResultSnackBar.success(inventoryItem.title),
+      WatchlistConvertResultSnackBar.success(inventoryItem.title, i18n),
     );
   }
 
@@ -129,14 +130,15 @@ class _WatchlistItemDetailsScreenState
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(appSettingsControllerProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Watchlist Details'),
+        title: Text(i18n.t('Watchlist Details')),
         actions: [
           DetailsActionBar(
             onEdit: _openEdit,
-            onDelete: _confirmDelete,
+            onDelete: () => _confirmDelete(i18n),
           ),
         ],
       ),
@@ -161,7 +163,7 @@ class _WatchlistItemDetailsScreenState
             runSpacing: 10,
             children: [
               WatchlistConvertButton(
-                onPressed: _convertToInventory,
+                onPressed: () => _convertToInventory(i18n),
               ),
               WatchlistToPurchaseButton(
                 onPressed: _openPurchaseDraft,
@@ -174,25 +176,25 @@ class _WatchlistItemDetailsScreenState
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _infoRow('Type', item.type.name),
-                  _infoRow('Theme', item.theme ?? '-'),
-                  _infoRow('Reference ID', item.refId ?? '-'),
+                  _infoRow(i18n.t('Type'), i18n.t(item.type.name)),
+                  _infoRow(i18n.t('Theme'), item.theme ?? '-'),
+                  _infoRow(i18n.t('Reference ID'), item.refId ?? '-'),
                   _infoRow(
-                    'Desired Buy',
+                    i18n.t('Desired Buy'),
                     CurrencyFormatter.format(
                       item.desiredBuyPrice,
                       currency: settings.baseCurrency,
                     ),
                   ),
                   _infoRow(
-                    'Max Buy',
+                    i18n.t('Max Buy'),
                     CurrencyFormatter.format(
                       item.maxBuyPrice,
                       currency: settings.baseCurrency,
                     ),
                   ),
                   _infoRow(
-                    'Market Price',
+                    i18n.t('Market Price'),
                     item.marketPrice == null
                         ? '-'
                         : CurrencyFormatter.format(
@@ -200,12 +202,12 @@ class _WatchlistItemDetailsScreenState
                             currency: settings.baseCurrency,
                           ),
                   ),
-                  _infoRow('Active', item.isActive ? 'yes' : 'no'),
+                  _infoRow(i18n.t('Active'), item.isActive ? i18n.t('yes') : i18n.t('no')),
                   _infoRow(
-                    'Created At',
+                    i18n.t('Created At'),
                     item.createdAt.toIso8601String().split('T').first,
                   ),
-                  _infoRow('Comment', item.comment ?? '-'),
+                  _infoRow(i18n.t('Comment'), item.comment ?? '-'),
                 ],
               ),
             ),

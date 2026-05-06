@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class AppListEmpty extends StatelessWidget {
+class AppListEmpty extends ConsumerWidget {
   final String title;
 
   const AppListEmpty({
@@ -9,10 +11,11 @@ class AppListEmpty extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Center(
       child: Text(
-        title,
+        i18n.t(title),
         style: const TextStyle(color: Colors.white70),
       ),
     );

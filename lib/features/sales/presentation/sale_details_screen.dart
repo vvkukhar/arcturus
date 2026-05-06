@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/core/widgets/details_action_bar.dart';
 import 'package:lego_trading_manager/data/models/purchase_model.dart';
@@ -69,21 +70,21 @@ class _SaleDetailsScreenState extends ConsumerState<SaleDetailsScreen> {
     Navigator.of(context).pop({'updated': result});
   }
 
-  Future<void> _confirmDelete() async {
+  Future<void> _confirmDelete(I18nNotifier i18n) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (_) {
         return AlertDialog(
-          title: const Text('Delete sale'),
-          content: const Text('Delete this sale record?'),
+          title: Text(i18n.t('common.deleteConfirmTitle')),
+          content: Text(i18n.t('common.deleteConfirmText', {'title': sale.platform})),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(i18n.t('common.cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(i18n.t('common.delete')),
             ),
           ],
         );
@@ -249,14 +250,15 @@ class _SaleDetailsScreenState extends ConsumerState<SaleDetailsScreen> {
     final breakdown = ref.watch(saleNetBreakdownProvider(sale));
     final quality = ref.watch(saleQualityScoreProvider(sale));
     final profit = ref.watch(saleProfitProvider(sale));
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sale Details'),
+        title: Text(i18n.t('sale.details')),
         actions: [
           DetailsActionBar(
             onEdit: _openEdit,
-            onDelete: _confirmDelete,
+            onDelete: () => _confirmDelete(i18n),
           ),
         ],
       ),

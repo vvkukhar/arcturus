@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/operator/data/operator_api_repository_provider.dart';
 import 'package:lego_trading_manager/features/operator/presentation/source_run_detail_screen.dart';
 
@@ -30,9 +31,11 @@ class _SourceRunHistoryScreenState
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Source Run History'),
+        title: Text(i18n.t('Source Run History')),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
@@ -41,16 +44,16 @@ class _SourceRunHistoryScreenState
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('${i18n.t('common.error', {'error': snapshot.error.toString()})}'));
           }
           final items = snapshot.data ?? [];
           if (items.isEmpty) {
             return RefreshIndicator(
               onRefresh: _reload,
               child: ListView(
-                children: const [
-                  SizedBox(height: 250),
-                  Center(child: Text('No source runs')),
+                children: [
+                  const SizedBox(height: 250),
+                  Center(child: Text(i18n.t('No source runs'))),
                 ],
               ),
             );
@@ -75,7 +78,7 @@ class _SourceRunHistoryScreenState
                       ),
                     ),
                     subtitle: Text(
-                      'Status: ${item['status'] ?? ''} • Seen: ${item['itemsSeen'] ?? 0}',
+                      '${i18n.t('Status')}: ${item['status'] ?? ''} • ${i18n.t('Seen')}: ${item['itemsSeen'] ?? 0}',
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {

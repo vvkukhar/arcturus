@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class ItemQuickDecisionBar extends StatelessWidget {
+class ItemQuickDecisionBar extends ConsumerWidget {
   final VoidCallback onSetMarket;
   final VoidCallback onMinus5;
   final VoidCallback onMoveNext;
@@ -15,7 +17,9 @@ class ItemQuickDecisionBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -25,19 +29,19 @@ class ItemQuickDecisionBar extends StatelessWidget {
           children: [
             FilledButton.tonal(
               onPressed: onSetMarket,
-              child: const Text('Set = Market'),
+              child: Text(i18n.t('Set = Market')),
             ),
             FilledButton.tonal(
               onPressed: onMinus5,
-              child: const Text('Market -5%'),
+              child: Text(i18n.t('Market -5%')),
             ),
             FilledButton.tonal(
               onPressed: onMovePrevious,
-              child: const Text('Prev Status'),
+              child: Text(i18n.t('Prev Status')),
             ),
             FilledButton(
               onPressed: onMoveNext,
-              child: const Text('Next Status'),
+              child: Text(i18n.t('Next Status')),
             ),
           ],
         ),

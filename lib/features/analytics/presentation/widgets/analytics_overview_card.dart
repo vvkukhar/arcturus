@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class AnalyticsOverviewCard extends StatelessWidget {
+class AnalyticsOverviewCard extends ConsumerWidget {
   final int soldCount;
   final int activeCount;
   final int deadStockCount;
@@ -13,17 +15,18 @@ class AnalyticsOverviewCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _row('Sold count', soldCount.toString()),
+            _row(i18n.t('Sold count'), soldCount.toString()),
             const SizedBox(height: 8),
-            _row('Active count', activeCount.toString()),
+            _row(i18n.t('Active count'), activeCount.toString()),
             const SizedBox(height: 8),
-            _row('Dead stock count', deadStockCount.toString()),
+            _row(i18n.t('Dead stock count'), deadStockCount.toString()),
           ],
         ),
       ),

@@ -1,9 +1,9 @@
-// lib/features/dashboard/presentation/widgets/dashboard_quick_insight_tile.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_quick_insight_model.dart';
 
-class DashboardQuickInsightTile extends StatelessWidget {
+class DashboardQuickInsightTile extends ConsumerWidget {
   final DashboardQuickInsightModel model;
 
   const DashboardQuickInsightTile({
@@ -12,14 +12,15 @@ class DashboardQuickInsightTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(model.title),
+            Text(i18n.t(model.title)),
             const SizedBox(height: 8),
             Text(
               model.value,
@@ -30,7 +31,7 @@ class DashboardQuickInsightTile extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              model.subtitle,
+              i18n.t(model.subtitle),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],

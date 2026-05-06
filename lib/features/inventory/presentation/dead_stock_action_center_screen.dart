@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/action_report_helper_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/dead_stock_action_center_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/dead_stock_center_action_provider.dart';
@@ -34,10 +35,11 @@ class DeadStockActionCenterScreen extends ConsumerWidget {
     final actions = ref.watch(deadStockActionCenterProvider);
     final entries = ref.watch(deadStockEntriesProvider);
     final actionService = ref.watch(deadStockCenterActionProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dead Stock Action Center'),
+        title: Text(i18n.t('deadStock.title')),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -50,15 +52,15 @@ class DeadStockActionCenterScreen extends ConsumerWidget {
               await _saveReport(ref, entries.length);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Dead stock report saved')),
+                  SnackBar(content: Text(i18n.t('deadStock.reportSaved'))),
                 );
               }
             },
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Recommended Actions',
-            style: TextStyle(
+          Text(
+            i18n.t('deadStock.recActions'),
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
@@ -79,25 +81,25 @@ class DeadStockActionCenterScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  actionService.description(actions.first.actionKey),
+                  i18n.t(actionService.description(actions.first.actionKey)),
                 ),
               ),
             ),
           ],
           const SizedBox(height: 20),
-          const Text(
-            'Dead Stock Items',
-            style: TextStyle(
+          Text(
+            i18n.t('deadStock.items'),
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 12),
           if (entries.isEmpty)
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No dead stock items right now.'),
+                padding: const EdgeInsets.all(16),
+                child: Text(i18n.t('deadStock.empty')),
               ),
             )
           else

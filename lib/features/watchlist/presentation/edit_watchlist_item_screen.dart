@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
 
-class EditWatchlistItemScreen extends StatefulWidget {
+class EditWatchlistItemScreen extends ConsumerStatefulWidget {
   final WatchlistItemModel item;
 
   const EditWatchlistItemScreen({
@@ -11,11 +13,11 @@ class EditWatchlistItemScreen extends StatefulWidget {
   });
 
   @override
-  State<EditWatchlistItemScreen> createState() =>
+  ConsumerState<EditWatchlistItemScreen> createState() =>
       _EditWatchlistItemScreenState();
 }
 
-class _EditWatchlistItemScreenState extends State<EditWatchlistItemScreen> {
+class _EditWatchlistItemScreenState extends ConsumerState<EditWatchlistItemScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _titleController;
@@ -93,9 +95,11 @@ class _EditWatchlistItemScreenState extends State<EditWatchlistItemScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Watchlist Item'),
+        title: Text(i18n.t('Edit Watchlist Item')),
       ),
       body: Form(
         key: _formKey,
@@ -104,10 +108,10 @@ class _EditWatchlistItemScreenState extends State<EditWatchlistItemScreen> {
           children: [
             TextFormField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Title *'),
+              decoration: InputDecoration(labelText: '${i18n.t('Title')} *'),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Title is required';
+                  return i18n.t('inv.titleReq');
                 }
                 return null;
               },
@@ -115,12 +119,12 @@ class _EditWatchlistItemScreenState extends State<EditWatchlistItemScreen> {
             const SizedBox(height: 12),
             DropdownButtonFormField<ItemType>(
               value: _itemType,
-              decoration: const InputDecoration(labelText: 'Type'),
+              decoration: InputDecoration(labelText: i18n.t('inv.type')),
               items: ItemType.values
                   .map(
                     (type) => DropdownMenuItem<ItemType>(
                       value: type,
-                      child: Text(type.name),
+                      child: Text(i18n.t(type.name)),
                     ),
                   )
                   .toList(),
@@ -134,38 +138,38 @@ class _EditWatchlistItemScreenState extends State<EditWatchlistItemScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _themeController,
-              decoration: const InputDecoration(labelText: 'Theme'),
+              decoration: InputDecoration(labelText: i18n.t('inv.theme')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _refIdController,
-              decoration: const InputDecoration(labelText: 'Reference ID'),
+              decoration: InputDecoration(labelText: i18n.t('Reference ID')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _desiredBuyController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Desired Buy Price'),
+              decoration: InputDecoration(labelText: i18n.t('Desired Buy Price')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _maxBuyController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Max Buy Price'),
+              decoration: InputDecoration(labelText: i18n.t('Max Buy Price')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _marketController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Market Price'),
+              decoration: InputDecoration(labelText: i18n.t('Market Price')),
             ),
             const SizedBox(height: 12),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Active'),
+              title: Text(i18n.t('Active')),
               value: _isActive,
               onChanged: (value) {
                 setState(() {
@@ -177,12 +181,12 @@ class _EditWatchlistItemScreenState extends State<EditWatchlistItemScreen> {
             TextFormField(
               controller: _commentController,
               maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Comment'),
+              decoration: InputDecoration(labelText: i18n.t('Comment')),
             ),
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _save,
-              child: const Text('Save Changes'),
+              child: Text(i18n.t('common.saveChanges')),
             ),
           ],
         ),

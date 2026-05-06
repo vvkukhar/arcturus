@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class DashboardRiskCard extends StatelessWidget {
+class DashboardRiskCard extends ConsumerWidget {
   final int riskyItems;
 
   const DashboardRiskCard({
@@ -9,7 +11,8 @@ class DashboardRiskCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       color: Colors.red.withValues(alpha: 0.08),
       child: Padding(
@@ -19,7 +22,7 @@ class DashboardRiskCard extends StatelessWidget {
             const Icon(Icons.warning_amber_rounded, color: Colors.red),
             const SizedBox(width: 10),
             Text(
-              '$riskyItems risky items',
+              '$riskyItems ${i18n.t('risky items')}',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ],

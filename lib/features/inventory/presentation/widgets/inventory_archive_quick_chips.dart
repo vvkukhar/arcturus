@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryArchiveQuickChips extends StatelessWidget {
+class InventoryArchiveQuickChips extends ConsumerWidget {
   final bool showArchived;
   final int archivedCount;
   final ValueChanged<bool> onChanged;
@@ -13,18 +15,19 @@ class InventoryArchiveQuickChips extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         FilterChip(
-          label: const Text('Active only'),
+          label: Text(i18n.t('Active only')),
           selected: !showArchived,
           onSelected: (_) => onChanged(false),
         ),
         FilterChip(
-          label: Text('With archived ($archivedCount)'),
+          label: Text('${i18n.t('With archived')} ($archivedCount)'),
           selected: showArchived,
           onSelected: (_) => onChanged(true),
         ),

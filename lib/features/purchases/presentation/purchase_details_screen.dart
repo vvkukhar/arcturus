@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/core/widgets/details_action_bar.dart';
 import 'package:lego_trading_manager/data/models/purchase_model.dart';
@@ -37,13 +38,11 @@ class _PurchaseDetailsScreenState extends ConsumerState<PurchaseDetailsScreen> {
 
   PurchaseModel _currentPurchaseWithStock() {
     final purchases = ref.watch(purchasesWithStockProvider);
-
     for (final item in purchases) {
       if (item.id == purchase.id) {
         return item;
       }
     }
-
     return purchase;
   }
 
@@ -67,11 +66,11 @@ class _PurchaseDetailsScreenState extends ConsumerState<PurchaseDetailsScreen> {
     });
   }
 
-  Future<void> _confirmDelete(PurchaseModel current) async {
+  Future<void> _confirmDelete(PurchaseModel current, I18nNotifier i18n) async {
     if (current.soldQuantity > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot delete purchase with allocated/sold quantity'),
+        SnackBar(
+          content: Text(i18n.t('common.error', {'error': 'Cannot delete allocated purchase'})),
         ),
       );
       return;
@@ -81,16 +80,16 @@ class _PurchaseDetailsScreenState extends ConsumerState<PurchaseDetailsScreen> {
       context: context,
       builder: (_) {
         return AlertDialog(
-          title: const Text('Delete purchase'),
-          content: const Text('Delete this purchase record?'),
+          title: Text(i18n.t('common.deleteConfirmTitle')),
+          content: Text(i18n.t('common.deleteConfirmText', {'title': current.source})),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(i18n.t('common.cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(i18n.t('common.delete')),
             ),
           ],
         );
@@ -98,7 +97,6 @@ class _PurchaseDetailsScreenState extends ConsumerState<PurchaseDetailsScreen> {
     );
 
     if (shouldDelete != true) return;
-
     if (!mounted) return;
 
     Navigator.of(context).pop({
@@ -109,7 +107,6 @@ class _PurchaseDetailsScreenState extends ConsumerState<PurchaseDetailsScreen> {
 
   void _duplicate(PurchaseModel current) {
     final duplicated = const PurchaseDuplicateService().duplicate(current);
-
     Navigator.of(context).pop({
       'duplicated': duplicated,
     });
@@ -118,14 +115,15 @@ class _PurchaseDetailsScreenState extends ConsumerState<PurchaseDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final current = _currentPurchaseWithStock();
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Purchase Details'),
+        title: Text(i18n.t('pur.details')),
         actions: [
           DetailsActionBar(
             onEdit: () => _openEdit(current),
-            onDelete: () => _confirmDelete(current),
+            onDelete: () => _confirmDelete(current, i18n),
           ),
         ],
       ),
@@ -151,7 +149,7 @@ class _PurchaseDetailsScreenState extends ConsumerState<PurchaseDetailsScreen> {
           FilledButton.tonalIcon(
             onPressed: () => _duplicate(current),
             icon: const Icon(Icons.copy_outlined),
-            label: const Text('Duplicate Purchase'),
+            label: Text(i18n.t('Duplicate Purchase')),
           ),
           const SizedBox(height: 16),
           PurchaseIdentityCard(purchase: current),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class ItemQuickRepriceCard extends StatelessWidget {
+class ItemQuickRepriceCard extends ConsumerWidget {
   final VoidCallback onMarket;
   final VoidCallback onMinus5;
   final VoidCallback onMinus10;
@@ -15,7 +17,9 @@ class ItemQuickRepriceCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -25,19 +29,19 @@ class ItemQuickRepriceCard extends StatelessWidget {
           children: [
             FilledButton.tonal(
               onPressed: onMarket,
-              child: const Text('Set = Market'),
+              child: Text(i18n.t('Set = Market')),
             ),
             FilledButton.tonal(
               onPressed: onMinus5,
-              child: const Text('Market -5%'),
+              child: Text(i18n.t('Market -5%')),
             ),
             FilledButton.tonal(
               onPressed: onMinus10,
-              child: const Text('Market -10%'),
+              child: Text(i18n.t('Market -10%')),
             ),
             FilledButton.tonal(
               onPressed: onPlus3,
-              child: const Text('Market +3%'),
+              child: Text(i18n.t('Market +3%')),
             ),
           ],
         ),

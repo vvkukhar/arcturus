@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class AnalyticsStatTile extends StatelessWidget {
+class AnalyticsStatTile extends ConsumerWidget {
   final String title;
   final String value;
   final String subtitle;
@@ -27,8 +29,9 @@ class AnalyticsStatTile extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final valueColor = _valueColor(context);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -36,7 +39,7 @@ class AnalyticsStatTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title),
+            Text(i18n.t(title)),
             const SizedBox(height: 8),
             Text(
               value,
@@ -48,7 +51,7 @@ class AnalyticsStatTile extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              subtitle,
+              i18n.t(subtitle),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],

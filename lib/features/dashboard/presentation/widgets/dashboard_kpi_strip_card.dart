@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_kpi_strip_model.dart';
 
-class DashboardKpiStripCard extends StatelessWidget {
+class DashboardKpiStripCard extends ConsumerWidget {
   final DashboardKpiStripModel model;
   final String currency;
 
@@ -15,13 +17,14 @@ class DashboardKpiStripCard extends StatelessWidget {
   Widget _tile({
     required String title,
     required String value,
+    required String translatedTitle,
   }) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title,
+            translatedTitle,
             style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,
@@ -41,7 +44,8 @@ class DashboardKpiStripCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -49,6 +53,7 @@ class DashboardKpiStripCard extends StatelessWidget {
           children: [
             _tile(
               title: 'Liquidation Potential',
+              translatedTitle: i18n.t('Liquidation Potential'),
               value: CurrencyFormatter.format(
                 model.liquidationPotential,
                 currency: currency,
@@ -58,6 +63,7 @@ class DashboardKpiStripCard extends StatelessWidget {
             const SizedBox(width: 12),
             _tile(
               title: 'Open Expected Profit',
+              translatedTitle: i18n.t('Open Expected Profit'),
               value: CurrencyFormatter.format(
                 model.expectedOpenProfit,
                 currency: currency,
@@ -67,6 +73,7 @@ class DashboardKpiStripCard extends StatelessWidget {
             const SizedBox(width: 12),
             _tile(
               title: 'Watchlist Hits',
+              translatedTitle: i18n.t('Watchlist Hits'),
               value: model.watchlistHits.toString(),
             ),
           ],

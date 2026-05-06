@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
 
-class InventoryTopItemCard extends StatelessWidget {
+class InventoryTopItemCard extends ConsumerWidget {
   final ItemModel item;
   final String subtitle;
   final String trailing;
@@ -14,7 +15,7 @@ class InventoryTopItemCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       child: ListTile(
         title: Text(item.title),

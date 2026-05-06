@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/core/widgets/details_action_bar.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
@@ -78,21 +79,21 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
     Navigator.of(context).pop({'deleted': true});
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
+  Future<void> _confirmDelete(BuildContext context, I18nNotifier i18n) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Delete item'),
-          content: Text('Delete "${item.title}"? This action cannot be undone.'),
+          title: Text(i18n.t('common.deleteConfirmTitle')),
+          content: Text(i18n.t('common.deleteConfirmText', {'title': item.title})),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(i18n.t('common.cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(i18n.t('common.delete')),
             ),
           ],
         );
@@ -126,14 +127,15 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
     final timeline = ref.watch(itemTimelineServiceProvider).build(item);
     final lifecycle = ref.watch(itemLifecycleServiceProvider).build(item);
     final sale = ref.watch(salesRepositoryProvider).getByItemId(item.id);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Item Details'),
+        title: Text(i18n.t('inv.details')),
         actions: [
           DetailsActionBar(
             onEdit: _openEdit,
-            onDelete: () => _confirmDelete(context),
+            onDelete: () => _confirmDelete(context, i18n),
             onDuplicate: _duplicate,
           ),
         ],
@@ -143,7 +145,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
         children: [
           ItemDetailHeaderCard(item: item),
           const SizedBox(height: 16),
-          const _SectionTitle('Lifecycle'),
+          _SectionTitle(i18n.t('inv.lifecycle')),
           ItemLifecycleCard(steps: lifecycle),
           const SizedBox(height: 16),
           GridView.count(
@@ -158,12 +160,12 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                 .toList(),
           ),
           const SizedBox(height: 16),
-          const _SectionTitle('Timeline'),
+          _SectionTitle(i18n.t('inv.timeline')),
           if (timeline.isEmpty)
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No timeline events yet.'),
+                padding: const EdgeInsets.all(16),
+                child: Text(i18n.t('inv.noTimeline')),
               ),
             )
           else
@@ -174,19 +176,19 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
               ),
             ),
           const SizedBox(height: 16),
-          const _SectionTitle('Overview'),
+          _SectionTitle(i18n.t('inv.overview')),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _infoRow('Title', item.title),
-                  _infoRow('Type', item.type.name),
-                  _infoRow('Theme', _formatNullable(item.theme)),
-                  _infoRow('Condition', item.condition.name),
-                  _infoRow('Quantity', item.quantity.toString()),
+                  _infoRow(i18n.t('Title'), item.title),
+                  _infoRow(i18n.t('inv.type'), i18n.t(item.type.name)),
+                  _infoRow(i18n.t('inv.theme'), _formatNullable(item.theme)),
+                  _infoRow(i18n.t('inv.condition'), i18n.t(item.condition.name)),
+                  _infoRow(i18n.t('inv.qty'), item.quantity.toString()),
                   _infoRow(
-                    'Days In Inventory',
+                    i18n.t('inv.daysInInv'),
                     (item.daysInInventory ?? 0).toString(),
                   ),
                 ],
@@ -194,21 +196,21 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          const _SectionTitle('Financials'),
+          _SectionTitle(i18n.t('inv.financials')),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   _infoRow(
-                    'Total Cost',
+                    i18n.t('inv.totalCost'),
                     CurrencyFormatter.format(
                       item.totalCost,
                       currency: settings.baseCurrency,
                     ),
                   ),
                   _infoRow(
-                    'Market Average',
+                    i18n.t('inv.marketAvg'),
                     item.marketAverage == null
                         ? '-'
                         : CurrencyFormatter.format(
@@ -222,15 +224,15 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
           ),
           if (sale != null) ...[
             const SizedBox(height: 16),
-            const _SectionTitle('Sale Record'),
+            _SectionTitle(i18n.t('inv.saleRecord')),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    _infoRow('Platform', sale.platform),
+                    _infoRow(i18n.t('sale.platform'), sale.platform),
                     _infoRow(
-                      'Net Profit',
+                      i18n.t('inv.netProfit'),
                       CurrencyFormatter.format(
                         sale.finalNet,
                         currency: settings.baseCurrency,
@@ -242,10 +244,10 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
             ),
           ],
           const SizedBox(height: 16),
-          const _SectionTitle('Notes'),
+          _SectionTitle(i18n.t('inv.notes')),
           ItemDetailNotesCard(notes: item.notes),
           const SizedBox(height: 16),
-          const _SectionTitle('Tags'),
+          _SectionTitle(i18n.t('inv.tags')),
           ItemDetailTagsCard(
             tags: item.tags.map((e) => e.toString()).toList(),
           ),

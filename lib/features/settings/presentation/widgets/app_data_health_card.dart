@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/storage/app_data_integrity_provider.dart';
 
 class AppDataHealthCard extends ConsumerWidget {
@@ -8,6 +9,7 @@ class AppDataHealthCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final integrity = ref.watch(appDataIntegrityProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -24,30 +26,30 @@ class AppDataHealthCard extends ConsumerWidget {
                   color: integrity.isHealthy ? Colors.green : Colors.red,
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Data Integrity',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                Text(
+                  i18n.t('Data Integrity'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Text('Purchases: ${integrity.purchasesCount}'),
-            Text('Sales: ${integrity.salesCount}'),
-            Text('Allocations: ${integrity.allocationsCount}'),
-            Text('Links: ${integrity.linksCount}'),
+            Text('${i18n.t('drawer.purchases')}: ${integrity.purchasesCount}'),
+            Text('${i18n.t('drawer.sales')}: ${integrity.salesCount}'),
+            Text('${i18n.t('Allocations')}: ${integrity.allocationsCount}'),
+            Text('${i18n.t('Links')}: ${integrity.linksCount}'),
             if (!integrity.isHealthy) ...[
               const Divider(),
               if (integrity.orphanAllocationsCount > 0)
-                Text('Orphan allocations: ${integrity.orphanAllocationsCount}',
+                Text('${i18n.t('Orphan allocations')}: ${integrity.orphanAllocationsCount}',
                     style: const TextStyle(color: Colors.red)),
               if (integrity.orphanLinksCount > 0)
-                Text('Orphan links: ${integrity.orphanLinksCount}',
+                Text('${i18n.t('Orphan links')}: ${integrity.orphanLinksCount}',
                     style: const TextStyle(color: Colors.red)),
               if (integrity.overAllocatedSalesCount > 0)
-                Text('Overallocated sales: ${integrity.overAllocatedSalesCount}',
+                Text('${i18n.t('Overallocated sales')}: ${integrity.overAllocatedSalesCount}',
                     style: const TextStyle(color: Colors.red)),
               if (integrity.overSoldPurchasesCount > 0)
-                Text('Oversold purchases: ${integrity.overSoldPurchasesCount}',
+                Text('${i18n.t('Oversold purchases')}: ${integrity.overSoldPurchasesCount}',
                     style: const TextStyle(color: Colors.red)),
             ],
           ],

@@ -6,7 +6,6 @@ import 'package:lego_trading_manager/features/market/application/market_link_wat
 class MarketController extends Notifier<List<MarketSnapshotModel>> {
   @override
   List<MarketSnapshotModel> build() {
-    // Репозиторій у тебе синхронний на getAll(), тому зразу сетаємо початковий стейт
     return ref.read(marketRepositoryProvider).getAll();
   }
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_grouped_day_summary_model.dart';
 
-class ActivityGroupedDaySummaryList extends StatelessWidget {
+class ActivityGroupedDaySummaryList extends ConsumerWidget {
   final List<ActivityGroupedDaySummaryModel> items;
 
   const ActivityGroupedDaySummaryList({
@@ -10,8 +12,10 @@ class ActivityGroupedDaySummaryList extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (items.isEmpty) return const SizedBox.shrink();
+
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -19,9 +23,9 @@ class ActivityGroupedDaySummaryList extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Day Summaries',
-              style: TextStyle(
+            Text(
+              i18n.t('Day Summaries'),
+              style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
               ),
@@ -34,11 +38,11 @@ class ActivityGroupedDaySummaryList extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        Chip(label: Text(item.dateLabel)),
-                        Chip(label: Text('Total ${item.total}')),
-                        Chip(label: Text('Reports ${item.reports}')),
-                        Chip(label: Text('Purchases ${item.purchases}')),
-                        Chip(label: Text('Sales ${item.sales}')),
+                        Chip(label: Text(i18n.t(item.dateLabel))),
+                        Chip(label: Text('${i18n.t('Total')} ${item.total}')),
+                        Chip(label: Text('${i18n.t('Reports')} ${item.reports}')),
+                        Chip(label: Text('${i18n.t('Purchases')} ${item.purchases}')),
+                        Chip(label: Text('${i18n.t('Sales')} ${item.sales}')),
                       ],
                     ),
                   ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/inventory_stock_value_model.dart';
 
-class InventoryStockValueCard extends StatelessWidget {
+class InventoryStockValueCard extends ConsumerWidget {
   final InventoryStockValueModel model;
   final String currency;
 
@@ -34,7 +36,9 @@ class InventoryStockValueCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -42,9 +46,9 @@ class InventoryStockValueCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                _cell('Remaining units', model.remainingUnits.toString()),
+                _cell(i18n.t('Remaining units'), model.remainingUnits.toString()),
                 _cell(
-                  'Remaining value',
+                  i18n.t('Remaining value'),
                   '${model.remainingCostValue.toStringAsFixed(2)} $currency',
                 ),
               ],
@@ -53,11 +57,11 @@ class InventoryStockValueCard extends StatelessWidget {
             Row(
               children: [
                 _cell(
-                  'Sold cost',
+                  i18n.t('Sold cost'),
                   '${model.soldCostValue.toStringAsFixed(2)} $currency',
                 ),
                 _cell(
-                  'Total cost',
+                  i18n.t('Total cost'),
                   '${model.totalCostValue.toStringAsFixed(2)} $currency',
                 ),
               ],

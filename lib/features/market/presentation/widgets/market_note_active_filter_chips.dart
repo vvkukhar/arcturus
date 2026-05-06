@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/market/application/market_note_filter_model.dart';
 
-class MarketNoteActiveFilterChips extends StatelessWidget {
+class MarketNoteActiveFilterChips extends ConsumerWidget {
   final String query;
   final MarketNoteFilterModel filter;
   final VoidCallback onClearAll;
@@ -14,22 +16,23 @@ class MarketNoteActiveFilterChips extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final chips = <Widget>[];
 
     if (query.trim().isNotEmpty) {
-      chips.add(Chip(label: Text('Search: $query')));
+      chips.add(Chip(label: Text('${i18n.t('Search')}: $query')));
     }
 
     if ((filter.snapshotIdContains ?? '').trim().isNotEmpty) {
-      chips.add(Chip(label: Text('Snapshot: ${filter.snapshotIdContains}')));
+      chips.add(Chip(label: Text('${i18n.t('Snapshot')}: ${filter.snapshotIdContains}')));
     }
 
     if (filter.from != null) {
       chips.add(
         Chip(
           label: Text(
-            'From: ${filter.from!.toIso8601String().split('T').first}',
+            '${i18n.t('From')}: ${filter.from!.toIso8601String().split('T').first}',
           ),
         ),
       );
@@ -39,7 +42,7 @@ class MarketNoteActiveFilterChips extends StatelessWidget {
       chips.add(
         Chip(
           label: Text(
-            'To: ${filter.to!.toIso8601String().split('T').first}',
+            '${i18n.t('To')}: ${filter.to!.toIso8601String().split('T').first}',
           ),
         ),
       );
@@ -65,7 +68,7 @@ class MarketNoteActiveFilterChips extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: onClearAll,
-                child: const Text('Clear filters'),
+                child: Text(i18n.t('Clear filters')),
               ),
             ),
           ],

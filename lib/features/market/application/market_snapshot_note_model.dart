@@ -1,4 +1,3 @@
-// lib/features/market/application/market_snapshot_note_model.dart
 class MarketSnapshotNoteModel {
   final String snapshotId;
   final String note;

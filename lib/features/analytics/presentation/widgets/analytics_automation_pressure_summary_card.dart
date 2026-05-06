@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_automation_pressure_summary_model.dart';
 
-class AnalyticsAutomationPressureSummaryCard extends StatelessWidget {
+class AnalyticsAutomationPressureSummaryCard extends ConsumerWidget {
   final AnalyticsAutomationPressureSummaryModel model;
 
   const AnalyticsAutomationPressureSummaryCard({
@@ -10,7 +12,8 @@ class AnalyticsAutomationPressureSummaryCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -18,14 +21,14 @@ class AnalyticsAutomationPressureSummaryCard extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                model.label,
+                i18n.t(model.label),
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
             Text(
-              '${model.enabledRules} rules',
+              '${model.enabledRules} ${i18n.t('rules')}',
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
               ),

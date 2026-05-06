@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/data/models/sale_model.dart';
 import 'package:lego_trading_manager/features/sales/application/sale_net_provider.dart';
 import 'package:lego_trading_manager/features/sales/application/sale_validation_provider.dart';
@@ -94,17 +95,10 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
     });
   }
 
-  String? _validateQuantity(String? value) {
+  String? _validateQuantity(String? value, I18nNotifier i18n) {
     final parsed = int.tryParse((value ?? '').trim());
-
-    if (parsed == null) {
-      return 'Quantity must be a number';
-    }
-
-    if (parsed <= 0) {
-      return 'Quantity must be greater than zero';
-    }
-
+    if (parsed == null) return i18n.t('common.error', {'error': 'Must be a number'});
+    if (parsed <= 0) return i18n.t('common.error', {'error': 'Must be > 0'});
     return null;
   }
 
@@ -149,11 +143,12 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
   @override
   Widget build(BuildContext context) {
     final validation = ref.watch(saleValidationProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
     final dateText = _saleDate.toIso8601String().split('T').first;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Sale'),
+        title: Text(i18n.t('sale.edit')),
       ),
       body: Form(
         key: _formKey,
@@ -169,51 +164,45 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _platformController,
-              decoration: const InputDecoration(labelText: 'Platform *'),
+              decoration: InputDecoration(labelText: '${i18n.t('sale.platform')} *'),
               validator: (value) =>
-                  validation.validateRequiredText(value ?? '', 'Platform'),
+                  validation.validateRequiredText(value ?? '', i18n.t('sale.platform')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _buyerNameController,
-              decoration: const InputDecoration(labelText: 'Buyer Name'),
+              decoration: InputDecoration(labelText: i18n.t('sale.buyer')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _salePriceController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(labelText: 'Sale Price'),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: i18n.t('sale.price')),
               validator: (value) => validation.validatePositiveOrZero(
                 value ?? '',
-                'Sale price',
+                i18n.t('sale.price'),
               ),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _platformFeeController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(labelText: 'Platform Fee'),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: i18n.t('sale.fee')),
               validator: (value) => validation.validatePositiveOrZero(
                 value ?? '',
-                'Platform fee',
+                i18n.t('sale.fee'),
               ),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _shippingPaidByMeController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(labelText: 'Shipping By Me'),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: i18n.t('sale.shipMe')),
               validator: (value) => validation.validatePositiveOrZero(
                 value ?? '',
-                'Shipping by me',
+                i18n.t('sale.shipMe'),
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -221,8 +210,8 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
             TextFormField(
               controller: _quantityController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Quantity'),
-              validator: _validateQuantity,
+              decoration: InputDecoration(labelText: i18n.t('inv.qty')),
+              validator: (val) => _validateQuantity(val, i18n),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -230,7 +219,7 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
               child: Column(
                 children: [
                   ListTile(
-                    title: const Text('Final Net'),
+                    title: Text(i18n.t('sale.net')),
                     trailing: Text(
                       _finalNet.toStringAsFixed(2),
                       style: const TextStyle(fontWeight: FontWeight.w800),
@@ -238,7 +227,7 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    title: const Text('Unit Net'),
+                    title: Text(i18n.t('sale.unitNet')),
                     trailing: Text(
                       _unitNet.toStringAsFixed(2),
                       style: const TextStyle(fontWeight: FontWeight.w800),
@@ -250,7 +239,7 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _currencyController,
-              decoration: const InputDecoration(labelText: 'Currency'),
+              decoration: InputDecoration(labelText: i18n.t('pur.currency')),
               textCapitalization: TextCapitalization.characters,
               validator: (value) => validation.validateCurrency(value ?? ''),
             ),
@@ -267,12 +256,12 @@ class _EditSaleScreenState extends ConsumerState<EditSaleScreen> {
             TextFormField(
               controller: _noteController,
               maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Note'),
+              decoration: InputDecoration(labelText: i18n.t('inv.notes')),
             ),
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _save,
-              child: const Text('Save Changes'),
+              child: Text(i18n.t('common.saveChanges')),
             ),
           ],
         ),

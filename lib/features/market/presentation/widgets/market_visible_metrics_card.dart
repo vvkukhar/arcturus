@@ -1,10 +1,10 @@
-// lib/features/market/presentation/widgets/market_visible_metrics_card.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/features/market/application/market_visible_metrics_provider.dart';
 
-class MarketVisibleMetricsCard extends StatelessWidget {
+class MarketVisibleMetricsCard extends ConsumerWidget {
   final MarketVisibleMetricsModel metrics;
   final String currency;
 
@@ -15,7 +15,9 @@ class MarketVisibleMetricsCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     Widget row(String label, String value) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
@@ -36,20 +38,20 @@ class MarketVisibleMetricsCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            row('Visible Snapshots', metrics.visibleCount.toString()),
+            row(i18n.t('Visible Snapshots'), metrics.visibleCount.toString()),
             row(
-              'Avg Low',
+              i18n.t('Avg Low'),
               CurrencyFormatter.format(metrics.averageLow, currency: currency),
             ),
             row(
-              'Avg Mid',
+              i18n.t('Avg Mid'),
               CurrencyFormatter.format(metrics.averageMid, currency: currency),
             ),
             row(
-              'Avg High',
+              i18n.t('Avg High'),
               CurrencyFormatter.format(metrics.averageHigh, currency: currency),
             ),
-            row('With URL', metrics.withUrlCount.toString()),
+            row(i18n.t('With URL'), metrics.withUrlCount.toString()),
           ],
         ),
       ),

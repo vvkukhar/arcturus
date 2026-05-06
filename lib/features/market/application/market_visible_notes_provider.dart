@@ -16,11 +16,9 @@ final marketVisibleNotesProvider =
           note.note.toLowerCase().contains(query) ||
           note.snapshotId.toLowerCase().contains(query);
 
+      final snapshotFilter = (filter.snapshotIdContains ?? '').trim().toLowerCase();
       final matchesSnapshot =
-          (filter.snapshotIdContains ?? '').trim().isEmpty ||
-              note.snapshotId.toLowerCase().contains(
-                    filter.snapshotIdContains!.trim().toLowerCase(),
-                  );
+          snapshotFilter.isEmpty || note.snapshotId.toLowerCase().contains(snapshotFilter);
 
       final matchesFrom =
           filter.from == null || !note.createdAt.isBefore(filter.from!);

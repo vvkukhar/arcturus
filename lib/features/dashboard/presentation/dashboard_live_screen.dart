@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_execution_summary_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_flow_counters_api_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_market_pulse_provider.dart';
@@ -37,6 +38,7 @@ class DashboardLiveScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(dashboardRealtimeBridgeProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     final executionSummary = ref.watch(dashboardExecutionSummaryProvider);
     final flowCounters = ref.watch(dashboardFlowCountersApiProvider);
@@ -54,16 +56,18 @@ class DashboardLiveScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard Live'),
+        title: Text(i18n.t('dashboard.title')),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           offlineBanner.when(
             data: (offline) => offline
-                ? const Padding(
-                    padding: EdgeInsets.only(bottom: 16),
-                    child: DashboardOfflineBanner(),
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: DashboardOfflineBanner(
+                      text: i18n.t('dashboard.offline'),
+                    ),
                   )
                 : const SizedBox.shrink(),
             loading: () => const SizedBox.shrink(),
@@ -89,19 +93,19 @@ class DashboardLiveScreen extends ConsumerWidget {
               onOpenConflicts: () => Navigator.of(context).pushNamed(AppRouter.conflictQueue),
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('Sync health error: $error'),
+            error: (error, _) => Text('${i18n.t('Sync health error')}: $error'),
           ),
           const SizedBox(height: 16),
           executionSummary.when(
             data: (data) => DashboardExecutionSummaryCard(model: data),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('Execution summary error: $error'),
+            error: (error, _) => Text('${i18n.t('Execution summary error')}: $error'),
           ),
           const SizedBox(height: 16),
           operatorHealth.when(
             data: (data) => DashboardOperatorHealthCard(model: data),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('Operator health error: $error'),
+            error: (error, _) => Text('${i18n.t('Operator health error')}: $error'),
           ),
           const SizedBox(height: 16),
           globalSyncState.when(
@@ -123,25 +127,25 @@ class DashboardLiveScreen extends ConsumerWidget {
               },
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('Global sync error: $error'),
+            error: (error, _) => Text('${i18n.t('Global sync error')}: $error'),
           ),
           const SizedBox(height: 16),
           syncSummary.when(
             data: (data) => DashboardSyncStatusCard(model: data),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('Sync summary error: $error'),
+            error: (error, _) => Text('${i18n.t('Sync summary error')}: $error'),
           ),
           const SizedBox(height: 16),
           unresolvedSummary.when(
             data: (data) => DashboardUnresolvedMatchCard(model: data),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('Unresolved summary error: $error'),
+            error: (error, _) => Text('${i18n.t('Unresolved summary error')}: $error'),
           ),
           const SizedBox(height: 16),
           sourceHealth.when(
             data: (data) => SourceHealthSummaryCard(items: data),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('Source health error: $error'),
+            error: (error, _) => Text('${i18n.t('Source health error')}: $error'),
           ),
           const SizedBox(height: 16),
           marketPulse.when(
@@ -153,7 +157,7 @@ class DashboardLiveScreen extends ConsumerWidget {
               onOpenReview: () => Navigator.of(context).pushNamed(AppRouter.bestReview),
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('Market pulse error: $error'),
+            error: (error, _) => Text('${i18n.t('Market pulse error')}: $error'),
           ),
           const SizedBox(height: 16),
           opportunitiesBlock.when(
@@ -163,13 +167,13 @@ class DashboardLiveScreen extends ConsumerWidget {
               onOpenSell: () => Navigator.of(context).pushNamed(AppRouter.bestSell),
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('Opportunities error: $error'),
+            error: (error, _) => Text('${i18n.t('Opportunities error')}: $error'),
           ),
           const SizedBox(height: 16),
           flowCounters.when(
             data: (data) => DashboardLiveBackendCard(model: data),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('Flow counters error: $error'),
+            error: (error, _) => Text('${i18n.t('Flow counters error')}: $error'),
           ),
           const SizedBox(height: 16),
           priorityQueue.when(
@@ -182,7 +186,7 @@ class DashboardLiveScreen extends ConsumerWidget {
               )).toList(),
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('Priority queue error: $error'),
+            error: (error, _) => Text('${i18n.t('Priority queue error')}: $error'),
           ),
         ],
       ),

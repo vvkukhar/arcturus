@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_action_readiness_model.dart';
 
-class InventoryActionReadinessBanner extends StatelessWidget {
+class InventoryActionReadinessBanner extends ConsumerWidget {
   final InventoryActionReadinessModel model;
 
   const InventoryActionReadinessBanner({
@@ -10,7 +12,8 @@ class InventoryActionReadinessBanner extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final color = model.score >= 65
         ? Colors.green
         : model.score >= 40
@@ -25,7 +28,7 @@ class InventoryActionReadinessBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
-        '${model.label} • ${model.score.toStringAsFixed(0)}',
+        '${i18n.t(model.label)} • ${model.score.toStringAsFixed(0)}',
         style: TextStyle(
           color: color,
           fontWeight: FontWeight.w800,

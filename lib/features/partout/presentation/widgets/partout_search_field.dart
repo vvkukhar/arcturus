@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class PartOutSearchField extends StatelessWidget {
+class PartOutSearchField extends ConsumerWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
@@ -13,14 +15,15 @@ class PartOutSearchField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final hasValue = controller.text.trim().isNotEmpty;
 
     return TextField(
       controller: controller,
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: 'Search by set title, note, status...',
+        hintText: i18n.t('Search by set title, note, status...'),
         prefixIcon: const Icon(Icons.search),
         suffixIcon: hasValue
             ? IconButton(

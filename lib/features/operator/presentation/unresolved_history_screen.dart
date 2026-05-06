@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/operator/data/operator_api_repository_provider.dart';
 
 class UnresolvedHistoryScreen extends ConsumerWidget {
@@ -10,8 +11,10 @@ class UnresolvedHistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(operatorApiRepositoryProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
-      appBar: AppBar(title: Text('History: $status')),
+      appBar: AppBar(title: Text('${i18n.t('History')}: $status')),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: repo.getUnresolvedMatches(status: status),
         builder: (context, snapshot) {
@@ -20,7 +23,7 @@ class UnresolvedHistoryScreen extends ConsumerWidget {
           }
           final items = snapshot.data!;
           if (items.isEmpty) {
-            return const Center(child: Text('Empty'));
+            return Center(child: Text(i18n.t('inv.empty')));
           }
           return ListView.builder(
             itemCount: items.length,

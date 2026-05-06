@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/market/application/market_filter_model.dart';
 
-class MarketActiveFilterChips extends StatelessWidget {
+class MarketActiveFilterChips extends ConsumerWidget {
   final String query;
   final MarketFilterModel filter;
   final VoidCallback onClearAll;
@@ -14,13 +16,14 @@ class MarketActiveFilterChips extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final chips = <Widget>[];
 
     if (query.trim().isNotEmpty) {
       chips.add(
         Chip(
-          label: Text('search: $query'),
+          label: Text('${i18n.t('search')}: $query'),
         ),
       );
     }
@@ -28,7 +31,7 @@ class MarketActiveFilterChips extends StatelessWidget {
     if ((filter.sourceContains ?? '').trim().isNotEmpty) {
       chips.add(
         Chip(
-          label: Text('source: ${filter.sourceContains}'),
+          label: Text('${i18n.t('source')}: ${filter.sourceContains}'),
         ),
       );
     }
@@ -36,23 +39,23 @@ class MarketActiveFilterChips extends StatelessWidget {
     if ((filter.itemTitleContains ?? '').trim().isNotEmpty) {
       chips.add(
         Chip(
-          label: Text('item: ${filter.itemTitleContains}'),
+          label: Text('${i18n.t('item')}: ${filter.itemTitleContains}'),
         ),
       );
     }
 
     if (filter.withUrlOnly) {
       chips.add(
-        const Chip(
-          label: Text('with url'),
+        Chip(
+          label: Text(i18n.t('with url')),
         ),
       );
     }
 
     if (filter.positiveTrendOnly) {
       chips.add(
-        const Chip(
-          label: Text('positive trend'),
+        Chip(
+          label: Text(i18n.t('positive trend')),
         ),
       );
     }
@@ -77,7 +80,7 @@ class MarketActiveFilterChips extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: onClearAll,
-                child: const Text('Clear filters'),
+                child: Text(i18n.t('Clear filters')),
               ),
             ),
           ],

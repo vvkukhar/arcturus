@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_timeline_view_mode_provider.dart';
 
-class ActivityTimelineViewModeBar extends StatelessWidget {
+class ActivityTimelineViewModeBar extends ConsumerWidget {
   final ActivityTimelineViewMode value;
   final ValueChanged<ActivityTimelineViewMode> onChanged;
 
@@ -12,18 +14,20 @@ class ActivityTimelineViewModeBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return SegmentedButton<ActivityTimelineViewMode>(
-      segments: const [
+      segments: [
         ButtonSegment<ActivityTimelineViewMode>(
           value: ActivityTimelineViewMode.compact,
-          label: Text('Compact'),
-          icon: Icon(Icons.view_headline),
+          label: Text(i18n.t('Compact')),
+          icon: const Icon(Icons.view_headline),
         ),
         ButtonSegment<ActivityTimelineViewMode>(
           value: ActivityTimelineViewMode.detailed,
-          label: Text('Detailed'),
-          icon: Icon(Icons.view_agenda),
+          label: Text(i18n.t('Detailed')),
+          icon: const Icon(Icons.view_agenda),
         ),
       ],
       selected: {value},

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class MarketBulkSummaryBar extends StatelessWidget {
+class MarketBulkSummaryBar extends ConsumerWidget {
   final int selectedCount;
   final int totalVisibleCount;
   final VoidCallback onSelectAllVisible;
@@ -15,7 +17,9 @@ class MarketBulkSummaryBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -27,7 +31,7 @@ class MarketBulkSummaryBar extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Selected: $selectedCount / $totalVisibleCount',
+                    '${i18n.t('Selected')}: $selectedCount / $totalVisibleCount',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                     ),
@@ -43,12 +47,12 @@ class MarketBulkSummaryBar extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: onSelectAllVisible,
                   icon: const Icon(Icons.select_all),
-                  label: const Text('Select All Visible'),
+                  label: Text(i18n.t('Select All Visible')),
                 ),
                 OutlinedButton.icon(
                   onPressed: onClearSelection,
                   icon: const Icon(Icons.clear_all),
-                  label: const Text('Clear'),
+                  label: Text(i18n.t('common.clear')),
                 ),
               ],
             ),

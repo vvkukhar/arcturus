@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/operator/data/operator_api_repository_provider.dart';
 
 class SyncErrorLogScreen extends ConsumerStatefulWidget {
@@ -30,9 +31,11 @@ class _SyncErrorLogScreenState extends ConsumerState<SyncErrorLogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sync Error Log'),
+        title: Text(i18n.t('Sync Error Log')),
       ),
       body: Column(
         children: [
@@ -40,20 +43,20 @@ class _SyncErrorLogScreenState extends ConsumerState<SyncErrorLogScreen> {
             padding: const EdgeInsets.all(16),
             child: DropdownButtonFormField<String?>(
               value: _selectedSourceCode,
-              decoration: const InputDecoration(
-                labelText: 'Filter by source',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: i18n.t('Filter by source'),
+                border: const OutlineInputBorder(),
               ),
-              items: const [
+              items: [
                 DropdownMenuItem<String?>(
                   value: null,
-                  child: Text('All'),
+                  child: Text(i18n.t('All')),
                 ),
-                DropdownMenuItem<String?>(
+                const DropdownMenuItem<String?>(
                   value: 'olx',
                   child: Text('OLX'),
                 ),
-                DropdownMenuItem<String?>(
+                const DropdownMenuItem<String?>(
                   value: 'bricklink',
                   child: Text('BrickLink'),
                 ),
@@ -72,16 +75,16 @@ class _SyncErrorLogScreenState extends ConsumerState<SyncErrorLogScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(child: Text('${i18n.t('common.error', {'error': snapshot.error.toString()})}'));
                 }
                 final items = snapshot.data ?? [];
                 if (items.isEmpty) {
                   return RefreshIndicator(
                     onRefresh: _reload,
                     child: ListView(
-                      children: const [
-                        SizedBox(height: 250),
-                        Center(child: Text('No sync errors')),
+                      children: [
+                        const SizedBox(height: 250),
+                        Center(child: Text(i18n.t('No sync errors'))),
                       ],
                     ),
                   );
@@ -100,7 +103,7 @@ class _SyncErrorLogScreenState extends ConsumerState<SyncErrorLogScreen> {
                             style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                           subtitle: Text(
-                            'Scope: ${item['scope'] ?? ''} • Source: ${item['sourceCode'] ?? '-'}',
+                            'Scope: ${item['scope'] ?? ''} • ${i18n.t('Source')}: ${item['sourceCode'] ?? '-'}',
                           ),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () async {
@@ -122,7 +125,7 @@ class _SyncErrorLogScreenState extends ConsumerState<SyncErrorLogScreen> {
                                       const SizedBox(height: 12),
                                       Text('Scope: ${item['scope'] ?? ''}'),
                                       Text(
-                                          'Source: ${item['sourceCode'] ?? '-'}'),
+                                          '${i18n.t('Source')}: ${item['sourceCode'] ?? '-'}'),
                                       Text(
                                           'Reference: ${item['referenceId'] ?? '-'}'),
                                       Text(

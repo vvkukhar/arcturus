@@ -1,5 +1,3 @@
-// lib/features/item_details/presentation/widgets/item_detail_notes_card.dart
-
 import 'package:flutter/material.dart';
 
 class ItemDetailNotesCard extends StatelessWidget {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class SettingsCurrencyHeaderCard extends StatelessWidget {
+class SettingsCurrencyHeaderCard extends ConsumerWidget {
   final String baseCurrency;
   final bool useOfficialRates;
 
@@ -11,23 +13,25 @@ class SettingsCurrencyHeaderCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Currency Overview',
-              style: TextStyle(
+            Text(
+              i18n.t('Currency Overview'),
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 10),
-            Text('Base currency: $baseCurrency'),
-            Text('Official rates: ${useOfficialRates ? 'enabled' : 'disabled'}'),
+            Text('${i18n.t('Base currency')}: $baseCurrency'),
+            Text('${i18n.t('Official rates')}: ${useOfficialRates ? i18n.t('enabled') : i18n.t('disabled')}'),
           ],
         ),
       ),

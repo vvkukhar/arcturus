@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/flows/application/purchase_flow_provider.dart';
 import 'package:lego_trading_manager/features/flows/data/flows_api_repository_provider.dart';
 
@@ -20,10 +21,11 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
   Widget build(BuildContext context) {
     final flow = ref.watch(purchaseFlowProvider);
     final repo = ref.watch(flowsApiRepositoryProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Purchase Flow'),
+        title: Text(i18n.t('flow.purchase.title')),
       ),
       body: flow.when(
         data: (items) {
@@ -31,9 +33,9 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
             return RefreshIndicator(
               onRefresh: _reload,
               child: ListView(
-                children: const [
-                  SizedBox(height: 250),
-                  Center(child: Text('Purchase flow is empty')),
+                children: [
+                  const SizedBox(height: 250),
+                  Center(child: Text(i18n.t('flow.purchase.empty'))),
                 ],
               ),
             );
@@ -58,7 +60,7 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 6),
-                        Text('Status: ${item.status}'),
+                        Text('${i18n.t('flow.purchase.status')} ${item.status}'),
                         const SizedBox(height: 10),
                         FilledButton(
                           onPressed: item.status == 'bought'
@@ -71,27 +73,27 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
                                     context: context,
                                     builder: (dialogContext) {
                                       return AlertDialog(
-                                        title: const Text('Mark Bought'),
+                                        title: Text(i18n.t('flow.purchase.markBought')),
                                         content: Column(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             TextField(
                                               controller: priceController,
                                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                              decoration: const InputDecoration(labelText: 'Purchase price'),
+                                              decoration: InputDecoration(labelText: i18n.t('inv.price')),
                                             ),
                                             const SizedBox(height: 12),
                                             TextField(
                                               controller: qtyController,
                                               keyboardType: TextInputType.number,
-                                              decoration: const InputDecoration(labelText: 'Quantity'),
+                                              decoration: InputDecoration(labelText: i18n.t('inv.qty')),
                                             ),
                                           ],
                                         ),
                                         actions: [
                                           TextButton(
                                             onPressed: () => Navigator.of(dialogContext).pop(),
-                                            child: const Text('Cancel'),
+                                            child: Text(i18n.t('flow.purchase.cancel')),
                                           ),
                                           FilledButton(
                                             onPressed: () async {
@@ -109,17 +111,17 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
                                               if (!mounted) return;
 
                                               messenger.showSnackBar(
-                                                const SnackBar(content: Text('Marked bought')),
+                                                SnackBar(content: Text(i18n.t('flow.purchase.marked'))),
                                               );
                                             },
-                                            child: const Text('Confirm'),
+                                            child: Text(i18n.t('flow.purchase.confirm')),
                                           ),
                                         ],
                                       );
                                     },
                                   );
                                 },
-                          child: const Text('Mark bought'),
+                          child: Text(i18n.t('flow.purchase.markBought')),
                         ),
                       ],
                     ),
@@ -130,7 +132,7 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Error: $error')),
+        error: (error, _) => Center(child: Text('${i18n.t('common.error', {'error': error.toString()})}')),
       ),
     );
   }

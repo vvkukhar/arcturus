@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryBulkToolsCard extends StatelessWidget {
+class InventoryBulkToolsCard extends ConsumerWidget {
   final int selectedCount;
   final VoidCallback onOpenReprice;
   final VoidCallback onSelectAllVisible;
@@ -15,8 +17,9 @@ class InventoryBulkToolsCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (selectedCount == 0) return const SizedBox.shrink();
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -28,17 +31,17 @@ class InventoryBulkToolsCard extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: onOpenReprice,
               icon: const Icon(Icons.sell_outlined),
-              label: const Text('Bulk Reprice'),
+              label: Text(i18n.t('Bulk Reprice')),
             ),
             FilledButton.tonalIcon(
               onPressed: onSelectAllVisible,
               icon: const Icon(Icons.select_all),
-              label: const Text('Select Visible'),
+              label: Text(i18n.t('Select Visible')),
             ),
             FilledButton.tonalIcon(
               onPressed: onClearSelection,
               icon: const Icon(Icons.clear_all),
-              label: const Text('Clear Selection'),
+              label: Text(i18n.t('Clear Selection')),
             ),
           ],
         ),

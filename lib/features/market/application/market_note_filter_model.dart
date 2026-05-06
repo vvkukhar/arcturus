@@ -1,4 +1,3 @@
-// lib/features/market/application/market_note_filter_model.dart
 class MarketNoteFilterModel {
   final String? snapshotIdContains;
   final DateTime? from;

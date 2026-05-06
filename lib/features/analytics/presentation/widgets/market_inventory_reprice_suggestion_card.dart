@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/market_inventory_reprice_suggestion_model.dart';
 import 'package:lego_trading_manager/features/analytics/presentation/widgets/analytics_reprice_diff_badge.dart';
 
-class MarketInventoryRepriceSuggestionCard extends StatelessWidget {
+class MarketInventoryRepriceSuggestionCard extends ConsumerWidget {
   final MarketInventoryRepriceSuggestionModel model;
   final bool selected;
   final ValueChanged<bool?>? onSelect;
@@ -23,7 +25,8 @@ class MarketInventoryRepriceSuggestionCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final deltaColor = _deltaColor();
 
     return Card(
@@ -56,15 +59,15 @@ class MarketInventoryRepriceSuggestionCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Current ${model.currentExpected.toStringAsFixed(2)} → '
-              'Market ${model.marketAverage.toStringAsFixed(2)} → '
-              'Suggested ${model.suggestedPrice.toStringAsFixed(2)}',
+              '${i18n.t('Current')} ${model.currentExpected.toStringAsFixed(2)} → '
+              '${i18n.t('Market')} ${model.marketAverage.toStringAsFixed(2)} → '
+              '${i18n.t('Suggested')} ${model.suggestedPrice.toStringAsFixed(2)}',
             ),
             const SizedBox(height: 8),
             Text(
               model.suggestedPrice >= model.currentExpected
-                  ? 'Suggested price goes up'
-                  : 'Suggested price goes down',
+                  ? i18n.t('Suggested price goes up')
+                  : i18n.t('Suggested price goes down'),
               style: TextStyle(
                 color: deltaColor,
                 fontWeight: FontWeight.w700,
@@ -75,7 +78,7 @@ class MarketInventoryRepriceSuggestionCard extends StatelessWidget {
               FilledButton.tonalIcon(
                 onPressed: onApply,
                 icon: const Icon(Icons.auto_fix_high_outlined),
-                label: const Text('Apply Suggested Price'),
+                label: Text(i18n.t('Apply Suggested Price')),
               ),
             ],
           ],

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/data/models/partout_project_status.dart';
 import 'package:lego_trading_manager/features/partout/application/partout_filter_model.dart';
 
-class PartOutFilterSheet extends StatefulWidget {
+class PartOutFilterSheet extends ConsumerStatefulWidget {
   final PartOutFilterModel initialFilter;
 
   const PartOutFilterSheet({
@@ -11,10 +13,10 @@ class PartOutFilterSheet extends StatefulWidget {
   });
 
   @override
-  State<PartOutFilterSheet> createState() => _PartOutFilterSheetState();
+  ConsumerState<PartOutFilterSheet> createState() => _PartOutFilterSheetState();
 }
 
-class _PartOutFilterSheetState extends State<PartOutFilterSheet> {
+class _PartOutFilterSheetState extends ConsumerState<PartOutFilterSheet> {
   late PartOutFilterModel _filter;
   late final TextEditingController _titleController;
 
@@ -48,6 +50,8 @@ class _PartOutFilterSheetState extends State<PartOutFilterSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -59,9 +63,9 @@ class _PartOutFilterSheetState extends State<PartOutFilterSheet> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const Text(
-              'Part-out Filters',
-              style: TextStyle(
+            Text(
+              i18n.t('Part-out Filters'),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
               ),
@@ -69,16 +73,16 @@ class _PartOutFilterSheetState extends State<PartOutFilterSheet> {
             const SizedBox(height: 16),
             DropdownButtonFormField<PartOutProjectStatus?>(
               value: _filter.status,
-              decoration: const InputDecoration(labelText: 'Status'),
+              decoration: InputDecoration(labelText: i18n.t('Status')),
               items: [
-                const DropdownMenuItem<PartOutProjectStatus?>(
+                DropdownMenuItem<PartOutProjectStatus?>(
                   value: null,
-                  child: Text('Any'),
+                  child: Text(i18n.t('All')),
                 ),
                 ...PartOutProjectStatus.values.map(
                   (status) => DropdownMenuItem<PartOutProjectStatus?>(
                     value: status,
-                    child: Text(status.name),
+                    child: Text(i18n.t(status.name)),
                   ),
                 ),
               ],
@@ -94,12 +98,12 @@ class _PartOutFilterSheetState extends State<PartOutFilterSheet> {
             const SizedBox(height: 12),
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Title contains'),
+              decoration: InputDecoration(labelText: i18n.t('Title contains')),
             ),
             const SizedBox(height: 12),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Expected profit only'),
+              title: Text(i18n.t('Expected profit only')),
               value: _filter.onlyProfitableExpected,
               onChanged: (value) {
                 setState(() {
@@ -109,7 +113,7 @@ class _PartOutFilterSheetState extends State<PartOutFilterSheet> {
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Actual profit only'),
+              title: Text(i18n.t('Actual profit only')),
               value: _filter.onlyProfitableActual,
               onChanged: (value) {
                 setState(() {
@@ -119,7 +123,7 @@ class _PartOutFilterSheetState extends State<PartOutFilterSheet> {
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Only with notes'),
+              title: Text(i18n.t('Only with notes')),
               value: _filter.onlyWithNotes,
               onChanged: (value) {
                 setState(() {
@@ -133,14 +137,14 @@ class _PartOutFilterSheetState extends State<PartOutFilterSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _clear,
-                    child: const Text('Clear'),
+                    child: Text(i18n.t('common.clear')),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
                     onPressed: _apply,
-                    child: const Text('Apply'),
+                    child: Text(i18n.t('common.apply')),
                   ),
                 ),
               ],

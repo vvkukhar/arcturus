@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_streak_insight_model.dart';
 
-class ActivityStreakInsightCard extends StatelessWidget {
+class ActivityStreakInsightCard extends ConsumerWidget {
   final ActivityStreakInsightModel model;
 
   const ActivityStreakInsightCard({
@@ -10,12 +12,14 @@ class ActivityStreakInsightCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Chip(
-          label: Text('${model.label} (${model.value})'),
+          label: Text('${i18n.t(model.label)} (${model.value})'),
         ),
       ),
     );

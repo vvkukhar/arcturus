@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
 import 'package:lego_trading_manager/features/command_center/application/command_center_badge_provider.dart';
@@ -36,6 +37,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
     final sections = ref.watch(commandCenterVisibleSectionsProvider);
     final counters = ref.watch(commandCenterCountersProvider);
     final badgeService = ref.watch(commandCenterBadgeProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     String? badgeFor(String route) {
       for (final item in counters) {
@@ -48,7 +50,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Command Center'),
+        title: Text(i18n.t('cc.title')),
       ),
       drawer: const AppDrawer(),
       floatingActionButton: const GlobalQuickAddFab(),
@@ -71,7 +73,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  section.title,
+                  i18n.t(section.title),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,

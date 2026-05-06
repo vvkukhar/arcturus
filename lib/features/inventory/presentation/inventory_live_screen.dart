@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/decisions/data/decisions_api_repository_provider.dart';
 import 'package:lego_trading_manager/features/inventory/data/inventory_api_repository_provider.dart';
 import 'package:lego_trading_manager/features/market/data/market_api_repository_provider.dart';
@@ -34,9 +35,10 @@ class _InventoryLiveScreenState extends ConsumerState<InventoryLiveScreen> {
     final marketRepository = ref.watch(marketApiRepositoryProvider);
     final decisionsRepository = ref.watch(decisionsApiRepositoryProvider);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Inventory Live')),
+      appBar: AppBar(title: Text(i18n.t('Inventory Live'))),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
         builder: (context, snapshot) {
@@ -44,7 +46,7 @@ class _InventoryLiveScreenState extends ConsumerState<InventoryLiveScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('${i18n.t('common.error', {'error': snapshot.error.toString()})}'));
           }
 
           final items = snapshot.data ?? [];
@@ -53,9 +55,9 @@ class _InventoryLiveScreenState extends ConsumerState<InventoryLiveScreen> {
             return RefreshIndicator(
               onRefresh: _reload,
               child: ListView(
-                children: const [
-                  SizedBox(height: 250),
-                  Center(child: Text('No inventory')),
+                children: [
+                  const SizedBox(height: 250),
+                  Center(child: Text(i18n.t('No inventory'))),
                 ],
               ),
             );
@@ -82,7 +84,7 @@ class _InventoryLiveScreenState extends ConsumerState<InventoryLiveScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Cost: ${item['totalCost']} • Expected: ${item['expectedSalePriceManual']}',
+                          '${i18n.t('Cost')}: ${item['totalCost']} • ${i18n.t('Expected')}: ${item['expectedSalePriceManual']}',
                         ),
                         const SizedBox(height: 10),
                         Wrap(
@@ -97,12 +99,12 @@ class _InventoryLiveScreenState extends ConsumerState<InventoryLiveScreen> {
 
                                 if (!mounted) return;
                                 scaffoldMessenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Added to reprice flow'),
+                                  SnackBar(
+                                    content: Text(i18n.t('Added to reprice flow')),
                                   ),
                                 );
                               },
-                              child: const Text('Reprice'),
+                              child: Text(i18n.t('Reprice')),
                             ),
                             TextButton(
                               onPressed: () async {
@@ -113,12 +115,12 @@ class _InventoryLiveScreenState extends ConsumerState<InventoryLiveScreen> {
 
                                 if (!mounted) return;
                                 scaffoldMessenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Added to review flow'),
+                                  SnackBar(
+                                    content: Text(i18n.t('Added to review flow')),
                                   ),
                                 );
                               },
-                              child: const Text('Review'),
+                              child: Text(i18n.t('Review')),
                             ),
                             FilledButton.tonal(
                               onPressed: () async {
@@ -133,12 +135,12 @@ class _InventoryLiveScreenState extends ConsumerState<InventoryLiveScreen> {
 
                                 if (!mounted) return;
                                 scaffoldMessenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Inventory item refreshed'),
+                                  SnackBar(
+                                    content: Text(i18n.t('Inventory item refreshed')),
                                   ),
                                 );
                               },
-                              child: const Text('Refresh'),
+                              child: Text(i18n.t('Refresh')),
                             ),
                           ],
                         ),

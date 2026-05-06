@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_automation_maturity_model.dart';
 
-class AnalyticsAutomationMaturityCard extends StatelessWidget {
+class AnalyticsAutomationMaturityCard extends ConsumerWidget {
   final AnalyticsAutomationMaturityModel model;
 
   const AnalyticsAutomationMaturityCard({
@@ -10,7 +12,8 @@ class AnalyticsAutomationMaturityCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final color = model.scheduleEnabled ? Colors.green : Colors.orange;
 
     return Card(
@@ -20,7 +23,7 @@ class AnalyticsAutomationMaturityCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              model.label,
+              i18n.t(model.label),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
@@ -31,13 +34,13 @@ class AnalyticsAutomationMaturityCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                Chip(label: Text('Enabled rules ${model.enabledRules}')),
+                Chip(label: Text('${i18n.t('Enabled rules')} ${model.enabledRules}')),
                 Chip(
                   label: Text(
-                      model.scheduleEnabled ? 'Schedule on' : 'Schedule off'),
+                      model.scheduleEnabled ? i18n.t('Schedule on') : i18n.t('Schedule off')),
                   backgroundColor: color.withValues(alpha: 0.15),
                 ),
-                Chip(label: Text('Runs ${model.totalRuns}')),
+                Chip(label: Text('${i18n.t('Runs')} ${model.totalRuns}')),
               ],
             ),
           ],

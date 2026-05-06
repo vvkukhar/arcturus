@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_review_heat_model.dart';
 
-class InventoryReviewHeatCard extends StatelessWidget {
+class InventoryReviewHeatCard extends ConsumerWidget {
   final InventoryReviewHeatModel model;
 
   const InventoryReviewHeatCard({
@@ -10,7 +12,8 @@ class InventoryReviewHeatCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final color = model.heatScore >= 25
         ? Colors.redAccent
         : model.heatScore >= 12
@@ -26,7 +29,7 @@ class InventoryReviewHeatCard extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                model.label,
+                i18n.t(model.label),
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
                 ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/source_health/data/source_health_api_repository_provider.dart';
 
 class SourceHealthDetailsScreen extends ConsumerStatefulWidget {
@@ -31,10 +32,11 @@ class _SourceHealthDetailsScreenState
   Widget build(BuildContext context) {
     final repository = ref.watch(sourceHealthApiRepositoryProvider);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Source Health Details'),
+        title: Text(i18n.t('Source Health Details')),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
@@ -44,7 +46,7 @@ class _SourceHealthDetailsScreenState
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('${i18n.t('common.error', {'error': snapshot.error.toString()})}'));
           }
 
           final items = snapshot.data ?? [];
@@ -53,9 +55,9 @@ class _SourceHealthDetailsScreenState
             return RefreshIndicator(
               onRefresh: _reload,
               child: ListView(
-                children: const [
-                  SizedBox(height: 250),
-                  Center(child: Text('No source health data')),
+                children: [
+                  const SizedBox(height: 250),
+                  Center(child: Text(i18n.t('No source health data'))),
                 ],
               ),
             );

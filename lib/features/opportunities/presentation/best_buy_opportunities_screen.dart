@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/flows/application/purchase_flow_provider.dart';
 import 'package:lego_trading_manager/features/flows/data/flows_api_repository_provider.dart';
 import 'package:lego_trading_manager/features/opportunities/application/best_buy_opportunities_provider.dart';
@@ -12,16 +13,17 @@ class BestBuyOpportunitiesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final opportunities = ref.watch(bestBuyOpportunitiesProvider);
     final flowsRepository = ref.watch(flowsApiRepositoryProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Best Buy Opportunities'),
+        title: Text(i18n.t('Best Buy Opportunities')),
       ),
       body: opportunities.when(
         data: (items) {
           if (items.isEmpty) {
-            return const Center(
-              child: Text('No buy opportunities'),
+            return Center(
+              child: Text(i18n.t('No buy opportunities')),
             );
           }
 
@@ -45,17 +47,17 @@ class BestBuyOpportunitiesScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Buy ${item.totalBuy.toStringAsFixed(2)} • Target ${item.targetSellPrice.toStringAsFixed(2)}',
+                        '${i18n.t('Buy')} ${item.totalBuy.toStringAsFixed(2)} • Target ${item.targetSellPrice.toStringAsFixed(2)}',
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Profit ${item.profit.toStringAsFixed(2)} • ROI ${item.roi.toStringAsFixed(2)}% • Margin ${item.marginPercent.toStringAsFixed(2)}%',
+                        '${i18n.t('Profit')} ${item.profit.toStringAsFixed(2)} • ROI ${item.roi.toStringAsFixed(2)}% • ${i18n.t('Margin')} ${item.marginPercent.toStringAsFixed(2)}%',
                       ),
                       const SizedBox(height: 4),
-                      Text('${item.action} • ${item.actionReasonPrimary}'),
+                      Text('${i18n.t(item.action)} • ${i18n.t(item.actionReasonPrimary)}'),
                       const SizedBox(height: 4),
                       Text(
-                          '${item.type} • ${item.freshness} • ${item.sourceCode}'),
+                          '${i18n.t(item.type)} • ${i18n.t(item.freshness)} • ${item.sourceCode}'),
                       const SizedBox(height: 8),
                       Text(
                         'Score ${item.score.toStringAsFixed(0)}',
@@ -72,8 +74,8 @@ class BestBuyOpportunitiesScreen extends ConsumerWidget {
                           ref.invalidate(purchaseFlowProvider);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Added to purchase flow'),
+                              SnackBar(
+                                content: Text(i18n.t('Added to purchase flow')),
                               ),
                             );
                           }
@@ -90,7 +92,7 @@ class BestBuyOpportunitiesScreen extends ConsumerWidget {
           child: CircularProgressIndicator(),
         ),
         error: (error, _) => Center(
-          child: Text('Error: $error'),
+          child: Text('${i18n.t('common.error', {'error': error.toString()})}'),
         ),
       ),
     );

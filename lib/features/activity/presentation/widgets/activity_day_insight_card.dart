@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_day_insight_model.dart';
 
-class ActivityDayInsightCard extends StatelessWidget {
+class ActivityDayInsightCard extends ConsumerWidget {
   final ActivityDayInsightModel? model;
 
   const ActivityDayInsightCard({
@@ -10,7 +12,8 @@ class ActivityDayInsightCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     if (model == null) return const SizedBox.shrink();
     return Card(
       child: Padding(
@@ -21,10 +24,10 @@ class ActivityDayInsightCard extends StatelessWidget {
           children: [
             Chip(
                 label:
-                    Text('Best: ${model!.bestDay} (${model!.bestDayTotal})')),
+                    Text('${i18n.t('Best')}: ${model!.bestDay} (${model!.bestDayTotal})')),
             Chip(
               label: Text(
-                'Weakest: ${model!.weakestDay} (${model!.weakestDayTotal})',
+                '${i18n.t('Weakest')}: ${model!.weakestDay} (${model!.weakestDayTotal})',
               ),
             ),
           ],

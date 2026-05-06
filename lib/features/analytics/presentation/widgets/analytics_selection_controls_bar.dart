@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class AnalyticsSelectionControlsBar extends StatelessWidget {
+class AnalyticsSelectionControlsBar extends ConsumerWidget {
   final VoidCallback onSelectAll;
   final VoidCallback onClear;
 
@@ -11,17 +13,19 @@ class AnalyticsSelectionControlsBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Row(
       children: [
         TextButton(
           onPressed: onSelectAll,
-          child: const Text('Select All'),
+          child: Text(i18n.t('Select All')),
         ),
         const SizedBox(width: 8),
         TextButton(
           onPressed: onClear,
-          child: const Text('Clear'),
+          child: Text(i18n.t('common.clear')),
         ),
       ],
     );

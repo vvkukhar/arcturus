@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/operator/data/operator_api_repository_provider.dart';
 
 class SourceRunDetailScreen extends ConsumerWidget {
@@ -13,9 +14,11 @@ class SourceRunDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repository = ref.watch(operatorApiRepositoryProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Source Run Details'),
+        title: Text(i18n.t('Source Run Details')),
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
         future: repository.getSourceRunDetails(runId),
@@ -24,11 +27,11 @@ class SourceRunDetailScreen extends ConsumerWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('${i18n.t('common.error', {'error': snapshot.error.toString()})}'));
           }
           final item = snapshot.data;
           if (item == null) {
-            return const Center(child: Text('Run not found'));
+            return Center(child: Text(i18n.t('Run not found')));
           }
           final source =
               Map<String, dynamic>.from(item['source'] as Map? ?? {});
@@ -49,14 +52,14 @@ class SourceRunDetailScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Text('Status: ${item['status'] ?? ''}'),
-                      Text('Started: ${item['startedAt'] ?? '-'}'),
-                      Text('Finished: ${item['finishedAt'] ?? '-'}'),
-                      Text('Seen: ${item['itemsSeen'] ?? 0}'),
-                      Text('Matched: ${item['itemsMatched'] ?? 0}'),
-                      Text('Inserted: ${item['itemsInserted'] ?? 0}'),
-                      Text('Updated: ${item['itemsUpdated'] ?? 0}'),
-                      Text('Error: ${item['errorMessage'] ?? '-'}'),
+                      Text('${i18n.t('Status')}: ${item['status'] ?? ''}'),
+                      Text('${i18n.t('Started')}: ${item['startedAt'] ?? '-'}'),
+                      Text('${i18n.t('Finished')}: ${item['finishedAt'] ?? '-'}'),
+                      Text('${i18n.t('Seen')}: ${item['itemsSeen'] ?? 0}'),
+                      Text('${i18n.t('Matched')}: ${item['itemsMatched'] ?? 0}'),
+                      Text('${i18n.t('Inserted')}: ${item['itemsInserted'] ?? 0}'),
+                      Text('${i18n.t('Updated')}: ${item['itemsUpdated'] ?? 0}'),
+                      Text('${i18n.t('common.error', {'error': ''})}: ${item['errorMessage'] ?? '-'}'),
                     ],
                   ),
                 ),

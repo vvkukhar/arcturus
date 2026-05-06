@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/bootstrap/app_bootstrap_controller.dart';
 import 'package:lego_trading_manager/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class AppBootstrapScreen extends ConsumerStatefulWidget {
   const AppBootstrapScreen({super.key});
@@ -14,7 +15,6 @@ class _AppBootstrapScreenState extends ConsumerState<AppBootstrapScreen> {
   @override
   void initState() {
     super.initState();
-
     Future.microtask(() {
       ref.read(appBootstrapControllerProvider.notifier).load();
     });
@@ -23,6 +23,7 @@ class _AppBootstrapScreenState extends ConsumerState<AppBootstrapScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(appBootstrapControllerProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return state.when(
       loading: () {
@@ -42,9 +43,9 @@ class _AppBootstrapScreenState extends ConsumerState<AppBootstrapScreen> {
                 children: [
                   const Icon(Icons.error_outline, size: 48),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Failed to load local data',
-                    style: TextStyle(
+                  Text(
+                    i18n.t('bootstrap.error'),
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                     ),
@@ -59,7 +60,7 @@ class _AppBootstrapScreenState extends ConsumerState<AppBootstrapScreen> {
                     onPressed: () {
                       ref.read(appBootstrapControllerProvider.notifier).load();
                     },
-                    child: const Text('Retry'),
+                    child: Text(i18n.t('bootstrap.retry')),
                   ),
                 ],
               ),

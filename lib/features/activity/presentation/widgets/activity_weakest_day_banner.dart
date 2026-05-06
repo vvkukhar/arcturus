@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_weakest_day_model.dart';
 
-class ActivityWeakestDayBanner extends StatelessWidget {
+class ActivityWeakestDayBanner extends ConsumerWidget {
   final ActivityWeakestDayModel? model;
 
   const ActivityWeakestDayBanner({
@@ -10,8 +12,10 @@ class ActivityWeakestDayBanner extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     if (model == null) return const SizedBox.shrink();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -20,7 +24,7 @@ class ActivityWeakestDayBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
-        'Weakest day: ${model!.dateLabel} • ${model!.total} events',
+        '${i18n.t('Weakest day')}: ${model!.dateLabel} • ${model!.total} ${i18n.t('events')}',
         style: const TextStyle(
           fontWeight: FontWeight.w800,
         ),

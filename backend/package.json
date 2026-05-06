@@ -1,0 +1,21 @@
+{
+  "name": "arcturus-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev --workspace=@arcturus/api",
+    "dev:workers": "npm run start:dev --workspace=@arcturus/workers",
+    "dev:scrapers": "npm run start:dev --workspace=@arcturus/scrapers",
+    "build:all": "npm run build --workspaces",
+    "db:generate": "npm run generate --workspace=@arcturus/db",
+    "db:push": "npm run push --workspace=@arcturus/db",
+    "db:migrate": "npm run migrate --workspace=@arcturus/db",
+    "db:studio": "npm run studio --workspace=@arcturus/db"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

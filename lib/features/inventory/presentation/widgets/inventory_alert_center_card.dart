@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_alert_item_model.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/widgets/inventory_alert_action_chips.dart';
 
-class InventoryAlertCenterCard extends StatelessWidget {
+class InventoryAlertCenterCard extends ConsumerWidget {
   final List<InventoryAlertItemModel> items;
   final VoidCallback? onOpenRepricing;
   final VoidCallback? onOpenOldestHeld;
@@ -17,12 +19,13 @@ class InventoryAlertCenterCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     if (items.isEmpty) {
-      return const Card(
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(14),
-          child: Text('No inventory alerts right now.'),
+          padding: const EdgeInsets.all(14),
+          child: Text(i18n.t('No inventory alerts right now.')),
         ),
       );
     }
@@ -33,9 +36,9 @@ class InventoryAlertCenterCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Alert Center',
-              style: TextStyle(
+            Text(
+              i18n.t('Alert Center'),
+              style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
               ),
@@ -54,7 +57,7 @@ class InventoryAlertCenterCard extends StatelessWidget {
             ...items.take(6).map(
                   (item) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Text('${item.title} • ${item.reason}'),
+                    child: Text('${item.title} • ${i18n.t(item.reason)}'),
                   ),
                 ),
           ],

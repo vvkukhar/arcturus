@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_controller.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_purchase_flow_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_top_buy_candidates_provider.dart';
@@ -13,14 +14,15 @@ class BuyQueueScreen extends ConsumerWidget {
     final items = ref.watch(watchlistTopBuyCandidatesProvider);
     final watchlistState = ref.watch(watchlistControllerProvider);
     final watchlistItems = watchlistState.allItems;
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Buy Queue'),
+        title: Text(i18n.t('Buy Queue')),
       ),
       body: items.isEmpty
-          ? const Center(
-              child: Text('No buy candidates right now.'),
+          ? Center(
+              child: Text(i18n.t('No buy candidates right now.')),
             )
           : ListView.separated(
               padding: const EdgeInsets.all(16),
@@ -77,7 +79,7 @@ class BuyQueueScreen extends ConsumerWidget {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  '${source.title} added to purchase flow',
+                                  '${source.title} ${i18n.t('added to purchase flow')}',
                                 ),
                               ),
                             );

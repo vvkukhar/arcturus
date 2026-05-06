@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/sync/background_sync_service_provider.dart';
 import 'package:lego_trading_manager/core/sync/sync_queue_repository_provider.dart';
 
@@ -31,10 +32,11 @@ class _ManualSyncQueueScreenState extends ConsumerState<ManualSyncQueueScreen> {
   Widget build(BuildContext context) {
     final backgroundSync = ref.watch(backgroundSyncServiceProvider);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manual Sync Queue'),
+        title: Text(i18n.t('Manual Sync Queue')),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
@@ -44,8 +46,8 @@ class _ManualSyncQueueScreenState extends ConsumerState<ManualSyncQueueScreen> {
           if (!mounted) return;
 
           scaffoldMessenger.showSnackBar(
-            const SnackBar(
-              content: Text('Sync queue flushed'),
+            SnackBar(
+              content: Text(i18n.t('Sync queue flushed')),
             ),
           );
         },
@@ -59,7 +61,7 @@ class _ManualSyncQueueScreenState extends ConsumerState<ManualSyncQueueScreen> {
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('${i18n.t('common.error', {'error': snapshot.error.toString()})}'));
           }
 
           final items = snapshot.data ?? [];
@@ -68,9 +70,9 @@ class _ManualSyncQueueScreenState extends ConsumerState<ManualSyncQueueScreen> {
             return RefreshIndicator(
               onRefresh: _reload,
               child: ListView(
-                children: const [
-                  SizedBox(height: 250),
-                  Center(child: Text('Sync queue is empty')),
+                children: [
+                  const SizedBox(height: 250),
+                  Center(child: Text(i18n.t('Sync queue is empty'))),
                 ],
               ),
             );

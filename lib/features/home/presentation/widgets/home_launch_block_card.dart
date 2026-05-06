@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/home/application/home_launch_block_provider.dart';
 
-class HomeLaunchBlockCard extends StatelessWidget {
+class HomeLaunchBlockCard extends ConsumerWidget {
   final HomeLaunchBlockModel model;
   final VoidCallback onOpenDashboard;
 
@@ -12,7 +14,8 @@ class HomeLaunchBlockCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -45,7 +48,7 @@ class HomeLaunchBlockCard extends StatelessWidget {
           const SizedBox(height: 12),
           FilledButton(
             onPressed: onOpenDashboard,
-            child: const Text('Open dashboard'),
+            child: Text(i18n.t('home.openDashboard')),
           ),
         ],
       ),

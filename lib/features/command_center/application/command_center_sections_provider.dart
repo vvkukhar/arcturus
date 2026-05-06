@@ -1,4 +1,3 @@
-// lib/features/command_center/application/command_center_sections_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
 import 'package:lego_trading_manager/features/command_center/application/command_center_action_model.dart';
@@ -8,93 +7,93 @@ final commandCenterSectionsProvider =
     Provider<List<CommandCenterSectionModel>>((ref) {
   return const [
     CommandCenterSectionModel(
-      title: 'Core',
+      title: 'cc.core',
       actions: [
         CommandCenterActionModel(
           id: 'inventory',
-          title: 'Inventory',
-          subtitle: 'Items, filters, bulk actions',
+          title: 'cc.inv',
+          subtitle: 'cc.inv.sub',
           route: AppRouter.inventory,
         ),
         CommandCenterActionModel(
           id: 'watchlist',
-          title: 'Watchlist',
-          subtitle: 'Targets and opportunities',
+          title: 'cc.watch',
+          subtitle: 'cc.watch.sub',
           route: AppRouter.watchlist,
         ),
         CommandCenterActionModel(
           id: 'market',
-          title: 'Market',
-          subtitle: 'Snapshots and trends',
+          title: 'cc.market',
+          subtitle: 'cc.market.sub',
           route: AppRouter.market,
         ),
       ],
     ),
     CommandCenterSectionModel(
-      title: 'Trading',
+      title: 'cc.trading',
       actions: [
         CommandCenterActionModel(
           id: 'purchases',
-          title: 'Purchases',
-          subtitle: 'Buy records and source costs',
+          title: 'cc.purchases',
+          subtitle: 'cc.purchases.sub',
           route: AppRouter.purchases,
         ),
         CommandCenterActionModel(
           id: 'sales',
-          title: 'Sales',
-          subtitle: 'Sales, fees and net',
+          title: 'cc.sales',
+          subtitle: 'cc.sales.sub',
           route: AppRouter.sales,
         ),
         CommandCenterActionModel(
           id: 'deal_eval',
-          title: 'Deal Evaluator',
-          subtitle: 'Check new deals quickly',
+          title: 'cc.dealEval',
+          subtitle: 'cc.dealEval.sub',
           route: AppRouter.dealEvaluator,
         ),
       ],
     ),
     CommandCenterSectionModel(
-      title: 'Quick Create',
+      title: 'cc.quickAdd',
       actions: [
         CommandCenterActionModel(
           id: 'create_item',
-          title: 'Create Item',
-          subtitle: 'Open add item form',
+          title: 'cc.addItem',
+          subtitle: 'cc.addItem.sub',
           route: AppRouter.addItem,
         ),
         CommandCenterActionModel(
           id: 'create_purchase',
-          title: 'Create Purchase',
-          subtitle: 'Open add purchase form',
+          title: 'cc.addPurchase',
+          subtitle: 'cc.addPurchase.sub',
           route: AppRouter.addPurchase,
         ),
         CommandCenterActionModel(
           id: 'create_sale',
-          title: 'Create Sale',
-          subtitle: 'Open add sale form',
+          title: 'cc.addSale',
+          subtitle: 'cc.addSale.sub',
           route: AppRouter.addSale,
         ),
       ],
     ),
     CommandCenterSectionModel(
-      title: 'System',
+      title: 'cc.system',
       actions: [
         CommandCenterActionModel(
           id: 'settings',
-          title: 'Settings',
-          subtitle: 'System controls and tools',
+          title: 'cc.settings',
+          subtitle: 'cc.settings.sub',
           route: AppRouter.settings,
         ),
         CommandCenterActionModel(
           id: 'activity',
-          title: 'Activity Log',
-          subtitle: 'Recent events and saved actions',
+          title: 'cc.activity',
+          subtitle: 'cc.activity.sub',
           route: AppRouter.activityLog,
         ),
         CommandCenterActionModel(
           id: 'global_search',
-          title: 'Global Search',
-          subtitle: 'Find across the whole local system',
+          title: 'cc.searchGlob',
+          subtitle: 'cc.searchGlob.sub',
           route: AppRouter.globalSearch,
         ),
       ],

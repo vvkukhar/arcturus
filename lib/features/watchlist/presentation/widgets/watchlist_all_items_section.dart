@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_card_v2.dart';
 
-class WatchlistAllItemsSection extends StatelessWidget {
+class WatchlistAllItemsSection extends ConsumerWidget {
   final List<WatchlistItemModel> items;
   final String? Function(String id) priorityLabelFor;
   final String? Function(String id) smartRankLabelFor;
@@ -21,13 +23,15 @@ class WatchlistAllItemsSection extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'All Watchlist Items',
-          style: TextStyle(
+        Text(
+          i18n.t('All Watchlist Items'),
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
           ),

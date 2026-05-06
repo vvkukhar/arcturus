@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/application/purchase_flow_confirm_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_purchase_flow_provider.dart';
 
@@ -10,13 +11,14 @@ class PurchaseFlowScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(watchlistPurchaseFlowProvider);
     final confirmed = ref.watch(purchaseFlowConfirmProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Purchase Flow'),
+        title: Text(i18n.t('Purchase Flow')),
       ),
       body: items.isEmpty
-          ? const Center(child: Text('Purchase flow is empty.'))
+          ? Center(child: Text(i18n.t('Purchase flow is empty.')))
           : ListView(
               padding: const EdgeInsets.all(16),
               children: items.map((item) {
@@ -40,9 +42,9 @@ class PurchaseFlowScreen extends ConsumerWidget {
                               ),
                             ),
                             if (isConfirmed)
-                              const Text(
-                                'CONFIRMED',
-                                style: TextStyle(
+                              Text(
+                                i18n.t('CONFIRMED'),
+                                style: const TextStyle(
                                   color: Colors.green,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -51,7 +53,7 @@ class PurchaseFlowScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Target ${item.targetPrice} • Market ${item.marketPrice}',
+                          '${i18n.t('Target')} ${item.targetPrice} • ${i18n.t('Market')} ${item.marketPrice}',
                         ),
                         const SizedBox(height: 10),
                         Wrap(
@@ -63,7 +65,7 @@ class PurchaseFlowScreen extends ConsumerWidget {
                                     .read(purchaseFlowConfirmProvider.notifier)
                                     .confirm(item.id);
                               },
-                              child: const Text('Confirm buy'),
+                              child: Text(i18n.t('Confirm buy')),
                             ),
                             TextButton(
                               onPressed: () {
@@ -71,7 +73,7 @@ class PurchaseFlowScreen extends ConsumerWidget {
                                     .read(purchaseFlowConfirmProvider.notifier)
                                     .unconfirm(item.id);
                               },
-                              child: const Text('Undo'),
+                              child: Text(i18n.t('Undo')),
                             ),
                           ],
                         ),

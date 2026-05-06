@@ -8,9 +8,7 @@ class ApiConfig {
       return envUrl;
     }
     
-    if (kReleaseMode || kIsWeb) {
-      return 'https://arcturus-api-idsb.onrender.com/api';
-    }
-    return 'http://10.0.2.2:4000/api';
+    // Абсолютно завжди стукаємо на продакшен-бекенд
+    return 'https://arcturus-api-idsb.onrender.com/api';
   }
 }

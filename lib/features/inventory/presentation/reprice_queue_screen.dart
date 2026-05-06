@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_reprice_flow_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_top_reprice_candidates_provider.dart';
 
@@ -9,14 +10,15 @@ class RepriceQueueScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(inventoryTopRepriceCandidatesProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reprice Queue'),
+        title: Text(i18n.t('Reprice Queue')),
       ),
       body: items.isEmpty
-          ? const Center(
-              child: Text('No repricing candidates right now.'),
+          ? Center(
+              child: Text(i18n.t('No repricing candidates right now.')),
             )
           : ListView.separated(
               padding: const EdgeInsets.all(16),
@@ -50,7 +52,7 @@ class RepriceQueueScreen extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        Text(item.reason),
+                        Text(i18n.t(item.reason)),
                         const SizedBox(height: 10),
                         FilledButton(
                           onPressed: () {
@@ -67,11 +69,11 @@ class RepriceQueueScreen extends ConsumerWidget {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content:
-                                    Text('${item.title} marked for repricing'),
+                                    Text('${item.title} ${i18n.t('marked for repricing')}'),
                               ),
                             );
                           },
-                          child: const Text('Mark for repricing'),
+                          child: Text(i18n.t('Mark for repricing')),
                         ),
                       ],
                     ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_action_center_provider.dart';
 
-class DashboardActionCenterCard extends StatelessWidget {
+class DashboardActionCenterCard extends ConsumerWidget {
   final DashboardActionCenterModel model;
 
   const DashboardActionCenterCard({
@@ -10,7 +12,8 @@ class DashboardActionCenterCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -27,7 +30,7 @@ class DashboardActionCenterCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            model.headline,
+            i18n.t(model.headline),
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -35,7 +38,7 @@ class DashboardActionCenterCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            model.subline,
+            i18n.t(model.subline),
             style: const TextStyle(
               color: Colors.white70,
             ),

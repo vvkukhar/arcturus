@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryBulkReserveBar extends StatelessWidget {
+class InventoryBulkReserveBar extends ConsumerWidget {
   final int selectedCount;
   final VoidCallback onReserve;
   final VoidCallback onUnreserve;
@@ -13,8 +15,10 @@ class InventoryBulkReserveBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (selectedCount == 0) return const SizedBox.shrink();
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -25,12 +29,12 @@ class InventoryBulkReserveBar extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: onReserve,
               icon: const Icon(Icons.lock_outline),
-              label: const Text('Reserve Selected'),
+              label: Text(i18n.t('Reserve Selected')),
             ),
             FilledButton.tonalIcon(
               onPressed: onUnreserve,
               icon: const Icon(Icons.lock_open_outlined),
-              label: const Text('Unreserve Selected'),
+              label: Text(i18n.t('Unreserve Selected')),
             ),
           ],
         ),

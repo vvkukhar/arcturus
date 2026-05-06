@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/sale_stock_flow_status_model.dart';
 
-class SaleStockFlowStatusBadge extends StatelessWidget {
+class SaleStockFlowStatusBadge extends ConsumerWidget {
   final SaleStockFlowStatusModel model;
 
   const SaleStockFlowStatusBadge({
@@ -17,8 +19,9 @@ class SaleStockFlowStatusBadge extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = _color();
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -27,7 +30,7 @@ class SaleStockFlowStatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        '${model.label} ${model.allocatedQuantity}/${model.saleQuantity}',
+        '${i18n.t(model.label)} ${model.allocatedQuantity}/${model.saleQuantity}',
         style: TextStyle(
           color: color,
           fontWeight: FontWeight.w900,

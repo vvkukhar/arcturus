@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class WatchlistBatchActionBar extends StatelessWidget {
+class WatchlistBatchActionBar extends ConsumerWidget {
   final int selectedCount;
   final VoidCallback onClear;
   final VoidCallback onBuy;
@@ -13,8 +15,10 @@ class WatchlistBatchActionBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (selectedCount == 0) return const SizedBox.shrink();
+
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -23,18 +27,18 @@ class WatchlistBatchActionBar extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Selected: $selectedCount',
+                '${i18n.t('Selected')}: $selectedCount',
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
             ),
             TextButton(
               onPressed: onClear,
-              child: const Text('Clear'),
+              child: Text(i18n.t('common.clear')),
             ),
             const SizedBox(width: 8),
             FilledButton(
               onPressed: onBuy,
-              child: const Text('Buy All'),
+              child: Text(i18n.t('Buy All')),
             ),
           ],
         ),

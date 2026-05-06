@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/market/application/market_snapshot_note_model.dart';
 
-class MarketSnapshotNotesList extends StatelessWidget {
+class MarketSnapshotNotesList extends ConsumerWidget {
   final List<MarketSnapshotNoteModel> notes;
 
   const MarketSnapshotNotesList({
@@ -10,12 +12,14 @@ class MarketSnapshotNotesList extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     if (notes.isEmpty) {
-      return const Card(
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Text('No notes yet.'),
+          padding: const EdgeInsets.all(16),
+          child: Text(i18n.t('No notes yet.')),
         ),
       );
     }

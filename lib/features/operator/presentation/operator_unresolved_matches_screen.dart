@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/items/data/items_api_repository_provider.dart';
 import 'package:lego_trading_manager/features/operator/data/operator_api_repository_provider.dart';
 import 'package:lego_trading_manager/features/operator/presentation/widgets/unresolved_match_details_sheet.dart';
@@ -36,6 +37,7 @@ class _OperatorUnresolvedMatchesScreenState
     final operatorRepository = ref.read(operatorApiRepositoryProvider);
     final itemsRepository = ref.read(itemsApiRepositoryProvider);
     final results = await itemsRepository.searchItems(titleRaw);
+    final i18n = ref.read(i18nProvider.notifier);
 
     if (!mounted) {
       return;
@@ -49,9 +51,9 @@ class _OperatorUnresolvedMatchesScreenState
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              const Text(
-                'Select item',
-                style: TextStyle(
+              Text(
+                i18n.t('Select item'),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                 ),
@@ -83,8 +85,8 @@ class _OperatorUnresolvedMatchesScreenState
                     }
 
                     messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('Match resolved'),
+                      SnackBar(
+                        content: Text(i18n.t('Match resolved')),
                       ),
                     );
                   },
@@ -100,10 +102,11 @@ class _OperatorUnresolvedMatchesScreenState
   @override
   Widget build(BuildContext context) {
     final operatorRepository = ref.watch(operatorApiRepositoryProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Unresolved Matches'),
+        title: Text(i18n.t('Unresolved Matches')),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
@@ -112,7 +115,7 @@ class _OperatorUnresolvedMatchesScreenState
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('${i18n.t('common.error', {'error': snapshot.error.toString()})}'));
           }
 
           final items = snapshot.data ?? [];
@@ -121,9 +124,9 @@ class _OperatorUnresolvedMatchesScreenState
             return RefreshIndicator(
               onRefresh: _reload,
               child: ListView(
-                children: const [
-                  SizedBox(height: 250),
-                  Center(child: Text('No unresolved matches')),
+                children: [
+                  const SizedBox(height: 250),
+                  Center(child: Text(i18n.t('No unresolved matches'))),
                 ],
               ),
             );
@@ -184,8 +187,8 @@ class _OperatorUnresolvedMatchesScreenState
                               }
 
                               messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text('Match dismissed'),
+                                SnackBar(
+                                  content: Text(i18n.t('Match dismissed')),
                                 ),
                               );
                             },

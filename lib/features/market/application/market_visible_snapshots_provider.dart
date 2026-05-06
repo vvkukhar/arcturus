@@ -15,8 +15,6 @@ final marketVisibleSnapshotsProvider = Provider<List<MarketSnapshotModel>>((ref)
   final filterSource = filter.sourceContains?.trim().toLowerCase() ?? '';
   final filterTitle = filter.itemTitleContains?.trim().toLowerCase() ?? '';
 
-  // Для позитивного тренду прекалькулюємо айдішніки ОДИН раз до циклу, 
-  // щоб не рахувати історію для кожного елемента окремо всередині where()
   Set<String> positiveItemRefs = {};
   if (filter.positiveTrendOnly) {
     final grouped = <String, List<MarketSnapshotModel>>{};
@@ -31,7 +29,6 @@ final marketVisibleSnapshotsProvider = Provider<List<MarketSnapshotModel>>((ref)
     }
   }
 
-  // ОПТИМІЗАЦІЯ: Один прохід для фільтрації
   var result = snapshots.where((snapshot) {
     final itemTitle = inventoryRepository.getById(snapshot.itemRef)?.title ?? '';
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/sale_allocation_validation_model.dart';
 
-class SaleAllocationValidationCard extends StatelessWidget {
+class SaleAllocationValidationCard extends ConsumerWidget {
   final SaleAllocationValidationModel model;
 
   const SaleAllocationValidationCard({
@@ -23,8 +25,9 @@ class SaleAllocationValidationCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = _color();
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -40,7 +43,7 @@ class SaleAllocationValidationCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                model.warning ?? model.label,
+                model.warning ?? i18n.t(model.label),
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
                 ),
@@ -53,7 +56,7 @@ class SaleAllocationValidationCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                model.label,
+                i18n.t(model.label),
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.w900,

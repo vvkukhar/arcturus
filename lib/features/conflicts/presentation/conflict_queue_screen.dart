@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/conflicts/conflict_repository_provider.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class ConflictQueueScreen extends ConsumerStatefulWidget {
   const ConflictQueueScreen({super.key});
@@ -29,10 +30,11 @@ class _ConflictQueueScreenState extends ConsumerState<ConflictQueueScreen> {
   Widget build(BuildContext context) {
     final repository = ref.watch(conflictRepositoryProvider);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Conflict Queue'),
+        title: Text(i18n.t('conflict.title')),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
@@ -41,7 +43,7 @@ class _ConflictQueueScreenState extends ConsumerState<ConflictQueueScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('${i18n.t('common.error', {'error': snapshot.error.toString()})}'));
           }
 
           final items = snapshot.data ?? [];
@@ -50,9 +52,9 @@ class _ConflictQueueScreenState extends ConsumerState<ConflictQueueScreen> {
             return RefreshIndicator(
               onRefresh: _reload,
               child: ListView(
-                children: const [
-                  SizedBox(height: 250),
-                  Center(child: Text('No pending conflicts')),
+                children: [
+                  const SizedBox(height: 250),
+                  Center(child: Text(i18n.t('conflict.empty'))),
                 ],
               ),
             );
@@ -79,9 +81,9 @@ class _ConflictQueueScreenState extends ConsumerState<ConflictQueueScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text('Local: ${item['localJson']}'),
+                        Text('${i18n.t('conflict.local')}: ${item['localJson']}'),
                         const SizedBox(height: 8),
-                        Text('Remote: ${item['remoteJson']}'),
+                        Text('${i18n.t('conflict.remote')}: ${item['remoteJson']}'),
                         const SizedBox(height: 10),
                         FilledButton(
                           onPressed: () async {
@@ -91,12 +93,12 @@ class _ConflictQueueScreenState extends ConsumerState<ConflictQueueScreen> {
                             if (!mounted) return;
 
                             scaffoldMessenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('Conflict resolved'),
+                              SnackBar(
+                                content: Text(i18n.t('conflict.resolved')),
                               ),
                             );
                           },
-                          child: const Text('Mark resolved'),
+                          child: Text(i18n.t('conflict.markResolved')),
                         ),
                       ],
                     ),

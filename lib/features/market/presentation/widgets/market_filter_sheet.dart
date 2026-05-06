@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/market/application/market_filter_model.dart';
 
-class MarketFilterSheet extends StatefulWidget {
+class MarketFilterSheet extends ConsumerStatefulWidget {
   final MarketFilterModel initialFilter;
 
   const MarketFilterSheet({
@@ -10,10 +12,10 @@ class MarketFilterSheet extends StatefulWidget {
   });
 
   @override
-  State<MarketFilterSheet> createState() => _MarketFilterSheetState();
+  ConsumerState<MarketFilterSheet> createState() => _MarketFilterSheetState();
 }
 
-class _MarketFilterSheetState extends State<MarketFilterSheet> {
+class _MarketFilterSheetState extends ConsumerState<MarketFilterSheet> {
   late MarketFilterModel _filter;
   late final TextEditingController _sourceController;
   late final TextEditingController _itemController;
@@ -55,6 +57,8 @@ class _MarketFilterSheetState extends State<MarketFilterSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -66,9 +70,9 @@ class _MarketFilterSheetState extends State<MarketFilterSheet> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const Text(
-              'Market Filters',
-              style: TextStyle(
+            Text(
+              i18n.t('Market Filters'),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
               ),
@@ -76,21 +80,21 @@ class _MarketFilterSheetState extends State<MarketFilterSheet> {
             const SizedBox(height: 16),
             TextField(
               controller: _sourceController,
-              decoration: const InputDecoration(
-                labelText: 'Source contains',
+              decoration: InputDecoration(
+                labelText: i18n.t('Source contains'),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _itemController,
-              decoration: const InputDecoration(
-                labelText: 'Item title contains',
+              decoration: InputDecoration(
+                labelText: i18n.t('Item title contains'),
               ),
             ),
             const SizedBox(height: 12),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('With URL only'),
+              title: Text(i18n.t('With URL only')),
               value: _filter.withUrlOnly,
               onChanged: (value) {
                 setState(() {
@@ -100,8 +104,8 @@ class _MarketFilterSheetState extends State<MarketFilterSheet> {
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Positive trend only'),
-              subtitle: const Text('Show items where latest average is above previous average'),
+              title: Text(i18n.t('Positive trend only')),
+              subtitle: Text(i18n.t('Show items where latest average is above previous average')),
               value: _filter.positiveTrendOnly,
               onChanged: (value) {
                 setState(() {
@@ -115,14 +119,14 @@ class _MarketFilterSheetState extends State<MarketFilterSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _clear,
-                    child: const Text('Clear'),
+                    child: Text(i18n.t('common.clear')),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
                     onPressed: _apply,
-                    child: const Text('Apply'),
+                    child: Text(i18n.t('common.apply')),
                   ),
                 ),
               ],

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class WatchlistBulkActionBar extends StatelessWidget {
+class WatchlistBulkActionBar extends ConsumerWidget {
   final int selectedCount;
   final VoidCallback onActivate;
   final VoidCallback onDeactivate;
@@ -17,8 +19,10 @@ class WatchlistBulkActionBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (selectedCount == 0) return const SizedBox.shrink();
+
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -29,7 +33,7 @@ class WatchlistBulkActionBar extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Selected: $selectedCount',
+                    '${i18n.t('Selected')}: $selectedCount',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                     ),
@@ -37,7 +41,7 @@ class WatchlistBulkActionBar extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: onClear,
-                  child: const Text('Clear'),
+                  child: Text(i18n.t('common.clear')),
                 ),
               ],
             ),
@@ -49,17 +53,17 @@ class WatchlistBulkActionBar extends StatelessWidget {
                 FilledButton.tonalIcon(
                   onPressed: onActivate,
                   icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Activate'),
+                  label: Text(i18n.t('Activate')),
                 ),
                 FilledButton.tonalIcon(
                   onPressed: onDeactivate,
                   icon: const Icon(Icons.pause_circle_outline),
-                  label: const Text('Deactivate'),
+                  label: Text(i18n.t('Deactivate')),
                 ),
                 FilledButton.tonalIcon(
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete_outline),
-                  label: const Text('Delete'),
+                  label: Text(i18n.t('common.delete')),
                 ),
               ],
             ),

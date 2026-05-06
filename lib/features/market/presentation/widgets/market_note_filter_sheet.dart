@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/market/application/market_note_filter_model.dart';
 
-class MarketNoteFilterSheet extends StatefulWidget {
+class MarketNoteFilterSheet extends ConsumerStatefulWidget {
   final MarketNoteFilterModel initialFilter;
 
   const MarketNoteFilterSheet({
@@ -10,10 +12,10 @@ class MarketNoteFilterSheet extends StatefulWidget {
   });
 
   @override
-  State<MarketNoteFilterSheet> createState() => _MarketNoteFilterSheetState();
+  ConsumerState<MarketNoteFilterSheet> createState() => _MarketNoteFilterSheetState();
 }
 
-class _MarketNoteFilterSheetState extends State<MarketNoteFilterSheet> {
+class _MarketNoteFilterSheetState extends ConsumerState<MarketNoteFilterSheet> {
   late MarketNoteFilterModel _filter;
   late final TextEditingController _snapshotController;
 
@@ -67,10 +69,11 @@ class _MarketNoteFilterSheetState extends State<MarketNoteFilterSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final fromText =
-        _filter.from == null ? 'Date from' : _filter.from!.toIso8601String().split('T').first;
+        _filter.from == null ? i18n.t('Date from') : _filter.from!.toIso8601String().split('T').first;
     final toText =
-        _filter.to == null ? 'Date to' : _filter.to!.toIso8601String().split('T').first;
+        _filter.to == null ? i18n.t('Date to') : _filter.to!.toIso8601String().split('T').first;
 
     return SafeArea(
       child: Padding(
@@ -83,15 +86,15 @@ class _MarketNoteFilterSheetState extends State<MarketNoteFilterSheet> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const Text(
-              'Market Notes Filters',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            Text(
+              i18n.t('Market Notes Filters'),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _snapshotController,
               decoration:
-                  const InputDecoration(labelText: 'Snapshot ID contains'),
+                  InputDecoration(labelText: i18n.t('Snapshot ID contains')),
             ),
             const SizedBox(height: 12),
             Row(
@@ -124,7 +127,7 @@ class _MarketNoteFilterSheetState extends State<MarketNoteFilterSheet> {
                       );
                     });
                   },
-                  child: const Text('Clear dates'),
+                  child: Text(i18n.t('Clear dates')),
                 ),
               ),
             const SizedBox(height: 16),
@@ -133,14 +136,14 @@ class _MarketNoteFilterSheetState extends State<MarketNoteFilterSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _clear,
-                    child: const Text('Clear'),
+                    child: Text(i18n.t('common.clear')),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
                     onPressed: _apply,
-                    child: const Text('Apply'),
+                    child: Text(i18n.t('common.apply')),
                   ),
                 ),
               ],

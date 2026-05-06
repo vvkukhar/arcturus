@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/deals/application/deal_history_provider.dart';
 import 'package:lego_trading_manager/features/deals/application/deal_history_query_provider.dart';
 import 'package:lego_trading_manager/features/deals/application/deal_history_entry_model.dart';
@@ -35,13 +36,14 @@ class _DealHistoryScreenState extends ConsumerState<DealHistoryScreen> {
   }
 
   Future<void> _clear() async {
+    final i18n = ref.read(i18nProvider.notifier);
     await ref.read(dealHistoryServiceProvider).clear();
     if (!mounted) return;
     setState(() {
       _entries = const [];
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Deal history cleared')),
+      SnackBar(content: Text(i18n.t('history.cleared'))),
     );
   }
 
@@ -53,6 +55,7 @@ class _DealHistoryScreenState extends ConsumerState<DealHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final query = ref.watch(dealHistoryQueryProvider).trim().toLowerCase();
     final visible = query.isEmpty
         ? _entries
@@ -63,7 +66,7 @@ class _DealHistoryScreenState extends ConsumerState<DealHistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Deal History'),
+        title: Text(i18n.t('history.title')),
         actions: [
           IconButton(
             onPressed: _entries.isEmpty ? null : _clear,
@@ -90,7 +93,7 @@ class _DealHistoryScreenState extends ConsumerState<DealHistoryScreen> {
                   const SizedBox(height: 12),
                   Expanded(
                     child: visible.isEmpty
-                        ? const Center(child: Text('No deal history yet.'))
+                        ? Center(child: Text(i18n.t('history.empty')))
                         : ListView.builder(
                             itemCount: visible.length,
                             itemBuilder: (context, index) {

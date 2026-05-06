@@ -1,5 +1,3 @@
-// lib/features/item_details/presentation/widgets/item_detail_tags_card.dart
-
 import 'package:flutter/material.dart';
 
 class ItemDetailTagsCard extends StatelessWidget {

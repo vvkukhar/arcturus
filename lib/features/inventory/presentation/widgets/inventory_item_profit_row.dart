@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 
-class InventoryItemProfitRow extends StatelessWidget {
+class InventoryItemProfitRow extends ConsumerWidget {
   final double cost;
   final double marketAverage;
   final double expectedProfit;
@@ -18,21 +20,23 @@ class InventoryItemProfitRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Wrap(
       spacing: 12,
       runSpacing: 8,
       children: [
         Text(
-          'Cost: ${CurrencyFormatter.format(cost, currency: currency, decimals: 0)}',
+          '${i18n.t('Cost')}: ${CurrencyFormatter.format(cost, currency: currency, decimals: 0)}',
         ),
         Text(
-          'Market Avg: ${CurrencyFormatter.format(marketAverage, currency: currency, decimals: 0)}',
+          '${i18n.t('Market Avg')}: ${CurrencyFormatter.format(marketAverage, currency: currency, decimals: 0)}',
         ),
         Text(
-          'Expected Profit: ${CurrencyFormatter.format(expectedProfit, currency: currency, decimals: 0)}',
+          '${i18n.t('Expected Profit')}: ${CurrencyFormatter.format(expectedProfit, currency: currency, decimals: 0)}',
         ),
-        Text('Days: $days'),
+        Text('${i18n.t('Days')}: $days'),
       ],
     );
   }

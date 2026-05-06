@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchases_filter_model.dart';
 
-class PurchasesActiveFilterChips extends StatelessWidget {
+class PurchasesActiveFilterChips extends ConsumerWidget {
   final PurchasesFilterModel filter;
 
   const PurchasesActiveFilterChips({
@@ -10,23 +12,24 @@ class PurchasesActiveFilterChips extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final chips = <String>[];
 
     if ((filter.sourceContains ?? '').trim().isNotEmpty) {
-      chips.add('source: ${filter.sourceContains}');
+      chips.add('${i18n.t('source')}: ${filter.sourceContains}');
     }
 
     if ((filter.currency ?? '').trim().isNotEmpty) {
-      chips.add('currency: ${filter.currency}');
+      chips.add('${i18n.t('currency')}: ${filter.currency}');
     }
 
     if (filter.minTotal != null) {
-      chips.add('min: ${filter.minTotal!.toStringAsFixed(2)}');
+      chips.add('${i18n.t('min')}: ${filter.minTotal!.toStringAsFixed(2)}');
     }
 
     if (filter.maxTotal != null) {
-      chips.add('max: ${filter.maxTotal!.toStringAsFixed(2)}');
+      chips.add('${i18n.t('max')}: ${filter.maxTotal!.toStringAsFixed(2)}');
     }
 
     if (chips.isEmpty) return const SizedBox.shrink();

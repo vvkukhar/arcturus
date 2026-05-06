@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/enums/partout_line_status.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/number_parser.dart';
 import 'package:lego_trading_manager/data/models/partout_line_model.dart';
 
-class EditPartOutLineScreen extends StatefulWidget {
+class EditPartOutLineScreen extends ConsumerStatefulWidget {
   final PartOutLineModel line;
 
   const EditPartOutLineScreen({
@@ -13,10 +15,10 @@ class EditPartOutLineScreen extends StatefulWidget {
   });
 
   @override
-  State<EditPartOutLineScreen> createState() => _EditPartOutLineScreenState();
+  ConsumerState<EditPartOutLineScreen> createState() => _EditPartOutLineScreenState();
 }
 
-class _EditPartOutLineScreenState extends State<EditPartOutLineScreen> {
+class _EditPartOutLineScreenState extends ConsumerState<EditPartOutLineScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _titleController;
@@ -74,9 +76,11 @@ class _EditPartOutLineScreenState extends State<EditPartOutLineScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Part-out Line'),
+        title: Text(i18n.t('Edit Part-out Line')),
       ),
       body: Form(
         key: _formKey,
@@ -85,10 +89,10 @@ class _EditPartOutLineScreenState extends State<EditPartOutLineScreen> {
           children: [
             TextFormField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Title *'),
+              decoration: InputDecoration(labelText: '${i18n.t('inv.title')} *'),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Title is required';
+                  return i18n.t('inv.titleReq');
                 }
                 return null;
               },
@@ -96,12 +100,12 @@ class _EditPartOutLineScreenState extends State<EditPartOutLineScreen> {
             const SizedBox(height: 12),
             DropdownButtonFormField<ItemType>(
               value: _itemType,
-              decoration: const InputDecoration(labelText: 'Item Type'),
+              decoration: InputDecoration(labelText: i18n.t('inv.type')),
               items: ItemType.values
                   .map(
                     (type) => DropdownMenuItem(
                       value: type,
-                      child: Text(type.name),
+                      child: Text(i18n.t(type.name)),
                     ),
                   )
                   .toList(),
@@ -113,12 +117,12 @@ class _EditPartOutLineScreenState extends State<EditPartOutLineScreen> {
             const SizedBox(height: 12),
             DropdownButtonFormField<PartOutLineStatus>(
               value: _status,
-              decoration: const InputDecoration(labelText: 'Status'),
+              decoration: InputDecoration(labelText: i18n.t('inv.status')),
               items: PartOutLineStatus.values
                   .map(
                     (status) => DropdownMenuItem(
                       value: status,
-                      child: Text(status.name),
+                      child: Text(i18n.t(status.name)),
                     ),
                   )
                   .toList(),
@@ -131,7 +135,7 @@ class _EditPartOutLineScreenState extends State<EditPartOutLineScreen> {
             TextFormField(
               controller: _quantityController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Quantity'),
+              decoration: InputDecoration(labelText: i18n.t('inv.qty')),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -140,7 +144,7 @@ class _EditPartOutLineScreenState extends State<EditPartOutLineScreen> {
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               decoration:
-                  const InputDecoration(labelText: 'Expected Unit Price'),
+                  InputDecoration(labelText: i18n.t('Expected Unit Price')),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -148,7 +152,7 @@ class _EditPartOutLineScreenState extends State<EditPartOutLineScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Expected Total: ${_expectedTotal.toStringAsFixed(2)}',
+                  '${i18n.t('Expected')} Total: ${_expectedTotal.toStringAsFixed(2)}',
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
@@ -159,12 +163,12 @@ class _EditPartOutLineScreenState extends State<EditPartOutLineScreen> {
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               decoration:
-                  const InputDecoration(labelText: 'Actual Total Price'),
+                  InputDecoration(labelText: i18n.t('Actual Total Price')),
             ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _save,
-              child: const Text('Save Changes'),
+              child: Text(i18n.t('common.saveChanges')),
             ),
           ],
         ),

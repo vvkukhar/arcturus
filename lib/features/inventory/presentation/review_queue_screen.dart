@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_review_done_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_top_review_candidates_provider.dart';
 
@@ -10,14 +11,15 @@ class ReviewQueueScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(inventoryTopReviewCandidatesProvider);
     final done = ref.watch(inventoryReviewDoneProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Review Queue'),
+        title: Text(i18n.t('Review Queue')),
       ),
       body: items.isEmpty
-          ? const Center(
-              child: Text('No review candidates right now.'),
+          ? Center(
+              child: Text(i18n.t('No review candidates right now.')),
             )
           : ListView.separated(
               padding: const EdgeInsets.all(16),
@@ -53,12 +55,12 @@ class ReviewQueueScreen extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        Text(item.reason),
+                        Text(i18n.t(item.reason)),
                         const SizedBox(height: 10),
                         if (isDone)
-                          const Text(
-                            'Review done',
-                            style: TextStyle(
+                          Text(
+                            i18n.t('Review done'),
+                            style: const TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.w800,
                             ),
@@ -76,12 +78,12 @@ class ReviewQueueScreen extends ConsumerWidget {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      '${item.title} marked as reviewed',
+                                      '${item.title} ${i18n.t('marked as reviewed')}',
                                     ),
                                   ),
                                 );
                               },
-                              child: const Text('Mark review done'),
+                              child: Text(i18n.t('Mark review done')),
                             ),
                             TextButton(
                               onPressed: () {
@@ -89,7 +91,7 @@ class ReviewQueueScreen extends ConsumerWidget {
                                     .read(inventoryReviewDoneProvider.notifier)
                                     .unmark(item.itemId);
                               },
-                              child: const Text('Undo'),
+                              child: Text(i18n.t('Undo')),
                             ),
                           ],
                         ),

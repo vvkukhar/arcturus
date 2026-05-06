@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_execution_summary_provider.dart';
 
-class DashboardExecutionSummaryCard extends StatelessWidget {
+class DashboardExecutionSummaryCard extends ConsumerWidget {
   final DashboardExecutionSummaryModel model;
 
   const DashboardExecutionSummaryCard({
@@ -10,7 +12,8 @@ class DashboardExecutionSummaryCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -18,7 +21,7 @@ class DashboardExecutionSummaryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              model.headline,
+              i18n.t(model.headline),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
@@ -29,12 +32,12 @@ class DashboardExecutionSummaryCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                Chip(label: Text('Purchase pending ${model.purchasePending}')),
-                Chip(label: Text('Bought ${model.purchaseBought}')),
-                Chip(label: Text('Reprice pending ${model.repricePending}')),
-                Chip(label: Text('Listed ${model.repriceListed}')),
-                Chip(label: Text('Review pending ${model.reviewPending}')),
-                Chip(label: Text('Reviewed ${model.reviewDone}')),
+                Chip(label: Text('${i18n.t('Purchase pending')} ${model.purchasePending}')),
+                Chip(label: Text('${i18n.t('Bought')} ${model.purchaseBought}')),
+                Chip(label: Text('${i18n.t('Reprice pending')} ${model.repricePending}')),
+                Chip(label: Text('${i18n.t('Listed')} ${model.repriceListed}')),
+                Chip(label: Text('${i18n.t('Review pending')} ${model.reviewPending}')),
+                Chip(label: Text('${i18n.t('Reviewed')} ${model.reviewDone}')),
               ],
             ),
           ],

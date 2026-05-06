@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_alert_severity_banner_model.dart';
 
-class InventoryAlertSeverityBanner extends StatelessWidget {
+class InventoryAlertSeverityBanner extends ConsumerWidget {
   final InventoryAlertSeverityBannerModel model;
 
   const InventoryAlertSeverityBanner({
@@ -10,7 +12,8 @@ class InventoryAlertSeverityBanner extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final color = model.severeCount == 0 ? Colors.green : Colors.redAccent;
 
     return Container(
@@ -21,7 +24,7 @@ class InventoryAlertSeverityBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
-        '${model.label} • ${model.severeCount}',
+        '${i18n.t(model.label)} • ${model.severeCount}',
         style: TextStyle(
           color: color,
           fontWeight: FontWeight.w800,

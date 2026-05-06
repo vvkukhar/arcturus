@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
 import 'package:lego_trading_manager/features/settings/application/app_settings_controller.dart';
@@ -17,13 +18,14 @@ class WatchlistBatchBuyPreviewScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final service = ref.watch(watchlistBatchBuyProvider);
     final settings = ref.watch(appSettingsControllerProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     final totalCost = service.totalCost(items);
     final totalValue = service.totalEstimatedValue(items);
     final spread = totalValue - totalCost;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Batch Buy Preview')),
+      appBar: AppBar(title: Text(i18n.t('Batch Buy Preview'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -32,19 +34,19 @@ class WatchlistBatchBuyPreviewScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _row('Items', items.length.toString()),
+                  _row(i18n.t('Items'), items.length.toString()),
                   _row(
-                    'Total Cost',
+                    i18n.t('Total Cost'),
                     CurrencyFormatter.format(totalCost,
                         currency: settings.baseCurrency),
                   ),
                   _row(
-                    'Estimated Value',
+                    i18n.t('Estimated Value'),
                     CurrencyFormatter.format(totalValue,
                         currency: settings.baseCurrency),
                   ),
                   _row(
-                    'Spread',
+                    i18n.t('Spread'),
                     CurrencyFormatter.format(spread,
                         currency: settings.baseCurrency),
                   ),

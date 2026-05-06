@@ -1,9 +1,9 @@
-// lib/features/inventory/presentation/widgets/inventory_quick_action_card.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_quick_action_model.dart';
 
-class InventoryQuickActionCard extends StatelessWidget {
+class InventoryQuickActionCard extends ConsumerWidget {
   final InventoryQuickActionModel action;
   final VoidCallback onTap;
 
@@ -14,7 +14,9 @@ class InventoryQuickActionCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
@@ -25,7 +27,7 @@ class InventoryQuickActionCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                action.title,
+                i18n.t(action.title),
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
@@ -33,7 +35,7 @@ class InventoryQuickActionCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                action.subtitle,
+                i18n.t(action.subtitle),
                 style: const TextStyle(color: Colors.white70),
               ),
             ],

@@ -7085,12 +7085,17 @@ export default function RootLayout({
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\page.tsx =====
 
+'use client';
+
 import Link from 'next/link';
 import { ArrowRight, ShieldCheck, Zap, PackageSearch, Gem } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Magnetic } from '@/components/ui/magnetic';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function HomePage() {
+  const { t } = useI18n();
+
   return (
     <main className="min-h-screen bg-transparent flex flex-col font-sans relative overflow-hidden">
       <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-400/20 blur-[120px] mix-blend-multiply pointer-events-none animate-float" />
@@ -7105,10 +7110,10 @@ export default function HomePage() {
         </div>
         <nav className="flex gap-6 items-center">
           <Link href="/store/catalog" className="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors">
-            РљР°С‚Р°Р»РѕРі
+            {t('nav.catalog')}
           </Link>
           <Button href="/store/catalog" className="rounded-full px-6 shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40">
-            РЈРІС–Р№С‚Рё РІ РјР°РіР°Р·РёРЅ
+            {t('landing.btn')}
           </Button>
         </nav>
       </header>
@@ -7117,25 +7122,24 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/50 bg-white/50 backdrop-blur-xl px-5 py-2 text-xs font-black tracking-[0.2em] text-blue-600 uppercase mb-8 shadow-sm animate-fade-in-up">
             <ShieldCheck size={16} />
-            Р’РµСЂРёС„С–РєРѕРІР°РЅРёР№ Р†РЅРІРµРЅС‚Р°СЂ
+            {t('landing.badge')}
           </div>
           
           <h1 className="text-6xl sm:text-[7rem] font-black tracking-tighter text-slate-900 leading-[1.05] animate-fade-in-up delay-100">
-            РњРёСЃС‚РµС†С‚РІРѕ <br />
+            {t('landing.title1')} <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
-              LEGO РљРѕР»РµРєС†С–РѕРЅСѓРІР°РЅРЅСЏ
+              {t('landing.title2')}
             </span>
           </h1>
           
           <p className="mt-8 mx-auto max-w-2xl text-xl sm:text-2xl text-slate-600 leading-relaxed font-medium animate-fade-in-up delay-200">
-            Р•РєСЃРєР»СЋР·РёРІРЅРёР№ РґРѕСЃС‚СѓРї РґРѕ СЂР°СЂРёС‚РµС‚РЅРёС… РЅР°Р±РѕСЂС–РІ С‚Р° Р»С–РјС–С‚РѕРІР°РЅРёС… РјС–РЅС–С„С–РіСѓСЂРѕРє. 
-            Р‘РµР·РґРѕРіР°РЅРЅРёР№ СЃС‚Р°РЅ, РјРёС‚С‚С”РІРµ Р±СЂРѕРЅСЋРІР°РЅРЅСЏ, Р°Р±СЃРѕР»СЋС‚РЅР° РіР°СЂР°РЅС‚С–СЏ.
+            {t('landing.desc')}
           </p>
           
           <div className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-5 animate-fade-in-up delay-300">
             <Magnetic>
               <Button href="/store/catalog" size="lg" className="w-full sm:w-auto group rounded-[2rem] h-16 px-10 text-lg bg-slate-900 hover:bg-black transition-all">
-                Р’С–РґРєСЂРёС‚Рё РєРѕР»РµРєС†С–СЋ
+                {t('landing.btn')}
                 <ArrowRight className="ml-3 h-6 w-6 transition-transform group-hover:translate-x-2" />
               </Button>
             </Magnetic>
@@ -7144,9 +7148,9 @@ export default function HomePage() {
 
         <div className="mt-32 max-w-6xl mx-auto grid gap-6 md:grid-cols-3 animate-fade-in-up delay-300">
           {[
-            { icon: ShieldCheck, color: 'blue', title: 'РћСЂРёРіС–РЅР°Р»СЊРЅС–СЃС‚СЊ', desc: 'РљРѕР¶РЅР° РґРµС‚Р°Р»СЊ РїСЂРѕС…РѕРґРёС‚СЊ Р¶РѕСЂСЃС‚РєСѓ Р°РІС‚РµРЅС‚РёС„С–РєР°С†С–СЋ. Р–РѕРґРЅРёС… РєРѕРјРїСЂРѕРјС–СЃС–РІ С‰РѕРґРѕ СЏРєРѕСЃС‚С–.' },
-            { icon: PackageSearch, color: 'indigo', title: 'Р Р°СЂРёС‚РµС‚Рё', desc: 'Р”РѕСЃС‚СѓРї РґРѕ РЅР°Р±РѕСЂС–РІ, СЏРєС– РЅРµРјРѕР¶Р»РёРІРѕ Р·РЅР°Р№С‚Рё Сѓ Р·РІРёС‡Р°Р№РЅРѕРјСѓ СЂРѕР·РґСЂС–Р±РЅРѕРјСѓ РїСЂРѕРґР°Р¶С–.' },
-            { icon: Zap, color: 'purple', title: 'РљРѕРЅСЃСЊС”СЂР¶-СЃРµСЂРІС–СЃ', desc: 'РњРёС‚С‚С”РІРёР№ Р·РІКјСЏР·РѕРє С‚Р° С–РЅРґРёРІС–РґСѓР°Р»СЊРЅРёР№ СЃСѓРїСЂРѕРІС–Рґ РєРѕР¶РЅРѕС— СѓРіРѕРґРё РґР»СЏ РЅР°С€РёС… РєР»С–С”РЅС‚С–РІ.' }
+            { icon: ShieldCheck, color: 'blue', title: 'landing.feat1.title', desc: 'landing.feat1.desc' },
+            { icon: PackageSearch, color: 'indigo', title: 'landing.feat2.title', desc: 'landing.feat2.desc' },
+            { icon: Zap, color: 'purple', title: 'landing.feat3.title', desc: 'landing.feat3.desc' }
           ].map((feature, i) => {
             const Icon = feature.icon;
             return (
@@ -7154,9 +7158,9 @@ export default function HomePage() {
                 <div className={`h-14 w-14 rounded-2xl bg-${feature.color}-100 flex items-center justify-center text-${feature.color}-600 mb-6 transition-transform group-hover:scale-110`}>
                   <Icon size={28} strokeWidth={2.5} />
                 </div>
-                <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">{feature.title}</h3>
+                <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">{t(feature.title as any)}</h3>
                 <p className="text-slate-600 leading-relaxed font-medium">
-                  {feature.desc}
+                  {t(feature.desc as any)}
                 </p>
               </div>
             );
@@ -7235,23 +7239,52 @@ export default function AboutPage() {
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useI18n } from '@/components/providers/i18n-provider';
-import { User, Package, Heart, Settings, TrendingUp, TrendingDown } from 'lucide-react';
+import { User, Package, Heart, Settings, TrendingUp, Loader2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-
-const mockPortfolioData = [
-  { month: 'Jan', value: 45000 },
-  { month: 'Feb', value: 46200 },
-  { month: 'Mar', value: 45800 },
-  { month: 'Apr', value: 48500 },
-  { month: 'May', value: 52400 },
-];
+import { apiFetch } from '@/lib/client-api';
+import { formatMoney } from '@/lib/format';
 
 export default function AccountPage() {
   const { t } = useI18n();
+  const [portfolio, setPortfolio] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Tab control
+  const [activeTab, setActiveTab] = useState<'orders' | 'wishlist' | 'settings'>('orders');
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([
+      apiFetch('/api/portfolio/summary').catch(() => null),
+      apiFetch('/api/profit/monthly').catch(() => []),
+      apiFetch('/api/auth/me').catch(() => null)
+    ]).then(([portfolioData, historyData, userData]) => {
+      if (mounted) {
+        setPortfolio(portfolioData);
+        if (Array.isArray(historyData)) {
+           setHistory(historyData.map((d: any) => ({ month: d.date || d.month, value: d.netProfit || d.revenue || 0 })));
+        }
+        setUser(userData);
+        setLoading(false);
+      }
+    });
+
+    return () => { mounted = false; };
+  }, []);
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
+  }
+
+  const portfolioValue = portfolio?.inventory?.expectedRevenue ?? 0;
+  const realizedProfit = portfolio?.sales?.realizedProfit ?? 0;
 
   return (
-    <div className="min-h-screen py-12 md:py-16">
+    <div className="min-h-screen py-12 md:py-16 animate-fade-in-up">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 border-b border-[var(--border)] pb-8">
           <div className="flex items-center gap-4">
@@ -7260,67 +7293,108 @@ export default function AccountPage() {
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-black tracking-tight">{t('account.title')}</h1>
-              <p className="text-slate-500 font-medium mt-1">investor@arcturus.store</p>
+              <p className="text-slate-500 font-medium mt-1">{user?.email || 'investor@arcturus.store'}</p>
             </div>
           </div>
           <div className="bg-[var(--card)] px-6 py-4 rounded-2xl border border-[var(--border)] shadow-sm">
-            <p className="text-sm text-slate-500 font-bold mb-1 uppercase tracking-wider">Portfolio Value</p>
+            <p className="text-sm text-slate-500 font-bold mb-1 uppercase tracking-wider">{t('account.portfolioValue')}</p>
             <div className="flex items-end gap-3">
-              <span className="text-3xl font-black">52,400 в‚ґ</span>
-              <span className="flex items-center gap-1 text-green-500 font-bold text-sm mb-1">
-                <TrendingUp size={16} /> +16.4%
-              </span>
+              <span className="text-3xl font-black">{formatMoney(portfolioValue)}</span>
+              {realizedProfit > 0 && (
+                <span className="flex items-center gap-1 text-green-500 font-bold text-sm mb-1">
+                  <TrendingUp size={16} /> Realized: {formatMoney(realizedProfit)}
+                </span>
+              )}
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-3 space-y-2">
-            <button className="w-full flex items-center gap-3 p-4 bg-[var(--card)] text-blue-600 dark:text-blue-400 rounded-xl font-bold border border-blue-100 dark:border-blue-900 shadow-sm transition-all">
+            <button 
+              onClick={() => setActiveTab('orders')}
+              className={`w-full flex items-center gap-3 p-4 rounded-xl font-bold transition-all border ${activeTab === 'orders' ? 'bg-[var(--card)] text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900 shadow-sm' : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-[var(--card)] hover:text-[var(--foreground)] border-transparent hover:border-[var(--border)]'}`}
+            >
               <Package size={20} /> {t('account.orders')}
             </button>
-            <button className="w-full flex items-center gap-3 p-4 bg-transparent text-slate-600 dark:text-slate-400 hover:bg-[var(--card)] hover:text-[var(--foreground)] rounded-xl font-bold transition-all border border-transparent hover:border-[var(--border)]">
+            <button 
+              onClick={() => setActiveTab('wishlist')}
+              className={`w-full flex items-center gap-3 p-4 rounded-xl font-bold transition-all border ${activeTab === 'wishlist' ? 'bg-[var(--card)] text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900 shadow-sm' : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-[var(--card)] hover:text-[var(--foreground)] border-transparent hover:border-[var(--border)]'}`}
+            >
               <Heart size={20} /> {t('account.wishlist')}
             </button>
-            <button className="w-full flex items-center gap-3 p-4 bg-transparent text-slate-600 dark:text-slate-400 hover:bg-[var(--card)] hover:text-[var(--foreground)] rounded-xl font-bold transition-all border border-transparent hover:border-[var(--border)]">
+            <button 
+              onClick={() => setActiveTab('settings')}
+              className={`w-full flex items-center gap-3 p-4 rounded-xl font-bold transition-all border ${activeTab === 'settings' ? 'bg-[var(--card)] text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900 shadow-sm' : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-[var(--card)] hover:text-[var(--foreground)] border-transparent hover:border-[var(--border)]'}`}
+            >
               <Settings size={20} /> {t('account.settings')}
             </button>
           </div>
 
           <div className="lg:col-span-9 space-y-8">
             <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden p-6 md:p-8">
-              <h2 className="text-xl font-black mb-6">Asset Growth (YTD)</h2>
+              <h2 className="text-xl font-black mb-6">{t('account.assetGrowth')}</h2>
               <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={mockPortfolioData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis hide domain={['dataMin - 1000', 'dataMax + 1000']} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
-                      itemStyle={{ color: 'var(--foreground)' }}
-                    />
-                    <Area type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {history.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={history} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis hide domain={['auto', 'auto']} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
+                        itemStyle={{ color: 'var(--foreground)' }}
+                      />
+                      <Area type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-slate-400 font-medium">No historical data available yet.</div>
+                )}
               </div>
             </div>
 
             <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden">
               <div className="p-6 md:p-8 border-b border-[var(--border)]">
-                <h2 className="text-xl font-black">{t('account.orders')}</h2>
+                <h2 className="text-xl font-black">
+                  {activeTab === 'orders' && t('account.orders')}
+                  {activeTab === 'wishlist' && t('account.wishlist')}
+                  {activeTab === 'settings' && t('account.settings')}
+                </h2>
               </div>
-              <div className="p-8 md:p-12 flex flex-col items-center justify-center text-center">
-                <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4">
-                  <Package size={28} />
-                </div>
-                <p className="text-lg font-bold mb-2">No active positions</p>
-                <p className="text-slate-500 font-medium">Your acquired LEGO sets will appear here as assets.</p>
+              <div className="p-8 md:p-12 flex flex-col items-center justify-center text-center min-h-[300px]">
+                {activeTab === 'orders' && (
+                  <>
+                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4">
+                      <Package size={28} />
+                    </div>
+                    <p className="text-lg font-bold mb-2">{t('account.noPositions')}</p>
+                    <p className="text-slate-500 font-medium">{t('account.noPositionsDesc')}</p>
+                  </>
+                )}
+                {activeTab === 'wishlist' && (
+                  <>
+                    <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-400 mb-4">
+                      <Heart size={28} />
+                    </div>
+                    <p className="text-lg font-bold mb-2">No Saved Items</p>
+                    <p className="text-slate-500 font-medium">Items you favorite in the catalog will appear here.</p>
+                  </>
+                )}
+                {activeTab === 'settings' && (
+                  <>
+                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4">
+                      <Settings size={28} />
+                    </div>
+                    <p className="text-lg font-bold mb-2">System Preferences</p>
+                    <p className="text-slate-500 font-medium">Adjust your language and notifications here.</p>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -7334,22 +7408,61 @@ export default function AccountPage() {
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useI18n } from '@/components/providers/i18n-provider';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { TrendingUp, Award, Box } from 'lucide-react';
-
-const allocationData = [
-  { name: 'Star Wars', value: 45, color: '#3b82f6' },
-  { name: 'Ninjago', value: 25, color: '#ef4444' },
-  { name: 'Icons', value: 20, color: '#8b5cf6' },
-  { name: 'Technic', value: 10, color: '#f97316' },
-];
+import { TrendingUp, Award, Box, Loader2 } from 'lucide-react';
+import { apiFetch } from '@/lib/client-api';
+import { formatMoney } from '@/lib/format';
 
 export default function PerformancePage() {
   const { t } = useI18n();
+  const [allocation, setAllocation] = useState<any[]>([]);
+  const [topPerformer, setTopPerformer] = useState<any>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([
+      apiFetch<any[]>('/api/profit/by-theme').catch(() => []),
+      apiFetch<any[]>('/api/public/catalog').catch(() => []),
+      apiFetch<any>('/api/portfolio/summary').catch(() => null)
+    ]).then(([themeData, catalogData, portfolioData]) => {
+      if (mounted) {
+        if (Array.isArray(themeData)) {
+          const colors = ['#3b82f6', '#ef4444', '#8b5cf6', '#f97316', '#10b981', '#f43f5e'];
+          setAllocation(themeData.map((d, i) => ({
+            name: d.theme,
+            value: typeof d.profit === 'string' ? parseFloat(d.profit.replace(/[^0-9.-]+/g,"")) : d.profit,
+            color: colors[i % colors.length]
+          })).filter(x => x.value > 0));
+        }
+
+        if (Array.isArray(catalogData) && catalogData.length > 0) {
+          const sorted = [...catalogData].sort((a, b) => {
+            const aRoi = a.totalCost > 0 ? ((a.expectedSalePriceManual ?? a.totalCost) - a.totalCost) / a.totalCost : 0;
+            const bRoi = b.totalCost > 0 ? ((b.expectedSalePriceManual ?? b.totalCost) - b.totalCost) / b.totalCost : 0;
+            return bRoi - aRoi;
+          });
+          setTopPerformer(sorted[0]);
+        }
+
+        setStats(portfolioData);
+        setLoading(false);
+      }
+    });
+
+    return () => { mounted = false; };
+  }, []);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
+
+  const realizedProfit = stats?.sales?.realizedProfit ?? 0;
+  const alpha = 4.1;
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto">
+    <div className="p-6 md:p-10 max-w-7xl mx-auto animate-fade-in-up">
       <div className="mb-10">
         <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('performance.title')}</h1>
         <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('performance.subtitle')}</p>
@@ -7359,30 +7472,35 @@ export default function PerformancePage() {
         <div className="bg-[var(--card)] p-8 rounded-3xl border border-[var(--border)] shadow-sm">
           <h3 className="text-xl font-black mb-8 flex items-center gap-2">
             <Box size={24} className="text-blue-600" />
-            Asset Allocation
+            Asset Allocation (By Profit)
           </h3>
           <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={allocationData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={80}
-                  outerRadius={120}
-                  paddingAngle={8}
-                  dataKey="value"
-                >
-                  {allocationData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
-                />
-                <Legend verticalAlign="bottom" height={36}/>
-              </PieChart>
-            </ResponsiveContainer>
+            {allocation.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={allocation}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={80}
+                    outerRadius={120}
+                    paddingAngle={8}
+                    dataKey="value"
+                  >
+                    {allocation.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
+                    formatter={(value: any) => [`${value} в‚ґ`, 'Profit'] as any}
+                  />
+                  <Legend verticalAlign="bottom" height={36}/>
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-400 font-medium">No profitable sales data yet.</div>
+            )}
           </div>
         </div>
 
@@ -7392,25 +7510,35 @@ export default function PerformancePage() {
               <TrendingUp size={24} className="text-green-500" />
               <h3 className="text-xl font-black">Top Performer</h3>
             </div>
-            <div className="flex gap-6 items-center">
-              <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center">
-                <Award size={40} className="text-orange-500" />
+            {topPerformer ? (
+              <div className="flex gap-6 items-center">
+                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-200">
+                  {topPerformer.images?.[0]?.imageUrl ? (
+                    <img src={topPerformer.images[0].imageUrl} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    <Award size={40} className="text-orange-500" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-lg font-black leading-tight line-clamp-2">{topPerformer.titleSnapshot}</p>
+                  <p className="text-sm text-slate-500 font-bold mt-1">
+                    ROI: {topPerformer.totalCost > 0 ? (((topPerformer.expectedSalePriceManual ?? topPerformer.totalCost) - topPerformer.totalCost) / topPerformer.totalCost * 100).toFixed(2) : 0}%
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-lg font-black leading-tight">Ninjago City Gardens</p>
-                <p className="text-sm text-slate-500 font-bold mt-1">ROI: +34.2% since purchase</p>
-              </div>
-            </div>
+            ) : (
+              <div className="text-slate-400 font-medium">No assets acquired yet.</div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-6">
             <div className="bg-slate-900 text-white p-6 rounded-3xl">
-              <p className="text-[10px] font-black uppercase opacity-60 mb-2">Total Gain</p>
-              <p className="text-2xl font-black text-green-400">+12,400 в‚ґ</p>
+              <p className="text-[10px] font-black uppercase opacity-60 mb-2">Total Realized Gain</p>
+              <p className="text-2xl font-black text-green-400">+{formatMoney(realizedProfit)}</p>
             </div>
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-[var(--border)]">
-              <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Alpha vs Market</p>
-              <p className="text-2xl font-black">+4.1%</p>
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-[var(--border)] shadow-sm">
+              <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Alpha vs Market Baseline</p>
+              <p className="text-2xl font-black">+{alpha}%</p>
             </div>
           </div>
         </div>
@@ -7423,57 +7551,83 @@ export default function PerformancePage() {
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useI18n } from '@/components/providers/i18n-provider';
-import { Heart, TrendingUp, TrendingDown, Bell, Search } from 'lucide-react';
-
-const watchlist = [
-  { id: '75192', name: 'Millennium Falcon', price: '34,500', change: '+1.2%', isUp: true },
-  { id: '10305', name: 'Lion Knights\' Castle', price: '16,800', change: '-0.5%', isUp: false },
-  { id: '71741', name: 'Ninjago City Gardens', price: '14,200', change: '+2.8%', isUp: true },
-  { id: '10294', name: 'Titanic', price: '26,500', change: '0.0%', isUp: true },
-];
+import { Heart, TrendingUp, TrendingDown, Bell, Search, Loader2 } from 'lucide-react';
+import { apiFetch } from '@/lib/client-api';
+import { formatMoney } from '@/lib/format';
+import Link from 'next/link';
 
 export default function WatchlistPage() {
   const { t } = useI18n();
+  const [watchlist, setWatchlist] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    apiFetch<any[]>('/api/watchlist')
+      .then((data) => {
+        if (mounted) {
+          setWatchlist(Array.isArray(data) ? data.filter(x => x.active) : []);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => { mounted = false; };
+  }, []);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
 
   return (
-    <div className="p-6 md:p-10 max-w-4xl mx-auto">
+    <div className="p-6 md:p-10 max-w-4xl mx-auto animate-fade-in-up">
       <div className="mb-10 flex flex-col md:flex-row justify-between items-end gap-6">
         <div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('sidebar.watchlist')}</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">Monitoring active assets for potential entry points.</p>
         </div>
-        <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-black rounded-xl shadow-lg shadow-blue-600/20">
-          <Search size={18} /> Add New
-        </button>
+        <Link href="/store/catalog" className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors">
+          <Search size={18} /> Find Sets
+        </Link>
       </div>
 
       <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden">
-        {watchlist.map((item, idx) => (
-          <div key={idx} className="flex items-center justify-between p-6 border-b border-[var(--border)] last:border-none hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors group">
-            <div className="flex items-center gap-4">
-              <div className="p-2 text-slate-300 group-hover:text-red-500 transition-colors cursor-pointer">
-                <Heart size={24} fill={idx === 0 ? 'currentColor' : 'none'} className={idx === 0 ? 'text-red-500' : ''} />
+        {watchlist.length === 0 ? (
+          <div className="p-12 text-center text-slate-500 font-medium">Your watchlist is currently empty.</div>
+        ) : (
+          watchlist.map((item, idx) => {
+            const spread = (item.targetSellPrice ?? item.maxBuyPrice) - item.maxBuyPrice;
+            const roi = item.maxBuyPrice > 0 ? (spread / item.maxBuyPrice) * 100 : 0;
+            const isUp = roi > 0;
+
+            return (
+              <div key={item.id} className="flex items-center justify-between p-6 border-b border-[var(--border)] last:border-none hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors group">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 text-red-500 transition-colors cursor-pointer">
+                    <Heart size={24} fill="currentColor" />
+                  </div>
+                  <div>
+                    <p className="font-black text-lg leading-tight line-clamp-1">{item.titleSnapshot}</p>
+                    <p className="text-xs text-slate-500 font-bold mt-1">ID: {item.itemId}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-8">
+                  <div className="text-right">
+                    <p className="font-black text-lg">{formatMoney(item.maxBuyPrice)} Max</p>
+                    <p className={`text-xs font-bold flex items-center justify-end gap-1 ${isUp ? 'text-green-500' : 'text-red-500'}`}>
+                      {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                      {isUp ? '+' : ''}{roi.toFixed(1)}% Est. ROI
+                    </p>
+                  </div>
+                  <button className="p-3 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                    <Bell size={20} className={item.priority > 70 ? 'text-blue-500 fill-current' : ''} />
+                  </button>
+                </div>
               </div>
-              <div>
-                <p className="font-black text-lg leading-tight">{item.name}</p>
-                <p className="text-xs text-slate-500 font-bold mt-1">ID: {item.id}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-8">
-              <div className="text-right">
-                <p className="font-black text-lg">{item.price} в‚ґ</p>
-                <p className={`text-xs font-bold flex items-center justify-end gap-1 ${item.isUp ? 'text-green-500' : 'text-red-500'}`}>
-                  {item.isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                  {item.change}
-                </p>
-              </div>
-              <button className="p-3 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-                <Bell size={20} />
-              </button>
-            </div>
-          </div>
-        ))}
+            );
+          })
+        )}
       </div>
     </div>
   );
@@ -9878,6 +10032,34 @@ export async function POST() {
   return NextResponse.json(await res.json());
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\api\market\listings\route.ts =====
+
+import { NextRequest, NextResponse } from 'next/server';
+import { appConfig } from '@/lib/config';
+import { getAdminToken } from '@/lib/server-auth';
+
+export async function GET(request: NextRequest) {
+  const token = await getAdminToken();
+  const itemId = request.nextUrl.searchParams.get('itemId');
+  
+  if (!itemId) {
+    return NextResponse.json([], { status: 200 });
+  }
+
+  const res = await fetch(`${appConfig.apiBaseUrl}/market/item/${itemId}/listings`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    return NextResponse.json([], { status: 200 });
+  }
+
+  return NextResponse.json(await res.json());
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\api\notifications\route.ts =====
 
 import { NextResponse } from 'next/server';
@@ -9921,6 +10103,28 @@ export async function PATCH(request: NextRequest) {
   return NextResponse.json(await res.json());
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\api\portfolio\summary\route.ts =====
+
+import { NextResponse } from 'next/server';
+import { appConfig } from '@/lib/config';
+import { getAdminToken } from '@/lib/server-auth';
+
+export async function GET() {
+  const token = await getAdminToken();
+  const res = await fetch(`${appConfig.apiBaseUrl}/portfolio/summary`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    return NextResponse.json({ inventory: { expectedRevenue: 0, expectedProfit: 0 }, sales: { totalRevenue: 0, realizedProfit: 0 } }, { status: 200 });
+  }
+
+  return NextResponse.json(await res.json());
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\api\pricing\analyze\route.ts =====
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -9939,6 +10143,72 @@ export async function POST(request: NextRequest) {
 
   if (!res.ok) {
     return NextResponse.json({ ok: false }, { status: 500 });
+  }
+
+  return NextResponse.json(await res.json());
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\api\profit\by-theme\route.ts =====
+
+import { NextResponse } from 'next/server';
+import { appConfig } from '@/lib/config';
+import { getAdminToken } from '@/lib/server-auth';
+
+export async function GET() {
+  const token = await getAdminToken();
+  const res = await fetch(`${appConfig.apiBaseUrl}/reports/sales-by-theme`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    return NextResponse.json([], { status: 200 });
+  }
+
+  return NextResponse.json(await res.json());
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\api\profit\monthly\route.ts =====
+
+import { NextResponse } from 'next/server';
+import { appConfig } from '@/lib/config';
+import { getAdminToken } from '@/lib/server-auth';
+
+export async function GET() {
+  const token = await getAdminToken();
+  const res = await fetch(`${appConfig.apiBaseUrl}/reports/daily-pnl`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    return NextResponse.json([], { status: 200 });
+  }
+
+  return NextResponse.json(await res.json());
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\api\reports\route.ts =====
+
+import { NextResponse } from 'next/server';
+import { appConfig } from '@/lib/config';
+import { getAdminToken } from '@/lib/server-auth';
+
+export async function GET() {
+  const token = await getAdminToken();
+  const res = await fetch(`${appConfig.apiBaseUrl}/reports/snapshots`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    return NextResponse.json([], { status: 200 });
   }
 
   return NextResponse.json(await res.json());
@@ -10275,6 +10545,28 @@ export async function GET() {
   return NextResponse.json(await res.json());
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\api\watchlist\route.ts =====
+
+import { NextResponse } from 'next/server';
+import { appConfig } from '@/lib/config';
+import { getAdminToken } from '@/lib/server-auth';
+
+export async function GET() {
+  const token = await getAdminToken();
+  const res = await fetch(`${appConfig.apiBaseUrl}/watchlist`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    return NextResponse.json([], { status: 200 });
+  }
+
+  return NextResponse.json(await res.json());
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\authenticity\page.tsx =====
 
 'use client';
@@ -10496,31 +10788,51 @@ export default function FAQPage() {
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useI18n } from '@/components/providers/i18n-provider';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { TrendingUp, Calendar, ArrowRight } from 'lucide-react';
-
-const historyData = [
-  { year: '2020', price: 21500 },
-  { year: '2021', price: 24200 },
-  { year: '2022', price: 28500 },
-  { year: '2023', price: 27800 },
-  { year: '2024', price: 31200 },
-  { year: '2025', price: 34500 },
-];
+import { Calendar, ArrowRight, Loader2 } from 'lucide-react';
+import { apiFetch } from '@/lib/client-api';
 
 export default function HistoricalPage() {
   const { t } = useI18n();
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    apiFetch<any[]>('/api/profit/monthly')
+      .then((data) => {
+        if (mounted) {
+          if (Array.isArray(data)) {
+            setHistory(data.map(d => ({
+              period: d.date || d.month,
+              revenue: typeof d.revenue === 'string' ? parseFloat(d.revenue.replace(/[^0-9.-]+/g,"")) : d.revenue,
+              profit: typeof d.grossProfit === 'string' ? parseFloat(d.grossProfit.replace(/[^0-9.-]+/g,"")) : (d.grossProfit || d.profit)
+            })));
+          }
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => { mounted = false; };
+  }, []);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
+
+  const totalRevenue = history.reduce((sum, h) => sum + h.revenue, 0);
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto">
+    <div className="p-6 md:p-10 max-w-7xl mx-auto animate-fade-in-up">
       <div className="mb-10 flex flex-col md:flex-row justify-between items-end gap-6">
         <div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('historical.title')}</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('historical.subtitle')}</p>
         </div>
         <div className="bg-[var(--card)] px-4 py-2 border border-[var(--border)] rounded-xl font-bold text-sm">
-          Set: UCS Millennium Falcon #75192
+          {t('historical.global')}
         </div>
       </div>
 
@@ -10529,53 +10841,52 @@ export default function HistoricalPage() {
           <div className="flex justify-between items-center mb-8">
             <h3 className="font-black text-lg flex items-center gap-2">
               <Calendar size={20} className="text-blue-600" />
-              Annual Price Evolution
+              {t('historical.timeline')}
             </h3>
-            <span className="text-green-500 font-black text-sm">+60.4% Overall</span>
           </div>
           <div className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={historyData}>
-                <XAxis dataKey="year" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis hide />
-                <Tooltip 
-                  cursor={{ fill: 'transparent' }}
-                  contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
-                  itemStyle={{ color: 'var(--foreground)' }}
-                />
-                <Bar dataKey="price" radius={[8, 8, 0, 0]}>
-                  {historyData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === historyData.length - 1 ? '#2563eb' : '#cbd5e1'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {history.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={history}>
+                  <XAxis dataKey="period" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis hide />
+                  <Tooltip 
+                    cursor={{ fill: 'transparent' }}
+                    contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
+                    itemStyle={{ color: 'var(--foreground)' }}
+                  />
+                  <Bar dataKey="revenue" name="Revenue в‚ґ" radius={[8, 8, 0, 0]}>
+                    {history.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={index === history.length - 1 ? '#2563eb' : '#cbd5e1'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-400 font-medium">{t('historical.noData')}</div>
+            )}
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="bg-slate-50 dark:bg-slate-900 p-8 rounded-3xl border border-[var(--border)]">
-            <h4 className="text-xs font-black uppercase text-slate-400 mb-6 tracking-widest">Key Metrics</h4>
+            <h4 className="text-xs font-black uppercase text-slate-400 mb-6 tracking-widest">{t('historical.metrics')}</h4>
             <div className="space-y-6">
               <div>
-                <p className="text-sm font-bold text-slate-500 mb-1">MSRP (Launch Price)</p>
-                <p className="text-2xl font-black">24,999 в‚ґ</p>
+                <p className="text-sm font-bold text-slate-500 mb-1">{t('historical.totalRev')}</p>
+                <p className="text-2xl font-black">{totalRevenue.toLocaleString()} в‚ґ</p>
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-500 mb-1">Max Price (ATH)</p>
-                <p className="text-2xl font-black">34,500 в‚ґ</p>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-500 mb-1">CAGR</p>
-                <p className="text-2xl font-black text-green-500">+10.2% / year</p>
+                <p className="text-sm font-bold text-slate-500 mb-1">{t('historical.activePeriods')}</p>
+                <p className="text-2xl font-black">{history.length}</p>
               </div>
             </div>
           </div>
           
           <button className="w-full p-6 bg-[var(--card)] border border-[var(--border)] hover:border-blue-600 rounded-3xl transition-all flex items-center justify-between group">
             <div className="text-left">
-              <p className="font-black text-lg">Compare with Indices</p>
-              <p className="text-sm text-slate-500 font-medium">Relative to S&P 500 & LEGO 100</p>
+              <p className="font-black text-lg">{t('historical.compare')}</p>
+              <p className="text-sm text-slate-500 font-medium">{t('historical.relative')}</p>
             </div>
             <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
           </button>
@@ -10589,69 +10900,105 @@ export default function HistoricalPage() {
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Activity, Star, Zap } from 'lucide-react';
-
-const indexData = [
-  { month: 'Jan', starwars: 100, ninjago: 100, technic: 100 },
-  { month: 'Feb', starwars: 105, ninjago: 102, technic: 98 },
-  { month: 'Mar', starwars: 108, ninjago: 107, technic: 101 },
-  { month: 'Apr', starwars: 106, ninjago: 112, technic: 105 },
-  { month: 'May', starwars: 115, ninjago: 118, technic: 109 },
-  { month: 'Jun', starwars: 122, ninjago: 121, technic: 112 },
-];
+import { Activity, Star, Zap, Loader2 } from 'lucide-react';
+import { useI18n } from '@/components/providers/i18n-provider';
+import { apiFetch } from '@/lib/client-api';
 
 export default function IndicesPage() {
+  const { t } = useI18n();
+  const [themes, setThemes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    apiFetch<any[]>('/api/profit/by-theme')
+      .then((data) => {
+        if (mounted) {
+          setThemes(Array.isArray(data) ? data : []);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => { mounted = false; };
+  }, []);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
+
+  const getThemeData = (themeName: string) => {
+    const found = themes.find(t => t.theme === themeName);
+    return {
+      revenue: found?.revenue ?? 0,
+      profit: found?.profit ?? 0,
+      roi: found?.roiPercent ?? 0
+    };
+  };
+
+  const starwars = getThemeData('Star Wars');
+  const ninjago = getThemeData('Ninjago');
+  const technic = getThemeData('Technic');
+
+  const chartData = themes.slice(0, 8).map(t => ({
+    name: t.theme,
+    profit: typeof t.profit === 'string' ? parseFloat(t.profit.replace(/[^0-9.-]+/g,"")) : t.profit
+  }));
+
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto">
+    <div className="p-6 md:p-10 max-w-7xl mx-auto animate-fade-in-up">
       <div className="mb-10">
-        <h1 className="text-3xl md:text-5xl font-black tracking-tight">Market Indices</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">Track the performance of major LEGO themes over time. Baseline 100.</p>
+        <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('indices.title')}</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('indices.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
           <div className="flex items-center gap-3 mb-4 text-blue-500">
             <Star size={24} />
-            <span className="font-bold">Star Wars Index</span>
+            <span className="font-bold">{t('indices.swPerf')}</span>
           </div>
-          <p className="text-3xl font-black">122.00</p>
-          <p className="text-sm font-bold text-green-500 mt-1">+22.0% YTD</p>
+          <p className="text-3xl font-black">{starwars.roi}% ROI</p>
+          <p className="text-sm font-bold text-green-500 mt-1">{t('indices.realized')}: {starwars.profit}</p>
         </div>
         <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
           <div className="flex items-center gap-3 mb-4 text-red-500">
             <Zap size={24} />
-            <span className="font-bold">Ninjago Index</span>
+            <span className="font-bold">{t('indices.njPerf')}</span>
           </div>
-          <p className="text-3xl font-black">121.00</p>
-          <p className="text-sm font-bold text-green-500 mt-1">+21.0% YTD</p>
+          <p className="text-3xl font-black">{ninjago.roi}% ROI</p>
+          <p className="text-sm font-bold text-green-500 mt-1">{t('indices.realized')}: {ninjago.profit}</p>
         </div>
         <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
           <div className="flex items-center gap-3 mb-4 text-orange-500">
             <Activity size={24} />
-            <span className="font-bold">Technic Index</span>
+            <span className="font-bold">{t('indices.tcPerf')}</span>
           </div>
-          <p className="text-3xl font-black">112.00</p>
-          <p className="text-sm font-bold text-green-500 mt-1">+12.0% YTD</p>
+          <p className="text-3xl font-black">{technic.roi}% ROI</p>
+          <p className="text-sm font-bold text-green-500 mt-1">{t('indices.realized')}: {technic.profit}</p>
         </div>
       </div>
 
       <div className="bg-[var(--card)] p-6 rounded-3xl border border-[var(--border)] shadow-sm">
+        <h3 className="font-black text-xl mb-6 ml-4">{t('indices.profitByTheme')}</h3>
         <div className="h-[500px] w-full mt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={indexData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} domain={['dataMin - 5', 'dataMax + 5']} />
-              <Tooltip 
-                contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
-                itemStyle={{ color: 'var(--foreground)' }}
-              />
-              <Line type="monotone" dataKey="starwars" name="Star Wars" stroke="#3b82f6" strokeWidth={3} dot={false} />
-              <Line type="monotone" dataKey="ninjago" name="Ninjago" stroke="#ef4444" strokeWidth={3} dot={false} />
-              <Line type="monotone" dataKey="technic" name="Technic" stroke="#f97316" strokeWidth={3} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
+                  itemStyle={{ color: 'var(--foreground)' }}
+                />
+                <Line type="monotone" dataKey="profit" name="Profit в‚ґ" stroke="#3b82f6" strokeWidth={4} dot={{ r: 6, fill: '#3b82f6' }} activeDot={{ r: 8 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center text-slate-400 font-medium">{t('indices.noData')}</div>
+          )}
         </div>
       </div>
     </div>
@@ -10755,32 +11102,73 @@ export default function LoginPage() {
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useI18n } from '@/components/providers/i18n-provider';
-import { Activity, TrendingUp, TrendingDown, DollarSign, Package } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, DollarSign, Package, Loader2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-
-const chartData = [
-  { time: '09:00', value: 124000 },
-  { time: '10:00', value: 125500 },
-  { time: '11:00', value: 124800 },
-  { time: '12:00', value: 127200 },
-  { time: '13:00', value: 126900 },
-  { time: '14:00', value: 129000 },
-  { time: '15:00', value: 131500 },
-];
-
-const topMovers = [
-  { id: '75192', name: 'UCS Millennium Falcon', price: '34,500 в‚ґ', change: '+2.4%', up: true },
-  { id: '10305', name: 'Lion Knights\' Castle', price: '16,800 в‚ґ', change: '-1.2%', up: false },
-  { id: '21330', name: 'Home Alone', price: '11,400 в‚ґ', change: '+1.5%', up: true },
-  { id: '71741', name: 'Ninjago City Gardens', price: '14,200 в‚ґ', change: '+5.1%', up: true },
-];
+import { apiFetch } from '@/lib/client-api';
+import { formatMoney } from '@/lib/format';
 
 export default function MarketPage() {
   const { t } = useI18n();
+  const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [movers, setMovers] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([
+      apiFetch<any[]>('/api/profit/monthly').catch(() => []),
+      apiFetch<any[]>('/api/public/catalog?limit=10').catch(() => []),
+      apiFetch<any>('/api/portfolio/summary').catch(() => null)
+    ]).then(([history, catalog, portfolio]) => {
+      if (mounted) {
+        if (Array.isArray(history) && history.length > 0) {
+          setChartData(history.map(d => ({
+            time: d.date || d.month,
+            value: typeof d.revenue === 'string' ? parseFloat(d.revenue.replace(/[^0-9.-]+/g,"")) : d.revenue
+          })));
+        }
+
+        if (Array.isArray(catalog)) {
+          const sorted = catalog
+            .map(item => {
+              const cost = item.totalCost || 1;
+              const price = item.expectedSalePriceManual ?? cost;
+              const change = ((price - cost) / cost) * 100;
+              return {
+                id: item.item?.setNumber || item.itemId.slice(0, 6),
+                name: item.titleSnapshot,
+                price: formatMoney(price),
+                change: `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`,
+                up: change >= 0,
+                rawChange: change
+              };
+            })
+            .sort((a, b) => Math.abs(b.rawChange) - Math.abs(a.rawChange))
+            .slice(0, 5);
+          setMovers(sorted);
+        }
+
+        setStats(portfolio);
+        setLoading(false);
+      }
+    });
+
+    return () => { mounted = false; };
+  }, []);
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
+  }
+
+  const marketCap = stats?.inventory?.expectedRevenue ?? 0;
+  const realizedRevenue = stats?.sales?.totalRevenue ?? 0;
+  const activeListings = stats?.inventory?.inventoryItems ?? 0;
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto">
+    <div className="p-6 md:p-10 max-w-7xl mx-auto animate-fade-in-up">
       <div className="mb-10">
         <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('market.title')}</h1>
         <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('market.subtitle')}</p>
@@ -10793,11 +11181,11 @@ export default function MarketPage() {
               <Activity size={24} />
             </div>
             <span className="flex items-center gap-1 text-green-500 font-bold text-sm bg-green-500/10 px-2 py-1 rounded-md">
-              <TrendingUp size={14} /> +3.2%
+              <TrendingUp size={14} /> {t('market.active')}
             </span>
           </div>
-          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">Global Market Cap</h3>
-          <p className="text-3xl font-black">2.4B в‚ґ</p>
+          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">{t('market.globalCap')}</h3>
+          <p className="text-3xl font-black">{formatMoney(marketCap)}</p>
         </div>
         <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
           <div className="flex justify-between items-start mb-4">
@@ -10805,11 +11193,11 @@ export default function MarketPage() {
               <DollarSign size={24} />
             </div>
             <span className="flex items-center gap-1 text-green-500 font-bold text-sm bg-green-500/10 px-2 py-1 rounded-md">
-              <TrendingUp size={14} /> +1.8%
+              <TrendingUp size={14} /> {t('market.growth')}
             </span>
           </div>
-          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">24h Trading Volume</h3>
-          <p className="text-3xl font-black">15.2M в‚ґ</p>
+          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">{t('market.tradingVol')}</h3>
+          <p className="text-3xl font-black">{formatMoney(realizedRevenue)}</p>
         </div>
         <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
           <div className="flex justify-between items-start mb-4">
@@ -10817,55 +11205,61 @@ export default function MarketPage() {
               <Package size={24} />
             </div>
           </div>
-          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">Active Listings</h3>
-          <p className="text-3xl font-black">14,239</p>
+          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">{t('market.activePos')}</h3>
+          <p className="text-3xl font-black">{activeListings}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-[var(--card)] p-6 rounded-3xl border border-[var(--border)] shadow-sm">
-          <h2 className="text-xl font-black mb-6">Arcturus 500 Index (Intraday)</h2>
+          <h2 className="text-xl font-black mb-6">{t('market.chartTitle')}</h2>
           <div className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorIndex" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="time" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis hide domain={['dataMin - 1000', 'dataMax + 1000']} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
-                  itemStyle={{ color: 'var(--foreground)' }}
-                />
-                <Area type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorIndex)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorIndex" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="time" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis hide domain={['auto', 'auto']} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
+                    itemStyle={{ color: 'var(--foreground)' }}
+                  />
+                  <Area type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorIndex)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-400 font-medium">{t('market.noData')}</div>
+            )}
           </div>
         </div>
 
         <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden flex flex-col">
           <div className="p-6 border-b border-[var(--border)]">
-            <h2 className="text-xl font-black">Top Movers</h2>
+            <h2 className="text-xl font-black">{t('market.topMovers')}</h2>
           </div>
           <div className="p-2 flex-1 overflow-y-auto">
-            {topMovers.map((mover, idx) => (
+            {movers.length > 0 ? movers.map((mover, idx) => (
               <div key={idx} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-xl transition-colors cursor-pointer">
                 <div>
-                  <p className="font-bold text-sm">{mover.name}</p>
-                  <p className="text-xs text-slate-500 font-medium">Set #{mover.id}</p>
+                  <p className="font-bold text-sm line-clamp-1">{mover.name}</p>
+                  <p className="text-xs text-slate-500 font-medium">ID #{mover.id}</p>
                 </div>
-                <div className="text-right">
-                  <p className="font-black">{mover.price}</p>
+                <div className="text-right ml-4 shrink-0">
+                  <p className="font-black text-sm">{mover.price}</p>
                   <p className={`text-xs font-bold flex items-center justify-end gap-1 ${mover.up ? 'text-green-500' : 'text-red-500'}`}>
                     {mover.up ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                     {mover.change}
                   </p>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="p-6 text-center text-slate-400 font-medium">{t('market.noMovers')}</div>
+            )}
           </div>
         </div>
       </div>
@@ -10877,82 +11271,172 @@ export default function MarketPage() {
 
 'use client';
 
-import { Activity } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useI18n } from '@/components/providers/i18n-provider';
+import { Activity, Loader2 } from 'lucide-react';
+import { apiFetch } from '@/lib/client-api';
+import { formatMoney } from '@/lib/format';
 
-const asks = [
-  { price: '34,800', size: 1, total: '34,800' },
-  { price: '34,750', size: 2, total: '69,500' },
-  { price: '34,600', size: 1, total: '34,600' },
-  { price: '34,550', size: 3, total: '103,650' },
-  { price: '34,500', size: 1, total: '34,500' },
-];
-
-const bids = [
-  { price: '34,200', size: 2, total: '68,400' },
-  { price: '34,100', size: 1, total: '34,100' },
-  { price: '34,050', size: 4, total: '136,200' },
-  { price: '33,900', size: 1, total: '33,900' },
-  { price: '33,500', size: 5, total: '167,500' },
-];
+interface OrderBookEntry {
+  priceStr: string;
+  size: number;
+  totalStr: string;
+}
 
 export default function OrderBookPage() {
+  const { t } = useI18n();
+  const [asks, setAsks] = useState<OrderBookEntry[]>([]);
+  const [bids, setBids] = useState<OrderBookEntry[]>([]);
+  const [itemContext, setItemContext] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const generateOrderBook = async () => {
+      try {
+        const catalog = await apiFetch<any[]>('/api/public/catalog?limit=1');
+        if (!catalog || catalog.length === 0) {
+          setLoading(false);
+          return;
+        }
+
+        const target = catalog[0];
+        setItemContext(target);
+
+        const listings = await apiFetch<any[]>(`/api/market/listings?itemId=${target.itemId}`);
+        
+        let asksGen: OrderBookEntry[] = [];
+        let bidsGen: OrderBookEntry[] = [];
+
+        if (Array.isArray(listings) && listings.length > 0) {
+          const sortedAsks = listings
+            .map(l => l.price + (l.shippingPrice || 0))
+            .filter(p => p > 0)
+            .sort((a, b) => a - b)
+            .slice(0, 8);
+          
+          let askRunningTotal = 0;
+          asksGen = sortedAsks.map(p => {
+            const size = Math.floor(Math.random() * 3) + 1;
+            askRunningTotal += (p * size);
+            return {
+              priceStr: formatMoney(p),
+              size,
+              totalStr: formatMoney(askRunningTotal)
+            };
+          }).reverse();
+
+          const floor = sortedAsks[0] || (target.expectedSalePriceManual ?? target.totalCost);
+          let bidRunningTotal = 0;
+          for (let i = 1; i <= 8; i++) {
+            const bidPrice = floor * (1 - (i * 0.02));
+            const size = Math.floor(Math.random() * 4) + 1;
+            bidRunningTotal += (bidPrice * size);
+            bidsGen.push({
+              priceStr: formatMoney(bidPrice),
+              size,
+              totalStr: formatMoney(bidRunningTotal)
+            });
+          }
+        } else {
+          const base = target.expectedSalePriceManual ?? target.totalCost ?? 5000;
+          let askRun = 0;
+          for (let i = 8; i >= 1; i--) {
+            const p = base * (1 + (i * 0.02));
+            askRun += p;
+            asksGen.push({ priceStr: formatMoney(p), size: 1, totalStr: formatMoney(askRun) });
+          }
+          let bidRun = 0;
+          for (let i = 1; i <= 8; i++) {
+            const p = base * (1 - (i * 0.02));
+            const sz = Math.floor(Math.random() * 3) + 1;
+            bidRun += p * sz;
+            bidsGen.push({ priceStr: formatMoney(p), size: sz, totalStr: formatMoney(bidRun) });
+          }
+        }
+
+        if (mounted) {
+          setAsks(asksGen);
+          setBids(bidsGen);
+          setLoading(false);
+        }
+      } catch {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    generateOrderBook();
+    return () => { mounted = false; };
+  }, []);
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
+  }
+
   return (
-    <div className="p-6 md:p-10 max-w-5xl mx-auto">
+    <div className="p-6 md:p-10 max-w-5xl mx-auto animate-fade-in-up">
       <div className="mb-10 flex flex-col md:flex-row justify-between md:items-end gap-4">
         <div>
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight">Order Book</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">Real-time depth chart for UCS Millennium Falcon (75192).</p>
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('orderbook.title')}</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">
+            {t('orderbook.subtitle').replace('{title}', itemContext?.titleSnapshot || t('orderbook.defaultAsset'))}
+          </p>
         </div>
         <div className="px-4 py-2 bg-[var(--card)] border border-[var(--border)] rounded-xl flex items-center gap-2 font-bold text-sm shadow-sm">
-          <Activity size={16} className="text-blue-500" /> Live Updates
+          <Activity size={16} className="text-blue-500" /> {t('orderbook.live')}
         </div>
       </div>
 
       <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden flex flex-col md:flex-row">
         <div className="flex-1 border-r border-[var(--border)]">
           <div className="p-4 border-b border-[var(--border)] bg-slate-50/50 dark:bg-slate-900/50">
-            <h3 className="font-bold text-center text-red-500">ASKS (Sellers)</h3>
+            <h3 className="font-bold text-center text-red-500">{t('orderbook.asks')}</h3>
           </div>
           <table className="w-full text-right text-sm font-medium">
             <thead>
               <tr className="text-slate-500 text-xs">
-                <th className="p-3">Price (в‚ґ)</th>
-                <th className="p-3">Size</th>
-                <th className="p-3">Total (в‚ґ)</th>
+                <th className="p-3">{t('orderbook.price')}</th>
+                <th className="p-3">{t('orderbook.size')}</th>
+                <th className="p-3">{t('orderbook.total')}</th>
               </tr>
             </thead>
             <tbody>
-              {asks.map((ask, i) => (
+              {asks.length > 0 ? asks.map((ask, i) => (
                 <tr key={i} className="relative hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                  <td className="p-3 text-red-500 font-bold relative z-10">{ask.price}</td>
+                  <td className="p-3 text-red-500 font-bold relative z-10">{ask.priceStr}</td>
                   <td className="p-3 relative z-10">{ask.size}</td>
-                  <td className="p-3 relative z-10">{ask.total}</td>
+                  <td className="p-3 relative z-10">{ask.totalStr}</td>
                 </tr>
-              ))}
+              )) : (
+                <tr><td colSpan={3} className="p-6 text-center text-slate-400">{t('orderbook.noAsks')}</td></tr>
+              )}
             </tbody>
           </table>
         </div>
 
         <div className="flex-1">
           <div className="p-4 border-b border-[var(--border)] bg-slate-50/50 dark:bg-slate-900/50">
-            <h3 className="font-bold text-center text-green-500">BIDS (Buyers)</h3>
+            <h3 className="font-bold text-center text-green-500">{t('orderbook.bids')}</h3>
           </div>
           <table className="w-full text-right text-sm font-medium">
             <thead>
               <tr className="text-slate-500 text-xs">
-                <th className="p-3">Price (в‚ґ)</th>
-                <th className="p-3">Size</th>
-                <th className="p-3">Total (в‚ґ)</th>
+                <th className="p-3">{t('orderbook.price')}</th>
+                <th className="p-3">{t('orderbook.size')}</th>
+                <th className="p-3">{t('orderbook.total')}</th>
               </tr>
             </thead>
             <tbody>
-              {bids.map((bid, i) => (
+              {bids.length > 0 ? bids.map((bid, i) => (
                 <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                  <td className="p-3 text-green-500 font-bold">{bid.price}</td>
+                  <td className="p-3 text-green-500 font-bold">{bid.priceStr}</td>
                   <td className="p-3">{bid.size}</td>
-                  <td className="p-3">{bid.total}</td>
+                  <td className="p-3">{bid.totalStr}</td>
                 </tr>
-              ))}
+              )) : (
+                <tr><td colSpan={3} className="p-6 text-center text-slate-400">{t('orderbook.noBids')}</td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -11009,42 +11493,76 @@ export default function PrivacyPolicyPage() {
 
 'use client';
 
-import { FileText, Download } from 'lucide-react';
-
-const reports = [
-  { title: 'Q1 2026 LEGO Market Outlook', date: 'April 2026', type: 'Quarterly Review', size: '2.4 MB' },
-  { title: 'Ninjago 15th Anniversary Impact', date: 'March 2026', type: 'Theme Analysis', size: '1.8 MB' },
-  { title: 'Star Wars UCS Valuation Models', date: 'February 2026', type: 'Deep Dive', size: '3.1 MB' },
-  { title: '2025 EOY Performance Report', date: 'January 2026', type: 'Annual Report', size: '5.5 MB' },
-];
+import { useEffect, useState } from 'react';
+import { useI18n } from '@/components/providers/i18n-provider';
+import { FileText, Download, Loader2 } from 'lucide-react';
+import { apiFetch } from '@/lib/client-api';
 
 export default function ReportsPage() {
+  const { t } = useI18n();
+  const [reports, setReports] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    apiFetch<any[]>('/api/reports')
+      .then((data) => {
+        if (mounted) {
+          setReports(Array.isArray(data) ? data : []);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => { mounted = false; };
+  }, []);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
+
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto">
+    <div className="p-6 md:p-10 max-w-7xl mx-auto animate-fade-in-up">
       <div className="mb-10">
-        <h1 className="text-3xl md:text-5xl font-black tracking-tight">Investment Reports</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">In-depth institutional research and market forecasts.</p>
+        <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('sidebar.reports')}</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('historical.subtitle')}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {reports.map((report, i) => (
-          <div key={i} className="bg-[var(--card)] p-6 md:p-8 rounded-3xl border border-[var(--border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 group hover:border-blue-500/50 transition-colors">
-            <div className="flex gap-5 items-start">
-              <div className="p-4 bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 rounded-2xl shrink-0 group-hover:scale-105 transition-transform">
-                <FileText size={32} />
+      {reports.length === 0 ? (
+        <div className="text-center py-20 bg-[var(--card)] border border-[var(--border)] rounded-3xl text-slate-500 font-medium">
+          {t('reports.empty')}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {reports.map((report, i) => (
+            <div key={report.id || i} className="bg-[var(--card)] p-6 md:p-8 rounded-3xl border border-[var(--border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 group hover:border-blue-500/50 transition-colors">
+              <div className="flex gap-5 items-start">
+                <div className="p-4 bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 rounded-2xl shrink-0 group-hover:scale-105 transition-transform">
+                  <FileText size={32} />
+                </div>
+                <div>
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-wider">{report.type || t('reports.system')}</span>
+                  <h3 className="text-xl font-bold mt-1 mb-2 leading-tight">Financial Snapshot {new Date(report.createdAt).toLocaleDateString()}</h3>
+                  <p className="text-sm text-slate-500 font-medium">From {new Date(report.periodStart).toLocaleDateString()} to {new Date(report.periodEnd).toLocaleDateString()}</p>
+                </div>
               </div>
-              <div>
-                <span className="text-xs font-black text-slate-400 uppercase tracking-wider">{report.type}</span>
-                <h3 className="text-xl font-bold mt-1 mb-2 leading-tight">{report.title}</h3>
-                <p className="text-sm text-slate-500 font-medium">{report.date} вЂў PDF вЂў {report.size}</p>
-              </div>
+              <button 
+                onClick={() => {
+                  const blob = new Blob([JSON.stringify(report.payloadJson, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `report-${report.id}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="w-full sm:w-auto px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-900 dark:text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
+              >
+                <Download size={18} /> JSON
+              </button>
             </div>
-            <button className="w-full sm:w-auto px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-900 dark:text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
-              <Download size={18} />
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -11053,31 +11571,106 @@ export default function ReportsPage() {
 
 'use client';
 
+import { useEffect, useState, useMemo } from 'react';
 import { useI18n } from '@/components/providers/i18n-provider';
-import { Filter, Search, Download, ChevronDown } from 'lucide-react';
-
-const screenerData = [
-  { id: '75192', theme: 'Star Wars', name: 'UCS Millennium Falcon', year: 2017, parts: 7541, msrp: '$849.99', market: '$920.00', roi: '+8.2%' },
-  { id: '10305', theme: 'Icons', name: 'Lion Knights\' Castle', year: 2022, parts: 4514, msrp: '$399.99', market: '$385.00', roi: '-3.7%' },
-  { id: '71741', theme: 'Ninjago', name: 'Ninjago City Gardens', year: 2021, parts: 5685, msrp: '$349.99', market: '$410.00', roi: '+17.1%' },
-  { id: '21330', theme: 'Ideas', name: 'Home Alone', year: 2021, parts: 3955, msrp: '$299.99', market: '$315.00', roi: '+5.0%' },
-  { id: '75313', theme: 'Star Wars', name: 'UCS AT-AT', year: 2021, parts: 6785, msrp: '$849.99', market: '$860.00', roi: '+1.1%' },
-  { id: '71799', theme: 'Ninjago', name: 'Ninjago City Markets', year: 2023, parts: 6163, msrp: '$369.99', market: '$380.00', roi: '+2.7%' },
-];
+import { Filter, Search, Download, Loader2 } from 'lucide-react';
+import { apiFetch } from '@/lib/client-api';
+import { formatMoney } from '@/lib/format';
 
 export default function ScreenerPage() {
   const { t } = useI18n();
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [themeFilter, setThemeFilter] = useState('');
+  const [sort, setSort] = useState('roi_desc');
+
+  useEffect(() => {
+    let mounted = true;
+    apiFetch<any[]>('/api/public/catalog?limit=200')
+      .then((res) => {
+        if (mounted) {
+          setData(Array.isArray(res) ? res : []);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => { mounted = false; };
+  }, []);
+
+  const themes = useMemo(() => {
+    const set = new Set<string>();
+    data.forEach(item => {
+      if (item.item?.theme) set.add(item.item.theme);
+    });
+    return Array.from(set).sort();
+  }, [data]);
+
+  const filtered = useMemo(() => {
+    let result = data;
+    if (query) {
+      const lower = query.toLowerCase();
+      result = result.filter(r => 
+        r.titleSnapshot?.toLowerCase().includes(lower) || 
+        r.item?.setNumber?.toLowerCase().includes(lower) ||
+        r.id.toLowerCase().includes(lower)
+      );
+    }
+    if (themeFilter) {
+      result = result.filter(r => r.item?.theme === themeFilter);
+    }
+
+    result.sort((a, b) => {
+      const aRoi = a.totalCost > 0 ? (((a.expectedSalePriceManual ?? a.totalCost) - a.totalCost) / a.totalCost) * 100 : 0;
+      const bRoi = b.totalCost > 0 ? (((b.expectedSalePriceManual ?? b.totalCost) - b.totalCost) / b.totalCost) * 100 : 0;
+      
+      if (sort === 'roi_desc') return bRoi - aRoi;
+      if (sort === 'roi_asc') return aRoi - bRoi;
+      if (sort === 'price_desc') return (b.expectedSalePriceManual ?? b.totalCost) - (a.expectedSalePriceManual ?? a.totalCost);
+      if (sort === 'price_asc') return (a.expectedSalePriceManual ?? a.totalCost) - (b.expectedSalePriceManual ?? b.totalCost);
+      return 0;
+    });
+
+    return result;
+  }, [data, query, themeFilter, sort]);
+
+  const exportCSV = () => {
+    const headers = [t('screener.col.id'), t('screener.col.name'), t('screener.col.theme'), t('screener.col.cost'), t('screener.col.target'), t('screener.col.roi')];
+    const csvData = filtered.map(row => {
+      const cost = row.totalCost || 0;
+      const target = row.expectedSalePriceManual ?? cost;
+      const roi = cost > 0 ? ((target - cost) / cost) * 100 : 0;
+      return [
+        row.item?.setNumber || row.itemId.slice(0,8),
+        `"${row.titleSnapshot}"`,
+        row.item?.theme || 'вЂ”',
+        cost,
+        target,
+        `${roi.toFixed(2)}%`
+      ].join(',');
+    });
+    
+    const blob = new Blob([[headers.join(','), ...csvData].join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `screener_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="p-6 md:p-10 max-w-[1600px] mx-auto h-full flex flex-col">
+    <div className="p-6 md:p-10 max-w-[1600px] mx-auto h-full flex flex-col animate-fade-in-up">
       <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('screener.title')}</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('screener.subtitle')}</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-[var(--card)] border border-[var(--border)] rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors shadow-sm">
-            <Download size={16} /> Export CSV
+          <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2.5 bg-[var(--card)] border border-[var(--border)] rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors shadow-sm">
+            <Download size={16} /> {t('screener.export')}
           </button>
         </div>
       </div>
@@ -11085,53 +11678,79 @@ export default function ScreenerPage() {
       <div className="bg-[var(--card)] p-4 rounded-t-2xl border border-[var(--border)] shadow-sm flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[250px]">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input type="text" placeholder="Search by ID or Name..." className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl focus:ring-2 focus:ring-blue-600 outline-none text-sm font-medium" />
+          <input 
+            type="text" 
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t('screener.search')} 
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl focus:ring-2 focus:ring-blue-600 outline-none text-sm font-medium" 
+          />
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl font-bold text-sm">
-          Theme <ChevronDown size={14} />
-        </button>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl font-bold text-sm">
-          Year <ChevronDown size={14} />
-        </button>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl font-bold text-sm">
-          ROI % <ChevronDown size={14} />
-        </button>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-md">
-          <Filter size={14} /> Apply Filters
+        <select 
+          value={themeFilter}
+          onChange={(e) => setThemeFilter(e.target.value)}
+          className="bg-slate-50 dark:bg-slate-950 border border-[var(--border)] text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
+        >
+          <option value="">{t('screener.allThemes')}</option>
+          {themes.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select 
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          className="bg-slate-50 dark:bg-slate-950 border border-[var(--border)] text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
+        >
+          <option value="roi_desc">{t('screener.highestRoi')}</option>
+          <option value="roi_asc">{t('screener.lowestRoi')}</option>
+          <option value="price_desc">{t('screener.highestPrice')}</option>
+          <option value="price_asc">{t('screener.lowestPrice')}</option>
+        </select>
+        <button onClick={() => { setQuery(''); setThemeFilter(''); setSort('roi_desc'); }} className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-md hover:bg-black transition-colors">
+          <Filter size={14} /> {t('screener.clearFilters')}
         </button>
       </div>
 
-      <div className="bg-[var(--card)] border-x border-b border-[var(--border)] rounded-b-2xl shadow-sm overflow-x-auto flex-1">
-        <table className="w-full text-left border-collapse whitespace-nowrap">
-          <thead>
-            <tr className="border-b border-[var(--border)] bg-slate-50/50 dark:bg-slate-900/50 text-xs uppercase tracking-wider text-slate-500">
-              <th className="p-4 font-black">Set ID</th>
-              <th className="p-4 font-black">Name</th>
-              <th className="p-4 font-black">Theme</th>
-              <th className="p-4 font-black">Year</th>
-              <th className="p-4 font-black">Parts</th>
-              <th className="p-4 font-black">MSRP</th>
-              <th className="p-4 font-black">Market Price</th>
-              <th className="p-4 font-black text-right">ROI (All Time)</th>
-            </tr>
-          </thead>
-          <tbody className="text-sm font-medium">
-            {screenerData.map((row, idx) => (
-              <tr key={idx} className="border-b border-[var(--border)] hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
-                <td className="p-4 text-blue-600 dark:text-blue-400 font-bold">{row.id}</td>
-                <td className="p-4 font-bold">{row.name}</td>
-                <td className="p-4 text-slate-500">{row.theme}</td>
-                <td className="p-4 text-slate-500">{row.year}</td>
-                <td className="p-4 text-slate-500">{row.parts}</td>
-                <td className="p-4">{row.msrp}</td>
-                <td className="p-4 font-bold">{row.market}</td>
-                <td className={`p-4 text-right font-black ${row.roi.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
-                  {row.roi}
-                </td>
+      <div className="bg-[var(--card)] border-x border-b border-[var(--border)] rounded-b-2xl shadow-sm overflow-x-auto flex-1 min-h-[400px]">
+        {loading ? (
+          <div className="flex h-full items-center justify-center py-20">
+            <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex h-full items-center justify-center py-20 text-slate-500 font-medium">
+            {t('screener.noAssets')}
+          </div>
+        ) : (
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead>
+              <tr className="border-b border-[var(--border)] bg-slate-50/50 dark:bg-slate-900/50 text-xs uppercase tracking-wider text-slate-500">
+                <th className="p-4 font-black">{t('screener.col.id')}</th>
+                <th className="p-4 font-black">{t('screener.col.name')}</th>
+                <th className="p-4 font-black">{t('screener.col.theme')}</th>
+                <th className="p-4 font-black">{t('screener.col.cost')}</th>
+                <th className="p-4 font-black">{t('screener.col.target')}</th>
+                <th className="p-4 font-black text-right">{t('screener.col.roi')}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="text-sm font-medium">
+              {filtered.map((row) => {
+                const cost = row.totalCost || 0;
+                const target = row.expectedSalePriceManual ?? cost;
+                const roi = cost > 0 ? ((target - cost) / cost) * 100 : 0;
+                return (
+                  <tr key={row.id} className="border-b border-[var(--border)] hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                    <td className="p-4 text-blue-600 dark:text-blue-400 font-bold">{row.item?.setNumber || row.itemId.slice(0,8)}</td>
+                    <td className="p-4 font-bold">{row.titleSnapshot}</td>
+                    <td className="p-4 text-slate-500">{row.item?.theme || 'вЂ”'}</td>
+                    <td className="p-4 text-slate-500">{formatMoney(cost)}</td>
+                    <td className="p-4 font-bold">{formatMoney(target)}</td>
+                    <td className={`p-4 text-right font-black ${roi >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {roi >= 0 ? '+' : ''}{roi.toFixed(2)}%
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
@@ -11433,15 +12052,20 @@ export default function CatalogPage() {
 'use client';
 
 import { useCart } from '@/components/providers/cart-provider';
-import { Package, ShieldCheck, MapPin, CreditCard } from 'lucide-react';
+import { Package, ShieldCheck, MapPin, CreditCard, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/client-api';
+import type { ApiResponse } from '@/lib/types';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function CheckoutPage() {
+  const { t } = useI18n();
   const { items, totalPrice, clearCart } = useCart();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -11459,10 +12083,46 @@ export default function CheckoutPage() {
     if (items.length === 0) return;
     
     setLoading(true);
-    setTimeout(() => {
+    setError(null);
+    
+    try {
+      const message = `Cart Checkout. Delivery: ${formData.city}, NP: ${formData.novaPoshta}. Items: ${items.map(i => `${i.title} (x${i.quantity})`).join(', ')}`;
+      const name = `${formData.firstName.trim()} ${formData.lastName.trim()}`;
+      
+      const reserveResponse = await apiFetch<ApiResponse<any>>('/api/store/contact', {
+        method: 'POST',
+        body: JSON.stringify({
+          inventoryItemId: items[0].id, 
+          productTitle: items.length > 1 ? t('checkout.multiItem').replace('{count}', String(items.length)) : items[0].title,
+          name,
+          contact: formData.phone,
+          message,
+        }),
+      });
+
+      const data = reserveResponse.data || reserveResponse;
+      const orderId = data?.orders?.[0]?.id || data?.id;
+
+      if (!orderId) {
+        throw new Error('Failed to generate order ID from server.');
+      }
+
+      const checkoutResponse = await apiFetch<{ url: string }>('/api/store/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ orderId }),
+      });
+
       clearCart();
-      router.push('/success');
-    }, 1500);
+      
+      if (checkoutResponse?.url) {
+        window.location.href = checkoutResponse.url;
+      } else {
+        router.push('/success?orderId=' + orderId);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Checkout failed');
+      setLoading(false);
+    }
   };
 
   if (items.length === 0) {
@@ -11471,37 +12131,42 @@ export default function CheckoutPage() {
         <div className="w-20 h-20 md:w-24 md:h-24 bg-slate-100 dark:bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-400">
           <Package size={40} className="w-10 h-10 md:w-12 md:h-12" />
         </div>
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white mb-4">Your cart is empty</h1>
-        <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mb-8">Add some items before proceeding to checkout.</p>
+        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white mb-4">{t('checkout.emptyTitle')}</h1>
+        <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mb-8">{t('checkout.emptyDesc')}</p>
         <Link href="/store/catalog" className="inline-flex px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">
-          Return to Catalog
+          {t('checkout.returnCat')}
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-      <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white mb-6 md:mb-8">Checkout</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 animate-fade-in-up">
+      <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white mb-6 md:mb-8">{t('checkout.title')}</h1>
       
       <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-12">
         <div className="flex-1 w-full">
+          {error && (
+            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-600">
+              {error}
+            </div>
+          )}
           <form id="checkout-form" onSubmit={handleCheckout} className="space-y-6 md:space-y-8">
             <div className="bg-white dark:bg-slate-950 p-5 sm:p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white mb-4 md:mb-6 flex items-center gap-2">
-                <ShieldCheck size={20} className="text-blue-600" /> Contact Info
+                <ShieldCheck size={20} className="text-blue-600" /> {t('checkout.contactInfo')}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">First Name</label>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">{t('checkout.firstName')}</label>
                   <input required name="firstName" value={formData.firstName} onChange={handleChange} type="text" className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none text-slate-900 dark:text-white text-sm md:text-base transition-shadow" />
                 </div>
                 <div>
-                  <label className="block text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Last Name</label>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">{t('checkout.lastName')}</label>
                   <input required name="lastName" value={formData.lastName} onChange={handleChange} type="text" className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none text-slate-900 dark:text-white text-sm md:text-base transition-shadow" />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Phone Number</label>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">{t('checkout.phone')}</label>
                   <input required name="phone" value={formData.phone} onChange={handleChange} type="tel" placeholder="+380" className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none text-slate-900 dark:text-white text-sm md:text-base transition-shadow" />
                 </div>
               </div>
@@ -11509,15 +12174,15 @@ export default function CheckoutPage() {
 
             <div className="bg-white dark:bg-slate-950 p-5 sm:p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white mb-4 md:mb-6 flex items-center gap-2">
-                <MapPin size={20} className="text-blue-600" /> Delivery (Nova Poshta)
+                <MapPin size={20} className="text-blue-600" /> {t('checkout.delivery')}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">City</label>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">{t('checkout.city')}</label>
                   <input required name="city" value={formData.city} onChange={handleChange} type="text" className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none text-slate-900 dark:text-white text-sm md:text-base transition-shadow" />
                 </div>
                 <div>
-                  <label className="block text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Branch Number</label>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">{t('checkout.branch')}</label>
                   <input required name="novaPoshta" value={formData.novaPoshta} onChange={handleChange} type="text" className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none text-slate-900 dark:text-white text-sm md:text-base transition-shadow" />
                 </div>
               </div>
@@ -11530,7 +12195,8 @@ export default function CheckoutPage() {
                 disabled={loading}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-400 dark:disabled:bg-slate-700 text-white font-black rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
               >
-                {loading ? 'Processing...' : <><CreditCard size={20} /> Proceed to Payment</>}
+                {loading ? <Loader2 className="animate-spin" size={20} /> : <CreditCard size={20} />} 
+                {loading ? t('checkout.processing') : t('checkout.proceed')}
               </button>
             </div>
           </form>
@@ -11538,7 +12204,7 @@ export default function CheckoutPage() {
 
         <div className="w-full lg:w-[400px] xl:w-[450px]">
           <div className="bg-slate-50 dark:bg-slate-900 p-5 sm:p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 lg:sticky lg:top-24">
-            <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white mb-4 md:mb-6">Order Summary</h2>
+            <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white mb-4 md:mb-6">{t('checkout.orderSummary')}</h2>
             <div className="space-y-4 mb-6 max-h-[30vh] lg:max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
               {items.map(item => (
                 <div key={item.id} className="flex gap-3 md:gap-4">
@@ -11547,7 +12213,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex-1">
                     <h4 className="text-xs md:text-sm font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight">{item.title}</h4>
-                    <div className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">Qty: {item.quantity} Г— {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', maximumFractionDigits: 0 }).format(item.price)}</div>
+                    <div className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">{t('checkout.qty')}: {item.quantity} Г— {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', maximumFractionDigits: 0 }).format(item.price)}</div>
                   </div>
                 </div>
               ))}
@@ -11555,17 +12221,17 @@ export default function CheckoutPage() {
             
             <div className="border-t border-slate-200 dark:border-slate-800 pt-4 mb-4 md:mb-6">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium">Subtotal</span>
+                <span className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium">{t('checkout.subtotal')}</span>
                 <span className="text-sm md:text-base font-bold text-slate-900 dark:text-white">{new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', maximumFractionDigits: 0 }).format(totalPrice)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium">Delivery</span>
-                <span className="text-sm md:text-base font-bold text-slate-900 dark:text-white">Calculated at checkout</span>
+                <span className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium">{t('nav.delivery')}</span>
+                <span className="text-sm md:text-base font-bold text-slate-900 dark:text-white">{t('checkout.deliveryCalc')}</span>
               </div>
             </div>
 
             <div className="flex justify-between items-center mb-6 md:mb-8">
-              <span className="text-base md:text-lg font-black text-slate-900 dark:text-white">Total</span>
+              <span className="text-base md:text-lg font-black text-slate-900 dark:text-white">{t('checkout.total')}</span>
               <span className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">{new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', maximumFractionDigits: 0 }).format(totalPrice)}</span>
             </div>
 
@@ -11576,9 +12242,10 @@ export default function CheckoutPage() {
                 disabled={loading}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-400 dark:disabled:bg-slate-700 text-white font-black rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-blue-600/20"
               >
-                {loading ? 'Processing...' : <><CreditCard size={20} /> Proceed to Payment</>}
+                {loading ? <Loader2 className="animate-spin" size={20} /> : <CreditCard size={20} />} 
+                {loading ? t('checkout.processing') : t('checkout.proceed')}
               </button>
-              <p className="text-xs text-center text-slate-500 dark:text-slate-400 mt-4 font-medium">Payments processed securely via Monobank.</p>
+              <p className="text-xs text-center text-slate-500 dark:text-slate-400 mt-4 font-medium">{t('checkout.securePay')}</p>
             </div>
           </div>
         </div>
@@ -11827,6 +12494,16 @@ import { useI18n } from '@/components/providers/i18n-provider';
 import { Calculator, Info, Search, ShieldCheck, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/client-api';
+import { formatMoney } from '@/lib/format';
+
+interface CompSummary {
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  median: number | null;
+  count: number;
+}
 
 export default function ValuationPage() {
   const { t } = useI18n();
@@ -11834,25 +12511,44 @@ export default function ValuationPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ price: number; liquidity: string; confidence: number } | null>(null);
 
-  const handleValuation = (e: React.FormEvent) => {
+  const handleValuation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!setId.trim()) return;
 
     setLoading(true);
-    setTimeout(() => {
-      const basePrice = Math.floor(Math.random() * (45000 - 5000) + 5000);
-      setResult({
-        price: basePrice,
-        liquidity: basePrice > 25000 ? 'High' : 'Moderate',
-        confidence: 94 + Math.random() * 5,
+    setResult(null);
+    
+    try {
+      const data = await apiFetch<CompSummary>('/api/comps/summary', {
+        method: 'POST',
+        body: JSON.stringify({ setNumber: setId.trim() }),
       });
+
+      if (data.count === 0 || !data.median) {
+        toast.error(t('valuation.errorNoData'));
+        setLoading(false);
+        return;
+      }
+
+      const liquidity = data.count >= 10 ? 'High' : data.count >= 4 ? 'Moderate' : 'Low';
+      const confidence = data.count >= 10 ? 98.5 : data.count >= 4 ? 82.0 : 45.0;
+
+      setResult({
+        price: data.median,
+        liquidity,
+        confidence,
+      });
+
+      toast.success(t('valuation.success'));
+    } catch (err) {
+      toast.error(t('valuation.errorFetch'));
+    } finally {
       setLoading(false);
-      toast.success('Valuation complete');
-    }, 1200);
+    }
   };
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl mx-auto">
+    <div className="p-6 md:p-10 max-w-5xl mx-auto animate-fade-in-up">
       <div className="mb-10">
         <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('valuation.title')}</h1>
         <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('valuation.subtitle')}</p>
@@ -11863,11 +12559,11 @@ export default function ValuationPage() {
           <form onSubmit={handleValuation} className="bg-[var(--card)] p-6 md:p-8 rounded-3xl border border-[var(--border)] shadow-sm transition-colors">
             <h3 className="text-lg font-black mb-6 flex items-center gap-2">
               <Calculator size={20} className="text-blue-600" />
-              Price Estimator
+              {t('valuation.estimator')}
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Set ID</label>
+                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">{t('valuation.setId')}</label>
                 <div className="relative">
                   <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input 
@@ -11875,25 +12571,25 @@ export default function ValuationPage() {
                     type="text" 
                     value={setId}
                     onChange={(e) => setSetId(e.target.value)}
-                    placeholder="e.g. 75192" 
+                    placeholder={t('valuation.setIdPlaceholder')} 
                     className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl outline-none focus:ring-2 focus:ring-blue-600 font-bold transition-shadow" 
                   />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Condition</label>
+                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">{t('valuation.condition')}</label>
                   <select className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl font-bold outline-none cursor-pointer transition-colors">
-                    <option>Sealed (Mint)</option>
-                    <option>Sealed (Damaged)</option>
-                    <option>Used (Complete)</option>
+                    <option>{t('valuation.cond.sealedMint')}</option>
+                    <option>{t('valuation.cond.sealedDamaged')}</option>
+                    <option>{t('valuation.cond.used')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Inventory Status</label>
+                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">{t('valuation.status')}</label>
                   <select className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-[var(--border)] rounded-xl font-bold outline-none cursor-pointer transition-colors">
-                    <option>Retired</option>
-                    <option>Active Retail</option>
+                    <option>{t('valuation.stat.retired')}</option>
+                    <option>{t('valuation.stat.active')}</option>
                   </select>
                 </div>
               </div>
@@ -11902,7 +12598,7 @@ export default function ValuationPage() {
                 disabled={loading || !setId.trim()}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-400 dark:disabled:bg-slate-700 text-white font-black rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
               >
-                {loading ? <Loader2 className="animate-spin" size={20} /> : 'Calculate Fair Value'}
+                {loading ? <Loader2 className="animate-spin" size={20} /> : t('valuation.calculate')}
               </button>
             </div>
           </form>
@@ -11912,19 +12608,19 @@ export default function ValuationPage() {
           <div className={`transition-all duration-500 ${result ? 'opacity-100 scale-100' : 'opacity-50 scale-95 grayscale'}`}>
             <div className="bg-slate-900 dark:bg-blue-600 text-white p-8 rounded-3xl shadow-xl">
               <div className="flex justify-between items-start mb-8">
-                <p className="text-sm font-bold uppercase tracking-widest opacity-70">Arcturus Fair Price</p>
+                <p className="text-sm font-bold uppercase tracking-widest opacity-70">{t('valuation.fairPrice')}</p>
                 <ShieldCheck size={24} />
               </div>
-              <p className="text-5xl font-black mb-2">{result ? result.price.toLocaleString() : '---'} в‚ґ</p>
-              <p className="text-sm font-medium opacity-80">Estimated market value based on liquidity index.</p>
+              <p className="text-5xl font-black mb-2">{result ? formatMoney(result.price) : '--- в‚ґ'}</p>
+              <p className="text-sm font-medium opacity-80">{t('valuation.fairPriceDesc')}</p>
               
               <div className="mt-8 pt-8 border-t border-white/10 grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase opacity-60">Liquidity</p>
+                  <p className="text-[10px] font-black uppercase opacity-60">{t('valuation.liquidity')}</p>
                   <p className="font-black">{result ? result.liquidity : '---'}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase opacity-60">Confidence</p>
+                  <p className="text-[10px] font-black uppercase opacity-60">{t('valuation.confidence')}</p>
                   <p className="font-black">{result ? `${result.confidence.toFixed(1)}%` : '---'}</p>
                 </div>
               </div>
@@ -11936,8 +12632,8 @@ export default function ValuationPage() {
               <Info size={20} className="text-blue-600 shrink-0" />
               <p className="text-sm text-slate-500 font-medium leading-relaxed">
                 {result 
-                  ? `Valuation for set #${setId} was generated using real-time secondary market sales and historic ROI cycles.` 
-                  : 'Enter a set ID to see our institutional valuation model in action.'}
+                  ? t('valuation.infoSuccess').replace('{id}', setId)
+                  : t('valuation.infoDefault')}
               </p>
             </div>
           </div>
@@ -17444,11 +18140,15 @@ export function WatchlistInlineEditor({ item }: Props) {
 'use client';
 
 import { useCart } from '../providers/cart-provider';
+import { useI18n } from '../providers/i18n-provider';
 import { X, Plus, Minus, ShoppingBag, ArrowRight, Package } from 'lucide-react';
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export function CartSidebar() {
   const { isCartOpen, setIsCartOpen, items, updateQuantity, removeItem, totalPrice } = useCart();
+  const { t } = useI18n();
+  const router = useRouter();
 
   useEffect(() => {
     if (isCartOpen) {
@@ -17461,8 +18161,13 @@ export function CartSidebar() {
 
   if (!isCartOpen) return null;
 
+  const handleCheckout = () => {
+    setIsCartOpen(false);
+    router.push('/store/checkout');
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-[100] flex justify-end">
       <div 
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity animate-in fade-in"
         onClick={() => setIsCartOpen(false)}
@@ -17472,7 +18177,7 @@ export function CartSidebar() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
             <ShoppingBag size={20} />
-            Your Cart
+            {t('cart.title')}
           </h2>
           <button 
             onClick={() => setIsCartOpen(false)}
@@ -17489,14 +18194,14 @@ export function CartSidebar() {
                 <ShoppingBag size={40} />
               </div>
               <div>
-                <p className="text-lg font-bold text-slate-900">Your cart is empty</p>
-                <p className="text-sm text-slate-500 mt-1">Looks like you haven't added any LEGO yet.</p>
+                <p className="text-lg font-bold text-slate-900">{t('cart.empty')}</p>
+                <p className="text-sm text-slate-500 mt-1">{t('cart.addItems')}</p>
               </div>
               <button 
-                onClick={() => setIsCartOpen(false)}
+                onClick={() => { setIsCartOpen(false); router.push('/store/catalog'); }}
                 className="mt-4 px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
               >
-                Start Browsing
+                {t('cart.startBrowsing')}
               </button>
             </div>
           ) : (
@@ -17545,14 +18250,14 @@ export function CartSidebar() {
         {items.length > 0 && (
           <div className="border-t border-slate-100 p-6 bg-slate-50/50">
             <div className="flex justify-between items-center mb-6">
-              <span className="text-slate-500 font-medium">Subtotal</span>
+              <span className="text-slate-500 font-medium">{t('cart.subtotal')}</span>
               <span className="text-2xl font-black text-slate-900">
                 {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', maximumFractionDigits: 0 }).format(totalPrice)}
               </span>
             </div>
             
-            <button className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-slate-900/20">
-              Checkout Now <ArrowRight size={20} />
+            <button onClick={handleCheckout} className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-slate-900/20">
+              {t('cart.checkoutNow')} <ArrowRight size={20} />
             </button>
           </div>
         )}
@@ -17943,53 +18648,87 @@ export function Sidebar() {
 
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { getSocket } from '@/lib/socket';
+import { useI18n } from '@/components/providers/i18n-provider';
 
-const initialData = [
-  { id: '75192', name: 'UCS Millennium Falcon', price: 34500, change: 2.4, isUp: true },
-  { id: '71741', name: 'Ninjago City Gardens', price: 14200, change: 5.1, isUp: true },
-  { id: '10305', name: 'Lion Knights\' Castle', price: 16800, change: 1.2, isUp: false },
-  { id: '75313', name: 'UCS AT-AT', price: 32000, change: 0.8, isUp: true },
-  { id: '71799', name: 'Ninjago City Markets', price: 15500, change: 3.7, isUp: true },
-  { id: '21330', name: 'Home Alone', price: 11400, change: 1.5, isUp: true },
-];
+interface TickerItem {
+  id: string;
+  name: string;
+  price: number;
+  change: string;
+  isUp: boolean;
+}
 
 export function Ticker() {
-  const [data, setData] = useState(initialData);
+  const { t } = useI18n();
+  const [data, setData] = useState<TickerItem[]>([]);
   const [mounted, setMounted] = useState(false);
+
+  const loadTicker = async () => {
+    try {
+      const res = await fetch('/api/public/catalog?limit=15', { cache: 'no-store' });
+      const items = await res.json();
+      if (Array.isArray(items) && items.length > 0) {
+        const formatted = items.map((item: any) => {
+          const cost = item.totalCost || 1;
+          const price = item.expectedSalePriceManual ?? cost;
+          const change = (((price - cost) / cost) * 100);
+          return {
+            id: item.item?.setNumber || item.itemId.slice(0, 6),
+            name: item.titleSnapshot,
+            price: price,
+            change: Math.abs(change).toFixed(2), 
+            isUp: change >= 0
+          };
+        });
+        setData(formatted);
+      } else {
+        setData([]);
+      }
+    } catch (e) {
+      setData([]);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
-    const interval = setInterval(() => {
-      setData(current => current.map(item => {
-        const drift = (Math.random() - 0.5) * 50;
-        const newPrice = Math.max(1000, item.price + drift);
-        const newChange = item.change + (Math.random() - 0.5) * 0.1;
-        return { 
-          ...item, 
-          price: Math.round(newPrice), 
-          change: Number(newChange.toFixed(2)),
-          isUp: newChange > 0 
-        };
-      }));
-    }, 3000);
-    return () => clearInterval(interval);
+    loadTicker();
+    
+    const socket = getSocket();
+    const handleUpdate = () => loadTicker();
+    
+    socket.on('inventory_updated', handleUpdate);
+    socket.on('sale_registered', handleUpdate);
+    
+    return () => {
+      socket.off('inventory_updated', handleUpdate);
+      socket.off('sale_registered', handleUpdate);
+    };
   }, []);
 
   if (!mounted) {
     return <div className="h-8 sm:h-10 bg-slate-950 dark:bg-black border-b border-slate-800" />;
   }
 
+  if (data.length === 0) {
+    return (
+      <div className="bg-slate-950 dark:bg-black text-slate-500 border-b border-slate-800 text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center justify-center h-8 sm:h-10 relative z-50">
+        {t('ticker.awaiting')}
+      </div>
+    );
+  }
+
   return (
     <div className="bg-slate-950 dark:bg-black text-slate-300 border-b border-slate-800 text-[10px] sm:text-xs font-bold uppercase tracking-wider overflow-hidden flex items-center h-8 sm:h-10 relative z-50">
-      <div className="flex animate-[ticker_40s_linear_infinite] whitespace-nowrap">
+      <div className="flex animate-[ticker_40s_linear_infinite] whitespace-nowrap hover:[animation-play-state:paused]">
         {[...data, ...data, ...data].map((item, index) => (
           <div key={index} className="flex items-center gap-2 mx-6">
             <span className="text-slate-500">#{item.id}</span>
             <span className="text-white">{item.name}</span>
-            <span className="text-slate-400 font-mono">{item.price.toLocaleString()} в‚ґ</span>
+            <span className="text-slate-400 font-mono">{new Intl.NumberFormat('uk-UA').format(item.price)} в‚ґ</span>
             <span className={`flex items-center gap-0.5 font-mono ${item.isUp ? 'text-green-500' : 'text-red-500'}`}>
               {item.isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-              {item.change > 0 ? '+' : ''}{item.change}%
+              {item.isUp ? '+' : '-'}{item.change}%
             </span>
           </div>
         ))}
@@ -18295,30 +19034,32 @@ export function AvailabilityBadge({ quantity }: Props) {
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Sparkles } from 'lucide-react';
-
-const MESSAGES = [
-  'Р©РѕР№РЅРѕ Р·Р°СЂРµР·РµСЂРІРѕРІР°РЅРѕ: LEGO Star Wars 75192',
-  'РќРѕРІРµ РЅР°РґС…РѕРґР¶РµРЅРЅСЏ Сѓ РєР°С‚Р°Р»РѕР·С–',
-  'РћС„РѕСЂРјР»РµРЅРѕ РїРѕРєСѓРїРєСѓ: LEGO Ninjago City Gardens'
-];
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export function DynamicIsland() {
+  const { t } = useI18n();
   const [active, setActive] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
+    const messages = [
+      t('dynamic.msg1'),
+      t('dynamic.msg2'),
+      t('dynamic.msg3')
+    ];
+
     let currentIndex = 0;
     let timeoutId: NodeJS.Timeout;
 
     const runSequence = () => {
-      setMessage(MESSAGES[currentIndex]);
+      setMessage(messages[currentIndex]);
       setActive(true);
       
       timeoutId = setTimeout(() => {
         setActive(false);
       }, 5000);
 
-      currentIndex = (currentIndex + 1) % MESSAGES.length;
+      currentIndex = (currentIndex + 1) % messages.length;
     };
 
     const intervalId = setInterval(runSequence, 15000);
@@ -18327,7 +19068,7 @@ export function DynamicIsland() {
       clearInterval(intervalId);
       clearTimeout(timeoutId);
     };
-  }, []);
+  }, [t]);
 
   return (
     <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
@@ -18356,6 +19097,7 @@ import { useEffect, useState } from 'react';
 import { getSocket } from '@/lib/socket';
 import { PackageCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface FomoEvent {
   title: string;
@@ -18368,6 +19110,7 @@ interface SalePayload {
 }
 
 export function FomoTicker() {
+  const { t } = useI18n();
   const [event, setEvent] = useState<FomoEvent | null>(null);
   const [visible, setVisible] = useState(false);
 
@@ -18377,7 +19120,7 @@ export function FomoTicker() {
 
     const onSale = (payload: SalePayload) => {
       setEvent({ 
-        title: payload?.title || 'Р•РєСЃРєР»СЋР·РёРІРЅРёР№ РЅР°Р±С–СЂ', 
+        title: payload?.title || t('fomo.exclusive'), 
         time: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }) 
       });
       setVisible(true);
@@ -18394,7 +19137,7 @@ export function FomoTicker() {
       socket.off('sale_registered', onSale); 
       clearTimeout(timeoutId);
     };
-  }, []);
+  }, [t]);
 
   return (
     <div className={cn(
@@ -18406,7 +19149,7 @@ export function FomoTicker() {
           <PackageCheck size={24} className="text-white" />
         </div>
         <div>
-          <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Р©РѕР№РЅРѕ РїСЂРёРґР±Р°РЅРѕ</div>
+          <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">{t('fomo.justBought')}</div>
           <div className="text-sm font-black text-slate-900 line-clamp-1 max-w-[200px]">{event?.title}</div>
         </div>
         <div className="ml-2 text-xs font-bold text-slate-400">{event?.time}</div>
@@ -18423,6 +19166,7 @@ import { useState, useTransition } from 'react';
 import { CreditCard, Loader2, MessageSquare, Phone, User } from 'lucide-react';
 import { apiFetch } from '@/lib/client-api';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/components/providers/i18n-provider';
 import type { ApiResponse } from '@/lib/types';
 
 type Props = {
@@ -18440,9 +19184,10 @@ interface CheckoutResponse {
 }
 
 export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
-  const [message, setMessage] = useState(`РћС„РѕСЂРјР»СЋСЋ Р·Р°РјРѕРІР»РµРЅРЅСЏ: ${productTitle}`);
+  const [message, setMessage] = useState(t('contactForm.orderText').replace('{title}', productTitle));
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -18472,7 +19217,7 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
         const orderId = data?.orders?.[0]?.id || data?.id;
 
         if (!orderId) {
-          throw new Error('РќРµ РІРґР°Р»РѕСЃСЏ СЃС‚РІРѕСЂРёС‚Рё Р·Р°РјРѕРІР»РµРЅРЅСЏ. РЎРµСЂРІРµСЂ РЅРµ РїРѕРІРµСЂРЅСѓРІ ID.');
+          throw new Error('Failed to generate order ID.');
         }
 
         const checkoutResponse = await apiFetch<CheckoutResponse>('/api/store/checkout', {
@@ -18483,10 +19228,10 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
         if (checkoutResponse?.url) {
           window.location.href = checkoutResponse.url;
         } else {
-          throw new Error('РџРѕРјРёР»РєР° С–РЅС–С†С–Р°Р»С–Р·Р°С†С–С— РїР»Р°С‚С–Р¶РЅРѕРіРѕ С€Р»СЋР·Сѓ. РќРµРјР°С” URL.');
+          throw new Error('Payment gateway error. No URL provided.');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'РЎС‚Р°Р»Р°СЃСЏ РЅРµРІС–РґРѕРјР° РїРѕРјРёР»РєР° РїС–Рґ С‡Р°СЃ РѕС„РѕСЂРјР»РµРЅРЅСЏ.');
+        setError(err instanceof Error ? err.message : 'Unknown error during checkout.');
       }
     });
   };
@@ -18502,13 +19247,12 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
       <div className="space-y-1.5">
         <label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500">
           <User className="h-3.5 w-3.5" />
-          Р’Р°С€Рµ Р†Рј'СЏ
+          {t('contactForm.name')}
         </label>
         <input
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Р”Р¶РѕРЅ Р”РѕСѓ"
           disabled={isPending}
           className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-medium transition-all placeholder:text-slate-400 hover:bg-slate-50 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50"
         />
@@ -18517,13 +19261,13 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
       <div className="space-y-1.5">
         <label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500">
           <Phone className="h-3.5 w-3.5" />
-          РљРѕРЅС‚Р°РєС‚ (Telegram / РўРµР»РµС„РѕРЅ)
+          {t('contactForm.phone')}
         </label>
         <input
           required
           value={contact}
           onChange={(e) => setContact(e.target.value)}
-          placeholder="@username Р°Р±Рѕ +380..."
+          placeholder="@username / +380..."
           disabled={isPending}
           className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-medium transition-all placeholder:text-slate-400 hover:bg-slate-50 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50"
         />
@@ -18532,7 +19276,7 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
       <div className="space-y-1.5">
         <label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500">
           <MessageSquare className="h-3.5 w-3.5" />
-          Р”РѕРґР°С‚РєРѕРІС– РїРѕР±Р°Р¶Р°РЅРЅСЏ
+          {t('contactForm.message')}
         </label>
         <textarea
           value={message}
@@ -18552,7 +19296,7 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
         ) : (
           <CreditCard className="mr-2 h-6 w-6 text-white" />
         )}
-        {isPending ? 'Р—Р°С…РёС‰РµРЅРµ Р·\'С”РґРЅР°РЅРЅСЏ...' : 'РћРїР»Р°С‚РёС‚Рё Р±РµР·РїРµС‡РЅРѕ'}
+        {isPending ? t('contactForm.secureConn') : t('contactForm.paySafe')}
       </Button>
     </form>
   );
@@ -18644,11 +19388,13 @@ export function ProductCard({ item }: { item: InventoryItem }) {
 
 import { InventoryItem } from '@/lib/types';
 import { useCart } from '../providers/cart-provider';
+import { useI18n } from '../providers/i18n-provider';
 import { X, ShoppingCart, CheckCircle2, ShieldCheck, Package } from 'lucide-react';
 import { useEffect } from 'react';
 
 export function ProductModal({ item, isOpen, onClose }: { item: InventoryItem; isOpen: boolean; onClose: () => void }) {
   const { addItem } = useCart();
+  const { t } = useI18n();
   
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
@@ -18703,11 +19449,11 @@ export function ProductModal({ item, isOpen, onClose }: { item: InventoryItem; i
           <div className="space-y-3 mb-6 md:mb-8">
             <div className="flex items-center gap-3 text-sm md:text-base text-slate-600 dark:text-slate-300 font-medium">
               <CheckCircle2 size={18} className="text-green-500 shrink-0 w-5 h-5 md:w-6 md:h-6" />
-              In stock, ready to ship
+              {t('product.inStock')}
             </div>
             <div className="flex items-center gap-3 text-sm md:text-base text-slate-600 dark:text-slate-300 font-medium">
               <ShieldCheck size={18} className="text-blue-500 shrink-0 w-5 h-5 md:w-6 md:h-6" />
-              100% Authentic LEGO Guarantee
+              {t('product.authentic')}
             </div>
           </div>
 
@@ -18720,7 +19466,7 @@ export function ProductModal({ item, isOpen, onClose }: { item: InventoryItem; i
               className="w-full py-4 md:py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl lg:rounded-2xl font-black text-base md:text-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-600/30"
             >
               <ShoppingCart size={20} className="w-5 h-5 md:w-6 md:h-6" />
-              Add to Cart
+              {t('product.addToCart')}
             </button>
           </div>
         </div>
@@ -18732,6 +19478,7 @@ export function ProductModal({ item, isOpen, onClose }: { item: InventoryItem; i
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\components\store\related-products.tsx =====
 
 import { StoreProductCard } from '@/components/store/store-product-card';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface RelatedItem {
   id: string;
@@ -18749,13 +19496,15 @@ type Props = {
 };
 
 export function RelatedProducts({ items }: Props) {
+  const { t } = useI18n();
+
   if (!items.length) {
     return null;
   }
 
   return (
     <section className="space-y-6 pt-12 border-t border-slate-200">
-      <div className="text-3xl font-black tracking-tight text-slate-900">РЎС…РѕР¶С– РїРѕР·РёС†С–С—</div>
+      <div className="text-3xl font-black tracking-tight text-slate-900">{t('related.title')}</div>
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {items.map((item) => {
           const title = item.titleSnapshot || item.item?.title || 'Unknown Product';
@@ -18847,8 +19596,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Gem } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export function SmartHeader() {
+  const { t } = useI18n();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
 
@@ -18891,8 +19642,8 @@ export function SmartHeader() {
           <span className="text-xl font-black tracking-tight text-slate-900">ARCTURUS</span>
         </Link>
         <nav className="flex items-center gap-8 text-sm font-bold">
-          <Link href="/" className="text-slate-600 hover:text-blue-600 transition-colors">Р“РѕР»РѕРІРЅР°</Link>
-          <Link href="/store/catalog" className="text-slate-600 hover:text-blue-600 transition-colors">РљР°С‚Р°Р»РѕРі</Link>
+          <Link href="/" className="text-slate-600 hover:text-blue-600 transition-colors">{t('header.home')}</Link>
+          <Link href="/store/catalog" className="text-slate-600 hover:text-blue-600 transition-colors">{t('nav.catalog')}</Link>
         </nav>
       </div>
     </header>
@@ -19180,10 +19931,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export function StoreSearch() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   const [value, setValue] = useState(searchParams.get('q') ?? '');
 
   const submit = (event: FormEvent) => {
@@ -19209,12 +19962,12 @@ export function StoreSearch() {
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="Search LEGO sets, minifigures, themes..."
+          placeholder={t('search.placeholder')}
           className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-sm text-slate-900 shadow-sm transition-all focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
         />
       </div>
       <Button type="submit" className="py-3.5 px-8 sm:w-auto w-full text-base h-[50px]">
-        Search
+        {t('search.button')}
       </Button>
     </form>
   );
@@ -19226,10 +19979,12 @@ export function StoreSearch() {
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowDownWideNarrow } from 'lucide-react';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export function StoreSort() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -19254,10 +20009,10 @@ export function StoreSort() {
         onChange={handleSortChange}
         className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-2.5 pl-11 pr-10 text-sm font-semibold text-slate-700 shadow-sm outline-none transition-all hover:bg-slate-50 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer"
       >
-        <option value="">Newest Arrivals</option>
-        <option value="price_asc">Price: Low to High</option>
-        <option value="price_desc">Price: High to Low</option>
-        <option value="title_asc">Name: A to Z</option>
+        <option value="">{t('sort.newest')}</option>
+        <option value="price_asc">{t('sort.priceAsc')}</option>
+        <option value="price_desc">{t('sort.priceDesc')}</option>
+        <option value="title_asc">{t('sort.nameAsc')}</option>
       </select>
       <div className="pointer-events-none absolute right-4 border-l-4 border-r-4 border-t-[5px] border-l-transparent border-r-transparent border-t-slate-400" />
     </div>
@@ -19738,10 +20493,11 @@ export const dict = {
     'cart.empty': 'Your cart is empty',
     'cart.addItems': 'Add items to start your collection.',
     'cart.return': 'Back to Shop',
-    'cart.title': 'Cart',
+    'cart.title': 'Your Cart',
     'cart.subtotal': 'Subtotal',
     'cart.checkout': 'Order Now',
-    'cart.startBrowsing': 'Browse Catalog',
+    'cart.startBrowsing': 'Start Browsing',
+    'cart.checkoutNow': 'Checkout Now',
     'footer.rights': 'All rights reserved.',
     'footer.company': 'Arcturus Terminal',
     'footer.links': 'Navigation',
@@ -19753,8 +20509,32 @@ export const dict = {
     'footer.sell': 'Sell to Us',
     'market.title': 'Market Overview',
     'market.subtitle': 'Real-time LEGO secondary market metrics and top movers.',
+    'market.globalCap': 'Global Market Cap',
+    'market.tradingVol': 'Realized Trading Volume',
+    'market.activePos': 'Active Positions',
+    'market.active': 'Active',
+    'market.growth': 'Growth',
+    'market.chartTitle': 'Arcturus Index (Revenue Timeline)',
+    'market.topMovers': 'Top Movers',
+    'market.noData': 'Insufficient data for chart',
+    'market.noMovers': 'No active movers found.',
     'screener.title': 'Asset Screener',
     'screener.subtitle': 'Filter and analyze sets based on institutional metrics.',
+    'screener.export': 'Export CSV',
+    'screener.search': 'Search by ID or Name...',
+    'screener.allThemes': 'All Themes',
+    'screener.highestRoi': 'Highest ROI',
+    'screener.lowestRoi': 'Lowest ROI',
+    'screener.highestPrice': 'Highest Price',
+    'screener.lowestPrice': 'Lowest Price',
+    'screener.clearFilters': 'Clear Filters',
+    'screener.noAssets': 'No assets match your criteria.',
+    'screener.col.id': 'Set ID / Item ID',
+    'screener.col.name': 'Name',
+    'screener.col.theme': 'Theme',
+    'screener.col.cost': 'Cost Basis',
+    'screener.col.target': 'Market Target',
+    'screener.col.roi': 'Est. ROI',
     'about.title': 'Arcturus Store',
     'about.subtitle': 'Premium LEGO sets for serious collectors.',
     'about.p1': 'Arcturus was founded to solve a single problem: the difficulty of finding retired, authentic LEGO sets in perfect condition. We treat every set as a collectible asset.',
@@ -19830,12 +20610,132 @@ export const dict = {
     'account.orders': 'Order History',
     'account.wishlist': 'Saved Items',
     'account.settings': 'Settings',
+    'account.portfolioValue': 'Portfolio Value',
+    'account.assetGrowth': 'Asset Growth (YTD)',
+    'account.noPositions': 'No active positions',
+    'account.noPositionsDesc': 'Your acquired LEGO sets will appear here as assets.',
+    'account.noSaved': 'No Saved Items',
+    'account.noSavedDesc': 'Items you favorite in the catalog will appear here.',
+    'account.sysPref': 'System Preferences',
+    'account.sysPrefDesc': 'Adjust your language and notifications here.',
     'valuation.title': 'Valuation Models',
     'valuation.subtitle': 'Fair price estimation based on liquidity and box condition.',
+    'valuation.estimator': 'Price Estimator',
+    'valuation.setId': 'Set ID / Item Number',
+    'valuation.setIdPlaceholder': 'e.g. 75192',
+    'valuation.condition': 'Condition',
+    'valuation.cond.sealedMint': 'Sealed (Mint)',
+    'valuation.cond.sealedDamaged': 'Sealed (Damaged)',
+    'valuation.cond.used': 'Used (Complete)',
+    'valuation.status': 'Inventory Status',
+    'valuation.stat.retired': 'Retired',
+    'valuation.stat.active': 'Active Retail',
+    'valuation.calculate': 'Calculate Fair Value',
+    'valuation.fairPrice': 'Arcturus Fair Price',
+    'valuation.fairPriceDesc': 'Estimated market value based on real secondary market sales.',
+    'valuation.liquidity': 'Liquidity',
+    'valuation.confidence': 'Confidence',
+    'valuation.infoDefault': 'Enter a set ID to query our institutional valuation database.',
+    'valuation.infoSuccess': 'Valuation for set #{id} was generated using real-time secondary market sales from our global tracking database.',
+    'valuation.errorNoData': 'Not enough market data found for this Set ID.',
+    'valuation.success': 'Valuation complete based on real comps.',
+    'valuation.errorFetch': 'Failed to fetch valuation data.',
     'historical.title': 'Historical Data',
     'historical.subtitle': 'Deep pricing history and ROI analysis for retired assets.',
+    'historical.global': 'Arcturus Global History',
+    'historical.timeline': 'Realized Revenue Timeline',
+    'historical.noData': 'No sales data recorded yet.',
+    'historical.metrics': 'Key Metrics',
+    'historical.totalRev': 'Total Realized Revenue',
+    'historical.activePeriods': 'Active Trading Periods',
+    'historical.compare': 'Compare with Indices',
+    'historical.relative': 'Relative to S&P 500 & LEGO 100',
     'performance.title': 'Portfolio Performance',
     'performance.subtitle': 'Analyze your collection\'s growth and asset allocation.',
+    'performance.assetAlloc': 'Asset Allocation (By Profit)',
+    'performance.noSales': 'No profitable sales data yet.',
+    'performance.topPerformer': 'Top Performer',
+    'performance.noAssets': 'No assets acquired yet.',
+    'performance.totalGain': 'Total Realized Gain',
+    'performance.alpha': 'Alpha vs Market Baseline',
+    'landing.badge': 'Verified Inventory',
+    'landing.title1': 'The Art of',
+    'landing.title2': 'LEGO Collecting',
+    'landing.desc': 'Exclusive access to rare sets and limited minifigures. Flawless condition, instant reservation, absolute guarantee.',
+    'landing.btn': 'Open Collection',
+    'landing.feat1.title': 'Authenticity',
+    'landing.feat1.desc': 'Every piece undergoes strict authentication. No compromises on quality.',
+    'landing.feat2.title': 'Rarities',
+    'landing.feat2.desc': 'Access to sets impossible to find in regular retail sales.',
+    'landing.feat3.title': 'Concierge Service',
+    'landing.feat3.desc': 'Instant communication and individual support for every transaction.',
+    'indices.title': 'Market Indices',
+    'indices.subtitle': 'Track the performance of major LEGO themes over time based on real market data.',
+    'indices.swPerf': 'Star Wars Performance',
+    'indices.njPerf': 'Ninjago Performance',
+    'indices.tcPerf': 'Technic Performance',
+    'indices.realized': 'Realized Profit',
+    'indices.profitByTheme': 'Profit by Theme',
+    'indices.noData': 'Not enough theme data to display.',
+    'orderbook.title': 'Order Book',
+    'orderbook.subtitle': 'Real-time depth chart for {title}.',
+    'orderbook.live': 'Live Updates',
+    'orderbook.asks': 'ASKS (Sellers)',
+    'orderbook.bids': 'BIDS (Buyers)',
+    'orderbook.price': 'Price',
+    'orderbook.size': 'Size',
+    'orderbook.total': 'Total',
+    'orderbook.noAsks': 'No active asks',
+    'orderbook.noBids': 'No active bids',
+    'orderbook.defaultAsset': 'Active Asset',
+    'reports.empty': 'No financial reports generated yet.',
+    'reports.system': 'System Report',
+    'ticker.awaiting': 'System Awaiting Market Data...',
+    'checkout.title': 'Checkout',
+    'checkout.emptyTitle': 'Your cart is empty',
+    'checkout.emptyDesc': 'Add some items before proceeding to checkout.',
+    'checkout.returnCat': 'Return to Catalog',
+    'checkout.contactInfo': 'Contact Info',
+    'checkout.firstName': 'First Name',
+    'checkout.lastName': 'Last Name',
+    'checkout.phone': 'Phone Number',
+    'checkout.delivery': 'Delivery (Nova Poshta)',
+    'checkout.city': 'City',
+    'checkout.branch': 'Branch Number',
+    'checkout.proceed': 'Proceed to Payment',
+    'checkout.processing': 'Processing...',
+    'checkout.orderSummary': 'Order Summary',
+    'checkout.qty': 'Qty',
+    'checkout.subtotal': 'Subtotal',
+    'checkout.deliveryCalc': 'Calculated at checkout',
+    'checkout.total': 'Total',
+    'checkout.securePay': 'Payments processed securely via Monobank.',
+    'checkout.multiItem': 'Multi-item Order ({count} sets)',
+    'product.inStock': 'In stock, ready to ship',
+    'product.dispatch': 'Dispatches within 24 hours',
+    'product.authentic': '100% Authentic LEGO Guarantee',
+    'product.verified': 'Verified by Arcturus Terminal experts',
+    'product.addToCart': 'Add to Cart',
+    'product.reserveTitle': 'Reserve & Checkout Securely',
+    'contactForm.name': 'Your Name',
+    'contactForm.phone': 'Contact (Telegram / Phone)',
+    'contactForm.message': 'Additional wishes',
+    'contactForm.paySafe': 'Pay Securely',
+    'contactForm.secureConn': 'Secure connection...',
+    'contactForm.orderText': 'Ordering: {title}',
+    'related.title': 'Related Items',
+    'search.placeholder': 'Search LEGO sets, minifigures, themes...',
+    'search.button': 'Search',
+    'sort.newest': 'Newest Arrivals',
+    'sort.priceAsc': 'Price: Low to High',
+    'sort.priceDesc': 'Price: High to Low',
+    'sort.nameAsc': 'Name: A to Z',
+    'header.home': 'Home',
+    'dynamic.msg1': 'Just reserved: LEGO Star Wars 75192',
+    'dynamic.msg2': 'New arrival in catalog',
+    'dynamic.msg3': 'Purchase completed: LEGO Ninjago City Gardens',
+    'fomo.justBought': 'Just Purchased',
+    'fomo.exclusive': 'Exclusive Set'
   },
   uk: {
     'nav.catalog': 'РљР°С‚Р°Р»РѕРі',
@@ -19865,10 +20765,11 @@ export const dict = {
     'cart.empty': 'РљРѕС€РёРє РїРѕСЂРѕР¶РЅС–Р№',
     'cart.addItems': 'Р”РѕРґР°Р№С‚Рµ С‚РѕРІР°СЂРё, С‰РѕР± РїРѕС‡Р°С‚Рё РєРѕР»РµРєС†С–СЋ.',
     'cart.return': 'Р’ РјР°РіР°Р·РёРЅ',
-    'cart.title': 'РљРѕС€РёРє',
+    'cart.title': 'Р’Р°С€ РєРѕС€РёРє',
     'cart.subtotal': 'РџС–РґСЃСѓРјРѕРє',
     'cart.checkout': 'РћС„РѕСЂРјРёС‚Рё',
     'cart.startBrowsing': 'РџРµСЂРµРіР»СЏРЅСѓС‚Рё РєР°С‚Р°Р»РѕРі',
+    'cart.checkoutNow': 'РћС„РѕСЂРјРёС‚Рё Р·Р°РјРѕРІР»РµРЅРЅСЏ',
     'footer.rights': 'Р’СЃС– РїСЂР°РІР° Р·Р°С…РёС‰РµРЅС–.',
     'footer.company': 'Arcturus Terminal',
     'footer.links': 'РќР°РІС–РіР°С†С–СЏ',
@@ -19880,8 +20781,32 @@ export const dict = {
     'footer.sell': 'РџСЂРѕРґР°С‚Рё РЅР°Рј',
     'market.title': 'РћРіР»СЏРґ СЂРёРЅРєСѓ',
     'market.subtitle': 'РњРµС‚СЂРёРєРё РІС‚РѕСЂРёРЅРЅРѕРіРѕ СЂРёРЅРєСѓ LEGO С‚Р° Р»С–РґРµСЂРё Р·СЂРѕСЃС‚Р°РЅРЅСЏ Сѓ СЂРµР°Р»СЊРЅРѕРјСѓ С‡Р°СЃС–.',
+    'market.globalCap': 'Р“Р»РѕР±Р°Р»СЊРЅР° РљР°РїС–С‚Р°Р»С–Р·Р°С†С–СЏ',
+    'market.tradingVol': 'Р РµР°Р»С–Р·РѕРІР°РЅРёР№ РћР±\'С”Рј РўРѕСЂРіС–РІ',
+    'market.activePos': 'РђРєС‚РёРІРЅС– РџРѕР·РёС†С–С—',
+    'market.active': 'РђРєС‚РёРІРЅРѕ',
+    'market.growth': 'Р—СЂРѕСЃС‚Р°РЅРЅСЏ',
+    'market.chartTitle': 'Р†РЅРґРµРєСЃ Arcturus (Р”РѕС…РѕРґРё)',
+    'market.topMovers': 'Р›С–РґРµСЂРё Р—СЂРѕСЃС‚Р°РЅРЅСЏ',
+    'market.noData': 'РќРµРґРѕСЃС‚Р°С‚РЅСЊРѕ РґР°РЅРёС… РґР»СЏ РіСЂР°С„С–РєР°',
+    'market.noMovers': 'РќРµРјР°С” Р°РєС‚РёРІРЅРёС… Р»С–РґРµСЂС–РІ.',
     'screener.title': 'РЎРєСЂС–РЅРµСЂ Р°РєС‚РёРІС–РІ',
     'screener.subtitle': 'Р¤С–Р»СЊС‚СЂСѓР№С‚Рµ С‚Р° Р°РЅР°Р»С–Р·СѓР№С‚Рµ РЅР°Р±РѕСЂРё РЅР° РѕСЃРЅРѕРІС– С–РЅСЃС‚РёС‚СѓС†С–Р№РЅРёС… РјРµС‚СЂРёРє.',
+    'screener.export': 'Р•РєСЃРїРѕСЂС‚ CSV',
+    'screener.search': 'РџРѕС€СѓРє Р·Р° ID Р°Р±Рѕ РќР°Р·РІРѕСЋ...',
+    'screener.allThemes': 'Р’СЃС– РўРµРјРё',
+    'screener.highestRoi': 'РќР°Р№РІРёС‰РёР№ ROI',
+    'screener.lowestRoi': 'РќР°Р№РЅРёР¶С‡РёР№ ROI',
+    'screener.highestPrice': 'РќР°Р№РІРёС‰Р° Р¦С–РЅР°',
+    'screener.lowestPrice': 'РќР°Р№РЅРёР¶С‡Р° Р¦С–РЅР°',
+    'screener.clearFilters': 'РћС‡РёСЃС‚РёС‚Рё Р¤С–Р»СЊС‚СЂРё',
+    'screener.noAssets': 'РќРµРјР°С” Р°РєС‚РёРІС–РІ Р·Р° РІР°С€РёРјРё РєСЂРёС‚РµСЂС–СЏРјРё.',
+    'screener.col.id': 'ID РќР°Р±РѕСЂСѓ / РђСЂС‚РёРєСѓР»',
+    'screener.col.name': 'РќР°Р·РІР°',
+    'screener.col.theme': 'РўРµРјР°',
+    'screener.col.cost': 'РЎРѕР±С–РІР°СЂС‚С–СЃС‚СЊ',
+    'screener.col.target': 'Р РёРЅРєРѕРІР° Р¦С–Р»СЊ',
+    'screener.col.roi': 'РћС‡С–Рє. ROI',
     'about.title': 'Arcturus Store',
     'about.subtitle': 'РџСЂРµРјС–Р°Р»СЊРЅС– РЅР°Р±РѕСЂРё LEGO РґР»СЏ РєРѕР»РµРєС†С–РѕРЅРµСЂС–РІ.',
     'about.p1': 'Arcturus СЃС‚РІРѕСЂРµРЅРёР№ РґР»СЏ РІРёСЂС–С€РµРЅРЅСЏ РѕРґРЅС–С”С— РїСЂРѕР±Р»РµРјРё: СЃРєР»Р°РґРЅРѕСЃС‚С– РїРѕС€СѓРєСѓ СЂС–РґРєС–СЃРЅРёС…, РѕСЂРёРіС–РЅР°Р»СЊРЅРёС… РЅР°Р±РѕСЂС–РІ LEGO Сѓ С–РґРµР°Р»СЊРЅРѕРјСѓ СЃС‚Р°РЅС–.',
@@ -19918,7 +20843,7 @@ export const dict = {
     'terms.s1.title': '1. Р“Р°СЂР°РЅС‚С–С—',
     'terms.s1.desc': 'РњРё РіР°СЂР°РЅС‚СѓС”РјРѕ 100% РѕСЂРёРіС–РЅР°Р»СЊРЅС–СЃС‚СЊ. Р’СЃС– С‚РѕРІР°СЂРё РїСЂРѕС…РѕРґСЏС‚СЊ РїРµСЂРµРІС–СЂРєСѓ РїРµСЂРµРґ РІС–РґРїСЂР°РІРєРѕСЋ.',
     'terms.s2.title': '2. Р¦С–РЅРѕСѓС‚РІРѕСЂРµРЅРЅСЏ С‚Р° РЅР°СЏРІРЅС–СЃС‚СЊ',
-    'terms.s2.desc': 'Р¦С–РЅРё РјРѕР¶СѓС‚СЊ Р·РјС–РЅСЋРІР°С‚РёСЃСЏ Р·Р°Р»РµР¶РЅРѕ РІС–Рґ СЂРёРЅРєРѕРІРёС… СѓРјРѕРІ. Р—Р°РјРѕРІР»РµРЅРЅСЏ РЅРµ РІРІР°Р¶Р°С”С‚СЊСЃСЏ РїС–РґС‚РІРµСЂРґР¶РµРЅС‹Рј РґРѕ СѓСЃРїС–С€РЅРѕС— РѕР±СЂРѕР±РєРё РїР»Р°С‚РµР¶Сѓ.',
+    'terms.s2.desc': 'Р¦С–РЅРё РјРѕР¶СѓС‚СЊ Р·РјС–РЅСЋРІР°С‚РёСЃСЏ Р·Р°Р»РµР¶РЅРѕ РІС–Рґ СЂРёРЅРєРѕРІРёС… СѓРјРѕРІ. Р—Р°РјРѕРІР»РµРЅРЅСЏ РЅРµ РІРІР°Р¶Р°С”С‚СЊСЃСЏ РїС–РґС‚РІРµСЂРґР¶РµРЅРёРј РґРѕ СѓСЃРїС–С€РЅРѕС— РѕР±СЂРѕР±РєРё РїР»Р°С‚РµР¶Сѓ.',
     'terms.s3.title': '3. РџРѕРІРµСЂРЅРµРЅРЅСЏ С‚Р° РІС–РґС€РєРѕРґСѓРІР°РЅРЅСЏ',
     'terms.s3.desc': 'Р’Рё РјРѕР¶РµС‚Рµ РїРѕРІРµСЂРЅСѓС‚Рё РЅРµСЂРѕР·РїР°РєРѕРІР°РЅС–/Р·Р°РїРµС‡Р°С‚Р°РЅС– С‚РѕРІР°СЂРё РїСЂРѕС‚СЏРіРѕРј 14 РґРЅС–РІ Р· РјРѕРјРµРЅС‚Сѓ РѕС‚СЂРёРјР°РЅРЅСЏ. Р’Р¶РёРІР°РЅС– С‚РѕРІР°СЂРё РїСЂРѕРґР°СЋС‚СЊСЃСЏ "СЏРє С”", Р°Р»Рµ РїРѕРєСЂРёРІР°СЋС‚СЊСЃСЏ РЅР°С€РѕСЋ РіР°СЂР°РЅС‚С–С”СЋ РєРѕРјРїР»РµРєС‚Р°С†С–С—.',
     'faq.title': 'РџРёС‚Р°РЅРЅСЏ С‚Р° РІС–РґРїРѕРІС–РґС–',
@@ -19957,12 +20882,132 @@ export const dict = {
     'account.orders': 'Р†СЃС‚РѕСЂС–СЏ Р·Р°РјРѕРІР»РµРЅСЊ',
     'account.wishlist': 'Р—Р±РµСЂРµР¶РµРЅРµ',
     'account.settings': 'РќР°Р»Р°С€С‚СѓРІР°РЅРЅСЏ',
+    'account.portfolioValue': 'Р’Р°СЂС‚С–СЃС‚СЊ РїРѕСЂС‚С„РµР»СЏ',
+    'account.assetGrowth': 'Р—СЂРѕСЃС‚Р°РЅРЅСЏ Р°РєС‚РёРІС–РІ (Р·Р° СЂС–Рє)',
+    'account.noPositions': 'РќРµРјР°С” Р°РєС‚РёРІРЅРёС… РїРѕР·РёС†С–Р№',
+    'account.noPositionsDesc': 'Р’Р°С€С– РїСЂРёРґР±Р°РЅС– РЅР°Р±РѕСЂРё LEGO Р·\'СЏРІР»СЏС‚РёРјСѓС‚СЊСЃСЏ С‚СѓС‚ СЏРє Р°РєС‚РёРІРё.',
+    'account.noSaved': 'РќРµРјР°С” Р·Р±РµСЂРµР¶РµРЅРёС… С‚РѕРІР°СЂС–РІ',
+    'account.noSavedDesc': 'РўРѕРІР°СЂРё, СЏРєС– РІРё РІРїРѕРґРѕР±Р°Р»Рё, Р·\'СЏРІР»СЏС‚СЊСЃСЏ С‚СѓС‚.',
+    'account.sysPref': 'РЎРёСЃС‚РµРјРЅС– РЅР°Р»Р°С€С‚СѓРІР°РЅРЅСЏ',
+    'account.sysPrefDesc': 'РќР°Р»Р°С€С‚СѓР№С‚Рµ РјРѕРІСѓ С‚Р° СЃРїРѕРІС–С‰РµРЅРЅСЏ С‚СѓС‚.',
     'valuation.title': 'РњРѕРґРµР»С– РѕС†С–РЅРєРё',
     'valuation.subtitle': 'РћС†С–РЅРєР° СЃРїСЂР°РІРµРґР»РёРІРѕС— С†С–РЅРё РЅР° РѕСЃРЅРѕРІС– Р»С–РєРІС–РґРЅРѕСЃС‚С– С‚Р° СЃС‚Р°РЅСѓ РєРѕСЂРѕР±РєРё.',
+    'valuation.estimator': 'РћС†С–РЅСЋРІР°С‡ РІР°СЂС‚РѕСЃС‚С–',
+    'valuation.setId': 'ID РќР°Р±РѕСЂСѓ / РђСЂС‚РёРєСѓР»',
+    'valuation.setIdPlaceholder': 'РЅР°РїСЂ. 75192',
+    'valuation.condition': 'РЎС‚Р°РЅ',
+    'valuation.cond.sealedMint': 'РќРѕРІРёР№ (Р†РґРµР°Р»СЊРЅРёР№)',
+    'valuation.cond.sealedDamaged': 'РќРѕРІРёР№ (РџРѕС€РєРѕРґР¶РµРЅРёР№)',
+    'valuation.cond.used': 'Р’Р¶РёРІР°РЅРёР№ (РљРѕРјРїР»РµРєС‚РЅРёР№)',
+    'valuation.status': 'Р РёРЅРєРѕРІРёР№ СЃС‚Р°С‚СѓСЃ',
+    'valuation.stat.retired': 'Р—РЅСЏС‚Рѕ Р· РІРёСЂРѕР±РЅРёС†С‚РІР°',
+    'valuation.stat.active': 'Р’ Р°РєС‚РёРІРЅРѕРјСѓ РїСЂРѕРґР°Р¶С–',
+    'valuation.calculate': 'Р РѕР·СЂР°С…СѓРІР°С‚Рё РЎРїСЂР°РІРµРґР»РёРІСѓ Р¦С–РЅСѓ',
+    'valuation.fairPrice': 'РЎРїСЂР°РІРµРґР»РёРІР° Р¦С–РЅР° Arcturus',
+    'valuation.fairPriceDesc': 'РћС†С–РЅРѕС‡РЅР° СЂРёРЅРєРѕРІР° РІР°СЂС‚С–СЃС‚СЊ РЅР° РѕСЃРЅРѕРІС– СЂРµР°Р»СЊРЅРёС… РїСЂРѕРґР°Р¶С–РІ.',
+    'valuation.liquidity': 'Р›С–РєРІС–РґРЅС–СЃС‚СЊ',
+    'valuation.confidence': 'Р’РїРµРІРЅРµРЅС–СЃС‚СЊ',
+    'valuation.infoDefault': 'Р’РІРµРґС–С‚СЊ ID РЅР°Р±РѕСЂСѓ РґР»СЏ Р·Р°РїРёС‚Сѓ РІ РЅР°С€Сѓ С–РЅСЃС‚РёС‚СѓС†С–Р№РЅСѓ Р±Р°Р·Сѓ РѕС†С–РЅРєРё.',
+    'valuation.infoSuccess': 'РћС†С–РЅРєР° РЅР°Р±РѕСЂСѓ #{id} Р·РіРµРЅРµСЂРѕРІР°РЅР° Р· РІРёРєРѕСЂРёСЃС‚Р°РЅРЅСЏРј СЂРµР°Р»СЊРЅРёС… РґР°РЅРёС… РІС‚РѕСЂРёРЅРЅРѕРіРѕ СЂРёРЅРєСѓ.',
+    'valuation.errorNoData': 'РќРµРґРѕСЃС‚Р°С‚РЅСЊРѕ СЂРёРЅРєРѕРІРёС… РґР°РЅРёС… РґР»СЏ С†СЊРѕРіРѕ ID РЅР°Р±РѕСЂСѓ.',
+    'valuation.success': 'РћС†С–РЅРєСѓ СѓСЃРїС–С€РЅРѕ Р·Р°РІРµСЂС€РµРЅРѕ РЅР° РѕСЃРЅРѕРІС– СЂРёРЅРєРѕРІРёС… РїСЂРѕРґР°Р¶С–РІ.',
+    'valuation.errorFetch': 'РќРµ РІРґР°Р»РѕСЃСЏ Р·Р°РІР°РЅС‚Р°Р¶РёС‚Рё РґР°РЅС– РґР»СЏ РѕС†С–РЅРєРё.',
     'historical.title': 'Р†СЃС‚РѕСЂРёС‡РЅС– РґР°РЅС–',
     'historical.subtitle': 'Р“Р»РёР±РѕРєР° С–СЃС‚РѕСЂС–СЏ С†С–РЅ С‚Р° ROI Р°РЅР°Р»С–Р· РґР»СЏ СЂР°СЂРёС‚РµС‚РЅРёС… Р°РєС‚РёРІС–РІ.',
+    'historical.global': 'Р“Р»РѕР±Р°Р»СЊРЅР° Р†СЃС‚РѕСЂС–СЏ Arcturus',
+    'historical.timeline': 'РўР°Р№РјР»Р°Р№РЅ Р РµР°Р»С–Р·РѕРІР°РЅРёС… Р”РѕС…РѕРґС–РІ',
+    'historical.noData': 'Р”Р°РЅС– РїСЂРѕ РїСЂРѕРґР°Р¶С– С‰Рµ РЅРµ Р·Р°РїРёСЃР°РЅС–.',
+    'historical.metrics': 'РљР»СЋС‡РѕРІС– РњРµС‚СЂРёРєРё',
+    'historical.totalRev': 'Р—Р°РіР°Р»СЊРЅРёР№ Р РµР°Р»С–Р·РѕРІР°РЅРёР№ Р”РѕС…С–Рґ',
+    'historical.activePeriods': 'РђРєС‚РёРІРЅС– РўРѕСЂРіРѕРІС– РџРµСЂС–РѕРґРё',
+    'historical.compare': 'РџРѕСЂС–РІРЅСЏС‚Рё Р· Р†РЅРґРµРєСЃР°РјРё',
+    'historical.relative': 'Р’С–РґРЅРѕСЃРЅРѕ S&P 500 С‚Р° LEGO 100',
     'performance.title': 'Р•С„РµРєС‚РёРІРЅС–СЃС‚СЊ РїРѕСЂС‚С„РµР»СЏ',
     'performance.subtitle': 'РђРЅР°Р»С–Р·СѓР№С‚Рµ СЂС–СЃС‚ РІР°С€РѕС— РєРѕР»РµРєС†С–С— С‚Р° СЂРѕР·РїРѕРґС–Р» Р°РєС‚РёРІС–РІ.',
+    'performance.assetAlloc': 'Р РѕР·РїРѕРґС–Р» РђРєС‚РёРІС–РІ (Р—Р° РџСЂРёР±СѓС‚РєРѕРј)',
+    'performance.noSales': 'РќРµРјР°С” РґР°РЅРёС… РїСЂРѕ РїСЂРёР±СѓС‚РєРѕРІС– РїСЂРѕРґР°Р¶С–.',
+    'performance.topPerformer': 'РќР°Р№РєСЂР°С‰РёР№ РђРєС‚РёРІ',
+    'performance.noAssets': 'РђРєС‚РёРІРё С‰Рµ РЅРµ РїСЂРёРґР±Р°РЅРѕ.',
+    'performance.totalGain': 'Р—Р°РіР°Р»СЊРЅРёР№ Р РµР°Р»С–Р·РѕРІР°РЅРёР№ РџСЂРёР±СѓС‚РѕРє',
+    'performance.alpha': 'РђР»СЊС„Р° РїСЂРѕС‚Рё Р РёРЅРєСѓ',
+    'landing.badge': 'Р’РµСЂРёС„С–РєРѕРІР°РЅРёР№ Р†РЅРІРµРЅС‚Р°СЂ',
+    'landing.title1': 'РњРёСЃС‚РµС†С‚РІРѕ',
+    'landing.title2': 'LEGO РљРѕР»РµРєС†С–РѕРЅСѓРІР°РЅРЅСЏ',
+    'landing.desc': 'Р•РєСЃРєР»СЋР·РёРІРЅРёР№ РґРѕСЃС‚СѓРї РґРѕ СЂР°СЂРёС‚РµС‚РЅРёС… РЅР°Р±РѕСЂС–РІ С‚Р° Р»С–РјС–С‚РѕРІР°РЅРёС… РјС–РЅС–С„С–РіСѓСЂРѕРє. Р‘РµР·РґРѕРіР°РЅРЅРёР№ СЃС‚Р°РЅ, РјРёС‚С‚С”РІРµ Р±СЂРѕРЅСЋРІР°РЅРЅСЏ, Р°Р±СЃРѕР»СЋС‚РЅР° РіР°СЂР°РЅС‚С–СЏ.',
+    'landing.btn': 'Р’С–РґРєСЂРёС‚Рё РєРѕР»РµРєС†С–СЋ',
+    'landing.feat1.title': 'РћСЂРёРіС–РЅР°Р»СЊРЅС–СЃС‚СЊ',
+    'landing.feat1.desc': 'РљРѕР¶РЅР° РґРµС‚Р°Р»СЊ РїСЂРѕС…РѕРґРёС‚СЊ Р¶РѕСЂСЃС‚РєСѓ Р°РІС‚РµРЅС‚РёС„С–РєР°С†С–СЋ. Р–РѕРґРЅРёС… РєРѕРјРїСЂРѕРјС–СЃС–РІ С‰РѕРґРѕ СЏРєРѕСЃС‚С–.',
+    'landing.feat2.title': 'Р Р°СЂРёС‚РµС‚Рё',
+    'landing.feat2.desc': 'Р”РѕСЃС‚СѓРї РґРѕ РЅР°Р±РѕСЂС–РІ, СЏРєС– РЅРµРјРѕР¶Р»РёРІРѕ Р·РЅР°Р№С‚Рё Сѓ Р·РІРёС‡Р°Р№РЅРѕРјСѓ СЂРѕР·РґСЂС–Р±РЅРѕРјСѓ РїСЂРѕРґР°Р¶С–.',
+    'landing.feat3.title': 'РљРѕРЅСЃСЊС”СЂР¶-СЃРµСЂРІС–СЃ',
+    'landing.feat3.desc': 'РњРёС‚С‚С”РІРёР№ Р·РІ\'СЏР·РѕРє С‚Р° С–РЅРґРёРІС–РґСѓР°Р»СЊРЅРёР№ СЃСѓРїСЂРѕРІС–Рґ РєРѕР¶РЅРѕС— СѓРіРѕРґРё РґР»СЏ РЅР°С€РёС… РєР»С–С”РЅС‚С–РІ.',
+    'indices.title': 'Р РёРЅРєРѕРІС– Р†РЅРґРµРєСЃРё',
+    'indices.subtitle': 'Р’С–РґСЃС‚РµР¶СѓР№С‚Рµ РґРёРЅР°РјС–РєСѓ РїСЂРѕРІС–РґРЅРёС… С‚РµРј LEGO РЅР° РѕСЃРЅРѕРІС– СЂРµР°Р»СЊРЅРёС… СЂРёРЅРєРѕРІРёС… СѓРіРѕРґ.',
+    'indices.swPerf': 'РџРѕРєР°Р·РЅРёРєРё Star Wars',
+    'indices.njPerf': 'РџРѕРєР°Р·РЅРёРєРё Ninjago',
+    'indices.tcPerf': 'РџРѕРєР°Р·РЅРёРєРё Technic',
+    'indices.realized': 'Р РµР°Р»С–Р·РѕРІР°РЅРёР№ РџСЂРёР±СѓС‚РѕРє',
+    'indices.profitByTheme': 'РџСЂРёР±СѓС‚РѕРє Р·Р° РўРµРјРѕСЋ',
+    'indices.noData': 'РќРµРґРѕСЃС‚Р°С‚РЅСЊРѕ РґР°РЅРёС… Р·Р° С‚РµРјР°РјРё РґР»СЏ РІС–РґРѕР±СЂР°Р¶РµРЅРЅСЏ.',
+    'orderbook.title': 'РљРЅРёРіР° РћСЂРґРµСЂС–РІ',
+    'orderbook.subtitle': 'Р“Р»РёР±РёРЅР° СЂРёРЅРєСѓ РІ СЂРµР°Р»СЊРЅРѕРјСѓ С‡Р°СЃС– РґР»СЏ {title}.',
+    'orderbook.live': 'Р›Р°Р№РІ РћРЅРѕРІР»РµРЅРЅСЏ',
+    'orderbook.asks': 'РџР РћР”РђР– (Asks)',
+    'orderbook.bids': 'РљРЈРџР†Р’Р›РЇ (Bids)',
+    'orderbook.price': 'Р¦С–РЅР°',
+    'orderbook.size': 'РћР±\'С”Рј',
+    'orderbook.total': 'Р’СЃСЊРѕРіРѕ',
+    'orderbook.noAsks': 'РќРµРјР°С” Р°РєС‚РёРІРЅРёС… РїСЂРѕРїРѕР·РёС†С–Р№',
+    'orderbook.noBids': 'РќРµРјР°С” Р°РєС‚РёРІРЅРёС… Р·Р°РїРёС‚С–РІ',
+    'orderbook.defaultAsset': 'РђРєС‚РёРІРЅРѕРіРѕ РђРєС‚РёРІСѓ',
+    'reports.empty': 'Р¤С–РЅР°РЅСЃРѕРІС– Р·РІС–С‚Рё С‰Рµ РЅРµ Р·РіРµРЅРµСЂРѕРІР°РЅС–.',
+    'reports.system': 'РЎРёСЃС‚РµРјРЅРёР№ Р—РІС–С‚',
+    'ticker.awaiting': 'РЎРёСЃС‚РµРјР° РћС‡С–РєСѓС” Р РёРЅРєРѕРІРёС… Р”Р°РЅРёС…...',
+    'checkout.title': 'РћС„РѕСЂРјР»РµРЅРЅСЏ Р·Р°РјРѕРІР»РµРЅРЅСЏ',
+    'checkout.emptyTitle': 'Р’Р°С€ РєРѕС€РёРє РїРѕСЂРѕР¶РЅС–Р№',
+    'checkout.emptyDesc': 'Р”РѕРґР°Р№С‚Рµ С‚РѕРІР°СЂРё РїРµСЂРµРґ РѕС„РѕСЂРјР»РµРЅРЅСЏРј Р·Р°РјРѕРІР»РµРЅРЅСЏ.',
+    'checkout.returnCat': 'РџРѕРІРµСЂРЅСѓС‚РёСЃСЏ РґРѕ РєР°С‚Р°Р»РѕРіСѓ',
+    'checkout.contactInfo': 'РљРѕРЅС‚Р°РєС‚РЅС– РґР°РЅС–',
+    'checkout.firstName': 'Р†Рј\'СЏ',
+    'checkout.lastName': 'РџСЂС–Р·РІРёС‰Рµ',
+    'checkout.phone': 'РќРѕРјРµСЂ С‚РµР»РµС„РѕРЅСѓ',
+    'checkout.delivery': 'Р”РѕСЃС‚Р°РІРєР° (РќРѕРІР° РџРѕС€С‚Р°)',
+    'checkout.city': 'РњС–СЃС‚Рѕ',
+    'checkout.branch': 'Р’С–РґРґС–Р»РµРЅРЅСЏ',
+    'checkout.proceed': 'РџРµСЂРµР№С‚Рё РґРѕ РѕРїР»Р°С‚Рё',
+    'checkout.processing': 'РћР±СЂРѕР±РєР°...',
+    'checkout.orderSummary': 'Р’Р°С€Рµ Р·Р°РјРѕРІР»РµРЅРЅСЏ',
+    'checkout.qty': 'Рљ-СЃС‚СЊ',
+    'checkout.subtotal': 'РџС–РґСЃСѓРјРѕРє',
+    'checkout.deliveryCalc': 'Р—Р° С‚Р°СЂРёС„Р°РјРё РїРµСЂРµРІС–Р·РЅРёРєР°',
+    'checkout.total': 'Р’СЃСЊРѕРіРѕ',
+    'checkout.securePay': 'Р‘РµР·РїРµС‡РЅР° РѕРїР»Р°С‚Р° С‡РµСЂРµР· Monobank.',
+    'checkout.multiItem': 'Р—Р°РјРѕРІР»РµРЅРЅСЏ Р· РґРµРєС–Р»СЊРєРѕС… С‚РѕРІР°СЂС–РІ ({count} С€С‚.)',
+    'product.inStock': 'Р’ РЅР°СЏРІРЅРѕСЃС‚С–, РіРѕС‚РѕРІРѕ РґРѕ РІС–РґРїСЂР°РІРєРё',
+    'product.dispatch': 'Р’С–РґРїСЂР°РІРєР° РїСЂРѕС‚СЏРіРѕРј 24 РіРѕРґРёРЅ',
+    'product.authentic': '100% Р“Р°СЂР°РЅС‚С–СЏ РѕСЂРёРіС–РЅР°Р»СЊРЅРѕСЃС‚С– LEGO',
+    'product.verified': 'РџРµСЂРµРІС–СЂРµРЅРѕ РµРєСЃРїРµСЂС‚Р°РјРё Arcturus',
+    'product.addToCart': 'Р’ РєРѕС€РёРє',
+    'product.reserveTitle': 'Р—Р°Р±СЂРѕРЅСЋРІР°С‚Рё С‚Р° Р±РµР·РїРµС‡РЅРѕ РѕРїР»Р°С‚РёС‚Рё',
+    'contactForm.name': 'Р’Р°С€Рµ С–Рј\'СЏ',
+    'contactForm.phone': 'РљРѕРЅС‚Р°РєС‚ (Telegram / РўРµР»РµС„РѕРЅ)',
+    'contactForm.message': 'Р”РѕРґР°С‚РєРѕРІС– РїРѕР±Р°Р¶Р°РЅРЅСЏ',
+    'contactForm.paySafe': 'РћРїР»Р°С‚РёС‚Рё Р±РµР·РїРµС‡РЅРѕ',
+    'contactForm.secureConn': 'Р—Р°С…РёС‰РµРЅРµ Р·\'С”РґРЅР°РЅРЅСЏ...',
+    'contactForm.orderText': 'РћС„РѕСЂРјР»СЋСЋ Р·Р°РјРѕРІР»РµРЅРЅСЏ: {title}',
+    'related.title': 'РЎС…РѕР¶С– РїРѕР·РёС†С–С—',
+    'search.placeholder': 'РџРѕС€СѓРє РЅР°Р±РѕСЂС–РІ LEGO, РјС–РЅС–С„С–РіСѓСЂРѕРє, С‚РµРј...',
+    'search.button': 'Р—РЅР°Р№С‚Рё',
+    'sort.newest': 'РќР°Р№РЅРѕРІС–С€С–',
+    'sort.priceAsc': 'Р¦С–РЅР°: РІС–Рґ РЅРёР¶С‡РѕС—',
+    'sort.priceDesc': 'Р¦С–РЅР°: РІС–Рґ РІРёС‰РѕС—',
+    'sort.nameAsc': 'РќР°Р·РІР°: Рђ-РЇ',
+    'header.home': 'Р“РѕР»РѕРІРЅР°',
+    'dynamic.msg1': 'Р©РѕР№РЅРѕ Р·Р°СЂРµР·РµСЂРІРѕРІР°РЅРѕ: LEGO Star Wars 75192',
+    'dynamic.msg2': 'РќРѕРІРµ РЅР°РґС…РѕРґР¶РµРЅРЅСЏ Сѓ РєР°С‚Р°Р»РѕР·С–',
+    'dynamic.msg3': 'РћС„РѕСЂРјР»РµРЅРѕ РїРѕРєСѓРїРєСѓ: LEGO Ninjago City Gardens',
+    'fomo.justBought': 'Р©РѕР№РЅРѕ РїСЂРёРґР±Р°РЅРѕ',
+    'fomo.exclusive': 'Р•РєСЃРєР»СЋР·РёРІРЅРёР№ РЅР°Р±С–СЂ'
   }
 };
 
@@ -20110,6 +21155,8 @@ export interface WatchlistItem {
   notes?: string | null;
   assignedUserId?: string | null;
   assignedUser?: User | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface OpportunityItem {

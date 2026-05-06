@@ -1,4 +1,3 @@
-// lib/features/home/presentation/widgets/home_latest_activity_card.dart
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_entry_model.dart';
 

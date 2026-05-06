@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class ItemStatusActionCard extends StatelessWidget {
+class ItemStatusActionCard extends ConsumerWidget {
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
 
@@ -11,7 +13,9 @@ class ItemStatusActionCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -21,7 +25,7 @@ class ItemStatusActionCard extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: onPrevious,
                 icon: const Icon(Icons.arrow_back),
-                label: const Text('Previous Status'),
+                label: Text(i18n.t('Previous Status')),
               ),
             ),
             const SizedBox(width: 12),
@@ -29,7 +33,7 @@ class ItemStatusActionCard extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: onNext,
                 icon: const Icon(Icons.arrow_forward),
-                label: const Text('Next Status'),
+                label: Text(i18n.t('Next Status')),
               ),
             ),
           ],

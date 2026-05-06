@@ -1,5 +1,3 @@
-// lib/features/item_details/application/item_insights_service.dart
-
 import 'package:lego_trading_manager/data/models/item_model.dart';
 
 class ItemInsightsService {

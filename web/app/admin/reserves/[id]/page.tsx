@@ -1,129 +1,86 @@
 import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
-import type { ReserveRequest } from '@/lib/types';
 import { SectionCard } from '@/components/admin/section-card';
 import { ReserveRequestActions } from '@/components/admin/reserve-request-actions';
 import { StatusPill } from '@/components/admin/status-pill';
-import { ArrowLeft, User, Phone, MessageSquare, Box } from 'lucide-react';
-import Link from 'next/link';
+import { formatMoney } from '@/lib/format';
+import type { ReserveRequest } from '@/lib/types';
 
-type Props = {
-  params: Promise<{ id: string }>;
-};
+type Props = { params: Promise<{ id: string }> };
 
-async function getReserve(id: string): Promise<ReserveRequest | null> {
-  try {
-    return await api.get<ReserveRequest>(`/public/reserve-requests/${id}`);
-  } catch {
-    return null;
-  }
-}
-
-export default async function ReserveDetailPage({ params }: Props) {
+export default async function AdminReserveDetailPage({ params }: Props) {
   const { id } = await params;
-  const reserve = await getReserve(id);
+  let reserve: ReserveRequest & { inventoryItem?: any, orders?: any[] };
 
-  if (!reserve) {
+  try {
+    reserve = await api.get<any>(`/public/reserve-requests/${id}`);
+  } catch {
     notFound();
   }
 
+  if (!reserve) notFound();
+
   return (
     <div className="space-y-6 animate-fade-in-up">
-      <div className="flex items-center gap-4">
-        <Link 
-          href="/admin/reserves" 
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-black text-slate-900">Order #{reserve.id.slice(-6)}</h1>
-            <StatusPill value={reserve.status} />
-          </div>
-          <p className="mt-1 font-mono text-sm font-medium text-slate-500">Full ID: {reserve.id}</p>
+      <div className="flex items-center justify-between bg-white p-6 rounded-[2rem] border border-border shadow-sm">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900">Request #{reserve.id.slice(-6).toUpperCase()}</h1>
+          <p className="mt-1 text-sm text-slate-500 font-mono">Full ID: {reserve.id}</p>
         </div>
+        <StatusPill value={reserve.status} />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <SectionCard title="Customer Information">
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                <User className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Name</div>
-                <div className="text-lg font-bold text-slate-900">{reserve.name}</div>
+        <SectionCard title="Customer Details">
+          <div className="space-y-5">
+            <div>
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Name</div>
+              <div className="text-lg font-bold text-slate-900">{reserve.name}</div>
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Contact</div>
+              <div className="text-lg font-mono font-medium text-blue-600 bg-blue-50 p-3 rounded-xl inline-block border border-blue-100">{reserve.contact}</div>
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Message</div>
+              <div className="text-sm text-slate-700 bg-slate-50 p-4 rounded-xl border border-border leading-relaxed min-h-[100px]">
+                {reserve.message || 'No additional message provided by customer.'}
               </div>
             </div>
-            
-            <div className="flex items-start gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
-                <Phone className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Contact</div>
-                <div className="text-lg font-bold text-slate-900">{reserve.contact}</div>
-              </div>
-            </div>
+          </div>
+        </SectionCard>
 
-            {reserve.message && (
-              <div className="flex items-start gap-4 pt-4 border-t border-slate-100">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-                  <MessageSquare className="h-5 w-5" />
+        <SectionCard title="Item & Financials">
+          <div className="space-y-5">
+            <div>
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Requested Product</div>
+              <div className="text-lg font-bold text-slate-900">{reserve.productTitle}</div>
+            </div>
+            {reserve.inventoryItem ? (
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                <div>
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Cost Basis</div>
+                  <div className="text-lg font-bold text-slate-700">{formatMoney(reserve.inventoryItem.totalCost)}</div>
                 </div>
                 <div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Customer Note</div>
-                  <p className="mt-1 text-sm font-medium text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    {reserve.message}
-                  </p>
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Target Price</div>
+                  <div className="text-lg font-black text-emerald-600">
+                    {formatMoney(reserve.inventoryItem.expectedSalePriceManual ?? reserve.inventoryItem.totalCost)}
+                  </div>
                 </div>
+              </div>
+            ) : (
+              <div className="p-4 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl text-sm font-semibold">
+                No specific inventory item linked. This might be a general request.
               </div>
             )}
           </div>
         </SectionCard>
-
-        <div className="space-y-6">
-          <SectionCard title="Product Details">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-                <Box className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Target Product</div>
-                <div className="text-xl font-black text-slate-900">{reserve.productTitle}</div>
-                {reserve.inventoryItemId && (
-                  <Link 
-                    href={`/admin/inventory/${reserve.inventoryItemId}`}
-                    className="inline-block mt-2 font-mono text-sm text-blue-600 hover:underline"
-                  >
-                    Inv ID: {reserve.inventoryItemId}
-                  </Link>
-                )}
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Order Management">
-            <div className="space-y-4">
-              <div className="text-sm font-medium text-slate-600 mb-4">
-                Update the workflow status for this order. This will notify operators tracking the board.
-              </div>
-              <ReserveRequestActions id={reserve.id} currentStatus={reserve.status} />
-              
-              {reserve.adminNote && (
-                <div className="mt-4 pt-4 border-t border-slate-100">
-                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Latest Admin Note</div>
-                  <div className="text-sm font-mono text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    {reserve.adminNote}
-                  </div>
-                </div>
-              )}
-            </div>
-          </SectionCard>
-        </div>
       </div>
+
+      <SectionCard title="Workflow Actions">
+        <ReserveRequestActions id={reserve.id} currentStatus={reserve.status} />
+      </SectionCard>
     </div>
   );
 }

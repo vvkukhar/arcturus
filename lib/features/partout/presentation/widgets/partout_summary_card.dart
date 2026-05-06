@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/features/partout/application/partout_summary_provider.dart';
 
-class PartOutSummaryCard extends StatelessWidget {
+class PartOutSummaryCard extends ConsumerWidget {
   final PartOutSummaryModel summary;
   final String currency;
 
@@ -13,13 +15,15 @@ class PartOutSummaryCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     Widget row(String label, String value) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           children: [
-            Expanded(child: Text(label)),
+            Expanded(child: Text(i18n.t(label))),
             Text(
               value,
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -37,7 +41,7 @@ class PartOutSummaryCard extends StatelessWidget {
             row('Projects', summary.projectCount.toString()),
             row('Lines', summary.lineCount.toString()),
             row(
-              'Total Cost',
+              'inv.totalCost',
               CurrencyFormatter.format(summary.totalCost, currency: currency),
             ),
             row(

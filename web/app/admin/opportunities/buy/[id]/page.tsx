@@ -1,118 +1,88 @@
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
 import { SectionCard } from '@/components/admin/section-card';
 import { StatusPill } from '@/components/admin/status-pill';
-import { OpportunityStrategyBlock } from '@/components/admin/opportunity-strategy-block';
 import { AddToPurchaseFlowButton } from '@/components/admin/add-to-purchase-flow-button';
 import { formatMoney, formatPercent } from '@/lib/format';
-import { DataTable } from '@/components/admin/data-table';
 
-async function getBuyDetail(itemId: string) {
-  try {
-    return await api.get<any>(`/opportunities/buy/${itemId}`);
-  } catch {
-    return null;
-  }
-}
+type Props = { params: Promise<{ id: string }> };
 
-export default async function AdminBuyOpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function BuyOpportunityDetail({ params }: Props) {
   const { id } = await params;
-  const data = await getBuyDetail(id);
+  let data: any;
 
-  if (!data || !data.opportunity) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <h2 className="text-2xl font-black text-slate-900">Opportunity Not Found</h2>
-        <Link href="/admin/opportunities/buy" className="mt-4 text-blue-600 hover:underline">
-          Return to Buy Opportunities
-        </Link>
-      </div>
-    );
+  try {
+    data = await api.get<any>(`/opportunities/buy/${id}`);
+  } catch {
+    notFound();
   }
 
-  const { opportunity, item, listings, snapshots, decisions, soldComps } = data;
+  if (!data || !data.opportunity) notFound();
+
+  const opp = data.opportunity;
 
   return (
-    <div className="space-y-6 animate-fade-in-up pb-10">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <Link href="/admin/opportunities/buy" className="p-2 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors">
-            <ArrowLeft size={20} className="text-slate-600" />
-          </Link>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900">{opportunity.title}</h1>
-            <p className="text-sm font-mono text-slate-500 mt-1">Item ID: {opportunity.itemId} | Set: {item?.setNumber ?? 'N/A'}</p>
-          </div>
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900">{opp.title}</h1>
+          <p className="mt-1 text-sm text-slate-500 font-mono">Item ID: {opp.itemId}</p>
         </div>
         <div className="flex items-center gap-3">
-          <StatusPill value={opportunity.action} />
-          {opportunity.watchlistItemId && (
-            <AddToPurchaseFlowButton watchlistItemId={opportunity.watchlistItemId} />
-          )}
+          <StatusPill value={opp.action} />
+          {opp.watchlistItemId && <AddToPurchaseFlowButton watchlistItemId={opp.watchlistItemId} />}
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-2 space-y-6">
-          <SectionCard title="Strategy & Economics">
-            <OpportunityStrategyBlock item={opportunity} />
-          </SectionCard>
-
-          <SectionCard title="Active Market Listings">
-            <DataTable
-              rows={listings}
-              emptyText="No active listings found."
-              getRowKey={(row: any) => row.id}
-              columns={[
-                {
-                  key: 'source',
-                  header: 'Source',
-                  render: (row: any) => <span className="font-mono text-sm">{row.sourceCode}</span>,
-                },
-                {
-                  key: 'price',
-                  header: 'Price',
-                  render: (row: any) => <span className="font-bold">{formatMoney(row.price)}</span>,
-                },
-                {
-                  key: 'shipping',
-                  header: 'Shipping',
-                  render: (row: any) => <span className="text-slate-500">{formatMoney(row.shippingPrice)}</span>,
-                },
-                {
-                  key: 'link',
-                  header: 'Link',
-                  render: (row: any) => (
-                    <a href={row.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-sm">
-                      View Listing
-                    </a>
-                  ),
-                },
-              ]}
-            />
-          </SectionCard>
-        </div>
-
-        <div className="space-y-6">
-          <SectionCard title="Recent Sold Comps">
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-              {soldComps.length === 0 ? (
-                <div className="text-sm text-slate-500">No sold comps available</div>
-              ) : (
-                soldComps.map((comp: any) => (
-                  <div key={comp.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <div>
-                      <div className="font-bold text-sm text-slate-900 line-clamp-1">{comp.title}</div>
-                      <div className="text-xs text-slate-500 mt-1">{new Date(comp.soldAt).toLocaleDateString('uk-UA')} • {comp.sourceCode}</div>
-                    </div>
-                    <div className="font-black text-emerald-600">{formatMoney(comp.soldPrice)}</div>
-                  </div>
-                ))
-              )}
+      <div className="grid gap-6 md:grid-cols-3">
+        <SectionCard title="Financials">
+          <div className="space-y-4">
+            <div>
+              <div className="text-xs font-bold text-slate-500 uppercase">Buy Price</div>
+              <div className="text-xl font-bold text-slate-900">{formatMoney(opp.totalBuy)}</div>
             </div>
-          </SectionCard>
-        </div>
+            <div>
+              <div className="text-xs font-bold text-slate-500 uppercase">Target Sell</div>
+              <div className="text-xl font-bold text-blue-600">{formatMoney(opp.targetSellPrice)}</div>
+            </div>
+            <div className="pt-2 border-t border-slate-100">
+              <div className="text-xs font-bold text-slate-500 uppercase">Est. Profit</div>
+              <div className="text-2xl font-black text-emerald-600">{formatMoney(opp.profit)}</div>
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-500 uppercase">ROI</div>
+              <div className="text-xl font-black text-emerald-600">{formatPercent(opp.roi)}</div>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Strategy" className="md:col-span-2">
+          <div className="space-y-4">
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+              <div className="text-sm font-bold text-slate-900 mb-1">{opp.actionReasonPrimary}</div>
+              <div className="text-sm text-slate-500">{opp.actionReasonSecondary}</div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Flip Strategy</div>
+                <StatusPill value={opp.flipStrategy || 'Unknown'} />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Source</div>
+                <div className="text-sm font-mono font-bold text-slate-700">{opp.sourceCode}</div>
+              </div>
+            </div>
+
+            {opp.listingUrl && (
+              <div className="pt-4">
+                <a href={opp.listingUrl} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:underline">
+                  View Listing on Marketplace &rarr;
+                </a>
+              </div>
+            )}
+          </div>
+        </SectionCard>
       </div>
     </div>
   );

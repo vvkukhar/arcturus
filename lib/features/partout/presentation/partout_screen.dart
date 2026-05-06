@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/empty_state_view.dart';
 import 'package:lego_trading_manager/data/models/partout_project_model.dart';
@@ -32,17 +33,17 @@ class PartOutScreen extends ConsumerStatefulWidget {
 class _PartOutScreenState extends ConsumerState<PartOutScreen> {
   final TextEditingController _searchController = TextEditingController();
 
-  String _sortLabel(PartOutSortOption option) {
+  String _sortLabel(PartOutSortOption option, I18nNotifier i18n) {
     switch (option) {
-      case PartOutSortOption.newest: return 'Newest';
-      case PartOutSortOption.oldest: return 'Oldest';
-      case PartOutSortOption.titleAsc: return 'Title A-Z';
-      case PartOutSortOption.titleDesc: return 'Title Z-A';
-      case PartOutSortOption.costHighToLow: return 'Cost High-Low';
-      case PartOutSortOption.expectedHighToLow: return 'Expected High-Low';
-      case PartOutSortOption.actualHighToLow: return 'Actual High-Low';
-      case PartOutSortOption.profitExpectedHighToLow: return 'Expected Profit';
-      case PartOutSortOption.profitActualHighToLow: return 'Actual Profit';
+      case PartOutSortOption.newest: return i18n.t('Newest');
+      case PartOutSortOption.oldest: return i18n.t('Oldest');
+      case PartOutSortOption.titleAsc: return i18n.t('Title A-Z');
+      case PartOutSortOption.titleDesc: return i18n.t('Title Z-A');
+      case PartOutSortOption.costHighToLow: return i18n.t('Cost High-Low');
+      case PartOutSortOption.expectedHighToLow: return i18n.t('Expected High-Low');
+      case PartOutSortOption.actualHighToLow: return i18n.t('Actual High-Low');
+      case PartOutSortOption.profitExpectedHighToLow: return i18n.t('Expected Profit');
+      case PartOutSortOption.profitActualHighToLow: return i18n.t('Actual Profit');
     }
   }
 
@@ -91,20 +92,21 @@ class _PartOutScreenState extends ConsumerState<PartOutScreen> {
     final visibleMetrics = ref.watch(partOutVisibleMetricsProvider);
     final currency = ref.watch(appSettingsControllerProvider).baseCurrency;
     final ui = ref.watch(partOutUiControllerProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Part-out')),
+      appBar: AppBar(title: Text(i18n.t('partout.title'))),
       drawer: const AppDrawer(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openAdd(context, ref),
         icon: const Icon(Icons.precision_manufacturing_outlined),
-        label: const Text('Add Project'),
+        label: Text(i18n.t('partout.add')),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: allProjects.isEmpty
-            ? const EmptyStateView(
-                title: 'No part-out projects yet',
+            ? EmptyStateView(
+                title: 'partout.empty',
                 subtitle: 'Create a set breakdown project and track value line by line.',
               )
             : Column(
@@ -131,7 +133,7 @@ class _PartOutScreenState extends ConsumerState<PartOutScreen> {
                   PartOutSummaryBar(
                     visibleCount: visibleProjects.length,
                     totalCount: allProjects.length,
-                    sortLabel: _sortLabel(ui.sortOption),
+                    sortLabel: _sortLabel(ui.sortOption, i18n),
                   ),
                   const SizedBox(height: 12),
                   PartOutActiveFilterChips(filter: ui.filter),
@@ -142,7 +144,7 @@ class _PartOutScreenState extends ConsumerState<PartOutScreen> {
                   const SizedBox(height: 12),
                   Expanded(
                     child: visibleProjects.isEmpty
-                        ? const Center(child: Text('Nothing found for current filters.'))
+                        ? Center(child: Text(i18n.t('Nothing found for current filters.')))
                         : ListView.separated(
                             itemCount: visibleProjects.length,
                             separatorBuilder: (_, __) => const SizedBox(height: 10),

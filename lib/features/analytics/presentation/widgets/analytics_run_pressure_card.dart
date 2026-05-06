@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_run_pressure_model.dart';
 
-class AnalyticsRunPressureCard extends StatelessWidget {
+class AnalyticsRunPressureCard extends ConsumerWidget {
   final AnalyticsRunPressureModel model;
 
   const AnalyticsRunPressureCard({
@@ -10,7 +12,9 @@ class AnalyticsRunPressureCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     final color = model.totalRuns == 0
         ? Colors.grey
         : model.totalRuns <= 5
@@ -26,7 +30,7 @@ class AnalyticsRunPressureCard extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                model.label,
+                i18n.t(model.label),
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
                 ),

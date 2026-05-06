@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/data/models/item_model.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_risk_flag_model.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/widgets/inventory_inline_action_bar.dart';
@@ -6,7 +8,7 @@ import 'package:lego_trading_manager/features/inventory/presentation/widgets/inv
 import 'package:lego_trading_manager/features/inventory/presentation/widgets/inventory_risk_flag_bar.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/widgets/inventory_status_badge_v2.dart';
 
-class InventorySelectableCard extends StatelessWidget {
+class InventorySelectableCard extends ConsumerWidget {
   final ItemModel item;
   final bool selected;
   final InventoryRiskFlagModel? riskFlag;
@@ -35,7 +37,9 @@ class InventorySelectableCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Stack(
       children: [
         InkWell(
@@ -62,15 +66,15 @@ class InventorySelectableCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('${item.type.name} • ${item.theme ?? '-'}'),
+                  Text('${i18n.t(item.type.name)} • ${item.theme ?? '-'}'),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 12,
                     runSpacing: 8,
                     children: [
-                      Text('Cost: ${item.totalCost.toStringAsFixed(2)}'),
+                      Text('${i18n.t('Cost')}: ${item.totalCost.toStringAsFixed(2)}'),
                       Text(
-                        'Expected: ${(item.expectedSalePrice ?? 0).toStringAsFixed(2)}',
+                        '${i18n.t('Expected')}: ${(item.expectedSalePrice ?? 0).toStringAsFixed(2)}',
                       ),
                     ],
                   ),

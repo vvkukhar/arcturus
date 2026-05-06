@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_profit_summary_model.dart';
 
-class AnalyticsProfitSummaryCard extends StatelessWidget {
+class AnalyticsProfitSummaryCard extends ConsumerWidget {
   final AnalyticsProfitSummaryModel model;
 
   const AnalyticsProfitSummaryCard({
@@ -28,7 +30,8 @@ class AnalyticsProfitSummaryCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final profitColor =
         model.totalExpectedProfit >= 0 ? Colors.green : Colors.redAccent;
     final roiColor = model.roiPercent >= 0 ? Colors.green : Colors.redAccent;
@@ -38,13 +41,13 @@ class AnalyticsProfitSummaryCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _row('Total Cost', model.totalCost.toStringAsFixed(2)),
+            _row(i18n.t('Total Cost'), model.totalCost.toStringAsFixed(2)),
             _row(
-              'Expected Revenue',
+              i18n.t('Expected Revenue'),
               model.totalExpectedRevenue.toStringAsFixed(2),
             ),
             _row(
-              'Expected Profit',
+              i18n.t('inv.expectedProfit'),
               model.totalExpectedProfit.toStringAsFixed(2),
               valueColor: profitColor,
             ),

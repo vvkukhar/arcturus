@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_entry_model.dart';
 
-class ActivityTimelineCard extends StatelessWidget {
+class ActivityTimelineCard extends ConsumerWidget {
   final ActivityLogEntryModel entry;
 
   const ActivityTimelineCard({
@@ -48,7 +50,8 @@ class ActivityTimelineCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final color = _color();
     final date = entry.createdAt.toIso8601String().split('T').first;
 
@@ -78,16 +81,16 @@ class ActivityTimelineCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    entry.title,
+                    i18n.t(entry.title),
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(entry.subtitle),
+                  Text(i18n.t(entry.subtitle)),
                   const SizedBox(height: 8),
                   Text(
-                    '$date • ${entry.type}',
+                    '$date • ${i18n.t(entry.type)}',
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ],

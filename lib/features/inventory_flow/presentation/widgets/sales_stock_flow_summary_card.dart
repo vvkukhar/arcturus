@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/sales_stock_flow_summary_model.dart';
 
-class SalesStockFlowSummaryCard extends StatelessWidget {
+class SalesStockFlowSummaryCard extends ConsumerWidget {
   final SalesStockFlowSummaryModel model;
 
   const SalesStockFlowSummaryCard({
@@ -35,7 +37,8 @@ class SalesStockFlowSummaryCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final hasProblems = model.openSales > 0 ||
         model.partiallyAllocatedSales > 0 ||
         model.overAllocatedSales > 0;
@@ -57,10 +60,10 @@ class SalesStockFlowSummaryCard extends StatelessWidget {
                   color: color,
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Sales Stock Flow',
-                    style: TextStyle(
+                    i18n.t('Sales Stock Flow'),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
                     ),
@@ -71,23 +74,23 @@ class SalesStockFlowSummaryCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                _cell('Sales', model.totalSales.toString()),
-                _cell('Full', model.fullyAllocatedSales.toString()),
-                _cell('Open', model.openSales.toString(), color: color),
+                _cell(i18n.t('Sales'), model.totalSales.toString()),
+                _cell(i18n.t('Full'), model.fullyAllocatedSales.toString()),
+                _cell(i18n.t('Open'), model.openSales.toString(), color: color),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                _cell('Partial', model.partiallyAllocatedSales.toString()),
-                _cell('Over', model.overAllocatedSales.toString()),
+                _cell(i18n.t('Partial'), model.partiallyAllocatedSales.toString()),
+                _cell(i18n.t('Over'), model.overAllocatedSales.toString()),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                _cell('Units', '${model.allocatedUnits}/${model.totalUnits}'),
-                _cell('Open units', model.openUnits.toString(), color: color),
+                _cell(i18n.t('Units'), '${model.allocatedUnits}/${model.totalUnits}'),
+                _cell(i18n.t('Open units'), model.openUnits.toString(), color: color),
               ],
             ),
           ],

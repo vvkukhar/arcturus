@@ -1,8 +1,8 @@
-// lib/features/market/presentation/widgets/market_search_field.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class MarketSearchField extends StatelessWidget {
+class MarketSearchField extends ConsumerWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
@@ -15,14 +15,15 @@ class MarketSearchField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final hasValue = controller.text.trim().isNotEmpty;
 
     return TextField(
       controller: controller,
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: 'Search by item, source, url...',
+        hintText: i18n.t('Search by item, source, url...'),
         prefixIcon: const Icon(Icons.search),
         suffixIcon: hasValue
             ? IconButton(

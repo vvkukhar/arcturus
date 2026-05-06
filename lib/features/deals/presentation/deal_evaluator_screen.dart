@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_helper_provider.dart';
 import 'package:lego_trading_manager/features/deals/application/deal_evaluation_model.dart';
 import 'package:lego_trading_manager/features/deals/application/deal_history_provider.dart';
@@ -61,6 +62,7 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
 
   Future<void> _createWatchlistItem() async {
     if (_result == null) return;
+    final i18n = ref.read(i18nProvider.notifier);
 
     final result = ref.read(dealWatchlistCreateProvider).build(_result!);
     ref.read(watchlistControllerProvider.notifier).addItem(result.watchlistItem);
@@ -73,7 +75,7 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Watchlist item created from deal')),
+      SnackBar(content: Text(i18n.t('eval.itemCreated'))),
     );
   }
 
@@ -87,9 +89,10 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Deal Evaluator'),
+        title: Text(i18n.t('eval.title')),
         actions: [
           IconButton(
             onPressed: () => Navigator.of(context).pushNamed('/deal-history'),
@@ -102,24 +105,24 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
         children: [
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(labelText: 'Title'),
+            decoration: InputDecoration(labelText: i18n.t('draft.title')),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _askingController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Asking Price'),
+            decoration: InputDecoration(labelText: i18n.t('eval.askingPrice')),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _marketController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Market Price'),
+            decoration: InputDecoration(labelText: i18n.t('eval.marketPrice')),
           ),
           const SizedBox(height: 16),
           FilledButton(
             onPressed: _evaluate,
-            child: const Text('Evaluate'),
+            child: Text(i18n.t('eval.evaluate')),
           ),
           const SizedBox(height: 16),
           if (_result != null) ...[

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchases_filter_model.dart';
 
-class PurchasesFilterSheet extends StatefulWidget {
+class PurchasesFilterSheet extends ConsumerStatefulWidget {
   final PurchasesFilterModel initialFilter;
 
   const PurchasesFilterSheet({
@@ -10,10 +12,10 @@ class PurchasesFilterSheet extends StatefulWidget {
   });
 
   @override
-  State<PurchasesFilterSheet> createState() => _PurchasesFilterSheetState();
+  ConsumerState<PurchasesFilterSheet> createState() => _PurchasesFilterSheetState();
 }
 
-class _PurchasesFilterSheetState extends State<PurchasesFilterSheet> {
+class _PurchasesFilterSheetState extends ConsumerState<PurchasesFilterSheet> {
   late final TextEditingController _sourceController;
   late final TextEditingController _currencyController;
   late final TextEditingController _minTotalController;
@@ -75,6 +77,8 @@ class _PurchasesFilterSheetState extends State<PurchasesFilterSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -86,9 +90,9 @@ class _PurchasesFilterSheetState extends State<PurchasesFilterSheet> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const Text(
-              'Purchase Filters',
-              style: TextStyle(
+            Text(
+              i18n.t('Purchase Filters'),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
               ),
@@ -96,15 +100,15 @@ class _PurchasesFilterSheetState extends State<PurchasesFilterSheet> {
             const SizedBox(height: 16),
             TextField(
               controller: _sourceController,
-              decoration: const InputDecoration(
-                labelText: 'Source contains',
+              decoration: InputDecoration(
+                labelText: i18n.t('Source contains'),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _currencyController,
-              decoration: const InputDecoration(
-                labelText: 'Currency',
+              decoration: InputDecoration(
+                labelText: i18n.t('Currency'),
               ),
               textCapitalization: TextCapitalization.characters,
             ),
@@ -114,8 +118,8 @@ class _PurchasesFilterSheetState extends State<PurchasesFilterSheet> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
-                labelText: 'Min total',
+              decoration: InputDecoration(
+                labelText: i18n.t('Min total'),
               ),
             ),
             const SizedBox(height: 12),
@@ -124,8 +128,8 @@ class _PurchasesFilterSheetState extends State<PurchasesFilterSheet> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
-                labelText: 'Max total',
+              decoration: InputDecoration(
+                labelText: i18n.t('Max total'),
               ),
             ),
             const SizedBox(height: 16),
@@ -134,14 +138,14 @@ class _PurchasesFilterSheetState extends State<PurchasesFilterSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _clear,
-                    child: const Text('Clear'),
+                    child: Text(i18n.t('common.clear')),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
                     onPressed: _apply,
-                    child: const Text('Apply'),
+                    child: Text(i18n.t('common.apply')),
                   ),
                 ),
               ],

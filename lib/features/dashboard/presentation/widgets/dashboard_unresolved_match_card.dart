@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/operator/application/unresolved_summary_provider.dart';
 
-class DashboardUnresolvedMatchCard extends StatelessWidget {
+class DashboardUnresolvedMatchCard extends ConsumerWidget {
   final UnresolvedSummaryModel model;
 
   const DashboardUnresolvedMatchCard({
@@ -10,7 +12,8 @@ class DashboardUnresolvedMatchCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final headline =
         model.pending > 0 ? 'Operator review needed' : 'No unresolved matches';
     return Card(
@@ -20,7 +23,7 @@ class DashboardUnresolvedMatchCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              headline,
+              i18n.t(headline),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
@@ -31,9 +34,9 @@ class DashboardUnresolvedMatchCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                Chip(label: Text('Pending ${model.pending}')),
-                Chip(label: Text('Resolved ${model.resolved}')),
-                Chip(label: Text('Dismissed ${model.dismissed}')),
+                Chip(label: Text('${i18n.t('Pending')} ${model.pending}')),
+                Chip(label: Text('${i18n.t('Resolved')} ${model.resolved}')),
+                Chip(label: Text('${i18n.t('Dismissed')} ${model.dismissed}')),
               ],
             ),
           ],

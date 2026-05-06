@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/items/data/items_api_repository_provider.dart';
 
 class ItemFormScreen extends ConsumerStatefulWidget {
@@ -27,28 +28,29 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   @override
   Widget build(BuildContext context) {
     final repo = ref.watch(itemsApiRepositoryProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Item')),
+      appBar: AppBar(title: Text(i18n.t('Create Item'))),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
+              decoration: InputDecoration(labelText: i18n.t('Title')),
             ),
             TextField(
               controller: _setController,
-              decoration: const InputDecoration(labelText: 'Set Number'),
+              decoration: InputDecoration(labelText: i18n.t('Set Number')),
             ),
             TextField(
               controller: _themeController,
-              decoration: const InputDecoration(labelText: 'Theme'),
+              decoration: InputDecoration(labelText: i18n.t('Theme')),
             ),
             TextField(
               controller: _yearController,
-              decoration: const InputDecoration(labelText: 'Year'),
+              decoration: InputDecoration(labelText: i18n.t('Year')),
             ),
             const SizedBox(height: 12),
             FilledButton(
@@ -67,7 +69,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                 }
                 navigator.pop();
               },
-              child: const Text('Create'),
+              child: Text(i18n.t('Create')),
             ),
           ],
         ),

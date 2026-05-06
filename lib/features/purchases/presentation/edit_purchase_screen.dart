@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/purchase_payment_method.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/data/models/purchase_model.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/purchase_effective_stock_provider.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchase_total_provider.dart';
@@ -113,19 +114,19 @@ class _EditPurchaseScreenState extends ConsumerState<EditPurchaseScreen> {
     });
   }
 
-  String? _validateQuantity(String? value) {
+  String? _validateQuantity(String? value, I18nNotifier i18n) {
     final parsed = int.tryParse((value ?? '').trim());
 
     if (parsed == null) {
-      return 'Quantity must be a number';
+      return i18n.t('common.error', {'error': 'Must be a number'});
     }
 
     if (parsed <= 0) {
-      return 'Quantity must be greater than zero';
+      return i18n.t('common.error', {'error': 'Must be > 0'});
     }
 
     if (parsed < _effectiveSoldQuantity) {
-      return 'Quantity cannot be lower than allocated/sold quantity';
+      return i18n.t('common.error', {'error': 'Cannot be lower than sold'});
     }
 
     return null;
@@ -184,12 +185,13 @@ class _EditPurchaseScreenState extends ConsumerState<EditPurchaseScreen> {
   @override
   Widget build(BuildContext context) {
     final validation = ref.watch(purchaseValidationProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
     final dateText = _purchaseDate.toIso8601String().split('T').first;
     final effectiveSoldQuantity = _effectiveSoldQuantity;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Purchase'),
+        title: Text(i18n.t('pur.edit')),
       ),
       body: Form(
         key: _formKey,
@@ -198,40 +200,40 @@ class _EditPurchaseScreenState extends ConsumerState<EditPurchaseScreen> {
           children: [
             TextFormField(
               controller: _itemIdController,
-              decoration: const InputDecoration(labelText: 'Item ID *'),
+              decoration: InputDecoration(labelText: '${i18n.t('Item ID')} *'),
               validator: (value) =>
-                  validation.validateRequiredText(value ?? '', 'Item ID'),
+                  validation.validateRequiredText(value ?? '', i18n.t('Item ID')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _sourceController,
-              decoration: const InputDecoration(labelText: 'Source *'),
+              decoration: InputDecoration(labelText: '${i18n.t('pur.source')} *'),
               validator: (value) =>
-                  validation.validateRequiredText(value ?? '', 'Source'),
+                  validation.validateRequiredText(value ?? '', i18n.t('pur.source')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _sourceUrlController,
-              decoration: const InputDecoration(labelText: 'Source URL'),
+              decoration: InputDecoration(labelText: i18n.t('pur.sourceUrl')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _sellerNameController,
-              decoration: const InputDecoration(labelText: 'Seller Name'),
+              decoration: InputDecoration(labelText: i18n.t('pur.seller')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _sellerContactController,
-              decoration: const InputDecoration(labelText: 'Seller Contact'),
+              decoration: InputDecoration(labelText: i18n.t('pur.contact')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _purchasePriceController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Purchase Price'),
+              decoration: InputDecoration(labelText: i18n.t('pur.price')),
               validator: (value) => validation.validatePositiveOrZero(
                 value ?? '',
-                'Purchase price',
+                i18n.t('pur.price'),
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -239,10 +241,10 @@ class _EditPurchaseScreenState extends ConsumerState<EditPurchaseScreen> {
             TextFormField(
               controller: _shippingController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Shipping Cost'),
+              decoration: InputDecoration(labelText: i18n.t('pur.shipping')),
               validator: (value) => validation.validatePositiveOrZero(
                 value ?? '',
-                'Shipping cost',
+                i18n.t('pur.shipping'),
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -250,10 +252,10 @@ class _EditPurchaseScreenState extends ConsumerState<EditPurchaseScreen> {
             TextFormField(
               controller: _additionalCostsController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Additional Costs'),
+              decoration: InputDecoration(labelText: i18n.t('pur.extra')),
               validator: (value) => validation.validatePositiveOrZero(
                 value ?? '',
-                'Additional costs',
+                i18n.t('pur.extra'),
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -262,10 +264,10 @@ class _EditPurchaseScreenState extends ConsumerState<EditPurchaseScreen> {
               controller: _quantityController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Quantity',
-                helperText: 'Allocated/sold: $effectiveSoldQuantity',
+                labelText: i18n.t('inv.qty'),
+                helperText: '${i18n.t('Allocated/sold:')} $effectiveSoldQuantity',
               ),
-              validator: _validateQuantity,
+              validator: (val) => _validateQuantity(val, i18n),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -273,7 +275,7 @@ class _EditPurchaseScreenState extends ConsumerState<EditPurchaseScreen> {
               child: Column(
                 children: [
                   ListTile(
-                    title: const Text('Final Total'),
+                    title: Text(i18n.t('inv.totalCost')),
                     trailing: Text(
                       _finalTotal.toStringAsFixed(2),
                       style: const TextStyle(fontWeight: FontWeight.w800),
@@ -281,7 +283,7 @@ class _EditPurchaseScreenState extends ConsumerState<EditPurchaseScreen> {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    title: const Text('Unit Cost'),
+                    title: Text(i18n.t('Unit Cost')),
                     trailing: Text(
                       _unitCost.toStringAsFixed(2),
                       style: const TextStyle(fontWeight: FontWeight.w800),
@@ -293,7 +295,7 @@ class _EditPurchaseScreenState extends ConsumerState<EditPurchaseScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _currencyController,
-              decoration: const InputDecoration(labelText: 'Currency'),
+              decoration: InputDecoration(labelText: i18n.t('pur.currency')),
               textCapitalization: TextCapitalization.characters,
               validator: (value) => validation.validateCurrency(value ?? ''),
             ),
@@ -301,21 +303,21 @@ class _EditPurchaseScreenState extends ConsumerState<EditPurchaseScreen> {
             TextFormField(
               controller: _exchangeRateController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Exchange Rate'),
+              decoration: InputDecoration(labelText: i18n.t('pur.exchange')),
               validator: (value) => validation.validatePositiveOrZero(
                 value ?? '',
-                'Exchange rate',
+                i18n.t('pur.exchange'),
               ),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<PurchasePaymentMethod>(
               value: _paymentMethod,
-              decoration: const InputDecoration(labelText: 'Payment Method'),
+              decoration: InputDecoration(labelText: i18n.t('pur.payment')),
               items: PurchasePaymentMethod.values
                   .map(
                     (method) => DropdownMenuItem(
                       value: method,
-                      child: Text(method.name),
+                      child: Text(i18n.t(method.name)),
                     ),
                   )
                   .toList(),
@@ -329,7 +331,7 @@ class _EditPurchaseScreenState extends ConsumerState<EditPurchaseScreen> {
             const SizedBox(height: 12),
             Card(
               child: ListTile(
-                title: const Text('Purchase Date'),
+                title: Text(i18n.t('pur.date')),
                 subtitle: Text(dateText),
                 trailing: const Icon(Icons.calendar_month_outlined),
                 onTap: _pickDate,
@@ -339,12 +341,12 @@ class _EditPurchaseScreenState extends ConsumerState<EditPurchaseScreen> {
             TextFormField(
               controller: _noteController,
               maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Note'),
+              decoration: InputDecoration(labelText: i18n.t('inv.notes')),
             ),
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _save,
-              child: const Text('Save Changes'),
+              child: Text(i18n.t('common.saveChanges')),
             ),
           ],
         ),

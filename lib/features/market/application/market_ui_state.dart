@@ -1,5 +1,3 @@
-// lib/features/market/application/market_ui_state.dart
-
 import 'package:lego_trading_manager/features/market/application/market_filter_model.dart';
 import 'package:lego_trading_manager/features/market/application/market_sort_option.dart';
 

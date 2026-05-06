@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_scheduled_run_log_entry_model.dart';
 
-class AnalyticsScheduledRunLogCard extends StatelessWidget {
+class AnalyticsScheduledRunLogCard extends ConsumerWidget {
   final List<AnalyticsScheduledRunLogEntryModel> items;
   final VoidCallback onClear;
 
@@ -12,12 +14,14 @@ class AnalyticsScheduledRunLogCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     if (items.isEmpty) {
-      return const Card(
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(14),
-          child: Text('No scheduled run log yet.'),
+          padding: const EdgeInsets.all(14),
+          child: Text(i18n.t('No scheduled run log yet.')),
         ),
       );
     }
@@ -30,10 +34,10 @@ class AnalyticsScheduledRunLogCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Scheduled Run Log',
-                    style: TextStyle(
+                    i18n.t('Scheduled Run Log'),
+                    style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                     ),
@@ -41,7 +45,7 @@ class AnalyticsScheduledRunLogCard extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: onClear,
-                  child: const Text('Clear'),
+                  child: Text(i18n.t('common.clear')),
                 ),
               ],
             ),
@@ -51,8 +55,8 @@ class AnalyticsScheduledRunLogCard extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
                       '${item.createdAt.toIso8601String().split("T").first} • '
-                      '${item.frequency} • '
-                      'affected ${item.affectedItems}',
+                      '${i18n.t(item.frequency)} • '
+                      '${i18n.t('affected')} ${item.affectedItems}',
                     ),
                   ),
                 ),

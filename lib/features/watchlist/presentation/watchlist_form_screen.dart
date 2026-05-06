@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class WatchlistFormScreen extends ConsumerStatefulWidget {
   final String itemId;
@@ -45,37 +46,39 @@ class _WatchlistFormScreenState extends ConsumerState<WatchlistFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Add to Watchlist')),
+      appBar: AppBar(title: Text(i18n.t('Add to Watchlist'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(labelText: 'Title'),
+            decoration: InputDecoration(labelText: i18n.t('Title')),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _buyController,
-            decoration: const InputDecoration(labelText: 'Desired Buy'),
+            decoration: InputDecoration(labelText: i18n.t('Desired Buy')),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _maxController,
-            decoration: const InputDecoration(labelText: 'Max Buy'),
+            decoration: InputDecoration(labelText: i18n.t('Max Buy')),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _sellController,
-            decoration: const InputDecoration(labelText: 'Target Sell'),
+            decoration: InputDecoration(labelText: i18n.t('Target Sell')),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
           const SizedBox(height: 20),
           FilledButton(
             onPressed: _save,
-            child: const Text('Save'),
+            child: Text(i18n.t('common.save')),
           ),
         ],
       ),

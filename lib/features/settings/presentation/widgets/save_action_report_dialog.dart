@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class SaveActionReportDialog extends StatefulWidget {
+class SaveActionReportDialog extends ConsumerStatefulWidget {
   final String initialTitle;
   final String initialNote;
 
@@ -11,10 +13,10 @@ class SaveActionReportDialog extends StatefulWidget {
   });
 
   @override
-  State<SaveActionReportDialog> createState() => _SaveActionReportDialogState();
+  ConsumerState<SaveActionReportDialog> createState() => _SaveActionReportDialogState();
 }
 
-class _SaveActionReportDialogState extends State<SaveActionReportDialog> {
+class _SaveActionReportDialogState extends ConsumerState<SaveActionReportDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _noteController;
 
@@ -41,32 +43,34 @@ class _SaveActionReportDialogState extends State<SaveActionReportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return AlertDialog(
-      title: const Text('Save Action Report'),
+      title: Text(i18n.t('Save Action Report')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(labelText: 'Title'),
+            decoration: InputDecoration(labelText: i18n.t('Title')),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _noteController,
             minLines: 3,
             maxLines: 6,
-            decoration: const InputDecoration(labelText: 'Note'),
+            decoration: InputDecoration(labelText: i18n.t('inv.notes')),
           ),
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(i18n.t('common.cancel')),
         ),
         FilledButton(
           onPressed: _submit,
-          child: const Text('Save'),
+          child: Text(i18n.t('common.save')),
         ),
       ],
     );

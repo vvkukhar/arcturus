@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/market_inventory_reprice_suggestion_model.dart';
 
-class AnalyticsRepricePreviewTable extends StatelessWidget {
+class AnalyticsRepricePreviewTable extends ConsumerWidget {
   final List<MarketInventoryRepriceSuggestionModel> items;
   final Set<String> selectedIds;
   final void Function(String id)? onToggle;
@@ -16,18 +18,20 @@ class AnalyticsRepricePreviewTable extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          columns: const [
-            DataColumn(label: Text('Pick')),
-            DataColumn(label: Text('Item')),
-            DataColumn(label: Text('Current')),
-            DataColumn(label: Text('Market')),
-            DataColumn(label: Text('Suggested')),
-            DataColumn(label: Text('Action')),
+          columns: [
+            DataColumn(label: Text(i18n.t('Pick'))),
+            DataColumn(label: Text(i18n.t('Item'))),
+            DataColumn(label: Text(i18n.t('Current'))),
+            DataColumn(label: Text(i18n.t('Market'))),
+            DataColumn(label: Text(i18n.t('Suggested'))),
+            DataColumn(label: Text(i18n.t('Action'))),
           ],
           rows: items.map((item) {
             return DataRow(
@@ -49,7 +53,7 @@ class AnalyticsRepricePreviewTable extends StatelessWidget {
                       ? const Text('-')
                       : TextButton(
                           onPressed: () => onApply!(item),
-                          child: const Text('Apply'),
+                          child: Text(i18n.t('common.apply')),
                         ),
                 ),
               ],

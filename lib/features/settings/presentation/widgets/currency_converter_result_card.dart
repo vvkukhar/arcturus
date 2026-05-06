@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class CurrencyConverterResultCard extends StatelessWidget {
+class CurrencyConverterResultCard extends ConsumerWidget {
   final String fromCurrency;
   final String toCurrency;
   final double inputAmount;
@@ -17,16 +19,18 @@ class CurrencyConverterResultCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _Row(label: 'From', value: '$inputAmount $fromCurrency'),
-            _Row(label: 'Rate', value: rate.toStringAsFixed(4)),
+            _Row(label: i18n.t('From'), value: '$inputAmount $fromCurrency'),
+            _Row(label: i18n.t('Rate'), value: rate.toStringAsFixed(4)),
             _Row(
-              label: 'To',
+              label: i18n.t('To'),
               value: '${outputAmount.toStringAsFixed(2)} $toCurrency',
             ),
           ],

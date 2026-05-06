@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class ActivityInsightStackCard extends StatelessWidget {
+class ActivityInsightStackCard extends ConsumerWidget {
   final String momentum;
   final String balance;
   final String streakLabel;
@@ -13,26 +15,28 @@ class ActivityInsightStackCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Insight Stack',
-              style: TextStyle(
+            Text(
+              i18n.t('Insight Stack'),
+              style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
               ),
             ),
             const SizedBox(height: 10),
-            Text('Momentum • $momentum'),
+            Text('${i18n.t('Momentum')} • $momentum'),
             const SizedBox(height: 6),
-            Text('Balance • $balance'),
+            Text('${i18n.t('Balance')} • $balance'),
             const SizedBox(height: 6),
-            Text('Streak • $streakLabel'),
+            Text('${i18n.t('Streak')} • $streakLabel'),
           ],
         ),
       ),

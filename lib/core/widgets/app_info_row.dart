@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class AppInfoRow extends StatelessWidget {
+class AppInfoRow extends ConsumerWidget {
   final String label;
   final String value;
 
@@ -11,7 +13,8 @@ class AppInfoRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -20,7 +23,7 @@ class AppInfoRow extends StatelessWidget {
           SizedBox(
             width: 150,
             child: Text(
-              label,
+              i18n.t(label),
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
                 color: Colors.white70,

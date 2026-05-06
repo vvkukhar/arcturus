@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_momentum_model.dart';
 
-class ActivityMomentumBanner extends StatelessWidget {
+class ActivityMomentumBanner extends ConsumerWidget {
   final ActivityMomentumModel model;
 
   const ActivityMomentumBanner({
@@ -10,7 +12,9 @@ class ActivityMomentumBanner extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -19,7 +23,7 @@ class ActivityMomentumBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
-        model.label,
+        i18n.t(model.label),
         style: const TextStyle(
           fontWeight: FontWeight.w800,
         ),

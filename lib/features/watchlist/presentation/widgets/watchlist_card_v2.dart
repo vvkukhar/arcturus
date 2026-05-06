@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_priority_badge.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_priority_reason_chips.dart';
@@ -6,7 +8,7 @@ import 'package:lego_trading_manager/features/watchlist/presentation/widgets/wat
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_smart_rank_badge.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_status_chip.dart';
 
-class WatchlistCardV2 extends StatelessWidget {
+class WatchlistCardV2 extends ConsumerWidget {
   final WatchlistItemModel item;
   final String? priorityLabel;
   final String? smartRankLabel;
@@ -25,7 +27,9 @@ class WatchlistCardV2 extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     final market = item.marketPrice;
     final marketLabel = market == null ? '-' : market.toStringAsFixed(2);
     final gap = item.maxBuyPrice - (market ?? item.maxBuyPrice);
@@ -60,16 +64,16 @@ class WatchlistCardV2 extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Text('${item.type.name} • ${item.theme ?? '-'}'),
+            Text('${i18n.t(item.type.name)} • ${item.theme ?? '-'}'),
             const SizedBox(height: 8),
             Wrap(
               spacing: 12,
               runSpacing: 8,
               children: [
-                Text('Desired: ${item.desiredBuyPrice.toStringAsFixed(2)}'),
-                Text('Max: ${item.maxBuyPrice.toStringAsFixed(2)}'),
-                Text('Market: $marketLabel'),
-                Text('Gap: ${gap.toStringAsFixed(2)}'),
+                Text('${i18n.t('Desired')}: ${item.desiredBuyPrice.toStringAsFixed(2)}'),
+                Text('${i18n.t('Max')}: ${item.maxBuyPrice.toStringAsFixed(2)}'),
+                Text('${i18n.t('Market')}: $marketLabel'),
+                Text('${i18n.t('Gap')}: ${gap.toStringAsFixed(2)}'),
               ],
             ),
             const SizedBox(height: 10),

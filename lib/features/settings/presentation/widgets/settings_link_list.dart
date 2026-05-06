@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class SettingsLinkList extends StatelessWidget {
+class SettingsLinkList extends ConsumerWidget {
   final List<Map<String, dynamic>> items;
 
   const SettingsLinkList({
@@ -9,7 +11,9 @@ class SettingsLinkList extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Column(
       children: items
           .map(
@@ -17,8 +21,8 @@ class SettingsLinkList extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 10),
               child: Card(
                 child: ListTile(
-                  title: Text(item['title']?.toString() ?? '-'),
-                  subtitle: Text(item['subtitle']?.toString() ?? '-'),
+                  title: Text(i18n.t(item['title']?.toString() ?? '-')),
+                  subtitle: Text(i18n.t(item['subtitle']?.toString() ?? '-')),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     final route = item['route']?.toString();

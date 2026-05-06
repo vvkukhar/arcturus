@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryReportActionBar extends StatelessWidget {
+class InventoryReportActionBar extends ConsumerWidget {
   final VoidCallback onSaveInventoryReport;
   final VoidCallback onSaveDeadStockReport;
 
@@ -11,7 +13,9 @@ class InventoryReportActionBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -22,12 +26,12 @@ class InventoryReportActionBar extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: onSaveInventoryReport,
               icon: const Icon(Icons.note_alt_outlined),
-              label: const Text('Inventory Report'),
+              label: Text(i18n.t('Inventory Report')),
             ),
             FilledButton.tonalIcon(
               onPressed: onSaveDeadStockReport,
               icon: const Icon(Icons.warning_amber_outlined),
-              label: const Text('Dead Stock Report'),
+              label: Text(i18n.t('Dead Stock Report')),
             ),
           ],
         ),

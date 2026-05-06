@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory_flow/application/inventory_stock_health_model.dart';
 
-class InventoryStockHealthCard extends StatelessWidget {
+class InventoryStockHealthCard extends ConsumerWidget {
   final InventoryStockHealthModel model;
 
   const InventoryStockHealthCard({
@@ -16,8 +18,9 @@ class InventoryStockHealthCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = _color();
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Card(
       child: Padding(
@@ -29,7 +32,7 @@ class InventoryStockHealthCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    model.label,
+                    i18n.t(model.label),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
@@ -57,7 +60,7 @@ class InventoryStockHealthCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              model.explanation,
+              i18n.t(model.explanation),
               style: const TextStyle(color: Colors.white70),
             ),
           ],

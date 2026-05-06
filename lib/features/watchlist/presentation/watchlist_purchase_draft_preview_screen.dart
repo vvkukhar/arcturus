@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_controller.dart';
@@ -46,10 +47,11 @@ class WatchlistPurchaseDraftPreviewScreen extends ConsumerWidget {
     final settings = ref.watch(appSettingsControllerProvider);
     final currency = settings.baseCurrency;
     final spread = draft.estimatedValue - draft.buyPrice;
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Purchase Draft Preview'),
+        title: Text(i18n.t('Purchase Draft Preview')),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -72,33 +74,33 @@ class WatchlistPurchaseDraftPreviewScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _row('Title', draft.title),
-                  _row('Quantity', draft.quantity.toString()),
+                  _row(i18n.t('Title'), draft.title),
+                  _row(i18n.t('Quantity'), draft.quantity.toString()),
                   _row(
-                    'Buy Price',
+                    i18n.t('Buy Price'),
                     CurrencyFormatter.format(
                       draft.buyPrice,
                       currency: currency,
                     ),
                   ),
                   _row(
-                    'Estimated Value',
+                    i18n.t('Estimated Value'),
                     CurrencyFormatter.format(
                       draft.estimatedValue,
                       currency: currency,
                     ),
                   ),
                   _row(
-                    'Potential Spread',
+                    i18n.t('Potential Spread'),
                     CurrencyFormatter.format(
                       spread,
                       currency: currency,
                     ),
                   ),
-                  _row('Theme', draft.theme ?? '-'),
-                  _row('Reference ID', draft.refId ?? '-'),
-                  _row('Source', 'Watchlist'),
-                  _row('Note', draft.note ?? '-'),
+                  _row(i18n.t('Theme'), draft.theme ?? '-'),
+                  _row(i18n.t('Reference ID'), draft.refId ?? '-'),
+                  _row(i18n.t('Source'), i18n.t('Watchlist')),
+                  _row(i18n.t('Note'), draft.note ?? '-'),
                 ],
               ),
             ),
@@ -115,15 +117,15 @@ class WatchlistPurchaseDraftPreviewScreen extends ConsumerWidget {
                   );
 
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Purchase created successfully'),
+                SnackBar(
+                  content: Text(i18n.t('Purchase created successfully')),
                 ),
               );
 
               Navigator.of(context).pop();
             },
             icon: const Icon(Icons.check),
-            label: const Text('Confirm Purchase'),
+            label: Text(i18n.t('Confirm Purchase')),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/data/inventory_api_repository_provider.dart';
 import 'package:lego_trading_manager/features/opportunities/application/best_reprice_opportunities_provider.dart';
 import 'package:lego_trading_manager/features/opportunities/presentation/profitability_breakdown_screen.dart';
@@ -11,16 +12,17 @@ class BestRepriceOpportunitiesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final opportunities = ref.watch(bestRepriceOpportunitiesProvider);
     final inventoryRepository = ref.watch(inventoryApiRepositoryProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Best Reprice Opportunities'),
+        title: Text(i18n.t('Best Reprice Opportunities')),
       ),
       body: opportunities.when(
         data: (items) {
           if (items.isEmpty) {
-            return const Center(
-              child: Text('No reprice opportunities'),
+            return Center(
+              child: Text(i18n.t('No reprice opportunities')),
             );
           }
 
@@ -45,14 +47,14 @@ class BestRepriceOpportunitiesScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Current ${item.currentExpectedPrice.toStringAsFixed(2)} • Suggested ${item.suggestedPrice.toStringAsFixed(2)}',
+                        '${i18n.t('Current')} ${item.currentExpectedPrice.toStringAsFixed(2)} • ${i18n.t('Suggested')} ${item.suggestedPrice.toStringAsFixed(2)}',
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Median ${item.medianMarketPrice.toStringAsFixed(2)} • Delta ${item.deltaToMedian.toStringAsFixed(2)}',
                       ),
                       const SizedBox(height: 4),
-                      Text(item.reason),
+                      Text(i18n.t(item.reason)),
                       const SizedBox(height: 10),
                       Row(
                         children: [
@@ -75,7 +77,7 @@ class BestRepriceOpportunitiesScreen extends ConsumerWidget {
                                 ),
                               );
                             },
-                            child: const Text('Breakdown'),
+                            child: Text(i18n.t('Breakdown')),
                           ),
                           FilledButton(
                             onPressed: () async {
@@ -84,13 +86,13 @@ class BestRepriceOpportunitiesScreen extends ConsumerWidget {
                               );
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Added to reprice flow'),
+                                  SnackBar(
+                                    content: Text(i18n.t('Added to reprice flow')),
                                   ),
                                 );
                               }
                             },
-                            child: const Text('Add'),
+                            child: Text(i18n.t('inv.add')),
                           ),
                         ],
                       ),
@@ -105,7 +107,7 @@ class BestRepriceOpportunitiesScreen extends ConsumerWidget {
           child: CircularProgressIndicator(),
         ),
         error: (error, _) => Center(
-          child: Text('Error: $error'),
+          child: Text('${i18n.t('common.error', {'error': error.toString()})}'),
         ),
       ),
     );

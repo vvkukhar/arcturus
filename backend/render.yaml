@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: arcturus-api
+    env: docker
+    plan: starter
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    preDeployCommand: npx prisma migrate deploy --schema=./apps/api/prisma/schema.prisma
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_BOOTSTRAP_TOKEN
+        sync: false
+      - key: INTERNAL_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryEditForm extends StatefulWidget {
+class InventoryEditForm extends ConsumerStatefulWidget {
   final Map<String, dynamic> item;
   final Future<void> Function(Map<String, dynamic>) onSave;
 
@@ -11,10 +13,10 @@ class InventoryEditForm extends StatefulWidget {
   });
 
   @override
-  State<InventoryEditForm> createState() => _InventoryEditFormState();
+  ConsumerState<InventoryEditForm> createState() => _InventoryEditFormState();
 }
 
-class _InventoryEditFormState extends State<InventoryEditForm> {
+class _InventoryEditFormState extends ConsumerState<InventoryEditForm> {
   late final TextEditingController _priceController;
 
   @override
@@ -33,19 +35,21 @@ class _InventoryEditFormState extends State<InventoryEditForm> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return AlertDialog(
-      title: const Text('Edit Inventory'),
+      title: Text(i18n.t('inv.edit')),
       content: TextField(
         controller: _priceController,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: const InputDecoration(
-          labelText: 'Purchase Price',
+        decoration: InputDecoration(
+          labelText: i18n.t('inv.price'),
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(i18n.t('common.cancel')),
         ),
         FilledButton(
           onPressed: () async {
@@ -62,7 +66,7 @@ class _InventoryEditFormState extends State<InventoryEditForm> {
             if (!mounted) return;
             navigator.pop();
           },
-          child: const Text('Save'),
+          child: Text(i18n.t('common.save')),
         ),
       ],
     );

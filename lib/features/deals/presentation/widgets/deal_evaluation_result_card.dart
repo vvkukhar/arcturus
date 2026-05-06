@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/deals/application/deal_evaluation_model.dart';
 
-class DealEvaluationResultCard extends StatelessWidget {
+class DealEvaluationResultCard extends ConsumerWidget {
   final DealEvaluationModel model;
 
   const DealEvaluationResultCard({
@@ -23,8 +25,24 @@ class DealEvaluationResultCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = _color();
+    final i18n = ref.watch(i18nProvider.notifier);
+
+    Widget row(String label, String value) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Expanded(child: Text(label)),
+            Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Card(
       child: Padding(
@@ -52,27 +70,12 @@ class DealEvaluationResultCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            _row('Asking', model.askingPrice.toStringAsFixed(2)),
-            _row('Market', model.marketPrice.toStringAsFixed(2)),
-            _row('Expected Profit', model.expectedProfit.toStringAsFixed(2)),
-            _row('Margin', '${model.marginPercent.toStringAsFixed(1)}%'),
+            row(i18n.t('eval.askingPrice'), model.askingPrice.toStringAsFixed(2)),
+            row(i18n.t('eval.marketPrice'), model.marketPrice.toStringAsFixed(2)),
+            row(i18n.t('inv.expectedProfit'), model.expectedProfit.toStringAsFixed(2)),
+            row(i18n.t('Margin'), '${model.marginPercent.toStringAsFixed(1)}%'),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _row(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Expanded(child: Text(label)),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-        ],
       ),
     );
   }

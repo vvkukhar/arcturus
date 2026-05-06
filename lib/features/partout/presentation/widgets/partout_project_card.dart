@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/partout_calculator.dart';
 import 'package:lego_trading_manager/data/models/partout_project_model.dart';
 
-class PartOutProjectCard extends StatelessWidget {
+class PartOutProjectCard extends ConsumerWidget {
   final PartOutProjectModel project;
   final VoidCallback onTap;
 
@@ -13,7 +15,8 @@ class PartOutProjectCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final expectedProfit = PartOutCalculator.expectedProfit(
       totalCost: project.totalCost,
       expectedPartOutValue: project.expectedPartOutValue,
@@ -36,15 +39,15 @@ class PartOutProjectCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              Text('Status: ${project.status.name}'),
+              Text('${i18n.t('Status')}: ${i18n.t(project.status.name)}'),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 12,
                 runSpacing: 8,
                 children: [
-                  Text('Cost: ${project.totalCost.toStringAsFixed(2)}'),
-                  Text('Expected: ${project.expectedPartOutValue.toStringAsFixed(2)}'),
-                  Text('Profit: ${expectedProfit.toStringAsFixed(2)}'),
+                  Text('${i18n.t('Cost')}: ${project.totalCost.toStringAsFixed(2)}'),
+                  Text('${i18n.t('Expected')}: ${project.expectedPartOutValue.toStringAsFixed(2)}'),
+                  Text('${i18n.t('Profit')}: ${expectedProfit.toStringAsFixed(2)}'),
                 ],
               ),
             ],

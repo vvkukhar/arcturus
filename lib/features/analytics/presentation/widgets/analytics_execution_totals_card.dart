@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_execution_totals_model.dart';
 
-class AnalyticsExecutionTotalsCard extends StatelessWidget {
+class AnalyticsExecutionTotalsCard extends ConsumerWidget {
   final AnalyticsExecutionTotalsModel model;
 
   const AnalyticsExecutionTotalsCard({
@@ -34,7 +36,8 @@ class AnalyticsExecutionTotalsCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -42,15 +45,15 @@ class AnalyticsExecutionTotalsCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                _cell('Manual', model.manualRuns.toString()),
-                _cell('Scheduled', model.scheduledRuns.toString()),
+                _cell(i18n.t('Manual'), model.manualRuns.toString()),
+                _cell(i18n.t('Scheduled'), model.scheduledRuns.toString()),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                _cell('Total runs', model.totalRuns.toString()),
-                _cell('Affected', model.totalAffectedItems.toString()),
+                _cell(i18n.t('Total runs'), model.totalRuns.toString()),
+                _cell(i18n.t('Affected'), model.totalAffectedItems.toString()),
               ],
             ),
           ],

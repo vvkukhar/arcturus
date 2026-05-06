@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/data/models/market_snapshot_model.dart';
 import 'package:lego_trading_manager/features/market/application/market_snapshot_insights_provider.dart';
 
@@ -83,6 +84,7 @@ class _EditMarketSnapshotScreenState
   @override
   Widget build(BuildContext context) {
     final formValues = ref.watch(marketSnapshotFormValuesServiceProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     final low = formValues.parseDouble(_lowPriceController.text);
     final average = formValues.parseDouble(_averagePriceController.text);
@@ -92,7 +94,7 @@ class _EditMarketSnapshotScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Snapshot'),
+        title: Text(i18n.t('Edit Snapshot')),
       ),
       body: Form(
         key: _formKey,
@@ -101,14 +103,14 @@ class _EditMarketSnapshotScreenState
           children: [
             TextFormField(
               controller: _sourceController,
-              decoration: const InputDecoration(labelText: 'Source'),
+              decoration: InputDecoration(labelText: i18n.t('Source')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _lowPriceController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Low Price'),
+              decoration: InputDecoration(labelText: i18n.t('inv.marketLow')),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -116,7 +118,7 @@ class _EditMarketSnapshotScreenState
               controller: _averagePriceController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Average Price'),
+              decoration: InputDecoration(labelText: i18n.t('inv.marketAvg')),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -124,7 +126,7 @@ class _EditMarketSnapshotScreenState
               controller: _highPriceController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'High Price'),
+              decoration: InputDecoration(labelText: i18n.t('High Price')),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -134,15 +136,15 @@ class _EditMarketSnapshotScreenState
                 child: Column(
                   children: [
                     _MetricRow(
-                      label: 'Spread',
+                      label: i18n.t('Spread'),
                       value: spread.toStringAsFixed(2),
                     ),
                     _MetricRow(
-                      label: 'Midpoint',
+                      label: i18n.t('Midpoint'),
                       value: midpoint.toStringAsFixed(2),
                     ),
                     _MetricRow(
-                      label: 'Average',
+                      label: i18n.t('Average'),
                       value: average.toStringAsFixed(2),
                     ),
                   ],
@@ -152,29 +154,29 @@ class _EditMarketSnapshotScreenState
             const SizedBox(height: 12),
             TextFormField(
               controller: _currencyController,
-              decoration: const InputDecoration(labelText: 'Currency'),
+              decoration: InputDecoration(labelText: i18n.t('pur.currency')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _sellerCountController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Seller Count'),
+              decoration: InputDecoration(labelText: i18n.t('Seller Count')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _availableQtyController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Available Qty'),
+              decoration: InputDecoration(labelText: i18n.t('Available Qty')),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _urlController,
-              decoration: const InputDecoration(labelText: 'URL'),
+              decoration: InputDecoration(labelText: i18n.t('URL')),
             ),
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _save,
-              child: const Text('Save Changes'),
+              child: Text(i18n.t('common.saveChanges')),
             ),
           ],
         ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_execution_efficiency_model.dart';
 
-class AnalyticsExecutionEfficiencyCard extends StatelessWidget {
+class AnalyticsExecutionEfficiencyCard extends ConsumerWidget {
   final AnalyticsExecutionEfficiencyModel model;
 
   const AnalyticsExecutionEfficiencyCard({
@@ -34,15 +36,16 @@ class AnalyticsExecutionEfficiencyCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            _cell('Runs', model.totalRuns.toString()),
-            _cell('Affected', model.totalAffected.toString()),
-            _cell('Avg/run', model.avgAffectedPerRun.toStringAsFixed(1)),
+            _cell(i18n.t('Runs'), model.totalRuns.toString()),
+            _cell(i18n.t('Affected'), model.totalAffected.toString()),
+            _cell(i18n.t('Avg/run'), model.avgAffectedPerRun.toStringAsFixed(1)),
           ],
         ),
       ),

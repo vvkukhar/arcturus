@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/flows/application/review_flow_provider.dart';
 import 'package:lego_trading_manager/features/flows/data/flows_api_repository_provider.dart';
 import 'package:lego_trading_manager/features/flows/presentation/widgets/review_reason_presets_bar.dart';
@@ -21,18 +22,19 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
   Widget build(BuildContext context) {
     final flow = ref.watch(reviewFlowProvider);
     final repo = ref.watch(flowsApiRepositoryProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Review Flow')),
+      appBar: AppBar(title: Text(i18n.t('flow.review.title'))),
       body: flow.when(
         data: (items) {
           if (items.isEmpty) {
             return RefreshIndicator(
               onRefresh: _reload,
               child: ListView(
-                children: const [
-                  SizedBox(height: 250),
-                  Center(child: Text('Review flow is empty')),
+                children: [
+                  const SizedBox(height: 250),
+                  Center(child: Text(i18n.t('flow.review.empty'))),
                 ],
               ),
             );
@@ -57,7 +59,7 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 6),
-                        Text('Status: ${item.status}'),
+                        Text('${i18n.t('flow.purchase.status')} ${item.status}'),
                         const SizedBox(height: 10),
                         FilledButton(
                           onPressed: item.status == 'reviewed'
@@ -69,7 +71,7 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
                                     context: context,
                                     builder: (dialogContext) {
                                       return AlertDialog(
-                                        title: const Text('Mark Reviewed'),
+                                        title: Text(i18n.t('flow.review.markReviewed')),
                                         content: StatefulBuilder(
                                           builder: (context, setLocalState) {
                                             return Column(
@@ -77,7 +79,7 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
                                               children: [
                                                 TextField(
                                                   controller: noteController,
-                                                  decoration: const InputDecoration(labelText: 'Note'),
+                                                  decoration: InputDecoration(labelText: i18n.t('flow.review.note')),
                                                 ),
                                                 const SizedBox(height: 12),
                                                 ReviewReasonPresetsBar(
@@ -93,7 +95,7 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
                                         actions: [
                                           TextButton(
                                             onPressed: () => Navigator.of(dialogContext).pop(),
-                                            child: const Text('Cancel'),
+                                            child: Text(i18n.t('flow.purchase.cancel')),
                                           ),
                                           FilledButton(
                                             onPressed: () async {
@@ -110,17 +112,17 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
                                               if (!mounted) return;
 
                                               messenger.showSnackBar(
-                                                const SnackBar(content: Text('Marked reviewed')),
+                                                SnackBar(content: Text(i18n.t('flow.review.marked'))),
                                               );
                                             },
-                                            child: const Text('Confirm'),
+                                            child: Text(i18n.t('flow.purchase.confirm')),
                                           ),
                                         ],
                                       );
                                     },
                                   );
                                 },
-                          child: const Text('Mark reviewed'),
+                          child: Text(i18n.t('flow.review.markReviewed')),
                         ),
                       ],
                     ),
@@ -131,7 +133,7 @@ class _ReviewFlowScreenState extends ConsumerState<ReviewFlowScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Error: $error')),
+        error: (error, _) => Center(child: Text('${i18n.t('common.error', {'error': error.toString()})}')),
       ),
     );
   }

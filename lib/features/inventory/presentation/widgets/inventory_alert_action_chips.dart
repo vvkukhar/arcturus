@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class InventoryAlertActionChips extends StatelessWidget {
+class InventoryAlertActionChips extends ConsumerWidget {
   final VoidCallback onOpenRepricing;
   final VoidCallback onOpenOldestHeld;
   final VoidCallback onOpenLowProfit;
@@ -13,21 +15,22 @@ class InventoryAlertActionChips extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         ActionChip(
-          label: const Text('Repricing'),
+          label: Text(i18n.t('Repricing')),
           onPressed: onOpenRepricing,
         ),
         ActionChip(
-          label: const Text('Oldest held'),
+          label: Text(i18n.t('Oldest held')),
           onPressed: onOpenOldestHeld,
         ),
         ActionChip(
-          label: const Text('Low profit'),
+          label: Text(i18n.t('Low profit')),
           onPressed: onOpenLowProfit,
         ),
       ],

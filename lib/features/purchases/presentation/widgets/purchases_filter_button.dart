@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class PurchasesFilterButton extends StatelessWidget {
+class PurchasesFilterButton extends ConsumerWidget {
   final VoidCallback onTap;
 
   const PurchasesFilterButton({
@@ -9,11 +11,13 @@ class PurchasesFilterButton extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return FilledButton.tonalIcon(
       onPressed: onTap,
       icon: const Icon(Icons.tune),
-      label: const Text('Filters'),
+      label: Text(i18n.t('common.filters')),
     );
   }
 }

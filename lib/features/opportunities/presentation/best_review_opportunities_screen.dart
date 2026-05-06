@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/inventory/data/inventory_api_repository_provider.dart';
 import 'package:lego_trading_manager/features/opportunities/application/best_review_opportunities_provider.dart';
 import 'package:lego_trading_manager/features/opportunities/presentation/profitability_breakdown_screen.dart';
@@ -11,16 +12,17 @@ class BestReviewOpportunitiesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final opportunities = ref.watch(bestReviewOpportunitiesProvider);
     final inventoryRepository = ref.watch(inventoryApiRepositoryProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Best Review Opportunities'),
+        title: Text(i18n.t('Best Review Opportunities')),
       ),
       body: opportunities.when(
         data: (items) {
           if (items.isEmpty) {
-            return const Center(
-              child: Text('No review opportunities'),
+            return Center(
+              child: Text(i18n.t('No review opportunities')),
             );
           }
 
@@ -45,14 +47,14 @@ class BestReviewOpportunitiesScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Cost ${item.totalCost.toStringAsFixed(2)} • Expected ${item.expectedSalePrice.toStringAsFixed(2)}',
+                        '${i18n.t('Cost')} ${item.totalCost.toStringAsFixed(2)} • ${i18n.t('Expected')} ${item.expectedSalePrice.toStringAsFixed(2)}',
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Median ${item.medianMarketPrice.toStringAsFixed(2)} • Gap ${item.marginGap.toStringAsFixed(2)}',
                       ),
                       const SizedBox(height: 4),
-                      Text(item.reason),
+                      Text(i18n.t(item.reason)),
                       const SizedBox(height: 10),
                       Row(
                         children: [
@@ -75,7 +77,7 @@ class BestReviewOpportunitiesScreen extends ConsumerWidget {
                                 ),
                               );
                             },
-                            child: const Text('Breakdown'),
+                            child: Text(i18n.t('Breakdown')),
                           ),
                           FilledButton(
                             onPressed: () async {
@@ -85,13 +87,13 @@ class BestReviewOpportunitiesScreen extends ConsumerWidget {
                               );
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Added to review flow'),
+                                  SnackBar(
+                                    content: Text(i18n.t('Added to review flow')),
                                   ),
                                 );
                               }
                             },
-                            child: const Text('Add'),
+                            child: Text(i18n.t('inv.add')),
                           ),
                         ],
                       ),
@@ -106,7 +108,7 @@ class BestReviewOpportunitiesScreen extends ConsumerWidget {
           child: CircularProgressIndicator(),
         ),
         error: (error, _) => Center(
-          child: Text('Error: $error'),
+          child: Text('${i18n.t('common.error', {'error': error.toString()})}'),
         ),
       ),
     );

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_system_balance_model.dart';
 
-class ActivitySystemBalanceCard extends StatelessWidget {
+class ActivitySystemBalanceCard extends ConsumerWidget {
   final ActivitySystemBalanceModel model;
 
   const ActivitySystemBalanceCard({
@@ -16,8 +18,10 @@ class ActivitySystemBalanceCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final color = _color();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -25,7 +29,7 @@ class ActivitySystemBalanceCard extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                model.label,
+                i18n.t(model.label),
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
             ),

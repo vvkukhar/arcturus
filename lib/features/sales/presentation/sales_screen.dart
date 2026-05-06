@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
 import 'package:lego_trading_manager/data/models/sale_model.dart';
@@ -61,8 +62,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 
   Future<void> _deleteSaleFully(String id) async {
-    await ref.read(inventorySaleAllocationControllerProvider.notifier).clearPurchase(id);
-    await ref.read(salePurchaseLinkControllerProvider.notifier).unlinkPurchase(id);
+    await ref.read(inventorySaleAllocationControllerProvider.notifier).clearSale(id);
+    await ref.read(salePurchaseLinkControllerProvider.notifier).unlinkSale(id);
     await ref.read(salesControllerProvider.notifier).deleteSale(id);
   }
 
@@ -119,10 +120,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final metrics = ref.watch(salesMetricsProvider);
     final selectedIds = ref.watch(salesSelectionControllerProvider);
     final selection = ref.read(salesSelectionControllerProvider.notifier);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sales'),
+        title: Text(i18n.t('sale.title')),
         actions: [
           IconButton(onPressed: _openFilters, icon: const Icon(Icons.filter_alt_outlined)),
           IconButton(onPressed: _openAdd, icon: const Icon(Icons.add)),
@@ -157,7 +159,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 FilledButton.tonalIcon(
                   onPressed: _openFilters,
                   icon: const Icon(Icons.tune),
-                  label: const Text('Filters'),
+                  label: Text(i18n.t('common.filters')),
                 ),
               ],
             ),
@@ -202,7 +204,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                               onSelected: (_) => selection.toggle(sale.id),
                               onOpenDetails: () => _openDetails(sale),
                               onDuplicate: () => _duplicate(sale),
-                              onSaveReport: () {}, // Removed unnecessary dependencies for clarity
+                              onSaveReport: () {},
                             ),
                           );
                         }),

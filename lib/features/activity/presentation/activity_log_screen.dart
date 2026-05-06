@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_entry_model.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_filter_provider.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_provider.dart';
@@ -38,6 +39,7 @@ class _ActivityLogScreenState extends ConsumerState<ActivityLogScreen> {
   }
 
   Future<void> _clear() async {
+    final i18n = ref.read(i18nProvider.notifier);
     await ref.read(activityLogProvider).clear();
     if (!mounted) return;
 
@@ -46,7 +48,7 @@ class _ActivityLogScreenState extends ConsumerState<ActivityLogScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Activity log cleared')),
+      SnackBar(content: Text(i18n.t('activity.log.cleared'))),
     );
   }
 
@@ -58,6 +60,7 @@ class _ActivityLogScreenState extends ConsumerState<ActivityLogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
     final query = ref.watch(activityLogQueryProvider).trim().toLowerCase();
     final typeFilter = ref.watch(activityLogTypeFilterProvider);
 
@@ -72,7 +75,7 @@ class _ActivityLogScreenState extends ConsumerState<ActivityLogScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Activity Log'),
+        title: Text(i18n.t('activity.log.title')),
         actions: [
           IconButton(
             onPressed: _entries.isEmpty ? null : _clear,
@@ -106,7 +109,7 @@ class _ActivityLogScreenState extends ConsumerState<ActivityLogScreen> {
                   const SizedBox(height: 12),
                   Expanded(
                     child: visible.isEmpty
-                        ? const Center(child: Text('No activity yet.'))
+                        ? Center(child: Text(i18n.t('activity.log.empty')))
                         : ListView.builder(
                             itemCount: visible.length,
                             itemBuilder: (context, index) {
