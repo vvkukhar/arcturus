@@ -6,28 +6,24 @@ import { runEbaySource } from './sources/ebay/ebay-source';
 import { runBrickowlSource } from './sources/brickowl/brickowl-source';
 import { runBrickeconomySource } from './sources/brickeconomy/brickeconomy-source';
 
-async function sleep(ms: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function runAll(): Promise<void> {
-  await runOlxSource();
-  await runBrickLinkSource();
-  await runEbaySource();
-  await runBrickowlSource();
-  await runBrickeconomySource();
+  await Promise.allSettled([
+    runOlxSource(),
+    runBrickLinkSource(),
+    runEbaySource(),
+    runBrickowlSource(),
+    runBrickeconomySource()
+  ]);
 }
 
 async function main(): Promise<void> {
   while (true) {
     try {
       await runAll();
-      console.log('[scraper-loop]', new Date().toISOString(), 'completed');
     } catch (error) {
-      console.error('[scraper-loop-failed]', error);
+      console.error(error);
     }
-
-    await sleep(1000 * 60 * 20);
+    await new Promise((res) => setTimeout(res, 1200000));
   }
 }
 

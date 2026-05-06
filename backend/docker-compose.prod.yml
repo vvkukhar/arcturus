@@ -1,64 +1,72 @@
 version: '3.9'
 
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: arcturus_postgres
-    restart: unless-stopped
-    env_file:
-      - .env.production
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+    restart: always
+    env_file: .env.production
     volumes:
       - arcturus_pg_data:/var/lib/postgresql/data
       - ./backups:/backups
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    logging: *default-logging
 
   redis:
     image: redis:7-alpine
     container_name: arcturus_redis
-    restart: unless-stopped
+    restart: always
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
     volumes:
       - arcturus_redis_data:/data
-    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    logging: *default-logging
 
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
     container_name: arcturus_api
-    restart: unless-stopped
-    env_file:
-      - .env.production
+    restart: always
+    env_file: .env.production
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "127.0.0.1:4000:4000"
     command: sh -c "npx prisma generate && npx prisma migrate deploy && node dist/main.js"
+    logging: *default-logging
 
   workers:
     build:
       context: ./workers
       dockerfile: Dockerfile
     container_name: arcturus_workers
-    restart: unless-stopped
-    env_file:
-      - .env.production
+    restart: always
+    env_file: .env.production
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     command: sh -c "npx prisma generate && node dist/main.js"
+    logging: *default-logging
 
 volumes:
   arcturus_pg_data:
