@@ -1,37 +1,37 @@
 FROM node:22-alpine AS builder
-WORKDIR /app
+WORKDIR /backend
 RUN apk add --no-cache openssl
 
 COPY . .
 
 RUN npm install
 
-WORKDIR /app/packages/db
+WORKDIR /backend/packages/db
 RUN npx prisma generate
 RUN npm run build
 
-WORKDIR /app/packages/shared
+WORKDIR /backend/packages/shared
 RUN npm run build
 
-WORKDIR /app/apps/api
+WORKDIR /backend/apps/api
 RUN npx prisma generate
 RUN npm run build
 
-WORKDIR /app/apps/workers
+WORKDIR /backend/apps/workers
 RUN npx prisma generate
 RUN npm run build
 
-WORKDIR /app/apps/scrapers
+WORKDIR /backend/apps/scrapers
 RUN npx prisma generate
 RUN npm run build
 
 FROM node:22-alpine AS runner
-WORKDIR /app
+WORKDIR /backend
 RUN apk add --no-cache openssl
 
-COPY --from=builder /app /app
+COPY --from=builder /backend /backend
 
-WORKDIR /app/apps/api
+WORKDIR /backend/apps/api
 RUN chmod +x start-all.sh
 
 EXPOSE 4000
