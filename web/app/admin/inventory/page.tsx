@@ -5,12 +5,12 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { api } from '@/lib/api';
 import type { InventoryItem } from '@/lib/types';
 
-// Server Component: Отримуємо дані напряму на сервері, без зайвих useEffect
+export const revalidate = 0;
+
 async function getInventory(): Promise<InventoryItem[]> {
   try {
     return await api.get<InventoryItem[]>('/inventory');
   } catch (error) {
-    console.error('Failed to fetch inventory:', error);
     return [];
   }
 }
@@ -19,11 +19,11 @@ export default async function InventoryPage() {
   const rows = await getInventory();
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--card)] border border-[var(--border)] p-6 rounded-[2rem] shadow-sm">
         <div>
-          <h1 className="text-3xl font-black text-slate-900">Inventory</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Inventory Management</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500">
             Stock, cost basis, media, sale price, and reprice flow.
           </p>
         </div>

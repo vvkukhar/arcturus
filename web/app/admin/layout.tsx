@@ -9,9 +9,9 @@ export default function AdminLayout({
 }>) {
   return (
     <AuthGate>
-      <div className="flex min-h-screen bg-slate-50 overflow-hidden">
+      <div className="fixed inset-0 z-[200] flex bg-[var(--background)] text-[var(--foreground)] overflow-hidden transition-colors duration-300">
         <AdminSidebar />
-        <div className="flex min-w-0 flex-1 flex-col h-screen overflow-y-auto">
+        <div className="flex min-w-0 flex-1 flex-col h-screen overflow-y-auto custom-scrollbar">
           <AdminTopbar />
           <main className="flex-1 p-6 lg:px-8">
             <div className="mx-auto max-w-7xl">

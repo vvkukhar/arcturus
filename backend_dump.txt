@@ -52,65 +52,73 @@ bash scripts/server-bootstrap-ubuntu.sh
 
 version: '3.9'
 
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: arcturus_postgres
-    restart: unless-stopped
-    env_file:
-      - .env.production
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+    restart: always
+    env_file: .env.production
     volumes:
       - arcturus_pg_data:/var/lib/postgresql/data
       - ./backups:/backups
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    logging: *default-logging
 
   redis:
     image: redis:7-alpine
     container_name: arcturus_redis
-    restart: unless-stopped
+    restart: always
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
     volumes:
       - arcturus_redis_data:/data
-    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    logging: *default-logging
 
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
     container_name: arcturus_api
-    restart: unless-stopped
-    env_file:
-      - .env.production
+    restart: always
+    env_file: .env.production
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "127.0.0.1:4000:4000"
     command: sh -c "npx prisma generate && npx prisma migrate deploy && node dist/main.js"
+    logging: *default-logging
 
   workers:
     build:
       context: ./workers
       dockerfile: Dockerfile
     container_name: arcturus_workers
-    restart: unless-stopped
-    env_file:
-      - .env.production
+    restart: always
+    env_file: .env.production
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     command: sh -c "npx prisma generate && node dist/main.js"
+    logging: *default-logging
 
 volumes:
   arcturus_pg_data:
@@ -323,7 +331,8 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     autoDeploy: true
-    preDeployCommand: npx prisma migrate deploy --schema=./packages/db/prisma/schema.prisma
+    # Р’РёРєРѕСЂРёСЃС‚РѕРІСѓС”РјРѕ --prefix, С‰РѕР± С‚РѕС‡РЅРѕ Р·Р°РїСѓСЃС‚РёС‚Рё СЃРєСЂРёРїС‚ Р· РєРѕСЂРµРЅСЏ /backend
+    preDeployCommand: npm run db:migrate --prefix /backend
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -3226,27 +3235,15 @@ import { AppModule } from './app.module';
 import { strictValidationPipe } from './common/strict-validation.pipe';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, {
-    cors: false,
-  });
-
+  const app = await NestFactory.create(AppModule, { cors: false });
   const corsEnv = process.env.CORS_ORIGINS ?? '';
-  const isWildcard = corsEnv === '*';
-  const allowedOrigins = corsEnv
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  const allowedOrigins = corsEnv.split(',').map((o) => o.trim()).filter(Boolean);
 
   app.enableCors({
-    origin: isWildcard
-      ? true
-      : (origin, callback) => {
-          if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-            callback(null, true);
-            return;
-          }
-          callback(new Error('Origin not allowed by CORS'), false);
-        },
+    origin: corsEnv === '*' ? true : (origin, cb) => {
+      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return cb(null, true);
+      cb(new Error('CORS Error'), false);
+    },
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
   });
@@ -3254,10 +3251,8 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix('api');
   app.useGlobalPipes(strictValidationPipe);
 
-  const port = Number(process.env.PORT ?? 4000);
-  await app.listen(port);
+  await app.listen(Number(process.env.PORT ?? 4000));
 }
-
 bootstrap();
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\common\activity.interceptor.ts =====
@@ -25902,28 +25897,24 @@ import { runEbaySource } from './sources/ebay/ebay-source';
 import { runBrickowlSource } from './sources/brickowl/brickowl-source';
 import { runBrickeconomySource } from './sources/brickeconomy/brickeconomy-source';
 
-async function sleep(ms: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function runAll(): Promise<void> {
-  await runOlxSource();
-  await runBrickLinkSource();
-  await runEbaySource();
-  await runBrickowlSource();
-  await runBrickeconomySource();
+  await Promise.allSettled([
+    runOlxSource(),
+    runBrickLinkSource(),
+    runEbaySource(),
+    runBrickowlSource(),
+    runBrickeconomySource()
+  ]);
 }
 
 async function main(): Promise<void> {
   while (true) {
     try {
       await runAll();
-      console.log('[scraper-loop]', new Date().toISOString(), 'completed');
     } catch (error) {
-      console.error('[scraper-loop-failed]', error);
+      console.error(error);
     }
-
-    await sleep(1000 * 60 * 20);
+    await new Promise((res) => setTimeout(res, 1200000));
   }
 }
 
@@ -29947,44 +29938,22 @@ model SoldComp {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\db\src\index.ts =====
 
 import { PrismaClient } from '@prisma/client';
-
 export * from '@prisma/client';
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
-// РЎС‚РІРѕСЂСЋС”РјРѕ Р±Р°Р·РѕРІРёР№ РєР»С–С”РЅС‚
-const basePrisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log:
-      process.env.NODE_ENV === 'development'
-        ? ['error', 'warn']
-        : ['error'],
-  });
+const basePrisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+});
 
-// РЎРїРёСЃРѕРє РјРѕРґРµР»РµР№, СЏРєС– РІРёРєРѕСЂРёСЃС‚РѕРІСѓСЋС‚СЊ Soft Deletes (deletedAt)
 const softDeleteModels = ['Sale', 'Order', 'ReturnRequest', 'Expense'];
 
-// Р РѕР·С€РёСЂСЋС”РјРѕ РєР»С–С”РЅС‚: Р°РІС‚РѕРјР°С‚РёС‡РЅРѕ РІС–РґС„С–Р»СЊС‚СЂРѕРІСѓС”РјРѕ РІРёРґР°Р»РµРЅС– Р·Р°РїРёСЃРё
 export const prisma = basePrisma.$extends({
   query: {
     $allModels: {
-      async $allOperations({ model, operation, args, query }: { model: any, operation: any, args: any, query: any }) {
+      async $allOperations({ model, operation, args, query }: any) {
         if (softDeleteModels.includes(model)) {
-          // Р—Р°СЃС‚РѕСЃРѕРІСѓС”РјРѕ С„С–Р»СЊС‚СЂ С‚С–Р»СЊРєРё РґР»СЏ РѕРїРµСЂР°С†С–Р№ С‡РёС‚Р°РЅРЅСЏ С‚Р° РїС–РґСЂР°С…СѓРЅРєСѓ
-          if (
-            operation === 'findUnique' ||
-            operation === 'findUniqueOrThrow' ||
-            operation === 'findFirst' ||
-            operation === 'findFirstOrThrow' ||
-            operation === 'findMany' ||
-            operation === 'count' ||
-            operation === 'aggregate' ||
-            operation === 'groupBy'
-          ) {
-            // Р‘РµР·РїРµС‡РЅРѕ РґРѕРґР°С”РјРѕ deletedAt: null РґРѕ С–СЃРЅСѓСЋС‡РѕРіРѕ where
+          if (['findUnique', 'findUniqueOrThrow', 'findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy'].includes(operation)) {
             args.where = { ...args.where, deletedAt: null };
           }
         }

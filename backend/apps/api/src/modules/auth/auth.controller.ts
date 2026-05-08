@@ -22,11 +22,42 @@ export class AuthController {
   async login(
     @Body()
     body: {
-      token: string;
+      email?: string;
+      password?: string;
+      token?: string;
+      rememberMe?: boolean;
     },
     @Res({ passthrough: true }) response: Response,
   ): Promise<unknown> {
-    const result = await this.authService.loginWithToken(body.token);
+    const result = await this.authService.login(body);
+
+    const maxAge = body.rememberMe 
+      ? 1000 * 60 * 60 * 24 * 30 
+      : 1000 * 60 * 60 * 24;
+
+    response.cookie('arcturus_admin_token', result.token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge,
+    });
+
+    return result;
+  }
+
+  @Post('register')
+  async register(
+    @Body()
+    body: {
+      name: string;
+      email: string;
+      password: string;
+      inviteCode: string;
+    },
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<unknown> {
+    const result = await this.authService.register(body);
 
     response.cookie('arcturus_admin_token', result.token, {
       httpOnly: true,

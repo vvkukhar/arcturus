@@ -1,3 +1,5 @@
+import { PackageSearch } from 'lucide-react';
+
 type Props = {
   title: string;
   description?: string;
@@ -5,10 +7,13 @@ type Props = {
 
 export function EmptyState({ title, description }: Props) {
   return (
-    <div className="rounded-3xl border border-border bg-white p-10 text-center">
-      <div className="text-xl font-black">{title}</div>
+    <div className="flex flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-[var(--border)] bg-[var(--card)]/50 p-16 text-center">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 mb-6">
+        <PackageSearch size={32} />
+      </div>
+      <div className="text-2xl font-black text-[var(--foreground)]">{title}</div>
       {description ? (
-        <div className="mt-2 text-sm text-slate-500">{description}</div>
+        <div className="mt-2 text-base font-medium text-slate-500 max-w-sm">{description}</div>
       ) : null}
     </div>
   );

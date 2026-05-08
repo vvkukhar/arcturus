@@ -7,12 +7,8 @@ import { LiveNotificationsPanel } from '@/components/admin/live-notifications-pa
 import { MetricCard } from '@/components/admin/metric-card';
 import { NotificationsCenter } from '@/components/admin/notifications-center';
 import { SalesRegistrationPanel } from '@/components/admin/sales-registration-panel';
-import { SectionCard } from '@/components/admin/section-card';
 import { SuggestionsPanel } from '@/components/admin/suggestions-panel';
-import { Badge } from '@/components/ui/badge';
 import { api } from '@/lib/api-client';
-import { formatMoney, formatPercent } from '@/lib/format';
-import Link from 'next/link';
 import type { DailyPlanTask, DashboardExecutionSummary, DashboardFlowCounters, OpportunityItem, ReserveRequest, InventoryItem, DealItem } from '@/lib/types';
 
 export const revalidate = 0;
@@ -55,19 +51,19 @@ export default async function AdminDashboardPage() {
   const hotDeals = data.deals.filter((x) => x.action === 'BUY_NOW').length;
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <AuthStatus />
         <CreateItemDialog />
       </div>
 
       {data.execution?.headline && (
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm font-bold text-blue-800 shadow-sm">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-800 backdrop-blur-xl p-5 text-sm font-black text-blue-900 dark:text-blue-100 shadow-sm ring-1 ring-inset ring-blue-500/10">
           💡 {data.execution.headline}
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <MetricCard title="Purchase Queue" value={data.counters?.purchase ?? data.execution?.purchasePending ?? 0} subtitle="Pending buy execution" />
         <MetricCard title="Reprice Queue" value={data.counters?.reprice ?? data.execution?.repricePending ?? 0} subtitle="Inventory waiting for listing" />
         <MetricCard title="Review Queue" value={data.counters?.review ?? data.execution?.reviewPending ?? 0} subtitle="Manual checks pending" />

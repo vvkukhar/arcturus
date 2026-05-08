@@ -22,37 +22,37 @@ export function DataTable<T>({
 }: Props<T>) {
   if (rows.length === 0) {
     return (
-      <div className="flex items-center justify-center p-8 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 text-sm font-medium text-slate-400">
+      <div className="flex items-center justify-center p-12 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--background)]/50 text-sm font-bold text-slate-400">
         {emptyText}
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-border bg-white shadow-sm">
+    <div className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
       <table className="min-w-full border-separate border-spacing-0">
         <thead>
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
-                className={`border-b border-border bg-slate-50/80 px-5 py-4 text-left text-xs font-black uppercase tracking-wider text-slate-500 ${column.className ?? ''}`}
+                className={`border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-sm px-5 py-4 text-left text-xs font-black uppercase tracking-widest text-slate-500 ${column.className ?? ''}`}
               >
                 {column.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-border">
+        <tbody className="divide-y divide-[var(--border)]">
           {rows.map((row, index) => (
             <tr
               key={getRowKey ? getRowKey(row, index) : index}
-              className="bg-white transition-colors hover:bg-slate-50/80"
+              className="bg-[var(--card)] transition-colors hover:bg-[var(--background)]/80 group"
             >
               {columns.map((column) => (
                 <td
                   key={column.key}
-                  className={`px-5 py-4 align-top text-sm text-slate-800 ${column.className ?? ''}`}
+                  className={`px-5 py-4 align-middle text-sm text-[var(--foreground)] ${column.className ?? ''}`}
                 >
                   {column.render(row)}
                 </td>

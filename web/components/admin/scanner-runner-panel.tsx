@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { ScannerJob } from '@/lib/types';
 import { apiFetch } from '@/lib/client-api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, PlaySquare } from 'lucide-react';
 import { StatusPill } from '@/components/admin/status-pill';
 
 interface ListingPayload {
@@ -28,7 +28,7 @@ export function ScannerRunnerPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     try {
       const data = await apiFetch<ScannerJob[]>('/api/scanner/jobs');
       const rows = Array.isArray(data) ? data : [];
@@ -39,11 +39,11 @@ export function ScannerRunnerPanel() {
     } catch {
       setJobs([]);
     }
-  };
+  }, [jobId]);
 
   useEffect(() => {
     loadJobs();
-  }, []);
+  }, [loadJobs]);
 
   const handleRun = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,20 +70,25 @@ export function ScannerRunnerPanel() {
   };
 
   return (
-    <div className="space-y-6 rounded-[2rem] border border-border bg-white p-6 shadow-sm">
-      <div>
-        <h2 className="text-xl font-black text-slate-900">Manual Scanner Runner</h2>
-        <p className="mt-1 text-sm font-medium text-slate-500">Inject custom JSON payload directly into a scanner job.</p>
+    <div className="space-y-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-sm transition-all hover:shadow-md h-full flex flex-col">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 shadow-md">
+          <PlaySquare className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Manual Payload Runner</h2>
+          <p className="text-sm font-medium text-slate-500">Inject custom JSON payload directly into an active scanner job.</p>
+        </div>
       </div>
 
-      <form onSubmit={handleRun} className="space-y-4">
+      <form onSubmit={handleRun} className="space-y-5 flex-1 flex flex-col">
         <div className="space-y-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Target Job</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Target Job</label>
           <select
             required
             value={jobId}
             onChange={(e) => setJobId(e.target.value)}
-            className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 outline-none cursor-pointer"
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-emerald-500 outline-none cursor-pointer transition-all shadow-sm"
           >
             <option value="" disabled>Select active job</option>
             {jobs.map((job) => (
@@ -94,19 +99,19 @@ export function ScannerRunnerPanel() {
           </select>
         </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Listings JSON</label>
+        <div className="space-y-1.5 flex-1 flex flex-col">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Listings JSON</label>
           <textarea
             required
             value={payload}
             onChange={(e) => setPayload(e.target.value)}
-            className="min-h-[240px] w-full resize-y rounded-xl border border-border bg-slate-50 p-4 font-mono text-sm focus:bg-white focus:border-blue-500 outline-none"
+            className="flex-1 min-h-[220px] w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 font-mono text-xs md:text-sm text-[var(--foreground)] focus:bg-[var(--card)] focus:border-emerald-500 outline-none transition-all shadow-sm custom-scrollbar"
             spellCheck={false}
           />
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">
             {error}
           </div>
         )}
@@ -114,7 +119,7 @@ export function ScannerRunnerPanel() {
         <button
           type="submit"
           disabled={loading || !jobId || !payload.trim()}
-          className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-md shadow-emerald-600/20"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           {loading ? 'Executing...' : 'Run Payload'}

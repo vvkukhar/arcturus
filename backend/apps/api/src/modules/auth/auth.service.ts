@@ -1,5 +1,6 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 
@@ -59,24 +60,83 @@ export class AuthService {
     return sessionUser;
   }
 
-  async loginWithToken(token: string): Promise<{ token: string; user: AuthUser }> {
-    const adminToken = process.env.ADMIN_TOKEN;
+  async login(body: { email?: string; password?: string; token?: string; rememberMe?: boolean }): Promise<{ token: string; user: AuthUser }> {
+    let user;
 
-    if (!adminToken || adminToken.length < 16) {
-      throw new Error('ADMIN_TOKEN is not securely configured in environment');
+    if (body.token) {
+      const adminToken = process.env.ADMIN_TOKEN;
+      if (!adminToken || adminToken.length < 16) {
+        throw new Error('ADMIN_TOKEN is not securely configured');
+      }
+      if (body.token !== adminToken) {
+        throw new UnauthorizedException('Invalid admin bootstrap token');
+      }
+      user = await this.prisma.user.findFirst({ where: { role: 'admin' } });
+      if (!user) {
+        const hash = await bcrypt.hash(body.token, 10);
+        user = await this.prisma.user.create({
+          data: { name: 'Admin', email: 'admin@arcturus.local', passwordHash: hash, role: 'admin', active: true },
+        });
+      }
+    } else if (body.email && body.password) {
+      user = await this.prisma.user.findUnique({ where: { email: body.email } });
+      if (!user || !user.active) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      if (!user.passwordHash) {
+        if (body.password === process.env.ADMIN_TOKEN && user.role === 'admin') {
+          const hash = await bcrypt.hash(body.password, 10);
+          user = await this.prisma.user.update({
+            where: { id: user.id },
+            data: { passwordHash: hash },
+          });
+        } else {
+          throw new UnauthorizedException('Invalid credentials');
+        }
+      } else {
+        const isValid = await bcrypt.compare(body.password, user.passwordHash);
+        if (!isValid) throw new UnauthorizedException('Invalid credentials');
+      }
+    } else {
+      throw new UnauthorizedException('Email and password required');
     }
 
-    if (token !== adminToken) {
-      throw new UnauthorizedException('Invalid admin bootstrap token');
+    const sessionToken = randomBytes(48).toString('hex');
+    const expiresAt = new Date(Date.now() + (body.rememberMe ? 1000 * 60 * 60 * 24 * 30 : 1000 * 60 * 60 * 24));
+
+    await this.prisma.userSession.create({
+      data: { userId: user.id, token: sessionToken, expiresAt },
+    });
+
+    return {
+      token: sessionToken,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    };
+  }
+
+  async register(body: { name: string; email: string; password: string; inviteCode: string }): Promise<{ token: string; user: AuthUser }> {
+    const validInviteCode = process.env.INVITE_CODE ?? process.env.ADMIN_TOKEN;
+    
+    if (!validInviteCode || body.inviteCode !== validInviteCode) {
+      throw new UnauthorizedException('Invalid invite code');
     }
 
-    let user = await this.prisma.user.findFirst({ where: { role: 'admin' } });
-
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: { name: 'Admin', email: 'admin@arcturus.local', role: 'admin', active: true },
-      });
+    const existingUser = await this.prisma.user.findUnique({ where: { email: body.email } });
+    if (existingUser) {
+      throw new BadRequestException('Email already in use');
     }
+
+    const hash = await bcrypt.hash(body.password, 10);
+    
+    const user = await this.prisma.user.create({
+      data: {
+        name: body.name,
+        email: body.email,
+        passwordHash: hash,
+        role: 'operator',
+        active: true,
+      },
+    });
 
     const sessionToken = randomBytes(48).toString('hex');
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30);

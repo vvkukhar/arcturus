@@ -12,6 +12,7 @@ import { formatMoney, formatPercent } from '@/lib/format';
 import { apiFetch } from '@/lib/client-api';
 import type { WatchlistItem, ApiResponse } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type Props = {
   rows: WatchlistItem[];
@@ -90,7 +91,11 @@ export function WatchlistBulkTable({ rows }: Props) {
   };
 
   if (rows.length === 0) {
-    return <div className="text-sm text-slate-500">Watchlist is empty</div>;
+    return (
+      <div className="flex items-center justify-center p-12 rounded-[2rem] border-2 border-dashed border-[var(--border)] bg-[var(--background)]/50 text-sm font-bold text-slate-400">
+        Watchlist is currently empty
+      </div>
+    );
   }
 
   return (
@@ -102,11 +107,11 @@ export function WatchlistBulkTable({ rows }: Props) {
       />
 
       {selected.size > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2">
+        <div className="mb-4 flex flex-wrap gap-3 animate-in fade-in slide-in-from-top-2">
           <button
             disabled={bulkLoading}
             onClick={() => bulkSetActive(true)}
-            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-bold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40 transition-colors shadow-sm disabled:opacity-60"
           >
             {bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             Activate Selected
@@ -114,7 +119,7 @@ export function WatchlistBulkTable({ rows }: Props) {
           <button
             disabled={bulkLoading}
             onClick={() => bulkSetActive(false)}
-            className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-5 py-2.5 text-sm font-bold text-amber-700 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/40 transition-colors shadow-sm disabled:opacity-60"
           >
             {bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             Deactivate Selected
@@ -122,7 +127,7 @@ export function WatchlistBulkTable({ rows }: Props) {
           <button
             disabled={bulkLoading}
             onClick={bulkDelete}
-            className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-bold text-red-700 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors shadow-sm disabled:opacity-60"
           >
             {bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             Delete Selected
@@ -130,14 +135,14 @@ export function WatchlistBulkTable({ rows }: Props) {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-border bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <table className="min-w-full border-separate border-spacing-0">
           <thead>
             <tr>
-              <th className="border-b border-border bg-slate-50/80 px-4 py-4 text-left">
+              <th className="border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-5 py-4 text-left">
                 <input
                   type="checkbox"
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
                   checked={selected.size > 0 && selected.size === rows.length}
                   ref={(input) => {
                     if (input) input.indeterminate = selected.size > 0 && selected.size < rows.length;
@@ -145,61 +150,74 @@ export function WatchlistBulkTable({ rows }: Props) {
                   onChange={toggleAll}
                 />
               </th>
-              {['Item', 'Desired Buy', 'Max Buy', 'Target Sell', 'Target ROI', 'Status', 'Priority', 'Actions'].map((header) => (
-                <th key={header} className="border-b border-border bg-slate-50/80 px-4 py-4 text-left text-xs font-black uppercase tracking-wider text-slate-500">
+              {['Asset', 'Desired Entry', 'Max Entry', 'Target Exit', 'Est. ROI', 'Status', 'Priority', ''].map((header) => (
+                <th key={header} className="border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-5 py-4 text-left text-xs font-black uppercase tracking-widest text-slate-500">
                   {header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((row) => (
-              <tr key={row.id} className="transition-colors hover:bg-slate-50/80 group">
-                <td className="px-4 py-4 align-top text-sm text-slate-800">
-                  <input
-                    type="checkbox"
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    checked={selectedSet.has(row.id)}
-                    onChange={() => toggle(row.id)}
-                  />
-                </td>
-                <td className="px-4 py-4 align-top text-sm text-slate-800">
-                  <div className="flex flex-col">
-                    <Link href={`/admin/watchlist/${row.id}`} className="font-bold text-slate-900 hover:text-blue-600 hover:underline">
-                      {row.titleSnapshot || row.itemId}
-                    </Link>
-                    <span className="mt-1 text-xs font-medium text-slate-400 font-mono">{row.itemId}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-4 align-top text-sm font-medium text-emerald-600">
-                  {formatMoney(row.desiredBuyPrice)}
-                </td>
-                <td className="px-4 py-4 align-top text-sm font-bold text-slate-900">
-                  {formatMoney(row.maxBuyPrice)}
-                </td>
-                <td className="px-4 py-4 align-top text-sm font-medium text-blue-600">
-                  {formatMoney(row.targetSellPrice)}
-                </td>
-                <td className="px-4 py-4 align-top text-sm font-bold text-slate-700">
-                  {row.targetSellPrice && row.maxBuyPrice > 0
-                    ? formatPercent(((row.targetSellPrice - row.maxBuyPrice) / row.maxBuyPrice) * 100)
-                    : '—'}
-                </td>
-                <td className="px-4 py-4 align-top text-sm text-slate-800">
-                  <StatusPill value={row.active ? 'active' : 'inactive'} />
-                </td>
-                <td className="px-4 py-4 align-top text-sm font-mono font-bold text-slate-700">
-                  {row.priority}
-                </td>
-                <td className="px-4 py-4 align-top text-sm text-slate-800">
-                  <div className="flex flex-wrap gap-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-                    <WatchlistEditDialog item={row} />
-                    <AddToPurchaseFlowButton watchlistItemId={row.id} />
-                    <WatchlistDeleteButton id={row.id} />
-                  </div>
-                </td>
-              </tr>
-            ))}
+          <tbody className="divide-y divide-[var(--border)]">
+            {rows.map((row) => {
+              const roi = row.targetSellPrice && row.maxBuyPrice > 0
+                ? ((row.targetSellPrice - row.maxBuyPrice) / row.maxBuyPrice) * 100
+                : null;
+
+              return (
+                <tr key={row.id} className="transition-colors hover:bg-[var(--background)]/50 group">
+                  <td className="px-5 py-4 align-middle">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                      checked={selectedSet.has(row.id)}
+                      onChange={() => toggle(row.id)}
+                    />
+                  </td>
+                  <td className="px-5 py-4 align-middle">
+                    <div className="flex flex-col gap-1 max-w-[250px]">
+                      <Link href={`/admin/watchlist/${row.id}`} className="font-black text-[var(--foreground)] hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
+                        {row.titleSnapshot || row.itemId}
+                      </Link>
+                      <span className="text-[10px] font-bold text-slate-400 font-mono tracking-widest uppercase">{row.itemId}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 align-middle text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatMoney(row.desiredBuyPrice)}
+                  </td>
+                  <td className="px-5 py-4 align-middle text-sm font-black text-[var(--foreground)]">
+                    {formatMoney(row.maxBuyPrice)}
+                  </td>
+                  <td className="px-5 py-4 align-middle text-sm font-bold text-blue-600 dark:text-blue-400">
+                    {formatMoney(row.targetSellPrice)}
+                  </td>
+                  <td className="px-5 py-4 align-middle">
+                    <span className={cn(
+                      "inline-flex px-2.5 py-1 rounded-lg text-xs font-black",
+                      roi && roi >= 30 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
+                      roi && roi > 0 ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                      "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                    )}>
+                      {roi ? formatPercent(roi) : '—'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 align-middle">
+                    <StatusPill value={row.active ? 'active' : 'inactive'} />
+                  </td>
+                  <td className="px-5 py-4 align-middle">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--background)] font-mono text-xs font-black text-[var(--foreground)] border border-[var(--border)]">
+                      {row.priority}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 align-middle">
+                    <div className="flex flex-wrap items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                      <WatchlistEditDialog item={row} />
+                      <AddToPurchaseFlowButton watchlistItemId={row.id} />
+                      <WatchlistDeleteButton id={row.id} />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
