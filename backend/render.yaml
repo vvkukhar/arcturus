@@ -7,8 +7,8 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     autoDeploy: true
-    # Піднімаємося в корінь бекенду всередині контейнера, щоб знайти схему
-    preDeployCommand: npx prisma migrate deploy --schema=../../packages/db/prisma/schema.prisma
+    # Використовуємо --prefix, щоб точно запустити скрипт з кореня /backend
+    preDeployCommand: npm run db:migrate --prefix /backend
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
