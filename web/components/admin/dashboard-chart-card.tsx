@@ -15,8 +15,8 @@ export function DashboardChartCard({ title, labels, values }: Props) {
   }));
 
   return (
-    <div className="rounded-[2.5rem] border border-border bg-white p-8 shadow-sm transition-all hover:shadow-md">
-      <div className="mb-6 text-xl font-black tracking-tight text-slate-900">{title}</div>
+    <div className="rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm transition-all hover:shadow-md">
+      <div className="mb-6 text-xl font-black tracking-tight text-[var(--foreground)]">{title}</div>
       <div className="h-48 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -37,12 +37,11 @@ export function DashboardChartCard({ title, labels, values }: Props) {
             <Tooltip
               contentStyle={{ 
                 borderRadius: '1rem', 
-                border: 'none', 
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                backdropFilter: 'blur(8px)'
+                border: '1px solid var(--border)', 
+                backgroundColor: 'var(--card)',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
               }}
-              itemStyle={{ color: '#0f172a', fontWeight: '900' }}
+              itemStyle={{ color: 'var(--foreground)', fontWeight: '900' }}
               labelStyle={{ color: '#64748b', fontWeight: '700', marginBottom: '4px' }}
             />
             <Area 

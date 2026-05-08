@@ -43,7 +43,7 @@ export function SuggestionsPanel() {
 
   if (loading) {
     return (
-      <div className="flex h-48 items-center justify-center rounded-[2rem] border border-border bg-white shadow-sm">
+      <div className="flex h-48 items-center justify-center rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
@@ -51,18 +51,18 @@ export function SuggestionsPanel() {
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      <div className="rounded-[2rem] border border-border bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-black text-slate-900">Buy Suggestions</h2>
+      <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+        <h2 className="text-xl font-black text-[var(--foreground)]">Buy Suggestions</h2>
         <div className="mt-4 space-y-3">
           {buy.length === 0 ? (
-            <div className="text-sm font-medium text-slate-400">No active buy suggestions.</div>
+            <div className="text-sm font-medium text-slate-500">No active buy suggestions.</div>
           ) : (
             buy.map((x) => (
-              <div key={x.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-white hover:shadow-sm">
-                <div className="font-bold text-slate-900">{x.title}</div>
+              <div key={x.id} className="rounded-xl border border-[var(--border)] bg-[var(--background)]/50 p-4 transition-colors hover:bg-[var(--card)] hover:shadow-sm">
+                <div className="font-bold text-[var(--foreground)]">{x.title}</div>
                 <div className="mt-2 flex items-center justify-between">
-                  <div className="text-sm font-semibold text-emerald-600">ROI: {x.roi.toFixed(2)}%</div>
-                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 bg-slate-200 px-2 py-1 rounded-md">{x.action}</div>
+                  <div className="text-sm font-semibold text-emerald-500">ROI: {x.roi.toFixed(2)}%</div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-[var(--foreground)] bg-[var(--background)] border border-[var(--border)] px-2 py-1 rounded-md">{x.action}</div>
                 </div>
               </div>
             ))
@@ -70,18 +70,18 @@ export function SuggestionsPanel() {
         </div>
       </div>
 
-      <div className="rounded-[2rem] border border-border bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-black text-slate-900">Sell Suggestions</h2>
+      <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+        <h2 className="text-xl font-black text-[var(--foreground)]">Sell Suggestions</h2>
         <div className="mt-4 space-y-3">
           {sell.length === 0 ? (
-            <div className="text-sm font-medium text-slate-400">No active sell suggestions.</div>
+            <div className="text-sm font-medium text-slate-500">No active sell suggestions.</div>
           ) : (
             sell.map((x) => (
-              <div key={x.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-white hover:shadow-sm">
-                <div className="font-bold text-slate-900">{x.title}</div>
+              <div key={x.id} className="rounded-xl border border-[var(--border)] bg-[var(--background)]/50 p-4 transition-colors hover:bg-[var(--card)] hover:shadow-sm">
+                <div className="font-bold text-[var(--foreground)]">{x.title}</div>
                 <div className="mt-2 flex items-center justify-between">
-                  <div className="text-sm font-semibold text-blue-600">ROI: {x.roi.toFixed(2)}%</div>
-                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 bg-slate-200 px-2 py-1 rounded-md">{x.action}</div>
+                  <div className="text-sm font-semibold text-blue-500">ROI: {x.roi.toFixed(2)}%</div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-[var(--foreground)] bg-[var(--background)] border border-[var(--border)] px-2 py-1 rounded-md">{x.action}</div>
                 </div>
               </div>
             ))
