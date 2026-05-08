@@ -13,10 +13,8 @@ const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Language>('en');
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const saved = localStorage.getItem('arcturus_lang') as Language;
     if (saved && (saved === 'en' || saved === 'uk')) {
       setLangState(saved);
@@ -32,11 +30,11 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   };
 
   const t = (key: DictKey): string => {
-    return dict[lang][key] || dict['en'][key] || key;
+    // Безпечне отримання перекладу з fallback
+    return dict[lang]?.[key] || dict['en']?.[key] || key;
   };
 
-  if (!mounted) return <>{children}</>;
-
+  // ЗАВЖДИ повертаємо провайдер
   return (
     <I18nContext.Provider value={{ lang, setLang, t }}>
       {children}

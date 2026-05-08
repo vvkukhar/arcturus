@@ -27,10 +27,10 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    setMounted(true);
     try {
       const saved = localStorage.getItem('arcturus_cart');
       if (saved) setItems(JSON.parse(saved));
@@ -38,8 +38,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (isMounted) localStorage.setItem('arcturus_cart', JSON.stringify(items));
-  }, [items, isMounted]);
+    if (mounted) {
+      localStorage.setItem('arcturus_cart', JSON.stringify(items));
+    }
+  }, [items, mounted]);
 
   const addItem = useCallback((newItem: Omit<CartItem, 'quantity'>) => {
     setItems((prev) => {
@@ -64,8 +66,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     totalPrice: items.reduce((sum, i) => sum + i.price * i.quantity, 0),
   }), [items]);
 
-  if (!isMounted) return null;
-
+  // ЗАВЖДИ повертаємо провайдер, щоб уникнути крашу React
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, isCartOpen, setIsCartOpen, totalItems, totalPrice }}>
       {children}

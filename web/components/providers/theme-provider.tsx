@@ -12,11 +12,10 @@ type ThemeProviderState = {
 const ThemeProviderContext = createContext<ThemeProviderState | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light');
-  const [mounted, setMounted] = useState(false);
+  // Ставимо дефолтне значення, щоб контекст завжди існував
+  const [theme, setThemeState] = useState<Theme>('dark'); 
 
   useEffect(() => {
-    setMounted(true);
     const savedTheme = localStorage.getItem('arcturus_theme') as Theme;
     if (savedTheme) {
       setThemeState(savedTheme);
@@ -34,8 +33,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
   };
 
-  if (!mounted) return <>{children}</>;
-
+  // ЗАВЖДИ повертаємо провайдер
   return (
     <ThemeProviderContext.Provider value={{ theme, setTheme }}>
       {children}
