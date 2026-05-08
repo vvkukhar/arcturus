@@ -46,9 +46,15 @@ async function getDashboardData() {
 
 export default async function AdminDashboardPage() {
   const data = await getDashboardData();
-  const pendingReserves = data.reserves.filter((x) => x.status === 'pending').length;
-  const withImages = data.inventory.filter((x) => Array.isArray(x.images) && x.images.length > 0).length;
-  const hotDeals = data.deals.filter((x) => x.action === 'BUY_NOW').length;
+  
+  // Бронебійна перевірка масивів перед викликом .filter()
+  const safeReserves = Array.isArray(data.reserves) ? data.reserves : [];
+  const safeInventory = Array.isArray(data.inventory) ? data.inventory : [];
+  const safeDeals = Array.isArray(data.deals) ? data.deals : [];
+
+  const pendingReserves = safeReserves.filter((x) => x.status === 'pending').length;
+  const withImages = safeInventory.filter((x) => Array.isArray(x.images) && x.images.length > 0).length;
+  const hotDeals = safeDeals.filter((x) => x.action === 'BUY_NOW').length;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -87,9 +93,9 @@ export default async function AdminDashboardPage() {
           labels={['Pending', 'Approved', 'Contacted', 'Rejected']}
           values={[
             pendingReserves,
-            data.reserves.filter((x) => x.status === 'approved').length,
-            data.reserves.filter((x) => x.status === 'contacted').length,
-            data.reserves.filter((x) => x.status === 'rejected').length,
+            safeReserves.filter((x) => x.status === 'approved').length,
+            safeReserves.filter((x) => x.status === 'contacted').length,
+            safeReserves.filter((x) => x.status === 'rejected').length,
           ]}
         />
         <DashboardChartCard

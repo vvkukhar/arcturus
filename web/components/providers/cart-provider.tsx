@@ -33,7 +33,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setMounted(true);
     try {
       const saved = localStorage.getItem('arcturus_cart');
-      if (saved) setItems(JSON.parse(saved));
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setItems(parsed);
+        }
+      }
     } catch {}
   }, []);
 
@@ -61,12 +66,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = useCallback(() => setItems([]), []);
 
-  const { totalItems, totalPrice } = useMemo(() => ({
-    totalItems: items.reduce((sum, i) => sum + i.quantity, 0),
-    totalPrice: items.reduce((sum, i) => sum + i.price * i.quantity, 0),
-  }), [items]);
+  const { totalItems, totalPrice } = useMemo(() => {
+    const safeItems = Array.isArray(items) ? items : [];
+    return {
+      totalItems: safeItems.reduce((sum, i) => sum + (i.quantity || 0), 0),
+      totalPrice: safeItems.reduce((sum, i) => sum + (i.price || 0) * (i.quantity || 0), 0),
+    };
+  }, [items]);
 
-  // ЗАВЖДИ повертаємо провайдер, щоб уникнути крашу React
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, isCartOpen, setIsCartOpen, totalItems, totalPrice }}>
       {children}

@@ -1,12 +1,13 @@
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge'; // <-- Ось тут правильний імпорт
 import { cn } from '@/lib/utils';
 
 type Props = {
-  value: string;
+  value?: string | null;
 };
 
 export function StatusPill({ value }: Props) {
-  const normalized = value.toLowerCase();
+  // Захист від null/undefined
+  const normalized = String(value || 'unknown').toLowerCase();
   
   const statusConfig: Record<string, string> = {
     pending: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
@@ -34,5 +35,5 @@ export function StatusPill({ value }: Props) {
   const className = Object.entries(statusConfig).find(([key]) => normalized.includes(key))?.[1] 
     || 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
 
-  return <Badge className={cn('px-2.5 py-1', className)}>{value}</Badge>;
+  return <Badge className={cn('px-2.5 py-1', className)}>{value || 'UNKNOWN'}</Badge>;
 }
