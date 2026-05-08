@@ -7053,13 +7053,8 @@ import { CartProvider } from "@/components/providers/cart-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { SidebarProvider } from "@/components/providers/sidebar-provider";
-import { Navbar } from "@/components/layout/navbar";
-import { Footer } from "@/components/layout/footer";
-import { CartSidebar } from "@/components/cart/cart-sidebar";
-import { Ticker } from "@/components/layout/ticker";
-import { CommandMenu } from "@/components/layout/command-menu";
-import { Sidebar } from "@/components/layout/sidebar";
 import { Toaster } from "sonner";
+import { ClientLayoutWrapper } from "@/components/layout/client-layout-wrapper";
 
 export const metadata: Metadata = {
   title: "Arcturus Terminal | Institutional LEGO Trading",
@@ -7073,26 +7068,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased min-h-screen flex flex-col bg-[var(--background)]">
+      <body className="antialiased min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300">
         <ThemeProvider>
           <I18nProvider>
             <CartProvider>
               <SidebarProvider>
-                <div className="sticky top-0 z-40 w-full">
-                  <Ticker />
-                  <Navbar />
-                </div>
-                <div className="flex flex-1 w-full mx-auto relative">
-                  <Sidebar />
-                  <div className="flex-1 flex flex-col min-w-0">
-                    <main className="flex-1">
-                      {children}
-                    </main>
-                    <Footer />
-                  </div>
-                </div>
-                <CommandMenu />
-                <CartSidebar />
+                <ClientLayoutWrapper>
+                  {children}
+                </ClientLayoutWrapper>
               </SidebarProvider>
             </CartProvider>
           </I18nProvider>
@@ -7679,6 +7662,37 @@ export default function WatchlistPage() {
   );
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\admin\error.tsx =====
+
+'use client';
+
+import { AlertCircle, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+export default function AdminError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  return (
+    <div className="flex h-[calc(100vh-8rem)] flex-col items-center justify-center p-6 text-center animate-in zoom-in-95 duration-300">
+      <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+        <AlertCircle size={40} strokeWidth={2.5} />
+      </div>
+      <h2 className="mb-2 text-2xl font-black text-[var(--foreground)] tracking-tight">System Exception</h2>
+      <p className="mb-6 max-w-lg text-sm font-medium text-slate-500 bg-[var(--card)] border border-[var(--border)] p-4 rounded-xl shadow-sm">
+        {error.message || 'An unknown error occurred while rendering the dashboard.'}
+      </p>
+      <Button onClick={() => reset()} className="gap-2 rounded-xl">
+        <RotateCcw size={16} />
+        Retry / Recover
+      </Button>
+    </div>
+  );
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\admin\layout.tsx =====
 
 import { AdminSidebar } from '@/components/admin/sidebar';
@@ -7692,9 +7706,9 @@ export default function AdminLayout({
 }>) {
   return (
     <AuthGate>
-      <div className="flex min-h-screen bg-slate-50 overflow-hidden">
+      <div className="fixed inset-0 z-[200] flex bg-[var(--background)] text-[var(--foreground)] overflow-hidden transition-colors duration-300">
         <AdminSidebar />
-        <div className="flex min-w-0 flex-1 flex-col h-screen overflow-y-auto">
+        <div className="flex min-w-0 flex-1 flex-col h-screen overflow-y-auto custom-scrollbar">
           <AdminTopbar />
           <main className="flex-1 p-6 lg:px-8">
             <div className="mx-auto max-w-7xl">
@@ -7705,6 +7719,15 @@ export default function AdminLayout({
       </div>
     </AuthGate>
   );
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\admin\page.tsx =====
+
+import { redirect } from 'next/navigation';
+
+export default function AdminRootPage() {
+  // РџСЂРѕСЃС‚Рѕ Р°РІС‚РѕРјР°С‚РёС‡РЅРѕ РїРµСЂРµРєРёРґР°С”РјРѕ СЋР·РµСЂР° Р· /admin РЅР° /admin/dashboard
+  redirect('/admin/dashboard');
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\admin\activity\page.tsx =====
@@ -7779,6 +7802,161 @@ export default async function ActivityPage() {
   );
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\admin\allocation\page.tsx =====
+
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { ChartNoAxesCombined, Loader2, Landmark, Boxes, PiggyBank } from 'lucide-react';
+import { apiFetch } from '@/lib/client-api';
+import { formatMoney } from '@/lib/format';
+import { useI18n } from '@/components/providers/i18n-provider';
+
+export default function AdminAllocationPage() {
+  const { t } = useI18n();
+  const [loading, setLoading] = useState(true);
+  const [allocation, setAllocation] = useState<any>(null);
+  const [cashflow, setCashflow] = useState<any>(null);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [allocData, cashData] = await Promise.all([
+        apiFetch<any>('/api/allocation'),
+        apiFetch<any>('/api/allocation/cashflow-plan'),
+      ]);
+      setAllocation(allocData);
+      setCashflow(cashData);
+    } catch (error) {
+      setAllocation(null);
+      setCashflow(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  if (loading) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  const chartData = [
+    { name: 'Inventory Cost', value: typeof allocation?.inventoryCost === 'number' ? allocation.inventoryCost : 0, color: '#3b82f6' },
+    { name: 'Procurement', value: typeof allocation?.committedProcurementCost === 'number' ? allocation.committedProcurementCost : 0, color: '#f59e0b' },
+    { name: 'Liquid Reserve', value: typeof cashflow?.reserveAmount === 'number' ? cashflow.reserveAmount : 0, color: '#10b981' },
+  ].filter(d => d.value > 0);
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20">
+            <ChartNoAxesCombined className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Capital Allocation</h1>
+            <p className="mt-1 text-sm font-medium text-slate-500">Portfolio exposure, risk distribution, and reinvestment planning.</p>
+          </div>
+        </div>
+        <div className="bg-[var(--background)]/50 border border-[var(--border)] px-6 py-4 rounded-2xl">
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Total Capital at Work</div>
+          <div className="text-3xl font-black text-[var(--foreground)]">{formatMoney(allocation?.capitalAtWork)}</div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-3">
+        <div className="xl:col-span-1 rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm flex flex-col">
+          <div className="mb-6 flex items-center gap-3">
+            <Landmark className="text-indigo-500" />
+            <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Distribution</h2>
+          </div>
+          <div className="flex-1 min-h-[250px] w-full relative">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip 
+                    contentStyle={{ borderRadius: '1rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', fontWeight: 'bold' }}
+                    formatter={(val: any) => [formatMoney(Number(val) || 0), 'Value']}
+                  />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-400 font-bold">No active capital</div>
+            )}
+          </div>
+        </div>
+
+        <div className="xl:col-span-2 grid gap-6 sm:grid-cols-2">
+          <div className="rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm">
+            <div className="mb-6 flex items-center gap-3">
+              <Boxes className="text-emerald-500" />
+              <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Exposure by Theme</h2>
+            </div>
+            <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+              {allocation?.byTheme?.map((t: any, idx: number) => (
+                <div key={idx} className="flex justify-between items-center group">
+                  <div>
+                    <div className="font-bold text-[var(--foreground)] group-hover:text-emerald-500 transition-colors">{t.theme}</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t.units} units</div>
+                  </div>
+                  <div className="font-black text-slate-700 dark:text-slate-300">{formatMoney(t.cost)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm">
+            <div className="mb-6 flex items-center gap-3">
+              <PiggyBank className="text-amber-500" />
+              <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Cashflow Plan</h2>
+            </div>
+            <div className="space-y-5">
+              <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30">
+                <div className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-1">Target Reinvestment</div>
+                <div className="text-2xl font-black text-amber-700 dark:text-amber-400">{formatMoney(cashflow?.reinvestAmount)}</div>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-[var(--border)]">
+                <span className="font-bold text-slate-500">Monthly Budget</span>
+                <span className="font-black text-[var(--foreground)]">{formatMoney(cashflow?.monthlyBudget)}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-[var(--border)]">
+                <span className="font-bold text-slate-500">Reinvest Rate</span>
+                <span className="font-black text-[var(--foreground)]">{cashflow?.reinvestPercent}%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-slate-500">Est. New Assets</span>
+                <span className="font-black text-blue-600 dark:text-blue-400">~{cashflow?.estimatedNewItems} items</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\admin\collaboration\page.tsx =====
 
 import { AssignmentTable } from '@/components/admin/assignment-table';
@@ -7830,12 +8008,8 @@ import { LiveNotificationsPanel } from '@/components/admin/live-notifications-pa
 import { MetricCard } from '@/components/admin/metric-card';
 import { NotificationsCenter } from '@/components/admin/notifications-center';
 import { SalesRegistrationPanel } from '@/components/admin/sales-registration-panel';
-import { SectionCard } from '@/components/admin/section-card';
 import { SuggestionsPanel } from '@/components/admin/suggestions-panel';
-import { Badge } from '@/components/ui/badge';
 import { api } from '@/lib/api-client';
-import { formatMoney, formatPercent } from '@/lib/format';
-import Link from 'next/link';
 import type { DailyPlanTask, DashboardExecutionSummary, DashboardFlowCounters, OpportunityItem, ReserveRequest, InventoryItem, DealItem } from '@/lib/types';
 
 export const revalidate = 0;
@@ -7873,24 +8047,30 @@ async function getDashboardData() {
 
 export default async function AdminDashboardPage() {
   const data = await getDashboardData();
-  const pendingReserves = data.reserves.filter((x) => x.status === 'pending').length;
-  const withImages = data.inventory.filter((x) => Array.isArray(x.images) && x.images.length > 0).length;
-  const hotDeals = data.deals.filter((x) => x.action === 'BUY_NOW').length;
+  
+  // Р‘СЂРѕРЅРµР±С–Р№РЅР° РїРµСЂРµРІС–СЂРєР° РјР°СЃРёРІС–РІ РїРµСЂРµРґ РІРёРєР»РёРєРѕРј .filter()
+  const safeReserves = Array.isArray(data.reserves) ? data.reserves : [];
+  const safeInventory = Array.isArray(data.inventory) ? data.inventory : [];
+  const safeDeals = Array.isArray(data.deals) ? data.deals : [];
+
+  const pendingReserves = safeReserves.filter((x) => x.status === 'pending').length;
+  const withImages = safeInventory.filter((x) => Array.isArray(x.images) && x.images.length > 0).length;
+  const hotDeals = safeDeals.filter((x) => x.action === 'BUY_NOW').length;
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <AuthStatus />
         <CreateItemDialog />
       </div>
 
       {data.execution?.headline && (
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm font-bold text-blue-800 shadow-sm">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-800 backdrop-blur-xl p-5 text-sm font-black text-blue-900 dark:text-blue-100 shadow-sm ring-1 ring-inset ring-blue-500/10">
           рџ’Ў {data.execution.headline}
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <MetricCard title="Purchase Queue" value={data.counters?.purchase ?? data.execution?.purchasePending ?? 0} subtitle="Pending buy execution" />
         <MetricCard title="Reprice Queue" value={data.counters?.reprice ?? data.execution?.repricePending ?? 0} subtitle="Inventory waiting for listing" />
         <MetricCard title="Review Queue" value={data.counters?.review ?? data.execution?.reviewPending ?? 0} subtitle="Manual checks pending" />
@@ -7914,9 +8094,9 @@ export default async function AdminDashboardPage() {
           labels={['Pending', 'Approved', 'Contacted', 'Rejected']}
           values={[
             pendingReserves,
-            data.reserves.filter((x) => x.status === 'approved').length,
-            data.reserves.filter((x) => x.status === 'contacted').length,
-            data.reserves.filter((x) => x.status === 'rejected').length,
+            safeReserves.filter((x) => x.status === 'approved').length,
+            safeReserves.filter((x) => x.status === 'contacted').length,
+            safeReserves.filter((x) => x.status === 'rejected').length,
           ]}
         />
         <DashboardChartCard
@@ -8176,12 +8356,12 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { api } from '@/lib/api';
 import type { InventoryItem } from '@/lib/types';
 
-// Server Component: РћС‚СЂРёРјСѓС”РјРѕ РґР°РЅС– РЅР°РїСЂСЏРјСѓ РЅР° СЃРµСЂРІРµСЂС–, Р±РµР· Р·Р°Р№РІРёС… useEffect
+export const revalidate = 0;
+
 async function getInventory(): Promise<InventoryItem[]> {
   try {
     return await api.get<InventoryItem[]>('/inventory');
   } catch (error) {
-    console.error('Failed to fetch inventory:', error);
     return [];
   }
 }
@@ -8190,11 +8370,11 @@ export default async function InventoryPage() {
   const rows = await getInventory();
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--card)] border border-[var(--border)] p-6 rounded-[2rem] shadow-sm">
         <div>
-          <h1 className="text-3xl font-black text-slate-900">Inventory</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Inventory Management</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500">
             Stock, cost basis, media, sale price, and reprice flow.
           </p>
         </div>
@@ -8342,7 +8522,7 @@ type Props = {
 
 async function getBuyOpportunities(): Promise<OpportunityItem[]> {
   try {
-    return await api.get<OpportunityItem[]>('/opportunities/buy?limit=50');
+    return await api.get<OpportunityItem[]>('/opportunities/buy?limit=100');
   } catch {
     return [];
   }
@@ -8359,94 +8539,100 @@ export default async function AdminBuyOpportunitiesPage({ searchParams }: Props)
     : rows;
 
   return (
-    <SectionCard title="Buy Opportunities">
-      <div className="mb-6">
-        <TableSearchForm placeholder="Search buy opportunities by title or item ID" />
-      </div>
-      <DataTable
-        rows={filtered}
-        emptyText="No buy opportunities available at the moment."
-        getRowKey={(row) => `${row.itemId}-${row.sourceCode}`}
-        columns={[
-          {
-            key: 'title',
-            header: 'Item',
-            render: (row) => (
-              <div className="flex flex-col">
-                <Link
-                  href={`/admin/opportunities/buy/${row.itemId}`}
-                  className="font-bold text-slate-900 hover:text-blue-600 hover:underline"
-                >
-                  {row.title}
-                </Link>
-                <span className="mt-1 text-xs font-medium text-slate-400 font-mono">{row.itemId}</span>
-              </div>
-            ),
-          },
-          {
-            key: 'score',
-            header: 'Score',
-            render: (row) => (
-              <span className={`font-bold ${row.score > 80 ? 'text-emerald-600' : 'text-slate-700'}`}>
-                {row.score.toFixed(0)}
-              </span>
-            ),
-          },
-          {
-            key: 'action',
-            header: 'Action',
-            render: (row) => <StatusPill value={row.action} />,
-          },
-          {
-            key: 'buy',
-            header: 'Buy Price',
-            render: (row) => <span className="font-medium text-slate-700">{formatMoney(row.totalBuy)}</span>,
-          },
-          {
-            key: 'sell',
-            header: 'Target Sell',
-            render: (row) => <span className="font-medium text-blue-600">{formatMoney(row.targetSellPrice)}</span>,
-          },
-          {
-            key: 'profit',
-            header: 'Est. Profit',
-            render: (row) => <span className="font-bold text-emerald-600">{formatMoney(row.profit)}</span>,
-          },
-          {
-            key: 'roi',
-            header: 'ROI',
-            render: (row) => <span className="font-bold text-emerald-600">{formatPercent(row.roi)}</span>,
-          },
-          {
-            key: 'strategy',
-            header: 'Strategy & Source',
-            render: (row) => (
-              <div className="space-y-1">
-                <div className="font-semibold text-slate-700">{row.flipStrategy ?? 'вЂ”'}</div>
-                <div className="text-xs font-mono text-slate-400">{row.sourceCode ?? 'вЂ”'}</div>
-              </div>
-            ),
-          },
-          {
-            key: 'actions',
-            header: 'Actions',
-            render: (row) => (
-              <div className="flex flex-wrap gap-2">
-                <Link
-                  href={`/admin/opportunities/buy/${row.itemId}`}
-                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 shadow-sm"
-                >
-                  Details
-                </Link>
-                {row.watchlistItemId && (
-                  <AddToPurchaseFlowButton watchlistItemId={row.watchlistItemId} />
-                )}
-              </div>
-            ),
-          },
-        ]}
-      />
-    </SectionCard>
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+      <SectionCard title="Buy Opportunities" contentClassName="p-0 sm:p-6">
+        <div className="mb-6 px-4 sm:px-0">
+          <TableSearchForm placeholder="Search buy opportunities by title or item ID" />
+        </div>
+        <DataTable
+          rows={filtered}
+          emptyText="No buy opportunities available at the moment."
+          getRowKey={(row) => `${row.itemId}-${row.sourceCode}`}
+          columns={[
+            {
+              key: 'title',
+              header: 'Asset',
+              render: (row) => (
+                <div className="flex flex-col gap-1 max-w-[280px]">
+                  <Link
+                    href={`/admin/opportunities/buy/${row.itemId}`}
+                    className="font-black text-slate-900 hover:text-blue-600 transition-colors line-clamp-2 leading-tight"
+                  >
+                    {row.title}
+                  </Link>
+                  <span className="text-[10px] font-bold text-slate-400 font-mono tracking-wider">{row.itemId}</span>
+                </div>
+              ),
+            },
+            {
+              key: 'score',
+              header: 'Score',
+              render: (row) => (
+                <div className="flex items-center">
+                  <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black ${row.score > 80 ? 'bg-emerald-100 text-emerald-700' : row.score > 50 ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
+                    {row.score.toFixed(0)}
+                  </span>
+                </div>
+              ),
+            },
+            {
+              key: 'action',
+              header: 'Action',
+              render: (row) => <StatusPill value={row.action} />,
+            },
+            {
+              key: 'buy',
+              header: 'Entry',
+              render: (row) => <span className="font-bold text-slate-900">{formatMoney(row.totalBuy)}</span>,
+            },
+            {
+              key: 'sell',
+              header: 'Target',
+              render: (row) => <span className="font-bold text-blue-600">{formatMoney(row.targetSellPrice)}</span>,
+            },
+            {
+              key: 'profit',
+              header: 'Profit',
+              render: (row) => <span className="font-black text-emerald-600">{formatMoney(row.profit)}</span>,
+            },
+            {
+              key: 'roi',
+              header: 'ROI',
+              render: (row) => <span className="font-black text-emerald-600">{formatPercent(row.roi)}</span>,
+            },
+            {
+              key: 'strategy',
+              header: 'Strategy & Source',
+              render: (row) => (
+                <div className="flex flex-col gap-1.5">
+                  <span className="inline-flex w-fit px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white">
+                    {row.flipStrategy ?? 'вЂ”'}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{row.sourceCode ?? 'вЂ”'}</span>
+                </div>
+              ),
+            },
+            {
+              key: 'actions',
+              header: '',
+              render: (row) => (
+                <div className="flex items-center justify-end gap-2">
+                  <Link
+                    href={`/admin/opportunities/buy/${row.itemId}`}
+                    className="inline-flex items-center justify-center rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 transition-all hover:bg-slate-200 hover:text-slate-900 active:scale-95"
+                  >
+                    View
+                  </Link>
+                  {row.watchlistItemId && (
+                    <AddToPurchaseFlowButton watchlistItemId={row.watchlistItemId} />
+                  )}
+                </div>
+              ),
+            },
+          ]}
+        />
+      </SectionCard>
+    </div>
   );
 }
 
@@ -8584,6 +8770,7 @@ export default async function AdminSellOpportunitiesPage({ searchParams }: Props
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { ReserveRequest } from '@/lib/types';
+import { Clock, CheckCircle2, PhoneCall, XCircle, Package } from 'lucide-react';
 
 type BoardData = {
   pending: ReserveRequest[];
@@ -8600,19 +8787,37 @@ async function getBoard(): Promise<BoardData> {
   }
 }
 
-function KanbanColumn({ title, items, colorClass }: { title: string; items: ReserveRequest[]; colorClass: string }) {
+function KanbanColumn({ 
+  title, 
+  items, 
+  colorClass, 
+  headerClass,
+  icon: Icon
+}: { 
+  title: string; 
+  items: ReserveRequest[]; 
+  colorClass: string;
+  headerClass: string;
+  icon: any;
+}) {
   return (
-    <div className="flex flex-col h-full rounded-3xl border border-border bg-slate-50/50 p-4">
-      <div className="mb-4 flex items-center justify-between px-2">
-        <h3 className="text-lg font-black text-slate-800">{title}</h3>
-        <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold ${colorClass}`}>
+    <div className="flex flex-col h-full rounded-[2rem] border border-[var(--border)] bg-[var(--card)]/50 backdrop-blur-sm p-5 shadow-sm transition-all hover:shadow-md hover:border-blue-500/20 group">
+      <div className="mb-5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`p-2 rounded-xl ${headerClass}`}>
+            <Icon size={18} />
+          </div>
+          <h3 className="text-lg font-black text-[var(--foreground)] tracking-tight">{title}</h3>
+        </div>
+        <span className={`inline-flex items-center justify-center h-7 w-7 rounded-full text-xs font-black shadow-sm ${colorClass}`}>
           {items.length}
         </span>
       </div>
       
-      <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+      <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
         {items.length === 0 ? (
-          <div className="flex h-24 items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 text-sm font-medium text-slate-400">
+          <div className="flex h-32 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--border)] text-sm font-bold text-slate-400 bg-[var(--background)]/50">
+            <Package size={24} className="mb-2 opacity-50" />
             Empty
           </div>
         ) : (
@@ -8620,17 +8825,17 @@ function KanbanColumn({ title, items, colorClass }: { title: string; items: Rese
             <Link
               key={item.id}
               href={`/admin/reserves/${item.id}`}
-              className="group block rounded-2xl border border-border bg-white p-4 shadow-sm transition-all hover:border-blue-300 hover:shadow-md hover:ring-1 hover:ring-blue-100"
+              className="group/card block rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm transition-all duration-300 hover:border-blue-500/50 hover:shadow-lg hover:-translate-y-1"
             >
-              <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
+              <div className="font-black text-[var(--foreground)] group-hover/card:text-blue-600 transition-colors line-clamp-2 leading-tight">
                 {item.productTitle || 'Unknown Product'}
               </div>
-              <div className="mt-3 flex items-center justify-between border-t border-slate-50 pt-3">
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-slate-700">{item.name}</span>
-                  <span className="text-xs text-slate-400 truncate max-w-[120px]">{item.contact}</span>
+              <div className="mt-4 flex items-end justify-between border-t border-[var(--border)] pt-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{item.name}</span>
+                  <span className="text-xs font-medium text-slate-500 truncate max-w-[140px]">{item.contact}</span>
                 </div>
-                <span className="text-[10px] font-mono font-medium text-slate-300 uppercase">
+                <span className="text-[10px] font-black font-mono tracking-widest text-slate-400 uppercase bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
                   {item.id.slice(-6)}
                 </span>
               </div>
@@ -8646,17 +8851,41 @@ export default async function OrdersBoardPage() {
   const board = await getBoard();
 
   return (
-    <div className="h-[calc(100vh-8rem)] min-h-[600px] flex flex-col space-y-4 animate-fade-in-up">
+    <div className="h-[calc(100vh-8rem)] min-h-[600px] flex flex-col space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h1 className="text-3xl font-black text-slate-900">Order Status Board</h1>
-        <p className="mt-1 text-sm text-slate-500">Visual kanban pipeline for reserve requests.</p>
+        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Order Status Board</h1>
+        <p className="mt-1 text-sm font-medium text-slate-500">Visual kanban pipeline for reserve requests and order progression.</p>
       </div>
 
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 overflow-hidden pb-4">
-        <KanbanColumn title="Pending" items={board.pending} colorClass="bg-amber-100 text-amber-700" />
-        <KanbanColumn title="Approved" items={board.approved} colorClass="bg-emerald-100 text-emerald-700" />
-        <KanbanColumn title="Contacted" items={board.contacted} colorClass="bg-blue-100 text-blue-700" />
-        <KanbanColumn title="Rejected" items={board.rejected} colorClass="bg-red-100 text-red-700" />
+        <KanbanColumn 
+          title="Pending" 
+          items={board.pending} 
+          icon={Clock}
+          colorClass="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" 
+          headerClass="bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-500"
+        />
+        <KanbanColumn 
+          title="Approved" 
+          items={board.approved} 
+          icon={CheckCircle2}
+          colorClass="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" 
+          headerClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-500"
+        />
+        <KanbanColumn 
+          title="Contacted" 
+          items={board.contacted} 
+          icon={PhoneCall}
+          colorClass="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" 
+          headerClass="bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-500"
+        />
+        <KanbanColumn 
+          title="Rejected" 
+          items={board.rejected} 
+          icon={XCircle}
+          colorClass="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" 
+          headerClass="bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-500"
+        />
       </div>
     </div>
   );
@@ -8721,6 +8950,213 @@ export default async function AdminPlanningDailyPage() {
           ]}
         />
       </SectionCard>
+    </div>
+  );
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\admin\profit\page.tsx =====
+
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, CartesianGrid } from 'recharts';
+import { Coins, TrendingUp, TrendingDown, Activity, Loader2, ArrowUpRight } from 'lucide-react';
+import { apiFetch } from '@/lib/client-api';
+import { formatMoney, formatPercent } from '@/lib/format';
+import { useI18n } from '@/components/providers/i18n-provider';
+import { MetricCard } from '@/components/admin/metric-card';
+
+export default function AdminProfitPage() {
+  const { t } = useI18n();
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<any>(null);
+  const [monthly, setMonthly] = useState<any[]>([]);
+  const [themes, setThemes] = useState<any[]>([]);
+  const [velocity, setVelocity] = useState<any>(null);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [sumData, monthData, themeData, velData] = await Promise.all([
+        apiFetch<any>('/api/profit/summary'),
+        apiFetch<any[]>('/api/profit/monthly'),
+        apiFetch<any[]>('/api/profit/by-theme'),
+        apiFetch<any>('/api/profit/velocity?days=30'),
+      ]);
+      setSummary(sumData);
+      setMonthly(Array.isArray(monthData) ? monthData : []);
+      setThemes(Array.isArray(themeData) ? themeData : []);
+      setVelocity(velData);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  if (loading) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 shadow-lg shadow-emerald-500/20">
+            <Coins className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Profit & Loss</h1>
+            <p className="mt-1 text-sm font-medium text-slate-500">Realized gains, ROI tracking, and sales velocity.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 text-right">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Realized Profit</div>
+            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatMoney(summary?.totalProfit)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard 
+          title="Total Revenue" 
+          value={formatMoney(summary?.totalRevenue)} 
+          subtitle={`${summary?.salesCount ?? 0} total sales completed`} 
+        />
+        <MetricCard 
+          title="Average Profit / Sale" 
+          value={formatMoney(summary?.avgProfitPerSale)} 
+          subtitle="Net gain per transaction" 
+        />
+        <MetricCard 
+          title="Realized ROI" 
+          value={formatPercent(summary?.realizedRoiPercent)} 
+          subtitle="Return on sold capital" 
+        />
+        <MetricCard 
+          title="Sales Velocity (30d)" 
+          value={`${velocity?.soldPerDay ?? 0} / day`} 
+          subtitle={velocity?.estimatedDaysToClear ? `Est. clear time: ${velocity.estimatedDaysToClear} days` : 'Insufficient data'} 
+        />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-3">
+        <div className="xl:col-span-2 rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Revenue & Profit Timeline</h2>
+              <p className="text-sm font-medium text-slate-500">Daily financial performance</p>
+            </div>
+            <div className="px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold tracking-wider uppercase">
+              30 Days
+            </div>
+          </div>
+          <div className="h-[350px] w-full">
+            {monthly.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={monthly} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorProf" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} dy={10} />
+                  <YAxis hide />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '1rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--foreground)', fontWeight: 'bold' }}
+                    itemStyle={{ fontWeight: '900' }}
+                  />
+                  <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                  <Area type="monotone" dataKey="netProfit" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorProf)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-400 font-bold border-2 border-dashed border-[var(--border)] rounded-2xl">
+                No timeline data available
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm flex flex-col">
+          <div className="mb-6">
+            <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Theme Performance</h2>
+            <p className="text-sm font-medium text-slate-500">Profit distribution</p>
+          </div>
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
+            {themes.length > 0 ? (
+              themes.map((t, idx) => (
+                <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-[var(--background)]/50 border border-[var(--border)] hover:border-emerald-500/30 transition-all group">
+                  <div>
+                    <div className="font-black text-[var(--foreground)] leading-tight">{t.theme}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t.salesCount} sales</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-black text-emerald-600 dark:text-emerald-400">{formatMoney(t.profit)}</div>
+                    <div className="text-xs font-bold text-slate-500">ROI {formatPercent(t.roiPercent)}</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-400 font-bold">
+                No theme data
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <div className="rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Unrealized Potential</h2>
+            <Activity className="text-blue-500" />
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="p-5 rounded-2xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
+              <div className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">Expected Revenue</div>
+              <div className="text-3xl font-black text-blue-700 dark:text-blue-400">{formatMoney(summary?.expectedInventoryRevenue)}</div>
+            </div>
+            <div className="p-5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30">
+              <div className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">Expected Profit</div>
+              <div className="text-3xl font-black text-emerald-700 dark:text-emerald-400">{formatMoney(summary?.expectedInventoryProfit)}</div>
+              <div className="text-xs font-bold text-emerald-600/70 mt-1">ROI {formatPercent(summary?.expectedInventoryRoiPercent)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[2.5rem] border border-[var(--border)] bg-slate-900 dark:bg-white p-8 shadow-xl text-white dark:text-slate-900 relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-transform">
+          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+            <ArrowUpRight className="w-32 h-32" />
+          </div>
+          <div className="relative z-10 h-full flex flex-col justify-between">
+            <div>
+              <div className="inline-flex px-3 py-1 bg-white/20 dark:bg-black/10 rounded-lg text-xs font-black uppercase tracking-widest mb-4">
+                Strategy Export
+              </div>
+              <h2 className="text-3xl font-black tracking-tight leading-tight max-w-sm">
+                Generate Full Financial Report
+              </h2>
+            </div>
+            <p className="font-medium opacity-70 max-w-sm">
+              Compile all historical P&L, balance sheets, and tax-ready CSV exports.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -9647,14 +10083,17 @@ export async function POST(request: NextRequest) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
+      email: body.email,
+      password: body.password,
       token: body.token,
+      rememberMe: body.rememberMe,
     }),
     cache: 'no-store',
   });
 
   if (!apiRes.ok) {
     return NextResponse.json(
-      { ok: false, error: 'Invalid token' },
+      { ok: false, error: 'Invalid credentials' },
       { status: 401 },
     );
   }
@@ -9662,11 +10101,16 @@ export async function POST(request: NextRequest) {
   const data = await apiRes.json();
   const response = NextResponse.json({ ok: true, user: data.user });
 
+  const maxAge = body.rememberMe 
+    ? 60 * 60 * 24 * 30 
+    : 60 * 60 * 24;
+
   response.cookies.set('arcturus_admin_token', data.token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
+    maxAge,
   });
 
   return response;
@@ -9697,24 +10141,75 @@ import { appConfig } from '@/lib/config';
 import { getAdminToken } from '@/lib/server-auth';
 
 export async function GET() {
-  const token = await getAdminToken();
+  try {
+    const token = await getAdminToken();
 
-  if (!token) {
+    if (!token) {
+      return NextResponse.json(null, { status: 401 });
+    }
+
+    const res = await fetch(`${appConfig.apiBaseUrl}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      return NextResponse.json(null, { status: 401 });
+    }
+
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    // РЇРєС‰Рѕ Р±РµРєРµРЅРґ (NestJS) РІРёРјРєРЅРµРЅРёР№, fetch РІРёРєРёРЅРµ РїРѕРјРёР»РєСѓ ECONNREFUSED.
+    // РџРµСЂРµС…РѕРїР»СЋС”РјРѕ С—С— С– РїРѕРІРµСЂС‚Р°С”РјРѕ 401, С‰РѕР± AuthGate РєРѕСЂРµРєС‚РЅРѕ РІРёРєРёРЅСѓРІ РЅР°СЃ РЅР° /login
     return NextResponse.json(null, { status: 401 });
   }
+}
 
-  const res = await fetch(`${appConfig.apiBaseUrl}/auth/me`, {
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\api\auth\register\route.ts =====
+
+import { NextRequest, NextResponse } from 'next/server';
+import { appConfig } from '@/lib/config';
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const apiRes = await fetch(`${appConfig.apiBaseUrl}/auth/register`, {
+    method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
     },
+    body: JSON.stringify({
+      name: body.name,
+      email: body.email,
+      password: body.password,
+      inviteCode: body.inviteCode,
+    }),
     cache: 'no-store',
   });
 
-  if (!res.ok) {
-    return NextResponse.json(null, { status: 401 });
+  if (!apiRes.ok) {
+    const errorData = await apiRes.json().catch(() => ({}));
+    return NextResponse.json(
+      { ok: false, error: errorData.message || 'Registration failed' },
+      { status: apiRes.status },
+    );
   }
 
-  return NextResponse.json(await res.json());
+  const data = await apiRes.json();
+  const response = NextResponse.json({ ok: true, user: data.user });
+
+  response.cookies.set('arcturus_admin_token', data.token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 30,
+  });
+
+  return response;
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\api\collaboration\assign\inventory\route.ts =====
@@ -10930,19 +11425,21 @@ export default function IndicesPage() {
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LockKeyhole, ArrowRight, Loader2 } from 'lucide-react';
+import { LockKeyhole, ArrowRight, Loader2, Mail, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/client-api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [value, setValue] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!value.trim()) return;
+    if (!email.trim() || !password.trim()) return;
 
     try {
       setLoading(true);
@@ -10950,7 +11447,7 @@ export default function LoginPage() {
 
       await apiFetch('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ token: value.trim() }),
+        body: JSON.stringify({ email: email.trim(), password: password.trim(), rememberMe }),
       });
 
       router.push('/admin/dashboard');
@@ -10962,52 +11459,93 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 relative overflow-hidden">
-      <div className="absolute inset-0 z-0 bg-gradient-to-tr from-slate-100 to-slate-50" />
+    <main className="flex min-h-screen items-center justify-center px-6 relative overflow-hidden bg-[var(--background)] transition-colors duration-300">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10">
-        <div className="rounded-[2rem] border border-white/60 bg-white/80 backdrop-blur-xl p-10 shadow-soft">
-          <div className="flex justify-center mb-6">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-inner">
-              <LockKeyhole size={32} strokeWidth={2.5} />
+        <div className="rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-2xl p-10 md:p-12 shadow-2xl transition-colors duration-300">
+          <div className="flex justify-center mb-8">
+            <div className="flex h-20 w-20 items-center justify-center rounded-[1.5rem] bg-gradient-to-br from-blue-600 to-indigo-600 shadow-xl shadow-blue-500/30">
+              <LockKeyhole size={36} strokeWidth={2.5} className="text-white" />
             </div>
           </div>
 
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">Admin Access</h1>
-            <p className="mt-2 text-sm text-slate-500">
-              Provide your backend Bearer token to authenticate.
+          <div className="text-center mb-10">
+            <h1 className="text-3xl font-black tracking-tight text-[var(--foreground)]">Terminal Access</h1>
+            <p className="mt-3 text-sm font-medium text-slate-500">
+              Authenticate to manage the Arcturus infrastructure.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="relative">
-              <textarea
-                value={value}
-                onChange={(e) => {
-                  setValue(e.target.value);
-                  setError(null);
-                }}
-                placeholder="eyJh..."
-                spellCheck={false}
-                className="min-h-32 w-full rounded-2xl border border-slate-200 bg-white/50 px-5 py-4 text-sm font-mono text-slate-700 shadow-sm transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400 resize-none"
-              />
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Email Address</label>
+              <div className="relative">
+                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="admin@arcturus.local"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-4 pl-12 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all focus:border-blue-500 focus:bg-[var(--card)] focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Password</label>
+              <div className="relative">
+                <KeyRound size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  required
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="вЂўвЂўвЂўвЂўвЂўвЂўвЂўвЂў"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-4 pl-12 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all focus:border-blue-500 focus:bg-[var(--card)] focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 pb-4">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative flex items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="peer appearance-none w-5 h-5 border-2 border-slate-300 dark:border-slate-700 rounded-md checked:bg-blue-600 checked:border-blue-600 transition-colors"
+                  />
+                  <div className="absolute text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </div>
+                <span className="text-sm font-bold text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Remember me</span>
+              </label>
             </div>
 
             {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-600 flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">
                 {error}
               </div>
             )}
 
             <Button
               type="submit"
-              className="w-full h-14 text-base"
-              disabled={loading || !value.trim()}
+              className="w-full h-14 text-base rounded-xl font-black bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-600/20 active:scale-[0.98]"
+              disabled={loading || !email.trim() || !password.trim()}
             >
               {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-              {loading ? 'Verifying...' : 'Enter System'}
+              {loading ? 'Authenticating...' : 'Enter Workspace'}
               {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
             </Button>
           </form>
@@ -11405,6 +11943,176 @@ export default function PrivacyPolicyPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\app\register\page.tsx =====
+
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { UserPlus, ArrowRight, Loader2, Mail, KeyRound, User, KeySquare } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { apiFetch } from '@/lib/client-api';
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    inviteCode: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setError(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim() || !formData.inviteCode.trim()) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      await apiFetch('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          password: formData.password.trim(),
+          inviteCode: formData.inviteCode.trim()
+        }),
+      });
+
+      router.push('/admin/dashboard');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="flex min-h-screen items-center justify-center px-6 relative overflow-hidden bg-[var(--background)] transition-colors duration-300">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
+
+      <div className="w-full max-w-md relative z-10">
+        <div className="rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-2xl p-10 md:p-12 shadow-2xl transition-colors duration-300">
+          <div className="flex justify-center mb-8">
+            <div className="flex h-20 w-20 items-center justify-center rounded-[1.5rem] bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/30">
+              <UserPlus size={36} strokeWidth={2.5} className="text-white" />
+            </div>
+          </div>
+
+          <div className="text-center mb-10">
+            <h1 className="text-3xl font-black tracking-tight text-[var(--foreground)]">Join Arcturus</h1>
+            <p className="mt-3 text-sm font-medium text-slate-500">
+              Enter your invite code to create an operator account.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Full Name</label>
+              <div className="relative">
+                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  required
+                  name="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="John Doe"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-4 pl-12 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all focus:border-emerald-500 focus:bg-[var(--card)] focus:outline-none focus:ring-4 focus:ring-emerald-500/10 placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Email Address</label>
+              <div className="relative">
+                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  required
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="operator@arcturus.local"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-4 pl-12 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all focus:border-emerald-500 focus:bg-[var(--card)] focus:outline-none focus:ring-4 focus:ring-emerald-500/10 placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Password</label>
+              <div className="relative">
+                <KeyRound size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  required
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="вЂўвЂўвЂўвЂўвЂўвЂўвЂўвЂў"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-4 pl-12 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all focus:border-emerald-500 focus:bg-[var(--card)] focus:outline-none focus:ring-4 focus:ring-emerald-500/10 placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Invite Code</label>
+              <div className="relative">
+                <KeySquare size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  required
+                  name="inviteCode"
+                  type="password"
+                  value={formData.inviteCode}
+                  onChange={handleChange}
+                  placeholder="Ask your admin"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-4 pl-12 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all focus:border-emerald-500 focus:bg-[var(--card)] focus:outline-none focus:ring-4 focus:ring-emerald-500/10 placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400 mt-4">
+                {error}
+              </div>
+            )}
+
+            <div className="pt-4">
+              <Button
+                type="submit"
+                className="w-full h-14 text-base rounded-xl font-black bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-600/20 active:scale-[0.98]"
+                disabled={loading || !formData.name.trim() || !formData.email.trim() || !formData.password.trim() || !formData.inviteCode.trim()}
+              >
+                {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                {loading ? 'Creating Account...' : 'Register'}
+                {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
+              </Button>
+            </div>
+          </form>
+
+          <div className="mt-8 text-center">
+            <p className="text-sm font-medium text-slate-500">
+              Already have an account?{' '}
+              <Link href="/login" className="font-bold text-emerald-600 hover:text-emerald-500 transition-colors">
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    </main>
   );
 }
 
@@ -12686,9 +13394,12 @@ export function AddToRepriceFlowButton({ inventoryItemId }: Props) {
 
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/client-api';
+import { Sparkles, ArrowRight } from 'lucide-react';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export function AiSuggestionsPanel() {
   const [rows, setRows] = useState<any[]>([]);
+  const { t } = useI18n();
 
   useEffect(() => {
     let mounted = true;
@@ -12707,21 +13418,38 @@ export function AiSuggestionsPanel() {
   }, []);
 
   return (
-    <div className="space-y-3 rounded-2xl border border-border bg-white p-5">
-      <div className="text-xl font-black">AI Suggestions</div>
-      {rows.length === 0 ? (
-        <div className="text-sm text-slate-500">No suggestions</div>
-      ) : (
-        rows.map((row) => (
-          <div key={`${row.type}-${row.id}`} className="rounded-xl border border-border p-3">
-            <div className="font-bold">{row.title}</div>
-            <div className="mt-1 text-sm text-slate-500">{row.suggestion}</div>
-            <div className="mt-1 text-xs text-slate-400">
-              {row.type} вЂў {row.score.toFixed(2)}
+    <div className="space-y-4 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm relative overflow-hidden group hover:border-indigo-500/30 transition-colors">
+      <div className="absolute top-0 right-0 p-6 opacity-20 group-hover:opacity-40 transition-opacity">
+        <Sparkles className="w-24 h-24 text-indigo-500" />
+      </div>
+      
+      <div className="relative z-10 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md">
+          <Sparkles className="h-5 w-5 text-white" />
+        </div>
+        <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Arcturus AI</h2>
+      </div>
+
+      <div className="relative z-10 space-y-3 mt-6">
+        {rows.length === 0 ? (
+          <div className="text-sm font-medium text-slate-500">System operating optimally. No urgent AI suggestions.</div>
+        ) : (
+          rows.map((row) => (
+            <div key={`${row.type}-${row.id}`} className="rounded-xl border border-[var(--border)] bg-[var(--background)]/50 p-4 transition-all hover:border-indigo-500/30 hover:bg-[var(--card)]">
+              <div className="flex justify-between items-start gap-4">
+                <div className="font-black text-[var(--foreground)] line-clamp-1">{row.title}</div>
+                <div className="px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
+                  Score {row.score.toFixed(0)}
+                </div>
+              </div>
+              <div className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-400 leading-relaxed">{row.suggestion}</div>
+              <div className="mt-3 flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline uppercase tracking-wider">
+                Review action <ArrowRight size={14} />
+              </div>
             </div>
-          </div>
-        ))
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -12867,16 +13595,10 @@ export function AssignmentTable() {
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
-type Props = {
-  children: React.ReactNode;
-};
-
-export function AuthGate({ children }: Props) {
+export function AuthGate({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     let mounted = true;
@@ -12892,8 +13614,14 @@ export function AuthGate({ children }: Props) {
         }
 
         if (mounted) setReady(true);
-      } catch {
-        if (mounted) router.replace('/login');
+      } catch (error) {
+        // РЇРєС‰Рѕ Р±РµРєРµРЅРґ РЅРµ РІС–РґРїРѕРІС–РІ Р°Р±Рѕ С‚РѕРєРµРЅ РїСЂРѕС‚СѓС… - РџР РРњРЈРЎРћР’Рћ С‡РёСЃС‚РёРјРѕ РєСѓРєСѓ
+        await fetch('/api/auth/logout', { method: 'POST' });
+        
+        // Р РѕР±РёРјРѕ hard redirect (РЅРµ router.push), С‰РѕР± Р·Р±РёС‚Рё РєРµС€ РјС–РґР»РІР°СЂРё
+        if (mounted) {
+          window.location.href = '/login';
+        }
       }
     };
 
@@ -12902,11 +13630,11 @@ export function AuthGate({ children }: Props) {
     return () => {
       mounted = false;
     };
-  }, [router]);
+  }, []);
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 gap-4">
+      <div className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-[var(--background)] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
         <div className="text-sm font-bold uppercase tracking-widest text-slate-400">Authenticating...</div>
       </div>
@@ -13324,9 +14052,9 @@ export function CommandPalette() {
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/client-api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, DatabaseZap } from 'lucide-react';
 import { formatMoney } from '@/lib/format';
 
 interface CompRow {
@@ -13347,18 +14075,18 @@ export function CompsPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const data = await apiFetch<CompRow[]>('/api/comps/sold');
       setRows(Array.isArray(data) ? data : []);
     } catch {
       setRows([]);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleIngest = async () => {
     try {
@@ -13388,45 +14116,50 @@ export function CompsPanel() {
   };
 
   return (
-    <div className="space-y-6 rounded-[2rem] border border-border bg-white p-6 shadow-sm">
-      <div>
-        <h2 className="text-2xl font-black text-slate-900">Sold Comps Ingestion</h2>
-        <p className="mt-1 text-sm font-medium text-slate-500">
-          Manually ingest sold-market examples for pricing intelligence.
-        </p>
+    <div className="space-y-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-sm transition-all hover:shadow-md h-full flex flex-col">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-md">
+          <DatabaseZap className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Comps Ingestion</h2>
+          <p className="text-sm font-medium text-slate-500">
+            Manually ingest sold market examples for ML pricing models.
+          </p>
+        </div>
       </div>
 
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Source Code</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Source Code</label>
           <input
             required
             value={sourceCode}
             onChange={(e) => setSourceCode(e.target.value)}
             placeholder="e.g. ebay_sold"
-            className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-amber-500 outline-none transition-all shadow-sm"
           />
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">JSON Payload (Array of objects)</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">JSON Payload (Array of objects)</label>
           <textarea
             required
             value={payload}
             onChange={(e) => setPayload(e.target.value)}
-            className="min-h-[200px] w-full resize-y rounded-xl border border-border bg-slate-50 p-4 font-mono text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+            className="min-h-[160px] w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 font-mono text-xs md:text-sm text-[var(--foreground)] focus:bg-[var(--card)] focus:border-amber-500 outline-none transition-all shadow-sm custom-scrollbar"
             spellCheck={false}
           />
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">
             {error}
           </div>
         )}
 
         <button
-          className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-black hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-md shadow-slate-900/20 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
           disabled={loading || !sourceCode.trim() || !payload.trim()}
           onClick={handleIngest}
         >
@@ -13435,26 +14168,26 @@ export function CompsPanel() {
         </button>
       </div>
 
-      <div className="pt-6 border-t border-slate-100 space-y-4">
-        <h3 className="text-lg font-bold text-slate-900">Recent Comps</h3>
-        <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2">
+      <div className="pt-6 border-t border-[var(--border)] flex-1 flex flex-col min-h-[250px]">
+        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 ml-1">Recent Ingested Comps</h3>
+        <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
           {rows.length === 0 ? (
-            <div className="text-center text-sm font-medium text-slate-400 py-4 border-2 border-dashed border-slate-200 rounded-xl">
-              No sold comps available.
+            <div className="flex h-32 items-center justify-center text-sm font-bold text-slate-400 border-2 border-dashed border-[var(--border)] rounded-2xl bg-[var(--background)]/50">
+              No sold comps available
             </div>
           ) : (
             rows.slice(0, 20).map((row) => (
-              <div key={row.id} className="flex flex-col gap-2 rounded-xl border border-border bg-slate-50 p-4 transition-colors hover:bg-white hover:shadow-sm">
+              <div key={row.id} className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)]/50 p-4 transition-all hover:bg-[var(--card)] hover:shadow-md hover:border-amber-500/30">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="font-bold text-slate-900 line-clamp-2">{row.title}</div>
-                  <div className="font-black text-emerald-600 whitespace-nowrap">{formatMoney(row.soldPrice)}</div>
+                  <div className="font-black text-[var(--foreground)] leading-tight line-clamp-2">{row.title}</div>
+                  <div className="font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{formatMoney(row.soldPrice)}</div>
                 </div>
-                <div className="flex items-center justify-between text-xs font-medium text-slate-500 mt-1">
+                <div className="flex items-center justify-between mt-1">
                   <div className="flex items-center gap-2">
-                    <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-mono">{row.sourceCode ?? 'вЂ”'}</span>
-                    <span>Set: {row.extractedSetNo ?? 'вЂ”'}</span>
+                    <span className="bg-slate-200/50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md font-mono text-[10px] font-black uppercase tracking-wider">{row.sourceCode ?? 'вЂ”'}</span>
+                    <span className="text-xs font-bold text-slate-500">Set: {row.extractedSetNo ?? 'вЂ”'}</span>
                   </div>
-                  <span>{row.soldAt ? new Date(row.soldAt).toLocaleDateString('uk-UA') : 'вЂ”'}</span>
+                  <span className="text-[10px] font-bold text-slate-400">{row.soldAt ? new Date(row.soldAt).toLocaleDateString('uk-UA') : 'вЂ”'}</span>
                 </div>
               </div>
             ))
@@ -13991,37 +14724,37 @@ export function DataTable<T>({
 }: Props<T>) {
   if (rows.length === 0) {
     return (
-      <div className="flex items-center justify-center p-8 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 text-sm font-medium text-slate-400">
+      <div className="flex items-center justify-center p-12 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--background)]/50 text-sm font-bold text-slate-400">
         {emptyText}
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-border bg-white shadow-sm">
+    <div className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
       <table className="min-w-full border-separate border-spacing-0">
         <thead>
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
-                className={`border-b border-border bg-slate-50/80 px-5 py-4 text-left text-xs font-black uppercase tracking-wider text-slate-500 ${column.className ?? ''}`}
+                className={`border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-sm px-5 py-4 text-left text-xs font-black uppercase tracking-widest text-slate-500 ${column.className ?? ''}`}
               >
                 {column.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-border">
+        <tbody className="divide-y divide-[var(--border)]">
           {rows.map((row, index) => (
             <tr
               key={getRowKey ? getRowKey(row, index) : index}
-              className="bg-white transition-colors hover:bg-slate-50/80"
+              className="bg-[var(--card)] transition-colors hover:bg-[var(--background)]/80 group"
             >
               {columns.map((column) => (
                 <td
                   key={column.key}
-                  className={`px-5 py-4 align-top text-sm text-slate-800 ${column.className ?? ''}`}
+                  className={`px-5 py-4 align-middle text-sm text-[var(--foreground)] ${column.className ?? ''}`}
                 >
                   {column.render(row)}
                 </td>
@@ -14171,7 +14904,7 @@ export function DealExplainer() {
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/client-api';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { StatusPill } from '@/components/admin/status-pill';
@@ -14193,7 +14926,7 @@ export function DealsPanel() {
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -14205,17 +14938,17 @@ export function DealsPanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleRunDetection = async () => {
     try {
       setDetecting(true);
       setError(null);
-      await apiFetch('/api/deals', { method: 'POST' });
+      await apiFetch('/api/deals/detect', { method: 'POST' });
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Detection failed');
@@ -14225,10 +14958,10 @@ export function DealsPanel() {
   };
 
   return (
-    <div className="space-y-6 rounded-[2rem] border border-border bg-white p-6 shadow-sm flex flex-col h-full">
+    <div className="flex flex-col h-full space-y-6 rounded-[2rem] border border-border bg-white p-6 md:p-8 shadow-sm transition-all hover:shadow-md">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-slate-900">Detected Deals</h2>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Detected Deals</h2>
           <p className="mt-1 text-sm font-medium text-slate-500">
             High ROI matches from scanner requiring immediate action.
           </p>
@@ -14236,7 +14969,7 @@ export function DealsPanel() {
         <button
           disabled={detecting || loading}
           onClick={handleRunDetection}
-          className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50 whitespace-nowrap"
+          className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-bold text-white transition-all hover:bg-black hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 whitespace-nowrap shadow-md shadow-slate-900/20"
         >
           <RefreshCw className={`h-4 w-4 ${detecting ? 'animate-spin' : ''}`} />
           {detecting ? 'Detecting...' : 'Run Detection'}
@@ -14244,46 +14977,46 @@ export function DealsPanel() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm">
           {error}
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto space-y-3 pr-2 min-h-[300px]">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-2 min-h-[300px] custom-scrollbar">
         {loading ? (
-          <div className="flex h-32 items-center justify-center">
+          <div className="flex h-40 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           </div>
         ) : rows.length === 0 ? (
-          <div className="flex h-32 flex-col items-center justify-center text-center">
-            <div className="text-slate-400 font-medium">No profitable deals detected.</div>
-            <div className="text-xs text-slate-400 mt-1">Run scanner or wait for new data.</div>
+          <div className="flex h-40 flex-col items-center justify-center text-center rounded-2xl border-2 border-dashed border-slate-100 bg-slate-50/50">
+            <div className="text-slate-500 font-bold text-base">No profitable deals detected</div>
+            <div className="text-sm font-medium text-slate-400 mt-1">Run scanner or wait for new market data</div>
           </div>
         ) : (
           rows.map((row, index) => (
-            <div key={row.id ?? index} className="group flex flex-col gap-3 rounded-xl border border-border bg-slate-50 p-4 transition-colors hover:bg-white hover:shadow-sm">
+            <div key={row.id ?? index} className="group flex flex-col gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-5 transition-all duration-200 hover:bg-white hover:shadow-lg hover:border-blue-100">
               <div className="flex items-start justify-between gap-4">
-                <div className="font-bold text-slate-900 leading-tight">
+                <div className="font-black text-slate-900 text-lg leading-tight group-hover:text-blue-600 transition-colors">
                   {row.listing?.title ?? row.watchlistItem?.titleSnapshot ?? 'Unknown Deal'}
                 </div>
                 <StatusPill value={row.action ?? 'Pending'} />
               </div>
               
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-slate-200">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Source</span>
-                  <span className="font-mono text-sm font-medium text-slate-700">{row.listing?.sourceCode ?? 'вЂ”'}</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-slate-200/60">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Source</span>
+                  <span className="font-mono text-sm font-bold text-slate-700">{row.listing?.sourceCode ?? 'вЂ”'}</span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Buy</span>
-                  <span className="text-sm font-bold text-slate-900">{formatMoney(row.buyPrice)}</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Buy</span>
+                  <span className="text-sm font-black text-slate-900">{formatMoney(row.buyPrice)}</span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Target</span>
-                  <span className="text-sm font-bold text-blue-600">{formatMoney(row.targetSellPrice)}</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Target</span>
+                  <span className="text-sm font-black text-blue-600">{formatMoney(row.targetSellPrice)}</span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">ROI</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">ROI</span>
                   <span className="text-sm font-black text-emerald-600">{formatPercent(row.roiPercent)}</span>
                 </div>
               </div>
@@ -15476,16 +16209,16 @@ type Props = {
 
 export function MetricCard({ title, value, subtitle }: Props) {
   return (
-    <Card className="transition-all duration-300 hover:shadow-md hover:border-blue-200 group">
+    <Card className="transition-all duration-300 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-800 group bg-[var(--card)] border-[var(--border)]">
       <CardContent className="p-6">
-        <div className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-blue-600 transition-colors">
+        <div className="text-xs font-black uppercase tracking-widest text-slate-500 group-hover:text-blue-500 transition-colors">
           {title}
         </div>
-        <div className="mt-3 text-4xl font-black tracking-tighter text-slate-900">
+        <div className="mt-3 text-4xl font-black tracking-tighter text-[var(--foreground)]">
           {value}
         </div>
         {subtitle && (
-          <div className="mt-2 text-xs font-medium text-slate-400">
+          <div className="mt-2 text-xs font-bold text-slate-400">
             {subtitle}
           </div>
         )}
@@ -15792,7 +16525,7 @@ export function OpportunityStrategyBlock({ item }: Props) {
 
 import { useState } from 'react';
 import { apiFetch } from '@/lib/client-api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Calculator } from 'lucide-react';
 import { formatMoney, formatPercent } from '@/lib/format';
 
 interface AnalyzerResult {
@@ -15800,6 +16533,8 @@ interface AnalyzerResult {
   roi?: number;
   profit?: number;
   classification?: string;
+  floorPrice?: number;
+  stretchPrice?: number;
 }
 
 function parseNumber(value: string, fallback: number | null = null): number | null {
@@ -15847,18 +16582,23 @@ export function PriceAnalyzer() {
   };
 
   return (
-    <div className="space-y-4 rounded-[2rem] border border-border bg-white p-6 shadow-sm">
-      <div>
-        <h2 className="text-xl font-black text-slate-900">Simple Price Analyzer</h2>
-        <p className="mt-1 text-sm font-medium text-slate-500">
-          Quickly calculate raw profit, ROI, and class rating without market bounds.
-        </p>
+    <div className="space-y-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-sm transition-all hover:shadow-md h-full">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md">
+          <Calculator className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Scenario Analyzer</h2>
+          <p className="text-sm font-medium text-slate-500">
+            Simulate ROI, profit margins, and ideal exit pricing.
+          </p>
+        </div>
       </div>
 
-      <form onSubmit={handleAnalyze} className="space-y-4">
+      <form onSubmit={handleAnalyze} className="space-y-5">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Buy Price (в‚ґ)</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Entry Price (в‚ґ)</label>
             <input
               required
               type="number"
@@ -15866,24 +16606,24 @@ export function PriceAnalyzer() {
               value={buy}
               onChange={(e) => setBuy(e.target.value)}
               placeholder="0.00"
-              className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 outline-none transition-all"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-indigo-500 outline-none transition-all shadow-sm"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Expected Sell (в‚ґ)</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Target Exit (в‚ґ)</label>
             <input
               type="number"
               step="0.01"
               value={sell}
               onChange={(e) => setSell(e.target.value)}
-              placeholder="Optional"
-              className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 outline-none transition-all"
+              placeholder="Auto-calculate if empty"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-indigo-500 outline-none transition-all shadow-sm"
             />
           </div>
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-600">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">
             {error}
           </div>
         )}
@@ -15891,30 +16631,30 @@ export function PriceAnalyzer() {
         <button
           type="submit"
           disabled={loading || !buy}
-          className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-md shadow-indigo-600/20"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-          {loading ? 'Analyzing...' : 'Run Analysis'}
+          {loading ? 'Computing...' : 'Run Simulation'}
         </button>
       </form>
 
       {result && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Target Sell</div>
-            <div className="mt-1 text-lg font-bold text-slate-900">{formatMoney(result.suggestedSellPrice)}</div>
+        <div className="animate-in fade-in zoom-in-95 duration-300 grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-[var(--border)]">
+          <div className="bg-[var(--background)]/50 p-4 rounded-2xl border border-[var(--border)]">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Target Sell</div>
+            <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">{formatMoney(result.suggestedSellPrice)}</div>
           </div>
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Est. Profit</div>
-            <div className="mt-1 text-lg font-bold text-emerald-600">{formatMoney(result.profit)}</div>
+          <div className="bg-[var(--background)]/50 p-4 rounded-2xl border border-[var(--border)]">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Est. Profit</div>
+            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">{formatMoney(result.profit)}</div>
           </div>
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">ROI</div>
-            <div className="mt-1 text-lg font-bold text-emerald-600">{formatPercent(result.roi)}</div>
+          <div className="bg-[var(--background)]/50 p-4 rounded-2xl border border-[var(--border)]">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">ROI</div>
+            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">{formatPercent(result.roi)}</div>
           </div>
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Classification</div>
-            <div className="mt-1 text-sm font-bold text-indigo-600 bg-indigo-50 inline-block px-2 py-1 rounded-md">{result.classification ?? 'вЂ”'}</div>
+          <div className="bg-[var(--background)]/50 p-4 rounded-2xl border border-[var(--border)]">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Class</div>
+            <div className="text-sm font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 mt-1">{result.classification ?? 'вЂ”'}</div>
           </div>
         </div>
       )}
@@ -16491,9 +17231,9 @@ export function RowActions({
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/client-api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ReceiptText } from 'lucide-react';
 import { formatMoney } from '@/lib/format';
 import type { SalesStats } from '@/lib/types';
 
@@ -16511,19 +17251,18 @@ export function SalesRegistrationPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const data = await apiFetch<SalesStats>('/api/sales/stats');
       setStats(data);
     } catch {
-      // safe fallback
       setStats({ totalProfit: 0, salesCount: 0 });
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadStats();
-  }, []);
+  }, [loadStats]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16559,28 +17298,33 @@ export function SalesRegistrationPanel() {
   };
 
   return (
-    <div className="space-y-6 rounded-[2rem] border border-border bg-white p-6 shadow-sm">
-      <div>
-        <h2 className="text-2xl font-black text-slate-900">Register Sale</h2>
-        <p className="mt-1 text-sm font-medium text-slate-500">
-          Manually register a sale to update inventory and profit metrics.
-        </p>
+    <div className="space-y-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-sm transition-all hover:shadow-md">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md">
+          <ReceiptText className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Register Point of Sale</h2>
+          <p className="text-sm font-medium text-slate-500">
+            Manually log offline or unlinked transactions.
+          </p>
+        </div>
       </div>
 
-      <form onSubmit={handleRegister} className="space-y-4">
+      <form onSubmit={handleRegister} className="space-y-5">
         <div className="space-y-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Inventory Item ID</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Inventory ID</label>
           <input
             required
             value={inventoryItemId}
             onChange={(e) => setInventoryItemId(e.target.value)}
             placeholder="e.g. inv-12345"
-            className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-emerald-500 outline-none transition-all shadow-sm"
           />
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Final Sale Price (в‚ґ)</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Final Sale Price (в‚ґ)</label>
           <input
             required
             type="number"
@@ -16588,35 +17332,35 @@ export function SalesRegistrationPanel() {
             value={sellPrice}
             onChange={(e) => setSellPrice(e.target.value)}
             placeholder="0.00"
-            className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-emerald-500 outline-none transition-all shadow-sm"
           />
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">
             {error}
           </div>
         )}
 
         <button
           type="submit"
-          className="flex items-center justify-center gap-2 w-full sm:w-auto rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-md shadow-emerald-600/20"
           disabled={loading || !inventoryItemId.trim() || !sellPrice.trim()}
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-          {loading ? 'Registering...' : 'Register Sale'}
+          {loading ? 'Processing...' : 'Complete Transaction'}
         </button>
       </form>
 
-      <div className="pt-6 border-t border-slate-100">
-        <div className="rounded-2xl bg-slate-50 border border-slate-200 p-5 flex flex-col sm:flex-row justify-between gap-4">
+      <div className="pt-6 border-t border-[var(--border)]">
+        <div className="rounded-2xl bg-[var(--background)]/50 border border-[var(--border)] p-5 flex flex-col sm:flex-row justify-between gap-6">
           <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Sales</div>
-            <div className="text-2xl font-black text-slate-900 mt-1">{stats?.salesCount ?? 0}</div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Gross Deals</div>
+            <div className="text-2xl font-black text-[var(--foreground)] mt-1">{stats?.salesCount ?? 0}</div>
           </div>
           <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Profit</div>
-            <div className="text-2xl font-black text-emerald-600 mt-1">{formatMoney(stats?.totalProfit)}</div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Gross Yield</div>
+            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{formatMoney(stats?.totalProfit)}</div>
           </div>
         </div>
       </div>
@@ -16628,7 +17372,7 @@ export function SalesRegistrationPanel() {
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { ScannerJob, ScannerSource } from '@/lib/types';
 import { apiFetch } from '@/lib/client-api';
 import { Loader2 } from 'lucide-react';
@@ -16646,7 +17390,7 @@ export function ScannerPanel() {
   const [loading, setLoading] = useState<'source' | 'job' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [sourcesRes, jobsRes] = await Promise.all([
         apiFetch<ScannerSource[]>('/api/scanner/sources'),
@@ -16665,22 +17409,22 @@ export function ScannerPanel() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load scanner data');
     }
-  };
+  }, [sourceCode]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleAddSource = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code || !name) return;
+    if (!code.trim() || !name.trim()) return;
     
     try {
       setLoading('source');
       setError(null);
       await apiFetch('/api/scanner/sources', {
         method: 'POST',
-        body: JSON.stringify({ code, name, type: 'manual', enabled: true }),
+        body: JSON.stringify({ code: code.trim(), name: name.trim(), type: 'manual', enabled: true }),
       });
       setCode('');
       setName('');
@@ -16694,14 +17438,14 @@ export function ScannerPanel() {
 
   const handleEnqueueScan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sourceCode) return;
+    if (!sourceCode.trim()) return;
 
     try {
       setLoading('job');
       setError(null);
       await apiFetch('/api/scanner/jobs', {
         method: 'POST',
-        body: JSON.stringify({ sourceCode, query }),
+        body: JSON.stringify({ sourceCode: sourceCode.trim(), query: query.trim() }),
       });
       setQuery('');
       await loadData();
@@ -16713,56 +17457,54 @@ export function ScannerPanel() {
   };
 
   return (
-    <div className="space-y-8 rounded-[2rem] border border-border bg-white p-6 shadow-sm">
+    <div className="flex flex-col space-y-8 rounded-[2rem] border border-border bg-white p-6 md:p-8 shadow-sm transition-all hover:shadow-md">
       <div>
-        <h2 className="text-2xl font-black text-slate-900">Scanner Control</h2>
+        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Scanner Control</h2>
         <p className="mt-1 text-sm font-medium text-slate-500">Manage scraping sources and enqueue parsing jobs.</p>
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleAddSource} className="space-y-4">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Add New Source</h3>
+      <form onSubmit={handleAddSource} className="space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+        <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Add New Source</h3>
         <div className="grid gap-3 md:grid-cols-2">
           <input
             required
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder="Source Code (e.g. ebay_uk)"
-            className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm"
           />
           <input
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Display Name (e.g. eBay UK)"
-            className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm"
           />
         </div>
         <button
           type="submit"
-          disabled={loading === 'source' || !code || !name}
-          className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50"
+          disabled={loading === 'source' || !code.trim() || !name.trim()}
+          className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-slate-900 px-8 py-3 text-sm font-bold text-white transition-all hover:bg-black hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-md shadow-slate-900/20"
         >
           {loading === 'source' && <Loader2 className="h-4 w-4 animate-spin" />}
           {loading === 'source' ? 'Adding...' : 'Add Source'}
         </button>
       </form>
 
-      <div className="h-px w-full bg-slate-100" />
-
-      <form onSubmit={handleEnqueueScan} className="space-y-4">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Enqueue Scan Job</h3>
+      <form onSubmit={handleEnqueueScan} className="space-y-4 bg-blue-50/50 p-5 rounded-2xl border border-blue-100/50">
+        <h3 className="text-xs font-black uppercase tracking-widest text-blue-800/60">Enqueue Scan Job</h3>
         <div className="grid gap-3 md:grid-cols-2">
           <select
             required
             value={sourceCode}
             onChange={(e) => setSourceCode(e.target.value)}
-            className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer"
+            className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all cursor-pointer shadow-sm"
           >
             <option value="" disabled>Select Source</option>
             {sources.map((source) => (
@@ -16773,49 +17515,49 @@ export function ScannerPanel() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search Query (Optional)"
-            className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+            className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-medium focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm"
           />
         </div>
         <button
           type="submit"
           disabled={loading === 'job' || !sourceCode}
-          className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+          className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-3 text-sm font-bold text-white transition-all hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-md shadow-blue-600/20"
         >
           {loading === 'job' && <Loader2 className="h-4 w-4 animate-spin" />}
           {loading === 'job' ? 'Enqueueing...' : 'Enqueue Scan'}
         </button>
       </form>
 
-      <div className="grid gap-6 md:grid-cols-2 pt-4">
-        <div className="space-y-3">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Active Sources</h3>
-          <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
+      <div className="grid gap-6 md:grid-cols-2 pt-6 border-t border-slate-100">
+        <div className="space-y-3 flex flex-col h-full">
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Active Sources</h3>
+          <div className="flex-1 max-h-[300px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
             {sources.length === 0 ? (
-              <div className="text-sm text-slate-400">No sources configured.</div>
+              <div className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-slate-100 text-sm font-bold text-slate-400">No sources configured</div>
             ) : (
               sources.map((source) => (
-                <div key={source.code} className="flex items-center justify-between rounded-xl border border-border bg-slate-50 p-3">
+                <div key={source.code} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-white hover:border-slate-200">
                   <div className="font-bold text-slate-900">{source.name}</div>
-                  <div className="font-mono text-xs text-slate-500">{source.code}</div>
+                  <div className="font-mono text-[10px] font-black tracking-widest text-slate-400 uppercase bg-slate-200/50 px-2 py-1 rounded-md">{source.code}</div>
                 </div>
               ))
             )}
           </div>
         </div>
 
-        <div className="space-y-3">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Recent Jobs</h3>
-          <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
+        <div className="space-y-3 flex flex-col h-full">
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Recent Jobs</h3>
+          <div className="flex-1 max-h-[300px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
             {jobs.length === 0 ? (
-              <div className="text-sm text-slate-400">No recent jobs.</div>
+              <div className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-slate-100 text-sm font-bold text-slate-400">No recent jobs</div>
             ) : (
               jobs.map((job) => (
-                <div key={job.id} className="flex flex-col gap-2 rounded-xl border border-border bg-slate-50 p-3">
+                <div key={job.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-white hover:border-slate-200">
                   <div className="flex items-center justify-between">
-                    <div className="font-mono text-xs font-bold text-slate-900">{job.sourceCode}</div>
+                    <div className="font-mono text-xs font-black text-slate-700 uppercase tracking-wider">{job.sourceCode}</div>
                     <StatusPill value={job.status} />
                   </div>
-                  {job.query && <div className="text-sm text-slate-600 truncate">{job.query}</div>}
+                  {job.query && <div className="text-sm font-medium text-slate-500 truncate mt-1">Q: {job.query}</div>}
                 </div>
               ))
             )}
@@ -16830,10 +17572,10 @@ export function ScannerPanel() {
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { ScannerJob } from '@/lib/types';
 import { apiFetch } from '@/lib/client-api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, PlaySquare } from 'lucide-react';
 import { StatusPill } from '@/components/admin/status-pill';
 
 interface ListingPayload {
@@ -16858,7 +17600,7 @@ export function ScannerRunnerPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     try {
       const data = await apiFetch<ScannerJob[]>('/api/scanner/jobs');
       const rows = Array.isArray(data) ? data : [];
@@ -16869,11 +17611,11 @@ export function ScannerRunnerPanel() {
     } catch {
       setJobs([]);
     }
-  };
+  }, [jobId]);
 
   useEffect(() => {
     loadJobs();
-  }, []);
+  }, [loadJobs]);
 
   const handleRun = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16900,20 +17642,25 @@ export function ScannerRunnerPanel() {
   };
 
   return (
-    <div className="space-y-6 rounded-[2rem] border border-border bg-white p-6 shadow-sm">
-      <div>
-        <h2 className="text-xl font-black text-slate-900">Manual Scanner Runner</h2>
-        <p className="mt-1 text-sm font-medium text-slate-500">Inject custom JSON payload directly into a scanner job.</p>
+    <div className="space-y-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-sm transition-all hover:shadow-md h-full flex flex-col">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 shadow-md">
+          <PlaySquare className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Manual Payload Runner</h2>
+          <p className="text-sm font-medium text-slate-500">Inject custom JSON payload directly into an active scanner job.</p>
+        </div>
       </div>
 
-      <form onSubmit={handleRun} className="space-y-4">
+      <form onSubmit={handleRun} className="space-y-5 flex-1 flex flex-col">
         <div className="space-y-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Target Job</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Target Job</label>
           <select
             required
             value={jobId}
             onChange={(e) => setJobId(e.target.value)}
-            className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 outline-none cursor-pointer"
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-emerald-500 outline-none cursor-pointer transition-all shadow-sm"
           >
             <option value="" disabled>Select active job</option>
             {jobs.map((job) => (
@@ -16924,19 +17671,19 @@ export function ScannerRunnerPanel() {
           </select>
         </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Listings JSON</label>
+        <div className="space-y-1.5 flex-1 flex flex-col">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Listings JSON</label>
           <textarea
             required
             value={payload}
             onChange={(e) => setPayload(e.target.value)}
-            className="min-h-[240px] w-full resize-y rounded-xl border border-border bg-slate-50 p-4 font-mono text-sm focus:bg-white focus:border-blue-500 outline-none"
+            className="flex-1 min-h-[220px] w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 font-mono text-xs md:text-sm text-[var(--foreground)] focus:bg-[var(--card)] focus:border-emerald-500 outline-none transition-all shadow-sm custom-scrollbar"
             spellCheck={false}
           />
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">
             {error}
           </div>
         )}
@@ -16944,7 +17691,7 @@ export function ScannerRunnerPanel() {
         <button
           type="submit"
           disabled={loading || !jobId || !payload.trim()}
-          className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-md shadow-emerald-600/20"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           {loading ? 'Executing...' : 'Run Payload'}
@@ -16968,9 +17715,9 @@ type Props = {
 
 export function SectionCard({ title, children, className, contentClassName }: Props) {
   return (
-    <Card className={cn('overflow-hidden', className)}>
-      <div className="border-b border-border bg-slate-50/50 px-6 py-5">
-        <h2 className="text-xl font-black text-slate-900">{title}</h2>
+    <Card className={cn('overflow-hidden bg-[var(--card)] border-[var(--border)] transition-all duration-300 hover:shadow-lg hover:border-blue-500/30', className)}>
+      <div className="border-b border-[var(--border)] bg-[var(--background)]/50 backdrop-blur-md px-6 py-5">
+        <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">{title}</h2>
       </div>
       <CardContent className={cn('p-6', contentClassName)}>
         {children}
@@ -16985,6 +17732,7 @@ export function SectionCard({ title, children, className, contentClassName }: Pr
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useI18n } from '@/components/providers/i18n-provider';
 import {
   Activity,
   AlertTriangle,
@@ -17012,65 +17760,66 @@ import {
 import { NotificationBadge } from '@/components/admin/notification-badge';
 import { cn } from '@/lib/utils';
 
-const items = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: Gauge },
-  { href: '/admin/inventory', label: 'Inventory', icon: Package },
-  { href: '/admin/watchlist', label: 'Watchlist', icon: Wallet },
-  { href: '/admin/opportunities/buy', label: 'Buy Opps', icon: ChartColumn },
-  { href: '/admin/opportunities/sell', label: 'Sell Opps', icon: ChartColumn },
-  { href: '/admin/flows/purchase', label: 'Purchase Flow', icon: Boxes },
-  { href: '/admin/flows/reprice', label: 'Reprice Flow', icon: RefreshCw },
-  { href: '/admin/flows/review', label: 'Review Flow', icon: ClipboardList },
-  { href: '/admin/repricer', label: 'Repricer', icon: BadgeDollarSign },
-  { href: '/admin/scanner', label: 'Scanner', icon: ScanSearch },
-  { href: '/admin/operator/unresolved', label: 'Operator', icon: SearchCheck },
-  { href: '/admin/sources/health', label: 'Source Health', icon: Activity },
-  { href: '/admin/sources/runs', label: 'Source Runs', icon: DatabaseZap },
-  { href: '/admin/sources/errors', label: 'Sync Errors', icon: AlertTriangle },
-  { href: '/admin/sync', label: 'Sync Center', icon: RefreshCw },
-  { href: '/admin/planning/daily', label: 'Daily Plan', icon: ClipboardList },
-  { href: '/admin/profit', label: 'Profit', icon: Coins },
-  { href: '/admin/allocation', label: 'Allocation', icon: ChartNoAxesCombined },
-  { href: '/admin/reserves', label: 'Reserves', icon: MailCheck },
-  { href: '/admin/orders/board', label: 'Order Board', icon: KanbanSquare },
-  { href: '/admin/sales', label: 'Sales', icon: ReceiptText },
-  { href: '/admin/notifications', label: 'Notifications', icon: Bell },
-  { href: '/admin/collaboration', label: 'Collaboration', icon: Handshake },
-  { href: '/admin/activity', label: 'Activity', icon: ScrollText },
-];
-
 export function AdminSidebar() {
   const pathname = usePathname();
+  const { t } = useI18n();
+
+  const items = [
+    { href: '/admin/dashboard', label: 'admin.dashboard', icon: Gauge },
+    { href: '/admin/inventory', label: 'admin.inventory', icon: Package },
+    { href: '/admin/watchlist', label: 'admin.watchlist', icon: Wallet },
+    { href: '/admin/opportunities/buy', label: 'admin.opportunities', icon: ChartColumn },
+    { href: '/admin/opportunities/sell', label: 'admin.opportunities', icon: ChartColumn },
+    { href: '/admin/flows/purchase', label: 'admin.flows', icon: Boxes },
+    { href: '/admin/flows/reprice', label: 'admin.flows', icon: RefreshCw },
+    { href: '/admin/flows/review', label: 'admin.flows', icon: ClipboardList },
+    { href: '/admin/repricer', label: 'sidebar.valuation', icon: BadgeDollarSign },
+    { href: '/admin/scanner', label: 'admin.scanner', icon: ScanSearch },
+    { href: '/admin/operator/unresolved', label: 'nav.auth', icon: SearchCheck },
+    { href: '/admin/sources/health', label: 'sidebar.analytics', icon: Activity },
+    { href: '/admin/sources/runs', label: 'sidebar.analytics', icon: DatabaseZap },
+    { href: '/admin/sources/errors', label: 'admin.sync', icon: AlertTriangle },
+    { href: '/admin/sync', label: 'admin.sync', icon: RefreshCw },
+    { href: '/admin/planning/daily', label: 'sidebar.reports', icon: ClipboardList },
+    { href: '/admin/profit', label: 'admin.profit', icon: Coins },
+    { href: '/admin/allocation', label: 'sidebar.portfolio', icon: ChartNoAxesCombined },
+    { href: '/admin/reserves', label: 'admin.reserves', icon: MailCheck },
+    { href: '/admin/orders/board', label: 'admin.orders', icon: KanbanSquare },
+    { href: '/admin/sales', label: 'admin.sales', icon: ReceiptText },
+    { href: '/admin/notifications', label: 'account.sysPref', icon: Bell },
+    { href: '/admin/collaboration', label: 'admin.collab', icon: Handshake },
+    { href: '/admin/activity', label: 'admin.activity', icon: ScrollText },
+  ];
 
   return (
-    <aside className="w-72 shrink-0 border-r border-border bg-white flex flex-col h-screen">
-      <div className="border-b border-border px-6 py-6">
-        <div className="text-2xl font-black tracking-tight text-slate-900">Arcturus</div>
-        <div className="mt-1 text-xs font-bold uppercase tracking-widest text-slate-400">Control Panel</div>
+    <aside className="w-72 shrink-0 border-r border-[var(--border)] bg-[var(--card)] flex flex-col h-screen transition-colors duration-300">
+      <div className="border-b border-[var(--border)] px-6 py-6">
+        <div className="text-2xl font-black tracking-tight text-[var(--foreground)]">Arcturus</div>
+        <div className="mt-1 text-xs font-bold uppercase tracking-widest text-blue-500">Control Panel</div>
       </div>
 
-      <div className="border-b border-border px-4 py-4">
+      <div className="border-b border-[var(--border)] px-4 py-4">
         <div className="grid grid-cols-3 gap-2">
           <Link
             href="/admin/notifications"
-            className="relative flex items-center justify-center rounded-xl border border-border bg-slate-50 p-2.5 transition-colors hover:bg-slate-100 hover:border-slate-300"
+            className="relative flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--background)] p-2.5 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800"
           >
-            <Bell size={18} className="text-slate-600" />
+            <Bell size={18} className="text-slate-500 dark:text-slate-400" />
             <NotificationBadge />
           </Link>
 
           <Link
             href="/admin/collaboration"
-            className="flex items-center justify-center rounded-xl border border-border bg-slate-50 p-2.5 transition-colors hover:bg-slate-100 hover:border-slate-300"
+            className="flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--background)] p-2.5 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800"
           >
-            <Users size={18} className="text-slate-600" />
+            <Users size={18} className="text-slate-500 dark:text-slate-400" />
           </Link>
 
           <Link
             href="/admin/scanner"
-            className="flex items-center justify-center rounded-xl border border-border bg-slate-50 p-2.5 transition-colors hover:bg-slate-100 hover:border-slate-300"
+            className="flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--background)] p-2.5 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800"
           >
-            <ScanSearch size={18} className="text-slate-600" />
+            <ScanSearch size={18} className="text-slate-500 dark:text-slate-400" />
           </Link>
         </div>
       </div>
@@ -17085,14 +17834,14 @@ export function AdminSidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200',
+                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200',
                 active
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-[var(--background)] hover:text-[var(--foreground)]'
               )}
             >
               <Icon size={18} strokeWidth={active ? 2.5 : 2} />
-              <span>{item.label}</span>
+              <span>{t(item.label as any)}</span>
             </Link>
           );
         })}
@@ -17103,43 +17852,44 @@ export function AdminSidebar() {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\components\admin\status-pill.tsx =====
 
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge'; // <-- РћСЃСЊ С‚СѓС‚ РїСЂР°РІРёР»СЊРЅРёР№ С–РјРїРѕСЂС‚
 import { cn } from '@/lib/utils';
 
 type Props = {
-  value: string;
+  value?: string | null;
 };
 
 export function StatusPill({ value }: Props) {
-  const normalized = value.toLowerCase();
+  // Р—Р°С…РёСЃС‚ РІС–Рґ null/undefined
+  const normalized = String(value || 'unknown').toLowerCase();
   
   const statusConfig: Record<string, string> = {
-    pending: 'bg-amber-100 text-amber-800 border-amber-200',
-    queued: 'bg-amber-100 text-amber-800 border-amber-200',
-    bought: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    listed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    reviewed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    success: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    approved: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    failed: 'bg-red-100 text-red-800 border-red-200',
-    error: 'bg-red-100 text-red-800 border-red-200',
-    rejected: 'bg-red-100 text-red-800 border-red-200',
-    stale: 'bg-slate-200 text-slate-800 border-slate-300',
-    inactive: 'bg-slate-200 text-slate-800 border-slate-300',
-    contacted: 'bg-blue-100 text-blue-800 border-blue-200',
-    running: 'bg-blue-100 text-blue-800 border-blue-200',
-    active: 'bg-blue-100 text-blue-800 border-blue-200',
-    buy_now: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    sell: 'bg-blue-100 text-blue-800 border-blue-200',
-    hold: 'bg-slate-200 text-slate-800 border-slate-300',
-    reprice: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    review: 'bg-amber-100 text-amber-800 border-amber-200',
+    pending: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
+    queued: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
+    bought: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+    listed: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+    reviewed: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+    success: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+    approved: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+    failed: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
+    error: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
+    rejected: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
+    stale: 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+    inactive: 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+    contacted: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+    running: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+    active: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+    buy_now: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+    sell: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+    hold: 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+    reprice: 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800',
+    review: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
   };
 
   const className = Object.entries(statusConfig).find(([key]) => normalized.includes(key))?.[1] 
-    || 'bg-slate-100 text-slate-700 border-slate-200';
+    || 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
 
-  return <Badge className={cn('px-2.5 py-1', className)}>{value}</Badge>;
+  return <Badge className={cn('px-2.5 py-1', className)}>{value || 'UNKNOWN'}</Badge>;
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\components\admin\suggestions-panel.tsx =====
@@ -17309,11 +18059,15 @@ export function TableSearchForm({ placeholder = 'Search...' }: Props) {
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CommandPalette } from '@/components/admin/command-palette';
-import { LogOut, RefreshCcw } from 'lucide-react';
+import { LogOut, RefreshCcw, Sun, Moon, Globe } from 'lucide-react';
 import { apiFetch } from '@/lib/client-api';
+import { useI18n } from '@/components/providers/i18n-provider';
+import { useTheme } from '@/components/providers/theme-provider';
 
 export function AdminTopbar() {
   const router = useRouter();
+  const { t, lang, setLang } = useI18n();
+  const { theme, setTheme } = useTheme();
 
   const handleLogout = async () => {
     try {
@@ -17324,35 +18078,54 @@ export function AdminTopbar() {
     }
   };
 
+  const toggleLanguage = () => {
+    setLang(lang === 'en' ? 'uk' : 'en');
+  };
+
   return (
     <>
       <CommandPalette />
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-white/80 backdrop-blur-xl px-6 py-4">
+      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-xl px-6 py-4 transition-colors duration-300">
         <div>
-          <div className="text-lg font-black text-slate-900">Arcturus Workspace</div>
+          <div className="text-lg font-black text-[var(--foreground)]">{t('admin.workspace' as any)}</div>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-sm font-medium text-slate-500">Quick actions:</span>
-            <kbd className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-500">вЊK</kbd>
+            <span className="text-sm font-medium text-slate-500">{t('admin.quickActions' as any)}:</span>
+            <kbd className="rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-0.5 font-mono text-[11px] font-bold text-slate-500">вЊK</kbd>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button 
+            onClick={toggleLanguage}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors uppercase border border-transparent hover:border-[var(--border)]"
+          >
+            <Globe size={16} />
+            {lang}
+          </button>
+
+          <button 
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors border border-transparent hover:border-[var(--border)]"
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
           <Button
             variant="secondary"
-            className="gap-2"
+            className="gap-2 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 shadow-none border border-[var(--border)]"
             onClick={() => router.refresh()}
           >
             <RefreshCcw size={16} />
-            <span className="hidden sm:inline">Refresh Data</span>
+            <span className="hidden sm:inline">{t('admin.refresh' as any)}</span>
           </Button>
 
           <Button
             variant="outline"
-            className="gap-2 border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+            className="gap-2 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 hover:border-red-300 dark:bg-red-900/20 dark:border-red-900/50 dark:hover:bg-red-900/40"
             onClick={handleLogout}
           >
             <LogOut size={16} />
-            <span className="hidden sm:inline">Logout</span>
+            <span className="hidden sm:inline">{t('admin.logout' as any)}</span>
           </Button>
         </div>
       </div>
@@ -17481,6 +18254,7 @@ import { formatMoney, formatPercent } from '@/lib/format';
 import { apiFetch } from '@/lib/client-api';
 import type { WatchlistItem, ApiResponse } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type Props = {
   rows: WatchlistItem[];
@@ -17559,7 +18333,11 @@ export function WatchlistBulkTable({ rows }: Props) {
   };
 
   if (rows.length === 0) {
-    return <div className="text-sm text-slate-500">Watchlist is empty</div>;
+    return (
+      <div className="flex items-center justify-center p-12 rounded-[2rem] border-2 border-dashed border-[var(--border)] bg-[var(--background)]/50 text-sm font-bold text-slate-400">
+        Watchlist is currently empty
+      </div>
+    );
   }
 
   return (
@@ -17571,11 +18349,11 @@ export function WatchlistBulkTable({ rows }: Props) {
       />
 
       {selected.size > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2">
+        <div className="mb-4 flex flex-wrap gap-3 animate-in fade-in slide-in-from-top-2">
           <button
             disabled={bulkLoading}
             onClick={() => bulkSetActive(true)}
-            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-bold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40 transition-colors shadow-sm disabled:opacity-60"
           >
             {bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             Activate Selected
@@ -17583,7 +18361,7 @@ export function WatchlistBulkTable({ rows }: Props) {
           <button
             disabled={bulkLoading}
             onClick={() => bulkSetActive(false)}
-            className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-5 py-2.5 text-sm font-bold text-amber-700 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/40 transition-colors shadow-sm disabled:opacity-60"
           >
             {bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             Deactivate Selected
@@ -17591,7 +18369,7 @@ export function WatchlistBulkTable({ rows }: Props) {
           <button
             disabled={bulkLoading}
             onClick={bulkDelete}
-            className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-bold text-red-700 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors shadow-sm disabled:opacity-60"
           >
             {bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             Delete Selected
@@ -17599,14 +18377,14 @@ export function WatchlistBulkTable({ rows }: Props) {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-border bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <table className="min-w-full border-separate border-spacing-0">
           <thead>
             <tr>
-              <th className="border-b border-border bg-slate-50/80 px-4 py-4 text-left">
+              <th className="border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-5 py-4 text-left">
                 <input
                   type="checkbox"
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
                   checked={selected.size > 0 && selected.size === rows.length}
                   ref={(input) => {
                     if (input) input.indeterminate = selected.size > 0 && selected.size < rows.length;
@@ -17614,61 +18392,74 @@ export function WatchlistBulkTable({ rows }: Props) {
                   onChange={toggleAll}
                 />
               </th>
-              {['Item', 'Desired Buy', 'Max Buy', 'Target Sell', 'Target ROI', 'Status', 'Priority', 'Actions'].map((header) => (
-                <th key={header} className="border-b border-border bg-slate-50/80 px-4 py-4 text-left text-xs font-black uppercase tracking-wider text-slate-500">
+              {['Asset', 'Desired Entry', 'Max Entry', 'Target Exit', 'Est. ROI', 'Status', 'Priority', ''].map((header) => (
+                <th key={header} className="border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-5 py-4 text-left text-xs font-black uppercase tracking-widest text-slate-500">
                   {header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((row) => (
-              <tr key={row.id} className="transition-colors hover:bg-slate-50/80 group">
-                <td className="px-4 py-4 align-top text-sm text-slate-800">
-                  <input
-                    type="checkbox"
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    checked={selectedSet.has(row.id)}
-                    onChange={() => toggle(row.id)}
-                  />
-                </td>
-                <td className="px-4 py-4 align-top text-sm text-slate-800">
-                  <div className="flex flex-col">
-                    <Link href={`/admin/watchlist/${row.id}`} className="font-bold text-slate-900 hover:text-blue-600 hover:underline">
-                      {row.titleSnapshot || row.itemId}
-                    </Link>
-                    <span className="mt-1 text-xs font-medium text-slate-400 font-mono">{row.itemId}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-4 align-top text-sm font-medium text-emerald-600">
-                  {formatMoney(row.desiredBuyPrice)}
-                </td>
-                <td className="px-4 py-4 align-top text-sm font-bold text-slate-900">
-                  {formatMoney(row.maxBuyPrice)}
-                </td>
-                <td className="px-4 py-4 align-top text-sm font-medium text-blue-600">
-                  {formatMoney(row.targetSellPrice)}
-                </td>
-                <td className="px-4 py-4 align-top text-sm font-bold text-slate-700">
-                  {row.targetSellPrice && row.maxBuyPrice > 0
-                    ? formatPercent(((row.targetSellPrice - row.maxBuyPrice) / row.maxBuyPrice) * 100)
-                    : 'вЂ”'}
-                </td>
-                <td className="px-4 py-4 align-top text-sm text-slate-800">
-                  <StatusPill value={row.active ? 'active' : 'inactive'} />
-                </td>
-                <td className="px-4 py-4 align-top text-sm font-mono font-bold text-slate-700">
-                  {row.priority}
-                </td>
-                <td className="px-4 py-4 align-top text-sm text-slate-800">
-                  <div className="flex flex-wrap gap-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-                    <WatchlistEditDialog item={row} />
-                    <AddToPurchaseFlowButton watchlistItemId={row.id} />
-                    <WatchlistDeleteButton id={row.id} />
-                  </div>
-                </td>
-              </tr>
-            ))}
+          <tbody className="divide-y divide-[var(--border)]">
+            {rows.map((row) => {
+              const roi = row.targetSellPrice && row.maxBuyPrice > 0
+                ? ((row.targetSellPrice - row.maxBuyPrice) / row.maxBuyPrice) * 100
+                : null;
+
+              return (
+                <tr key={row.id} className="transition-colors hover:bg-[var(--background)]/50 group">
+                  <td className="px-5 py-4 align-middle">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                      checked={selectedSet.has(row.id)}
+                      onChange={() => toggle(row.id)}
+                    />
+                  </td>
+                  <td className="px-5 py-4 align-middle">
+                    <div className="flex flex-col gap-1 max-w-[250px]">
+                      <Link href={`/admin/watchlist/${row.id}`} className="font-black text-[var(--foreground)] hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
+                        {row.titleSnapshot || row.itemId}
+                      </Link>
+                      <span className="text-[10px] font-bold text-slate-400 font-mono tracking-widest uppercase">{row.itemId}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 align-middle text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatMoney(row.desiredBuyPrice)}
+                  </td>
+                  <td className="px-5 py-4 align-middle text-sm font-black text-[var(--foreground)]">
+                    {formatMoney(row.maxBuyPrice)}
+                  </td>
+                  <td className="px-5 py-4 align-middle text-sm font-bold text-blue-600 dark:text-blue-400">
+                    {formatMoney(row.targetSellPrice)}
+                  </td>
+                  <td className="px-5 py-4 align-middle">
+                    <span className={cn(
+                      "inline-flex px-2.5 py-1 rounded-lg text-xs font-black",
+                      roi && roi >= 30 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
+                      roi && roi > 0 ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                      "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                    )}>
+                      {roi ? formatPercent(roi) : 'вЂ”'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 align-middle">
+                    <StatusPill value={row.active ? 'active' : 'inactive'} />
+                  </td>
+                  <td className="px-5 py-4 align-middle">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--background)] font-mono text-xs font-black text-[var(--foreground)] border border-[var(--border)]">
+                      {row.priority}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 align-middle">
+                    <div className="flex flex-wrap items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                      <WatchlistEditDialog item={row} />
+                      <AddToPurchaseFlowButton watchlistItemId={row.id} />
+                      <WatchlistDeleteButton id={row.id} />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -18185,6 +18976,51 @@ export function CartSidebar() {
   );
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\web\components\layout\client-layout-wrapper.tsx =====
+
+'use client';
+
+import { usePathname } from 'next/navigation';
+import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
+import { CartSidebar } from "@/components/cart/cart-sidebar";
+import { Ticker } from "@/components/layout/ticker";
+import { CommandMenu } from "@/components/layout/command-menu";
+import { Sidebar } from "@/components/layout/sidebar";
+
+export function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  
+  // РџРµСЂРµРІС–СЂСЏС”РјРѕ, С‡Рё РјРё РЅР° СЃС‚РѕСЂС–РЅРєР°С… Р°РІС‚РѕСЂРёР·Р°С†С–С— Р°Р±Рѕ Р°РґРјС–РЅРєРё
+  const isAuthOrAdmin = pathname?.startsWith('/admin') || pathname === '/login' || pathname === '/register';
+
+  // РЇРєС‰Рѕ С†Рµ Р°РґРјС–РЅРєР° Р°Р±Рѕ Р»РѕРіС–РЅ - РІС–РґРґР°С”РјРѕ РїСЂРѕСЃС‚Рѕ РєРѕРЅС‚РµРЅС‚ Р±РµР· РјР°РіР°Р·РёРЅРЅРѕРіРѕ РѕР±РІС–СЃСѓ
+  if (isAuthOrAdmin) {
+    return <>{children}</>;
+  }
+
+  // РЇРєС‰Рѕ С†Рµ Р·РІРёС‡Р°Р№РЅС– СЃС‚РѕСЂС–РЅРєРё РјР°РіР°Р·РёРЅСѓ - РјР°Р»СЋС”РјРѕ РїРѕРІРЅРёР№ UI
+  return (
+    <>
+      <div className="sticky top-0 z-40 w-full">
+        <Ticker />
+        <Navbar />
+      </div>
+      <div className="flex flex-1 w-full mx-auto relative">
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-w-0">
+          <main className="flex-1">
+            {children}
+          </main>
+          <Footer />
+        </div>
+      </div>
+      <CommandMenu />
+      <CartSidebar />
+    </>
+  );
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\components\layout\command-menu.tsx =====
 
 'use client';
@@ -18687,19 +19523,26 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    setMounted(true);
     try {
       const saved = localStorage.getItem('arcturus_cart');
-      if (saved) setItems(JSON.parse(saved));
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setItems(parsed);
+        }
+      }
     } catch {}
   }, []);
 
   useEffect(() => {
-    if (isMounted) localStorage.setItem('arcturus_cart', JSON.stringify(items));
-  }, [items, isMounted]);
+    if (mounted) {
+      localStorage.setItem('arcturus_cart', JSON.stringify(items));
+    }
+  }, [items, mounted]);
 
   const addItem = useCallback((newItem: Omit<CartItem, 'quantity'>) => {
     setItems((prev) => {
@@ -18719,12 +19562,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = useCallback(() => setItems([]), []);
 
-  const { totalItems, totalPrice } = useMemo(() => ({
-    totalItems: items.reduce((sum, i) => sum + i.quantity, 0),
-    totalPrice: items.reduce((sum, i) => sum + i.price * i.quantity, 0),
-  }), [items]);
-
-  if (!isMounted) return null;
+  const { totalItems, totalPrice } = useMemo(() => {
+    const safeItems = Array.isArray(items) ? items : [];
+    return {
+      totalItems: safeItems.reduce((sum, i) => sum + (i.quantity || 0), 0),
+      totalPrice: safeItems.reduce((sum, i) => sum + (i.price || 0) * (i.quantity || 0), 0),
+    };
+  }, [items]);
 
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, isCartOpen, setIsCartOpen, totalItems, totalPrice }}>
@@ -18756,10 +19600,8 @@ const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Language>('en');
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const saved = localStorage.getItem('arcturus_lang') as Language;
     if (saved && (saved === 'en' || saved === 'uk')) {
       setLangState(saved);
@@ -18775,11 +19617,11 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   };
 
   const t = (key: DictKey): string => {
-    return dict[lang][key] || dict['en'][key] || key;
+    // Р‘РµР·РїРµС‡РЅРµ РѕС‚СЂРёРјР°РЅРЅСЏ РїРµСЂРµРєР»Р°РґСѓ Р· fallback
+    return dict[lang]?.[key] || dict['en']?.[key] || key;
   };
 
-  if (!mounted) return <>{children}</>;
-
+  // Р—РђР’Р–Р”Р РїРѕРІРµСЂС‚Р°С”РјРѕ РїСЂРѕРІР°Р№РґРµСЂ
   return (
     <I18nContext.Provider value={{ lang, setLang, t }}>
       {children}
@@ -18856,11 +19698,10 @@ type ThemeProviderState = {
 const ThemeProviderContext = createContext<ThemeProviderState | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light');
-  const [mounted, setMounted] = useState(false);
+  // РЎС‚Р°РІРёРјРѕ РґРµС„РѕР»С‚РЅРµ Р·РЅР°С‡РµРЅРЅСЏ, С‰РѕР± РєРѕРЅС‚РµРєСЃС‚ Р·Р°РІР¶РґРё С–СЃРЅСѓРІР°РІ
+  const [theme, setThemeState] = useState<Theme>('dark'); 
 
   useEffect(() => {
-    setMounted(true);
     const savedTheme = localStorage.getItem('arcturus_theme') as Theme;
     if (savedTheme) {
       setThemeState(savedTheme);
@@ -18878,8 +19719,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
   };
 
-  if (!mounted) return <>{children}</>;
-
+  // Р—РђР’Р–Р”Р РїРѕРІРµСЂС‚Р°С”РјРѕ РїСЂРѕРІР°Р№РґРµСЂ
   return (
     <ThemeProviderContext.Provider value={{ theme, setTheme }}>
       {children}
@@ -20062,6 +20902,8 @@ export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivEleme
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\web\components\ui\empty-state.tsx =====
 
+import { PackageSearch } from 'lucide-react';
+
 type Props = {
   title: string;
   description?: string;
@@ -20069,10 +20911,13 @@ type Props = {
 
 export function EmptyState({ title, description }: Props) {
   return (
-    <div className="rounded-3xl border border-border bg-white p-10 text-center">
-      <div className="text-xl font-black">{title}</div>
+    <div className="flex flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-[var(--border)] bg-[var(--card)]/50 p-16 text-center">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 mb-6">
+        <PackageSearch size={32} />
+      </div>
+      <div className="text-2xl font-black text-[var(--foreground)]">{title}</div>
       {description ? (
-        <div className="mt-2 text-sm text-slate-500">{description}</div>
+        <div className="mt-2 text-base font-medium text-slate-500 max-w-sm">{description}</div>
       ) : null}
     </div>
   );
@@ -20695,7 +21540,24 @@ export const dict = {
     'dynamic.msg2': 'New arrival in catalog',
     'dynamic.msg3': 'Purchase completed: LEGO Ninjago City Gardens',
     'fomo.justBought': 'Just Purchased',
-    'fomo.exclusive': 'Exclusive Set'
+    'fomo.exclusive': 'Exclusive Set',
+    'admin.dashboard': 'Dashboard',
+    'admin.inventory': 'Inventory',
+    'admin.watchlist': 'Watchlist',
+    'admin.opportunities': 'Opportunities',
+    'admin.flows': 'Execution Flows',
+    'admin.scanner': 'Scanner',
+    'admin.sync': 'Sync Center',
+    'admin.profit': 'Profit & Loss',
+    'admin.reserves': 'Reserves',
+    'admin.orders': 'Orders',
+    'admin.sales': 'Sales',
+    'admin.collab': 'Team & Users',
+    'admin.activity': 'Activity Logs',
+    'admin.workspace': 'Arcturus Workspace',
+    'admin.quickActions': 'Quick actions',
+    'admin.refresh': 'Refresh Data',
+    'admin.logout': 'Logout',
   },
   uk: {
     'nav.catalog': 'РљР°С‚Р°Р»РѕРі',
@@ -20967,7 +21829,24 @@ export const dict = {
     'dynamic.msg2': 'РќРѕРІРµ РЅР°РґС…РѕРґР¶РµРЅРЅСЏ Сѓ РєР°С‚Р°Р»РѕР·С–',
     'dynamic.msg3': 'РћС„РѕСЂРјР»РµРЅРѕ РїРѕРєСѓРїРєСѓ: LEGO Ninjago City Gardens',
     'fomo.justBought': 'Р©РѕР№РЅРѕ РїСЂРёРґР±Р°РЅРѕ',
-    'fomo.exclusive': 'Р•РєСЃРєР»СЋР·РёРІРЅРёР№ РЅР°Р±С–СЂ'
+    'fomo.exclusive': 'Р•РєСЃРєР»СЋР·РёРІРЅРёР№ РЅР°Р±С–СЂ',
+    'admin.dashboard': 'Р”Р°С€Р±РѕСЂРґ',
+    'admin.inventory': 'РЎРєР»Р°Рґ',
+    'admin.watchlist': 'РЎРїРёСЃРѕРє СЃРїРѕСЃС‚РµСЂРµР¶РµРЅРЅСЏ',
+    'admin.opportunities': 'РњРѕР¶Р»РёРІРѕСЃС‚С–',
+    'admin.flows': 'Р РѕР±РѕС‡С– РїСЂРѕС†РµСЃРё',
+    'admin.scanner': 'РЎРєР°РЅРЅРµСЂ СЂРёРЅРєСѓ',
+    'admin.sync': 'Р¦РµРЅС‚СЂ СЃРёРЅС…СЂРѕРЅС–Р·Р°С†С–С—',
+    'admin.profit': 'РџСЂРёР±СѓС‚РѕРє С‚Р° Р—Р±РёС‚РєРё',
+    'admin.reserves': 'Р РµР·РµСЂРІРё РєР»С–С”РЅС‚С–РІ',
+    'admin.orders': 'Р—Р°РјРѕРІР»РµРЅРЅСЏ',
+    'admin.sales': 'РЈСЃРїС–С€РЅС– РїСЂРѕРґР°Р¶С–',
+    'admin.collab': 'РљРѕРјР°РЅРґР°',
+    'admin.activity': 'Р›РѕРіРё Р°РєС‚РёРІРЅРѕСЃС‚С–',
+    'admin.workspace': 'Р РѕР±РѕС‡РёР№ РїСЂРѕСЃС‚С–СЂ Arcturus',
+    'admin.quickActions': 'РЁРІРёРґРєС– РґС–С—',
+    'admin.refresh': 'РћРЅРѕРІРёС‚Рё РґР°РЅС–',
+    'admin.logout': 'Р’РёР№С‚Рё',
   }
 };
 
