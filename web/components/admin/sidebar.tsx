@@ -97,7 +97,8 @@ export function AdminSidebar() {
       <nav className="flex-1 overflow-y-auto space-y-1 p-3 custom-scrollbar">
         {items.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          // ФІКС ТУТ: Безпечна перевірка pathname, яка не крашить додаток
+          const active = pathname === item.href || (pathname?.startsWith(`${item.href}/`) ?? false);
 
           return (
             <Link
