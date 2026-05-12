@@ -1,77 +1,98 @@
 'use client';
 
-import { useState } from 'react';
-import { InventoryItem } from '@/lib/types';
-import { useCart } from '../providers/cart-provider';
-import { ShoppingCart, Eye, Package } from 'lucide-react';
-import { ProductModal } from './product-modal';
+import Image from 'next/image';
+import Link from 'next/link';
+import { ShoppingCart, Package } from 'lucide-react';
+import { formatMoney } from '@/lib/format';
+import { useCart } from '@/lib/store/cart';
 
-export function ProductCard({ item }: { item: InventoryItem }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const { addItem } = useCart();
+interface ProductCardProps {
+  item: {
+    id: string;
+    slug: string;
+    title: string;
+    theme: string;
+    sellPrice: number;
+    condition: string;
+    images: { imageUrl: string; isPrimary: boolean }[];
+  };
+}
+
+export function ProductCard({ item }: ProductCardProps) {
+  const addItem = useCart((state) => state.addItem);
+  const cartItems = useCart((state) => state.items);
   
-  const price = item.expectedSalePriceManual ?? item.totalCost;
-  const imageUrl = item.images?.[0]?.imageUrl;
+  const inCart = cartItems.some((i) => i.id === item.id);
+  const primaryImage = item.images.find((img) => img.isPrimary)?.imageUrl || item.images[0]?.imageUrl;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     e.stopPropagation();
-    addItem({
-      id: item.id,
-      title: item.titleSnapshot,
-      price,
-      imageUrl,
-    });
+    if (!inCart) {
+      addItem({
+        id: item.id,
+        title: item.title,
+        price: item.sellPrice,
+        imageUrl: primaryImage,
+        theme: item.theme,
+      });
+    }
   };
 
   return (
-    <>
-      <div 
-        onClick={() => setIsModalOpen(true)}
-        className="group relative flex flex-col bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full"
-      >
-        <div className="aspect-square bg-slate-50 dark:bg-slate-900 relative p-4 sm:p-6 flex items-center justify-center">
-          {item.sealed && (
-            <span className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 px-2 py-1 sm:px-2.5 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-400 text-[10px] sm:text-xs font-black tracking-wider uppercase rounded-md">
-              Sealed
-            </span>
-          )}
-          
-          <div className="absolute bottom-3 right-3 sm:top-4 sm:right-4 sm:bottom-auto z-10 flex flex-row sm:flex-col gap-2 sm:opacity-0 sm:group-hover:opacity-100 sm:translate-x-4 sm:group-hover:translate-x-0 transition-all duration-300">
-            <button 
-              onClick={handleAddToCart}
-              className="p-2.5 sm:p-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white rounded-full shadow-lg transition-colors border border-slate-100 dark:border-slate-700"
-            >
-              <ShoppingCart size={18} className="w-5 h-5 sm:w-4 sm:h-4" />
-            </button>
-            <button 
-              className="hidden sm:flex p-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-900 dark:hover:bg-white hover:text-white dark:hover:text-slate-900 rounded-full shadow-lg transition-colors border border-slate-100 dark:border-slate-700"
-            >
-              <Eye size={18} />
-            </button>
+    <Link 
+      href={`/store/catalog/${item.slug}`} 
+      className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20"
+    >
+      <div className="relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-900">
+        {primaryImage ? (
+          <Image
+            src={primaryImage}
+            alt={item.title}
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-slate-300 dark:text-slate-700">
+            <Package className="h-12 w-12" aria-hidden="true" />
           </div>
-
-          {imageUrl ? (
-            <img src={imageUrl} alt={item.titleSnapshot} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 mix-blend-multiply dark:mix-blend-normal" />
-          ) : (
-            <Package size={48} className="text-slate-300 dark:text-slate-700" />
-          )}
-        </div>
-
-        <div className="p-4 sm:p-5 flex flex-col flex-1">
-          <div className="text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wider">{item.condition}</div>
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base leading-tight mb-3 sm:mb-4 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-            {item.titleSnapshot}
-          </h3>
-          
-          <div className="mt-auto flex items-center justify-between">
-            <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
-              {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH', maximumFractionDigits: 0 }).format(price)}
-            </span>
-          </div>
+        )}
+        <div className="absolute left-4 top-4">
+          <span className="inline-flex items-center rounded-lg bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[var(--foreground)] shadow-sm backdrop-blur-md dark:bg-black/90">
+            {item.theme}
+          </span>
         </div>
       </div>
 
-      <ProductModal item={item} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-    </>
+      <div className="flex flex-1 flex-col p-6">
+        <div className="flex-1">
+          <h3 className="line-clamp-2 text-lg font-black leading-tight text-[var(--foreground)] transition-colors group-hover:text-blue-600">
+            {item.title}
+          </h3>
+          <p className="mt-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+            {item.condition}
+          </p>
+        </div>
+
+        <div className="mt-6 flex items-center justify-between">
+          <span className="text-2xl font-black text-[var(--foreground)]">
+            {formatMoney(item.sellPrice)}
+          </span>
+          <button
+            onClick={handleAddToCart}
+            disabled={inCart}
+            aria-label={inCart ? "Item in cart" : "Add to cart"}
+            className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-all ${
+              inCart 
+                ? 'cursor-not-allowed bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' 
+                : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/20 active:scale-95'
+            }`}
+          >
+            <ShoppingCart className="h-5 w-5" fill={inCart ? 'currentColor' : 'none'} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+    </Link>
   );
 }

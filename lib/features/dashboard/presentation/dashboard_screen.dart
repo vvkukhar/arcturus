@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/widgets/inventory_flow_dashboard_card.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -17,11 +16,8 @@ class DashboardScreen extends ConsumerWidget {
       ),
       drawer: const AppDrawer(),
       floatingActionButton: const GlobalQuickAddFab(),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: const [
-          InventoryFlowDashboardCard(),
-        ],
+      body: const Center(
+        child: Text('Welcome to Arcturus Dashboard', style: TextStyle(color: Colors.white54, fontSize: 16)),
       ),
     );
   }

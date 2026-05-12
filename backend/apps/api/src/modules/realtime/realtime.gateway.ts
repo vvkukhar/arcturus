@@ -1,131 +1,103 @@
 import {
-  ConnectedSocket,
-  MessageBody,
-  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-
-const corsEnv = process.env.CORS_ORIGINS ?? '';
+import { PrismaService } from '../prisma/prisma.service';
+import * as crypto from 'crypto';
 
 @WebSocketGateway({
   cors: {
-    origin: corsEnv === '*' ? '*' : corsEnv.split(',').map((o) => o.trim()).filter(Boolean),
+    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
     credentials: true,
   },
+  transports: ['websocket', 'polling'],
 })
-export class RealtimeGateway {
+export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
-  handleConnection(client: Socket): void {
-    client.emit('connected', {
-      ok: true,
-      socketId: client.id,
-      time: new Date().toISOString(),
-    });
+  constructor(private readonly prisma: PrismaService) {}
+
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
   }
 
-  @SubscribeMessage('ping')
-  ping(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() body: unknown,
-  ): void {
-    client.emit('pong', {
-      ok: true,
-      body,
-      time: new Date().toISOString(),
-    });
+  async handleConnection(client: Socket) {
+    try {
+      const token = client.handshake.auth?.token;
+      
+      if (!token) {
+        client.disconnect();
+        return;
+      }
+
+      const tokenHash = this.hashToken(token);
+      const session = await this.prisma.userSession.findUnique({
+        where: { tokenHash },
+        include: { user: true },
+      });
+
+      if (!session || !session.user.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
+        client.disconnect();
+        return;
+      }
+
+      // Юзер валідний, підключаємо до кімнати для розсилок
+      client.join('admin_broadcast');
+      
+    } catch (error) {
+      client.disconnect();
+    }
   }
 
-  emitCustom(event: string, payload: unknown): void {
-    this.server?.emit(event, payload);
+  handleDisconnect(client: Socket) {
+    client.leave('admin_broadcast');
   }
 
-  emitDashboardRefresh(reason: string, payload?: unknown): void {
-    this.server?.emit('dashboard_refresh', {
-      reason,
-      payload,
-      time: new Date().toISOString(),
-    });
+  emitCustom(event: string, payload: any) {
+    this.server.to('admin_broadcast').emit(event, payload);
   }
 
-  emitOpportunityRefresh(reason: string, payload?: unknown): void {
-    this.server?.emit('opportunities_refresh', {
-      reason,
-      payload,
-      time: new Date().toISOString(),
-    });
+  emitDashboardRefresh(reason: string) {
+    this.server.to('admin_broadcast').emit('dashboard_refresh', { reason, timestamp: Date.now() });
   }
 
-  emitInventoryRefresh(payload?: unknown): void {
-    this.server?.emit('inventory_refresh', {
-      payload,
-      time: new Date().toISOString(),
-    });
+  emitFlowRefresh(flow: string) {
+    this.server.to('admin_broadcast').emit('flow_refresh', { flow, timestamp: Date.now() });
   }
 
-  emitInventoryUpdated(payload: unknown): void {
-    this.server?.emit('inventory_updated', payload);
-    this.emitInventoryRefresh(payload);
+  emitInventoryRefresh(payload: any) {
+    this.server.to('admin_broadcast').emit('inventory_updated', { ...payload, timestamp: Date.now() });
   }
 
-  emitWatchlistRefresh(payload?: unknown): void {
-    this.server?.emit('watchlist_refresh', {
-      payload,
-      time: new Date().toISOString(),
-    });
+  emitInventoryUpdated(payload: any) {
+    this.server.to('admin_broadcast').emit('inventory_updated', { ...payload, timestamp: Date.now() });
   }
 
-  emitWatchlistUpdated(payload: unknown): void {
-    this.server?.emit('watchlist_updated', payload);
-    this.emitWatchlistRefresh(payload);
+  emitWatchlistUpdated(payload: any) {
+    this.server.to('admin_broadcast').emit('watchlist_updated', { ...payload, timestamp: Date.now() });
   }
 
-  emitSaleRegistered(payload: unknown): void {
-    this.server?.emit('sale_registered', payload);
+  emitWatchlistRefresh(payload: any) {
+    this.server.to('admin_broadcast').emit('watchlist_updated', { ...payload, timestamp: Date.now() });
   }
 
-  emitNotification(payload: unknown): void {
-    this.server?.emit('notification', payload);
+  emitSaleRegistered(payload: any) {
+    this.server.to('admin_broadcast').emit('sale_registered', { ...payload, timestamp: Date.now() });
   }
 
-  emitListingsRefresh(payload?: unknown): void {
-    this.server?.emit('listings_refresh', {
-      payload,
-      time: new Date().toISOString(),
-    });
+  emitOpportunityRefresh(reason: string) {
+    this.server.to('admin_broadcast').emit('opportunity_refresh', { reason, timestamp: Date.now() });
   }
 
-  emitFlowRefresh(flow: 'purchase' | 'reprice' | 'review' | 'all'): void {
-    this.server?.emit('flow_refresh', {
-      flow,
-      time: new Date().toISOString(),
-    });
+  emitItemRefresh(itemId: string, reason: string) {
+    this.server.to('admin_broadcast').emit('item_refresh', { itemId, reason, timestamp: Date.now() });
   }
 
-  emitItemRefresh(itemId: string, reason: string): void {
-    this.server?.emit('item_refresh', {
-      itemId,
-      reason,
-      time: new Date().toISOString(),
-    });
-  }
-
-  emitSyncRefresh(reason: string, payload?: unknown): void {
-    this.server?.emit('sync_refresh', {
-      reason,
-      payload,
-      time: new Date().toISOString(),
-    });
-  }
-
-  emitSourceHealthRefresh(reason: string, payload?: unknown): void {
-    this.server?.emit('source_health_refresh', {
-      reason,
-      payload,
-      time: new Date().toISOString(),
-    });
+  emitListingsRefresh(payload: any) {
+    this.server.emit('listings_refresh', { ...payload, timestamp: Date.now() });
   }
 }

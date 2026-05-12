@@ -1,278 +1,155 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
-import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
-import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
-import 'package:lego_trading_manager/core/widgets/details_action_bar.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/features/inventory/application/inventory_duplicate_provider.dart';
-import 'package:lego_trading_manager/features/inventory/application/item_lifecycle_provider.dart';
-import 'package:lego_trading_manager/features/inventory/application/item_timeline_provider.dart';
-import 'package:lego_trading_manager/features/inventory/presentation/edit_item_screen.dart';
-import 'package:lego_trading_manager/features/inventory/presentation/widgets/item_lifecycle_card.dart';
-import 'package:lego_trading_manager/features/inventory/presentation/widgets/item_timeline_card.dart';
-import 'package:lego_trading_manager/features/item_details/application/item_detail_insights_provider.dart';
-import 'package:lego_trading_manager/features/item_details/presentation/widgets/item_detail_header_card.dart';
-import 'package:lego_trading_manager/features/item_details/presentation/widgets/item_detail_insight_card.dart';
-import 'package:lego_trading_manager/features/item_details/presentation/widgets/item_detail_notes_card.dart';
-import 'package:lego_trading_manager/features/item_details/presentation/widgets/item_detail_tags_card.dart';
-import 'package:lego_trading_manager/features/settings/application/app_settings_controller.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/features/inventory/presentation/item_form_screen.dart';
 
-class ItemDetailsScreen extends ConsumerStatefulWidget {
+class ItemDetailsScreen extends ConsumerWidget {
   final ItemModel item;
-
-  const ItemDetailsScreen({
-    super.key,
-    required this.item,
-  });
+  const ItemDetailsScreen({super.key, required this.item});
 
   @override
-  ConsumerState<ItemDetailsScreen> createState() => _ItemDetailsScreenState();
-}
-
-class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
-  late ItemModel item;
-
-  @override
-  void initState() {
-    super.initState();
-    item = widget.item;
-  }
-
-  String _formatNullable(Object? value) {
-    if (value == null) return '-';
-    final text = value.toString().trim();
-    return text.isEmpty ? '-' : text;
-  }
-
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 140,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                color: Colors.white70,
-              ),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  void _updateItem(ItemModel next) {
-    ref.read(inventoryRepositoryProvider).updateItem(next);
-    setState(() {
-      item = next;
-    });
-  }
-
-  void _deleteItem(BuildContext context) {
-    ref.read(inventoryRepositoryProvider).deleteItem(item.id);
-    Navigator.of(context).pop({'deleted': true});
-  }
-
-  Future<void> _confirmDelete(BuildContext context, I18nNotifier i18n) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(i18n.t('common.deleteConfirmTitle')),
-          content: Text(i18n.t('common.deleteConfirmText', {'title': item.title})),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(i18n.t('common.cancel')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(i18n.t('common.delete')),
-            ),
-          ],
-        );
-      },
-    );
-    if (shouldDelete == true && context.mounted) {
-      _deleteItem(context);
-    }
-  }
-
-  Future<void> _openEdit() async {
-    final result = await Navigator.of(context).push<ItemModel>(
-      MaterialPageRoute(
-        builder: (_) => EditItemScreen(item: item),
-      ),
-    );
-    if (result != null) {
-      _updateItem(result);
-    }
-  }
-
-  void _duplicate() {
-    final duplicate = ref.read(inventoryDuplicateServiceProvider).duplicate(item);
-    Navigator.of(context).pop({'duplicated': duplicate});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = ref.watch(appSettingsControllerProvider);
-    final insights = ref.watch(itemDetailInsightsProvider).build(item);
-    final timeline = ref.watch(itemTimelineServiceProvider).build(item);
-    final lifecycle = ref.watch(itemLifecycleServiceProvider).build(item);
-    final sale = ref.watch(salesRepositoryProvider).getByItemId(item.id);
-    final i18n = ref.watch(i18nProvider.notifier);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final expectedProfit = (item.expectedSalePrice ?? 0) - item.totalCost;
+    final margin = (item.expectedSalePrice ?? 0) <= 0 ? 0.0 : (expectedProfit / item.expectedSalePrice!) * 100;
+    final roi = item.totalCost <= 0 ? 0.0 : (expectedProfit / item.totalCost) * 100;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(i18n.t('inv.details')),
+        title: const Text('Item Details', style: TextStyle(fontWeight: FontWeight.w900)),
         actions: [
-          DetailsActionBar(
-            onEdit: _openEdit,
-            onDelete: () => _confirmDelete(context, i18n),
-            onDuplicate: _duplicate,
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ItemFormScreen(item: item))),
           ),
         ],
       ),
       body: ListView(
+        physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          ItemDetailHeaderCard(item: item),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(20)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8, runSpacing: 8,
+                  children: [
+                    _Badge(item.type.name.toUpperCase(), Colors.blue),
+                    _Badge(item.status.name.toUpperCase(), Colors.orange),
+                    if (item.theme != null) _Badge(item.theme!, Colors.purple),
+                  ],
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 16),
-          _SectionTitle(i18n.t('inv.lifecycle')),
-          ItemLifecycleCard(steps: lifecycle),
-          const SizedBox(height: 16),
+          const Text('Financial Insights', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.3,
-            children: insights
-                .map((insight) => ItemDetailInsightCard(insight: insight))
-                .toList(),
+            crossAxisSpacing: 12, mainAxisSpacing: 12,
+            childAspectRatio: 1.5,
+            children: [
+              _InsightCard('Expected Profit', expectedProfit.toStringAsFixed(2), expectedProfit >= 0 ? Colors.green : Colors.red),
+              _InsightCard('ROI', '${roi.toStringAsFixed(1)}%', roi >= 0 ? Colors.green : Colors.red),
+              _InsightCard('Margin', '${margin.toStringAsFixed(1)}%', margin >= 0 ? Colors.green : Colors.red),
+              _InsightCard('Days Held', (item.daysInInventory ?? 0).toString(), Colors.blueAccent),
+            ],
           ),
           const SizedBox(height: 16),
-          _SectionTitle(i18n.t('inv.timeline')),
-          if (timeline.isEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(i18n.t('inv.noTimeline')),
-              ),
-            )
-          else
-            ...timeline.map(
-              (event) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: ItemTimelineCard(event: event),
-              ),
-            ),
-          const SizedBox(height: 16),
-          _SectionTitle(i18n.t('inv.overview')),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _infoRow(i18n.t('Title'), item.title),
-                  _infoRow(i18n.t('inv.type'), i18n.t(item.type.name)),
-                  _infoRow(i18n.t('inv.theme'), _formatNullable(item.theme)),
-                  _infoRow(i18n.t('inv.condition'), i18n.t(item.condition.name)),
-                  _infoRow(i18n.t('inv.qty'), item.quantity.toString()),
-                  _infoRow(
-                    i18n.t('inv.daysInInv'),
-                    (item.daysInInventory ?? 0).toString(),
-                  ),
-                ],
-              ),
+          const Text('Core Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(16)),
+            child: Column(
+              children: [
+                _InfoRow('Total Cost', item.totalCost.toStringAsFixed(2)),
+                const Divider(height: 24, color: Colors.white10),
+                _InfoRow('Market Avg', item.marketAverage?.toStringAsFixed(2) ?? '-'),
+                const Divider(height: 24, color: Colors.white10),
+                _InfoRow('Expected Sale', item.expectedSalePrice?.toStringAsFixed(2) ?? '-'),
+                const Divider(height: 24, color: Colors.white10),
+                _InfoRow('Condition', item.condition.name),
+                const Divider(height: 24, color: Colors.white10),
+                _InfoRow('Completeness', item.completeness.name),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          _SectionTitle(i18n.t('inv.financials')),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _infoRow(
-                    i18n.t('inv.totalCost'),
-                    CurrencyFormatter.format(
-                      item.totalCost,
-                      currency: settings.baseCurrency,
-                    ),
-                  ),
-                  _infoRow(
-                    i18n.t('inv.marketAvg'),
-                    item.marketAverage == null
-                        ? '-'
-                        : CurrencyFormatter.format(
-                            item.marketAverage!,
-                            currency: settings.baseCurrency,
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (sale != null) ...[
+          if (item.notes != null && item.notes!.isNotEmpty) ...[
             const SizedBox(height: 16),
-            _SectionTitle(i18n.t('inv.saleRecord')),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _infoRow(i18n.t('sale.platform'), sale.platform),
-                    _infoRow(
-                      i18n.t('inv.netProfit'),
-                      CurrencyFormatter.format(
-                        sale.finalNet,
-                        currency: settings.baseCurrency,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            const Text('Notes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(16)),
+              child: Text(item.notes!),
             ),
-          ],
-          const SizedBox(height: 16),
-          _SectionTitle(i18n.t('inv.notes')),
-          ItemDetailNotesCard(notes: item.notes),
-          const SizedBox(height: 16),
-          _SectionTitle(i18n.t('inv.tags')),
-          ItemDetailTagsCard(
-            tags: item.tags.map((e) => e.toString()).toList(),
-          ),
-          const SizedBox(height: 32),
+          ]
         ],
       ),
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  const _SectionTitle(this.title);
+class _Badge extends StatelessWidget {
+  final String text;
+  final Color color;
+  const _Badge(this.text, this.color);
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+      child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+    );
+  }
+}
+
+class _InsightCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final Color color;
+  const _InsightCard(this.title, this.value, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withValues(alpha: 0.2))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(title, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+        ],
       ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white70)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+      ],
     );
   }
 }

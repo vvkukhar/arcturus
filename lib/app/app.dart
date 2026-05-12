@@ -12,7 +12,9 @@ class LegoTradingApp extends ConsumerWidget {
     return MaterialApp(
       title: 'LEGO Trading Manager',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(),
+      themeMode: ThemeMode.dark,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       home: const AppBootstrapScreen(),
       onGenerateRoute: AppRouter.onGenerateRoute,
     );

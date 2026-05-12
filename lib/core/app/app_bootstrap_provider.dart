@@ -1,20 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/core/sync/background_fetch_trigger.dart';
-import 'package:lego_trading_manager/features/dashboard/application/dashboard_execution_summary_provider.dart';
-import 'package:lego_trading_manager/features/flows/application/purchase_flow_provider.dart';
-import 'package:lego_trading_manager/features/flows/application/reprice_flow_provider.dart';
-import 'package:lego_trading_manager/features/flows/application/review_flow_provider.dart';
-import 'package:lego_trading_manager/features/inventory/application/inventory_provider.dart';
-import 'package:lego_trading_manager/features/watchlist/application/watchlist_provider.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 
 final appBootstrapProvider = FutureProvider<void>((ref) async {
-  await ref.read(backgroundFetchTriggerProvider.future);
-  await Future.wait([
-    ref.read(dashboardExecutionSummaryProvider.future),
-    ref.read(purchaseFlowProvider.future),
-    ref.read(repriceFlowProvider.future),
-    ref.read(reviewFlowProvider.future),
-    ref.read(inventoryProvider.future),
-    ref.read(watchlistProvider.future),
-  ]);
+  // Просто імітуємо ініціалізацію для сумісності з AppBootstrapScreen, 
+  // оскільки дані тепер тягнуться локально з репозиторіїв або кешу Riverpod AsycNotifier'ів
+  await Future.delayed(const Duration(milliseconds: 500));
+  
+  // Додатково ініціалізуємо репозиторії, якщо вони потребують асинхронного завантаження
+  ref.read(inventoryRepositoryProvider);
+  ref.read(watchlistRepositoryProvider);
 });

@@ -24,8 +24,6 @@ export async function GET() {
     const data = await res.json();
     return NextResponse.json(data);
   } catch (error) {
-    // Якщо бекенд (NestJS) вимкнений, fetch викине помилку ECONNREFUSED.
-    // Перехоплюємо її і повертаємо 401, щоб AuthGate коректно викинув нас на /login
     return NextResponse.json(null, { status: 401 });
   }
 }

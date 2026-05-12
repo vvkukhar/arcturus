@@ -6,9 +6,18 @@ import { api } from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 import type { RepriceFlowItem } from '@/lib/types';
 
-async function getRepriceFlow(): Promise<RepriceFlowItem[]> {
+export const revalidate = 0;
+
+interface ExtendedRepriceFlowItem extends RepriceFlowItem {
+  inventoryItem?: {
+    titleSnapshot?: string;
+  };
+  createdAt?: string;
+}
+
+async function getRepriceFlow(): Promise<ExtendedRepriceFlowItem[]> {
   try {
-    return await api.get<RepriceFlowItem[]>('/flows/reprice');
+    return await api.get<ExtendedRepriceFlowItem[]>('/flows/reprice');
   } catch {
     return [];
   }
@@ -18,13 +27,13 @@ export default async function AdminRepriceFlowPage() {
   const rows = await getRepriceFlow();
 
   return (
-    <div className="animate-fade-in-up space-y-6">
-      <div>
-        <h1 className="text-3xl font-black text-slate-900">Reprice Flow Pipeline</h1>
-        <p className="mt-1 text-sm text-slate-500">Manage items waiting to be repriced and listed.</p>
+    <div className="animate-fade-in-up space-y-6 hardware-accelerated">
+      <div className="bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm">
+        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Reprice Flow Pipeline</h1>
+        <p className="mt-1 text-sm font-medium text-slate-500">Manage items waiting to be repriced and listed to the market.</p>
       </div>
 
-      <SectionCard title="Reprice Queue">
+      <SectionCard title="Reprice Queue" contentClassName="p-0 sm:p-6">
         <DataTable
           rows={rows}
           emptyText="The reprice flow pipeline is currently empty."
@@ -35,7 +44,7 @@ export default async function AdminRepriceFlowPage() {
               header: 'Flow Item',
               render: (row) => (
                 <div className="flex flex-col">
-                  <span className="font-bold text-slate-900">{row.inventoryItemId}</span>
+                  <span className="font-bold text-[var(--foreground)]">{row.inventoryItem?.titleSnapshot ?? row.inventoryItemId}</span>
                   <span className="mt-1 font-mono text-xs font-medium text-slate-400">ID: {row.id}</span>
                 </div>
               ),
@@ -44,7 +53,7 @@ export default async function AdminRepriceFlowPage() {
               key: 'current',
               header: 'Current Price',
               render: (row) => (
-                <span className="font-medium text-slate-700">
+                <span className="font-medium text-slate-700 dark:text-slate-300">
                   {row.currentPrice ? formatMoney(row.currentPrice) : '—'}
                 </span>
               ),
@@ -53,7 +62,7 @@ export default async function AdminRepriceFlowPage() {
               key: 'suggested',
               header: 'Suggested Price',
               render: (row) => (
-                <span className="font-bold text-blue-600">
+                <span className="font-bold text-blue-600 dark:text-blue-400">
                   {row.suggestedPrice ? formatMoney(row.suggestedPrice) : '—'}
                 </span>
               ),

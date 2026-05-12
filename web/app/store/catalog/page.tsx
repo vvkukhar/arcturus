@@ -1,117 +1,97 @@
-'use client';
-
+import { Metadata } from 'next';
+import { Filter, Search } from 'lucide-react';
 import { ProductCard } from '@/components/store/product-card';
-import { InventoryItem } from '@/lib/types';
-import { PackageSearch, SlidersHorizontal } from 'lucide-react';
-import { useI18n } from '@/components/providers/i18n-provider';
-import { useEffect, useState, useMemo } from 'react';
+import { appConfig } from '@/lib/config';
+import Link from 'next/link';
 
-export default function CatalogPage() {
-  const { t } = useI18n();
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filterTheme, setFilterTheme] = useState('');
-  const [filterCondition, setFilterCondition] = useState('');
+export const revalidate = 300;
 
-  useEffect(() => {
-    async function fetchCatalog() {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/public/catalog`, {
-          cache: 'no-store'
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setItems(data);
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchCatalog();
-  }, []);
+export const metadata: Metadata = {
+  title: 'Catalog | Arcturus Premium LEGO',
+  description: 'Browse our curated selection of rare, retired, and authenticated LEGO sets and minifigures.',
+};
 
-  const filteredItems = useMemo(() => {
-    return items.filter(item => {
-      const matchTheme = !filterTheme || item.titleSnapshot.toLowerCase().includes(filterTheme.toLowerCase());
-      const matchCondition = !filterCondition || item.condition === filterCondition;
-      return matchTheme && matchCondition;
-    });
-  }, [items, filterTheme, filterCondition]);
+interface CatalogItem {
+  id: string;
+  slug: string;
+  title: string;
+  theme: string;
+  sellPrice: number;
+  condition: string;
+  isAvailable: boolean;
+  images: { imageUrl: string; isPrimary: boolean }[];
+}
+
+async function getCatalogData(searchParams: URLSearchParams): Promise<CatalogItem[]> {
+  const res = await fetch(`${appConfig.apiBaseUrl}/public/catalog?${searchParams.toString()}`, {
+    next: { revalidate: 60, tags: ['catalog'] }
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export default async function CatalogPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const resolvedParams = await searchParams;
+  const query = new URLSearchParams();
+  query.set('availableOnly', 'true');
+  
+  if (typeof resolvedParams.q === 'string') query.set('q', resolvedParams.q);
+  if (typeof resolvedParams.theme === 'string') query.set('theme', resolvedParams.theme);
+
+  const items = await getCatalogData(query);
+  const themes = Array.from(new Set(items.map(i => i.theme))).sort();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-      <div className="mb-10">
-        <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('catalog.title')}</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('catalog.subtitle')}</p>
-      </div>
-
-      <div className="bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)] shadow-sm mb-10 flex flex-wrap items-center gap-4 transition-colors">
-        <div className="flex items-center gap-2 font-bold px-2 border-r border-[var(--border)] pr-6 mr-2">
-          <SlidersHorizontal size={18} className="text-blue-600" />
-          {t('catalog.filters')}
+    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 animate-in fade-in duration-500">
+      <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+        <div>
+          <h1 className="text-4xl font-black tracking-tight text-[var(--foreground)]">Каталог</h1>
+          <p className="mt-2 font-medium text-slate-500">Знайдіть ідеальний сет для своєї колекції.</p>
         </div>
         
-        <div className="flex flex-wrap gap-3">
-          <select 
-            value={filterTheme}
-            onChange={(e) => setFilterTheme(e.target.value)}
-            className="bg-slate-100 dark:bg-slate-800 border-none text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer transition-colors"
-          >
-            <option value="">{t('catalog.theme')}: {t('catalog.all')}</option>
-            <option value="Star Wars">Star Wars</option>
-            <option value="Ninjago">Ninjago</option>
-            <option value="Technic">Technic</option>
-          </select>
-
-          <select 
-            value={filterCondition}
-            onChange={(e) => setFilterCondition(e.target.value)}
-            className="bg-slate-100 dark:bg-slate-800 border-none text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer transition-colors"
-          >
-            <option value="">{t('catalog.condition')}: {t('catalog.all')}</option>
-            <option value="NEW">{t('catalog.new')}</option>
-            <option value="USED">{t('catalog.used')}</option>
-          </select>
-        </div>
-
-        {(filterTheme || filterCondition) && (
-          <button 
-            onClick={() => { setFilterTheme(''); setFilterCondition(''); }}
-            className="text-xs font-black text-blue-600 uppercase tracking-widest hover:underline ml-auto pr-4"
-          >
-            Clear Filters
-          </button>
-        )}
+        <form method="GET" action="/store/catalog" className="flex w-full flex-col gap-4 sm:flex-row md:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input 
+              name="q"
+              defaultValue={typeof resolvedParams.q === 'string' ? resolvedParams.q : ''}
+              placeholder="Пошук..." 
+              className="h-12 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] pl-9 pr-4 text-sm font-medium outline-none transition-shadow focus:ring-2 focus:ring-blue-500"
+              aria-label="Search catalog"
+            />
+          </div>
+          <div className="relative flex-1 sm:w-48">
+            <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <select
+              name="theme"
+              defaultValue={typeof resolvedParams.theme === 'string' ? resolvedParams.theme : ''}
+              onChange={(e) => e.target.form?.submit()}
+              className="h-12 w-full cursor-pointer appearance-none rounded-2xl border border-[var(--border)] bg-[var(--card)] pl-9 pr-4 text-sm font-medium outline-none transition-shadow focus:ring-2 focus:ring-blue-500"
+              aria-label="Filter by theme"
+            >
+              <option value="">Усі серії</option>
+              {themes.map((theme) => (
+                <option key={theme} value={theme}>{theme}</option>
+              ))}
+            </select>
+          </div>
+        </form>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="flex flex-col bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden shadow-sm animate-pulse">
-              <div className="aspect-square bg-slate-200 dark:bg-slate-800" />
-              <div className="p-4 sm:p-5 flex flex-col flex-1 gap-3">
-                <div className="h-3 bg-slate-200 dark:bg-slate-800 w-1/4 rounded" />
-                <div className="h-4 bg-slate-200 dark:bg-slate-800 w-3/4 rounded" />
-                <div className="h-6 bg-slate-200 dark:bg-slate-800 w-1/3 rounded mt-auto" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="py-24 flex flex-col items-center justify-center bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm">
-          <div className="h-20 w-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300 dark:text-slate-600 mb-6 transition-colors">
-            <PackageSearch size={32} />
-          </div>
-          <h3 className="text-xl font-bold">{t('catalog.empty.title')}</h3>
-          <p className="text-slate-500 mt-2 font-medium">{t('catalog.empty.subtitle')}</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-          {filteredItems.map((item) => (
+      {items.length > 0 ? (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {items.map((item) => (
             <ProductCard key={item.id} item={item} />
           ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-[var(--border)] bg-[var(--card)] py-20 text-center">
+          <span className="mb-4 text-6xl" aria-hidden="true">🧱</span>
+          <h3 className="text-xl font-black text-[var(--foreground)]">Нічого не знайдено</h3>
+          <p className="mt-2 font-medium text-slate-500">Спробуйте змінити критерії пошуку.</p>
+          <Link href="/store/catalog" className="mt-6 rounded-xl bg-blue-50 px-6 py-3 text-sm font-bold text-blue-600 transition-colors hover:bg-blue-100 hover:text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50">
+            Скинути фільтри
+          </Link>
         </div>
       )}
     </div>

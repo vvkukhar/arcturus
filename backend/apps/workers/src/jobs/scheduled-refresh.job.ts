@@ -3,6 +3,7 @@ import { markStaleListingsJob } from './mark-stale-listings.job';
 import { recomputeDecisionsJob } from './recompute-decisions.job';
 import { recomputeMarketSnapshotsJob } from './recompute-market-snapshots.job';
 import { sourceHealthRollupJob } from './source-health-rollup.job';
+import { dynamicPricingJob } from './dynamic-pricing.job';
 import { prisma } from '../prisma';
 
 export async function scheduledRefreshJob(): Promise<{
@@ -14,6 +15,9 @@ export async function scheduledRefreshJob(): Promise<{
   decisions?: {
     inventoryEvaluated: number;
     listingsEvaluated: number;
+  };
+  pricing?: {
+    adjusted: number;
   };
   stale?: {
     markedStale: number;
@@ -38,6 +42,7 @@ export async function scheduledRefreshJob(): Promise<{
   const stale = await markStaleListingsJob();
   const snapshots = await recomputeMarketSnapshotsJob();
   const decisions = await recomputeDecisionsJob();
+  const pricing = await dynamicPricingJob();
   const health = await sourceHealthRollupJob();
   const cleanup = await cleanupOldSnapshotsJob({
     keepPerItem: 40,
@@ -47,6 +52,7 @@ export async function scheduledRefreshJob(): Promise<{
     skipped: false,
     snapshots,
     decisions,
+    pricing,
     stale,
     health,
     cleanup,

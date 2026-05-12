@@ -1,22 +1,23 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { Redis } from 'ioredis';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import Redis from 'ioredis';
 
 @Injectable()
-export class RedisService implements OnModuleDestroy {
-  public readonly client: Redis;
+export class RedisService implements OnModuleInit, OnModuleDestroy {
+  private client: Redis;
 
   constructor() {
-    const redisUrl = process.env.REDIS_URL?.trim();
-    if (redisUrl) {
-      this.client = new Redis(redisUrl, { maxRetriesPerRequest: null });
-    } else {
-      this.client = new Redis({
-        host: process.env.REDIS_HOST ?? 'localhost',
-        port: Number(process.env.REDIS_PORT ?? 6379),
-        password: process.env.REDIS_PASSWORD || undefined,
-        maxRetriesPerRequest: null,
-      });
-    }
+    this.client = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+      maxRetriesPerRequest: 3,
+      family: 0,
+    });
+  }
+
+  async onModuleInit() {
+    this.client.on('error', (err) => console.error('Redis Client Error', err));
+  }
+
+  async onModuleDestroy() {
+    await this.client.quit();
   }
 
   async get<T>(key: string): Promise<T | null> {
@@ -25,26 +26,24 @@ export class RedisService implements OnModuleDestroy {
     try {
       return JSON.parse(data) as T;
     } catch {
-      return null;
+      return data as unknown as T;
     }
   }
 
-  async set(key: string, value: any, ttlSeconds = 60): Promise<void> {
-    await this.client.setex(key, ttlSeconds, JSON.stringify(value));
+  async set(key: string, value: any, ttlSeconds?: number): Promise<void> {
+    const data = typeof value === 'string' ? value : JSON.stringify(value);
+    if (ttlSeconds) {
+      await this.client.set(key, data, 'EX', ttlSeconds);
+    } else {
+      await this.client.set(key, data);
+    }
   }
 
   async del(key: string): Promise<void> {
     await this.client.del(key);
   }
 
-  async invalidatePrefix(prefix: string): Promise<void> {
-    const keys = await this.client.keys(`${prefix}*`);
-    if (keys.length > 0) {
-      await this.client.del(...keys);
-    }
-  }
-
-  onModuleDestroy() {
-    this.client.disconnect();
+  getClient(): Redis {
+    return this.client;
   }
 }

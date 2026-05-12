@@ -246,9 +246,9 @@ enum SalePlatform {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\core\services\trading_transaction_service.dart ---
 
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/data/repositories/purchases_repository.dart';
 import 'package:lego_trading_manager/data/repositories/sales_repository.dart';
@@ -533,7 +533,7 @@ class NumberParser {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\core\utils\partout_calculator.dart ---
 
-import 'package:lego_trading_manager/data/models/partout_line_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class PartOutCalculator {
   static double totalCost({
@@ -1060,7 +1060,7 @@ class TagPill extends StatelessWidget {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\datasources\abstract_items_datasource.dart ---
 
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 abstract class AbstractItemsDatasource {
   Future<List<ItemModel>> getAllItems();
@@ -1085,7 +1085,7 @@ abstract class AbstractMarketDatasource {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\datasources\abstract_purchases_datasource.dart ---
 
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 abstract class AbstractPurchasesDatasource {
   Future<List<PurchaseModel>> getAllPurchases();
@@ -1096,7 +1096,7 @@ abstract class AbstractPurchasesDatasource {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\datasources\abstract_sales_datasource.dart ---
 
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 abstract class AbstractSalesDatasource {
   Future<List<SaleModel>> getAllSales();
@@ -1109,7 +1109,7 @@ abstract class AbstractSalesDatasource {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\datasources\abstract_watchlist_datasource.dart ---
 
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 abstract class AbstractWatchlistDatasource {
   Future<List<WatchlistItemModel>> getAll();
@@ -1121,7 +1121,7 @@ abstract class AbstractWatchlistDatasource {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\datasources\memory\memory_items_datasource.dart ---
 
 import 'package:lego_trading_manager/data/datasources/abstract_items_datasource.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/store/inventory_memory_store.dart';
 
 class MemoryItemsDatasource implements AbstractItemsDatasource {
@@ -1184,7 +1184,7 @@ class MemoryMarketDatasource implements AbstractMarketDatasource {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\datasources\memory\memory_purchases_datasource.dart ---
 
 import 'package:lego_trading_manager/data/datasources/abstract_purchases_datasource.dart';
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/store/purchases_memory_store.dart';
 
 class MemoryPurchasesDatasource implements AbstractPurchasesDatasource {
@@ -1213,7 +1213,7 @@ class MemoryPurchasesDatasource implements AbstractPurchasesDatasource {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\datasources\memory\memory_sales_datasource.dart ---
 
 import 'package:lego_trading_manager/data/datasources/abstract_sales_datasource.dart';
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/store/sales_memory_store.dart';
 
 class MemorySalesDatasource implements AbstractSalesDatasource {
@@ -1247,7 +1247,7 @@ class MemorySalesDatasource implements AbstractSalesDatasource {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\datasources\memory\memory_watchlist_datasource.dart ---
 
 import 'package:lego_trading_manager/data/datasources/abstract_watchlist_datasource.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/store/watchlist_memory_store.dart';
 
 class MemoryWatchlistDatasource implements AbstractWatchlistDatasource {
@@ -1271,7 +1271,7 @@ class MemoryWatchlistDatasource implements AbstractWatchlistDatasource {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\datasources\supabase\supabase_items_datasource.dart ---
 
 import 'package:lego_trading_manager/data/datasources/abstract_items_datasource.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class SupabaseItemsDatasource implements AbstractItemsDatasource {
   @override
@@ -1332,7 +1332,7 @@ class SupabaseMarketDatasource implements AbstractMarketDatasource {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\datasources\supabase\supabase_purchases_datasource.dart ---
 
 import 'package:lego_trading_manager/data/datasources/abstract_purchases_datasource.dart';
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class SupabasePurchasesDatasource implements AbstractPurchasesDatasource {
   @override
@@ -1360,7 +1360,7 @@ class SupabasePurchasesDatasource implements AbstractPurchasesDatasource {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\datasources\supabase\supabase_sales_datasource.dart ---
 
 import 'package:lego_trading_manager/data/datasources/abstract_sales_datasource.dart';
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class SupabaseSalesDatasource implements AbstractSalesDatasource {
   @override
@@ -1393,7 +1393,7 @@ class SupabaseSalesDatasource implements AbstractSalesDatasource {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\datasources\supabase\supabase_watchlist_datasource.dart ---
 
 import 'package:lego_trading_manager/data/datasources/abstract_watchlist_datasource.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class SupabaseWatchlistDatasource implements AbstractWatchlistDatasource {
   @override
@@ -1420,7 +1420,7 @@ import 'package:lego_trading_manager/core/enums/item_condition.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 final List<ItemModel> mockItems = [
   ItemModel(
@@ -2520,7 +2520,7 @@ class AnalyticsRepository {
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
 import 'package:lego_trading_manager/core/utils/profit_calculator.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/data/repositories/sales_repository.dart';
 
@@ -2655,7 +2655,7 @@ class DashboardRepository {
 
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/store/inventory_memory_store.dart';
 
 class InventoryRepository {
@@ -2775,8 +2775,8 @@ class MarketRepository {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\repositories\partout_repository.dart ---
 
 import 'package:lego_trading_manager/core/utils/partout_calculator.dart';
-import 'package:lego_trading_manager/data/models/partout_line_model.dart';
-import 'package:lego_trading_manager/data/models/partout_project_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/store/partout_memory_store.dart';
 
 class PartOutRepository {
@@ -2840,7 +2840,7 @@ class PartOutRepository {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\repositories\purchases_repository.dart ---
 
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/store/purchases_memory_store.dart';
 
 class PurchasesRepository {
@@ -2868,7 +2868,7 @@ class PurchasesRepository {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\repositories\sales_repository.dart ---
 
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/store/sales_memory_store.dart';
 
 class SalesRepository {
@@ -2896,7 +2896,7 @@ class SalesRepository {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\repositories\watchlist_repository.dart ---
 
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/store/watchlist_memory_store.dart';
 
 class WatchlistRepository {
@@ -2924,7 +2924,7 @@ class WatchlistRepository {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\store\inventory_memory_store.dart ---
 
 import 'package:lego_trading_manager/data/mock/mock_items.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class InventoryMemoryStore {
   InventoryMemoryStore._();
@@ -2998,8 +2998,8 @@ class MarketMemoryStore {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\store\partout_memory_store.dart ---
 
-import 'package:lego_trading_manager/data/models/partout_line_model.dart';
-import 'package:lego_trading_manager/data/models/partout_project_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class PartOutMemoryStore {
   PartOutMemoryStore._();
@@ -3058,7 +3058,7 @@ class PartOutMemoryStore {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\store\purchases_memory_store.dart ---
 
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class PurchasesMemoryStore {
   PurchasesMemoryStore._();
@@ -3091,7 +3091,7 @@ class PurchasesMemoryStore {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\store\sales_memory_store.dart ---
 
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class SalesMemoryStore {
   SalesMemoryStore._();
@@ -3126,7 +3126,7 @@ class SalesMemoryStore {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\data\store\watchlist_memory_store.dart ---
 
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class WatchlistMemoryStore {
   WatchlistMemoryStore._();
@@ -3312,7 +3312,7 @@ class AnalyticsStatTile extends StatelessWidget {
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/dashboard_repository.dart';
 
 final dashboardRepositoryTypedProvider = Provider<DashboardRepository>((ref) {
@@ -3702,7 +3702,7 @@ class _DealRow extends StatelessWidget {
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_filter_model.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_sort_option.dart';
@@ -3973,7 +3973,7 @@ enum InventorySortOption {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\features\inventory\application\inventory_state.dart ---
 
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_filter_model.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_sort_option.dart';
 
@@ -4047,7 +4047,7 @@ import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
 import 'package:lego_trading_manager/core/utils/profit_calculator.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class AddItemScreen extends StatefulWidget {
   const AddItemScreen({super.key});
@@ -4376,7 +4376,7 @@ import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
 import 'package:lego_trading_manager/core/utils/profit_calculator.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class EditItemScreen extends StatefulWidget {
   final ItemModel item;
@@ -4765,7 +4765,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_controller.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_sort_option.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/widgets/inventory_active_filter_chips.dart';
@@ -5202,7 +5202,7 @@ class _InventoryFilterSheetState extends State<InventoryFilterSheet> {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\features\inventory\presentation\widgets\inventory_item_card.dart ---
 
 import 'package:flutter/material.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class InventoryItemCard extends StatelessWidget {
   final ItemModel item;
@@ -5487,7 +5487,7 @@ class InventoryToolbar extends StatelessWidget {
 
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/widgets/metric_chip.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/data/repositories/market_repository.dart';
 import 'package:lego_trading_manager/data/repositories/partout_repository.dart';
@@ -5914,7 +5914,7 @@ final marketItemHistoryProvider =
 
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/utils/id_generator.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/models/market_snapshot_model.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 
@@ -5955,7 +5955,7 @@ class _AddMarketSnapshotScreenState extends State<AddMarketSnapshotScreen> {
     if (_selectedItemId == null) return;
 
     final snapshot = MarketSnapshotModel(
-      id: IdGenerator.next(),
+      id: AppUtils.generateId(),
       itemRef: _selectedItemId!,
       source: _sourceController.text.trim(),
       lowPrice: _parseDouble(_lowPriceController.text),
@@ -6531,8 +6531,8 @@ class _MarketSnapshotDetailsScreenState extends State<MarketSnapshotDetailsScree
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
-import 'package:lego_trading_manager/data/models/partout_line_model.dart';
-import 'package:lego_trading_manager/data/models/partout_project_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/partout_repository.dart';
 
 class PartOutState {
@@ -6614,7 +6614,7 @@ final partOutControllerProvider =
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
-import 'package:lego_trading_manager/data/models/partout_line_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 final partOutProjectLinesProvider =
     Provider.family<List<PartOutLineModel>, String>((ref, projectId) {
@@ -6628,7 +6628,7 @@ import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/enums/partout_line_status.dart';
 import 'package:lego_trading_manager/core/utils/id_generator.dart';
 import 'package:lego_trading_manager/core/utils/number_parser.dart';
-import 'package:lego_trading_manager/data/models/partout_line_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class AddPartOutLineScreen extends StatefulWidget {
   final String projectId;
@@ -6656,7 +6656,7 @@ class _AddPartOutLineScreenState extends State<AddPartOutLineScreen> {
   int get _quantity => NumberParser.parseInt(_quantityController.text);
 
   double get _expectedUnit =>
-      NumberParser.parseDouble(_expectedUnitPriceController.text);
+      AppUtils.parseDouble(_expectedUnitPriceController.text);
 
   double get _expectedTotal => _quantity * _expectedUnit;
 
@@ -6664,7 +6664,7 @@ class _AddPartOutLineScreenState extends State<AddPartOutLineScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final line = PartOutLineModel(
-      id: IdGenerator.next(),
+      id: AppUtils.generateId(),
       projectId: widget.projectId,
       itemType: _itemType,
       itemRef: null,
@@ -6673,7 +6673,7 @@ class _AddPartOutLineScreenState extends State<AddPartOutLineScreen> {
       expectedUnitPrice: _expectedUnit,
       expectedTotalPrice: _expectedTotal,
       actualTotalPrice:
-          NumberParser.parseDouble(_actualTotalPriceController.text),
+          AppUtils.parseDouble(_actualTotalPriceController.text),
       status: _status,
     );
 
@@ -6802,8 +6802,8 @@ import 'package:lego_trading_manager/core/enums/partout_project_status.dart';
 import 'package:lego_trading_manager/core/utils/id_generator.dart';
 import 'package:lego_trading_manager/core/utils/number_parser.dart';
 import 'package:lego_trading_manager/core/utils/partout_calculator.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/models/partout_project_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 
 class AddPartOutProjectScreen extends StatefulWidget {
@@ -6831,9 +6831,9 @@ class _AddPartOutProjectScreenState extends State<AddPartOutProjectScreen> {
 
   double get _totalCost {
     return PartOutCalculator.totalCost(
-      purchaseCost: NumberParser.parseDouble(_purchaseCostController.text),
-      shippingCost: NumberParser.parseDouble(_shippingCostController.text),
-      extraCosts: NumberParser.parseDouble(_extraCostsController.text),
+      purchaseCost: AppUtils.parseDouble(_purchaseCostController.text),
+      shippingCost: AppUtils.parseDouble(_shippingCostController.text),
+      extraCosts: AppUtils.parseDouble(_extraCostsController.text),
     );
   }
 
@@ -6843,12 +6843,12 @@ class _AddPartOutProjectScreenState extends State<AddPartOutProjectScreen> {
     if (item == null) return;
 
     final project = PartOutProjectModel(
-      id: IdGenerator.next(),
+      id: AppUtils.generateId(),
       sourceSetId: item.id,
       sourceSetTitle: item.title,
-      purchaseCost: NumberParser.parseDouble(_purchaseCostController.text),
-      shippingCost: NumberParser.parseDouble(_shippingCostController.text),
-      extraCosts: NumberParser.parseDouble(_extraCostsController.text),
+      purchaseCost: AppUtils.parseDouble(_purchaseCostController.text),
+      shippingCost: AppUtils.parseDouble(_shippingCostController.text),
+      extraCosts: AppUtils.parseDouble(_extraCostsController.text),
       totalCost: _totalCost,
       expectedPartOutValue: 0,
       actualPartOutValue: 0,
@@ -6967,7 +6967,7 @@ import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/enums/partout_line_status.dart';
 import 'package:lego_trading_manager/core/utils/number_parser.dart';
-import 'package:lego_trading_manager/data/models/partout_line_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class EditPartOutLineScreen extends StatefulWidget {
   final PartOutLineModel line;
@@ -6994,7 +6994,7 @@ class _EditPartOutLineScreenState extends State<EditPartOutLineScreen> {
 
   int get _quantity => NumberParser.parseInt(_quantityController.text);
   double get _expectedUnit =>
-      NumberParser.parseDouble(_expectedUnitPriceController.text);
+      AppUtils.parseDouble(_expectedUnitPriceController.text);
   double get _expectedTotal => _quantity * _expectedUnit;
 
   @override
@@ -7022,7 +7022,7 @@ class _EditPartOutLineScreenState extends State<EditPartOutLineScreen> {
         expectedUnitPrice: _expectedUnit,
         expectedTotalPrice: _expectedTotal,
         actualTotalPrice:
-            NumberParser.parseDouble(_actualTotalPriceController.text),
+            AppUtils.parseDouble(_actualTotalPriceController.text),
         status: _status,
       ),
     );
@@ -7143,8 +7143,8 @@ class _EditPartOutLineScreenState extends State<EditPartOutLineScreen> {
 
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/utils/partout_calculator.dart';
-import 'package:lego_trading_manager/data/models/partout_line_model.dart';
-import 'package:lego_trading_manager/data/models/partout_project_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/partout_repository.dart';
 import 'package:lego_trading_manager/features/partout/presentation/add_partout_line_screen.dart';
 import 'package:lego_trading_manager/features/partout/presentation/edit_partout_line_screen.dart';
@@ -7327,7 +7327,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/empty_state_view.dart';
-import 'package:lego_trading_manager/data/models/partout_project_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/partout/application/partout_controller.dart';
 import 'package:lego_trading_manager/features/partout/presentation/add_partout_project_screen.dart';
 import 'package:lego_trading_manager/features/partout/presentation/partout_project_details_screen.dart';
@@ -7396,7 +7396,7 @@ class PartOutScreen extends ConsumerWidget {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\features\partout\presentation\widgets\partout_line_card.dart ---
 
 import 'package:flutter/material.dart';
-import 'package:lego_trading_manager/data/models/partout_line_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class PartOutLineCard extends StatelessWidget {
   final PartOutLineModel line;
@@ -7504,7 +7504,7 @@ class PartOutMetricTile extends StatelessWidget {
 
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/utils/partout_calculator.dart';
-import 'package:lego_trading_manager/data/models/partout_project_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class PartOutProjectCard extends StatelessWidget {
   final PartOutProjectModel project;
@@ -7563,8 +7563,8 @@ class PartOutProjectCard extends StatelessWidget {
 
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\features\purchases\application\purchase_record_payload.dart ---
 
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class PurchaseRecordPayload {
   final PurchaseModel purchase;
@@ -7582,7 +7582,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_controller.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchase_record_payload.dart';
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class PurchasesController extends StateNotifier<List<PurchaseModel>> {
   final Ref ref;
@@ -7640,8 +7640,8 @@ final purchasesTotalSpentProvider = Provider<double>((ref) {
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/purchase_payment_method.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchase_record_payload.dart';
 
@@ -7898,7 +7898,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
 
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/enums/purchase_payment_method.dart';
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class EditPurchaseScreen extends StatefulWidget {
   final PurchaseModel purchase;
@@ -8121,7 +8121,7 @@ class _EditPurchaseScreenState extends State<EditPurchaseScreen> {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\features\purchases\presentation\purchase_details_screen.dart ---
 
 import 'package:flutter/material.dart';
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/purchases/presentation/edit_purchase_screen.dart';
 
@@ -8288,7 +8288,7 @@ class _PurchaseDetailsScreenState extends State<PurchaseDetailsScreen> {
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchase_record_payload.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchases_controller.dart';
@@ -8438,8 +8438,8 @@ class PurchasesScreen extends ConsumerWidget {
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/services/trading_transaction_service.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_controller.dart';
 
 class SalesController extends StateNotifier<List<SaleModel>> {
@@ -8510,8 +8510,8 @@ import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/sale_platform.dart';
 import 'package:lego_trading_manager/core/utils/id_generator.dart';
 import 'package:lego_trading_manager/core/utils/profit_calculator.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 
 class AddSaleScreen extends StatefulWidget {
@@ -8565,7 +8565,7 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     if (item == null || metrics == null) return;
 
     final sale = SaleModel(
-      id: IdGenerator.next(),
+      id: AppUtils.generateId(),
       itemId: item.id,
       platform: _platform,
       buyerName: _buyerNameController.text.trim().isEmpty
@@ -8779,7 +8779,7 @@ class _MetricRow extends StatelessWidget {
 
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/enums/sale_platform.dart';
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class EditSaleScreen extends StatefulWidget {
   final SaleModel sale;
@@ -8942,7 +8942,7 @@ class _EditSaleScreenState extends State<EditSaleScreen> {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\features\sales\presentation\sale_details_screen.dart ---
 
 import 'package:flutter/material.dart';
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/sales/presentation/edit_sale_screen.dart';
 
@@ -9109,8 +9109,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/empty_state_view.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/sales/application/sales_controller.dart';
 import 'package:lego_trading_manager/features/sales/presentation/add_sale_screen.dart';
@@ -9464,7 +9464,7 @@ class SettingsScreen extends StatelessWidget {
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/watchlist_repository.dart';
 
 class WatchlistController extends StateNotifier<List<WatchlistItemModel>> {
@@ -9514,7 +9514,7 @@ final watchlistActiveCountProvider = Provider<int>((ref) {
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/utils/id_generator.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class AddWatchlistItemScreen extends StatefulWidget {
   const AddWatchlistItemScreen({super.key});
@@ -9544,7 +9544,7 @@ class _AddWatchlistItemScreenState extends State<AddWatchlistItemScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final item = WatchlistItemModel(
-      id: IdGenerator.next(),
+      id: AppUtils.generateId(),
       title: _titleController.text.trim(),
       type: _itemType,
       theme: _themeController.text.trim().isEmpty
@@ -9674,7 +9674,7 @@ class _AddWatchlistItemScreenState extends State<AddWatchlistItemScreen> {
 
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 
 class EditWatchlistItemScreen extends StatefulWidget {
   final WatchlistItemModel item;
@@ -9852,7 +9852,7 @@ class _EditWatchlistItemScreenState extends State<EditWatchlistItemScreen> {
 --- FILE: C:\Users\Vlad\lego_trading_manager\lib\features\watchlist\presentation\watchlist_item_details_screen.dart ---
 
 import 'package:flutter/material.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/edit_watchlist_item_screen.dart';
 
 class WatchlistItemDetailsScreen extends StatefulWidget {
@@ -10010,7 +10010,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/empty_state_view.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_controller.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/add_watchlist_item_screen.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_item_details_screen.dart';

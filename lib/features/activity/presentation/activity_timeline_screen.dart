@@ -1,297 +1,103 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_balance_insight_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_balance_summary_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_best_type_insight_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_cadence_stability_compare_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_compact_summary_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_consistency_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_control_momentum_compare_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_date_range_quick_filter_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_day_insight_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_discipline_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_discipline_stability_mix_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_grouped_day_summary_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_momentum_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_most_active_day_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_operating_cadence_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_operational_health_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_rhythm_momentum_compare_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_stability_index_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_streak_insight_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_streak_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_system_balance_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_timeline_query_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_timeline_type_filter_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_top_type_summary_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_weekly_consistency_ratio_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_weekly_control_score_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_weekly_rhythm_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_weekly_stability_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_weakest_day_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/latest_activity_provider.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_balance_insight_banner.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_balance_summary_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_best_type_insight_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_cadence_stability_compare_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_compact_summary_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_consistency_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_control_momentum_compare_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_date_header.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_date_range_quick_chips.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_day_compare_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_day_insight_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_discipline_banner.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_discipline_stability_mix_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_export_summary_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_insight_stack_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_momentum_banner.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_most_active_day_banner.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_operating_cadence_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_operational_health_banner.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_rhythm_momentum_compare_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_stability_index_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_streak_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_streak_insight_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_summary_hero_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_system_balance_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_timeline_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_timeline_search_field.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_timeline_type_dropdown.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_top_type_summary_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_weekly_consistency_ratio_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_weekly_control_score_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_weekly_rhythm_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_weekly_stability_banner.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_weakest_day_banner.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_engine.dart';
 
-class ActivityTimelineScreen extends ConsumerStatefulWidget {
+class ActivityTimelineScreen extends ConsumerWidget {
   const ActivityTimelineScreen({super.key});
 
   @override
-  ConsumerState<ActivityTimelineScreen> createState() => _ActivityTimelineScreenState();
-}
-
-class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen> {
-  final _controller = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.text = ref.read(activityTimelineQueryProvider);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final i18n = ref.watch(i18nProvider.notifier);
-    final latest = ref.watch(latestActivityProvider);
-    final query = ref.watch(activityTimelineQueryProvider).trim().toLowerCase();
-    final type = ref.watch(activityTimelineTypeFilterProvider);
-    final dateRangeFilter = ref.watch(activityDateRangeQuickFilterProvider);
-    
-    final compactSummary = ref.watch(activityCompactSummaryProvider);
-    final streak = ref.watch(activityStreakProvider);
-    final streakInsight = ref.watch(activityStreakInsightProvider);
-    final groupedSummary = ref.watch(activityGroupedDaySummaryProvider);
-    final dayInsight = ref.watch(activityDayInsightProvider);
-    final topTypeSummary = ref.watch(activityTopTypeSummaryProvider);
-    final bestTypeInsight = ref.watch(activityBestTypeInsightProvider);
-    final mostActiveDay = ref.watch(activityMostActiveDayProvider);
-    final weakestDay = ref.watch(activityWeakestDayProvider);
-    final balanceSummary = ref.watch(activityBalanceSummaryProvider);
-    final balanceInsight = ref.watch(activityBalanceInsightProvider);
-    final momentum = ref.watch(activityMomentumProvider);
-    final weeklyRhythm = ref.watch(activityWeeklyRhythmProvider);
-    final consistency = ref.watch(activityConsistencyProvider);
-    final weeklyStability = ref.watch(activityWeeklyStabilityProvider);
-    final weeklyConsistencyRatio = ref.watch(activityWeeklyConsistencyRatioProvider);
-    final rhythmMomentumCompare = ref.watch(activityRhythmMomentumCompareProvider);
-    final discipline = ref.watch(activityDisciplineProvider);
-    final operationalHealth = ref.watch(activityOperationalHealthProvider);
-    final weeklyControlScore = ref.watch(activityWeeklyControlScoreProvider);
-    final controlMomentumCompare = ref.watch(activityControlMomentumCompareProvider);
-    final operatingCadence = ref.watch(activityOperatingCadenceProvider);
-    final cadenceStability = ref.watch(activityCadenceStabilityCompareProvider);
-    final systemBalance = ref.watch(activitySystemBalanceProvider);
-    final stabilityIndex = ref.watch(activityStabilityIndexProvider);
-    final disciplineStabilityMix = ref.watch(activityDisciplineStabilityMixProvider);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stateAsync = ref.watch(activityEngineProvider);
+    final engine = ref.read(activityEngineProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: Text(i18n.t('activity.timeline.title'))),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            ActivityTimelineSearchField(
-              controller: _controller,
-              onChanged: (value) {
-                ref.read(activityTimelineQueryProvider.notifier).set(value);
-              },
-              onClear: () {
-                _controller.clear();
-                ref.read(activityTimelineQueryProvider.notifier).set('');
-              },
-            ),
-            const SizedBox(height: 12),
-            ActivityTimelineTypeDropdown(
-              value: type,
-              onChanged: (value) {
-                ref.read(activityTimelineTypeFilterProvider.notifier).set(value);
-              },
-            ),
-            const SizedBox(height: 12),
-            ActivityCompactSummaryCard(model: compactSummary),
-            const SizedBox(height: 12),
-            ActivitySummaryHeroCard(
-              title: i18n.t('Activity Pulse'),
-              subtitle: '${i18n.t('Best day')}: ${mostActiveDay?.dateLabel ?? '-'} • ${i18n.t('Weakest day')}: ${weakestDay?.dateLabel ?? '-'} • ${i18n.t('Top type')}: ${bestTypeInsight?.topType ?? '-'}',
-            ),
-            const SizedBox(height: 12),
-            ActivityMomentumBanner(model: momentum),
-            const SizedBox(height: 12),
-            ActivityWeeklyRhythmCard(model: weeklyRhythm),
-            const SizedBox(height: 12),
-            ActivityConsistencyCard(model: consistency),
-            const SizedBox(height: 12),
-            ActivityWeeklyStabilityBanner(model: weeklyStability),
-            const SizedBox(height: 12),
-            ActivityWeeklyConsistencyRatioCard(model: weeklyConsistencyRatio),
-            const SizedBox(height: 12),
-            ActivityRhythmMomentumCompareCard(model: rhythmMomentumCompare),
-            const SizedBox(height: 12),
-            ActivityDisciplineBanner(model: discipline),
-            const SizedBox(height: 12),
-            ActivityOperationalHealthBanner(model: operationalHealth),
-            const SizedBox(height: 12),
-            ActivityWeeklyControlScoreCard(model: weeklyControlScore),
-            const SizedBox(height: 12),
-            ActivityControlMomentumCompareCard(model: controlMomentumCompare),
-            const SizedBox(height: 12),
-            ActivityOperatingCadenceCard(model: operatingCadence),
-            const SizedBox(height: 12),
-            ActivityCadenceStabilityCompareCard(model: cadenceStability),
-            const SizedBox(height: 12),
-            ActivitySystemBalanceCard(model: systemBalance),
-            const SizedBox(height: 12),
-            ActivityStabilityIndexCard(model: stabilityIndex),
-            const SizedBox(height: 12),
-            ActivityDisciplineStabilityMixCard(model: disciplineStabilityMix),
-            const SizedBox(height: 12),
-            ActivityMostActiveDayBanner(model: mostActiveDay),
-            const SizedBox(height: 12),
-            ActivityWeakestDayBanner(model: weakestDay),
-            const SizedBox(height: 12),
-            if (mostActiveDay != null && weakestDay != null) ...[
-              ActivityDayCompareCard(
-                bestLabel: mostActiveDay.dateLabel,
-                bestCount: mostActiveDay.total,
-                weakestLabel: weakestDay.dateLabel,
-                weakestCount: weakestDay.total,
+      appBar: AppBar(
+        title: const Text('Timeline', style: TextStyle(fontWeight: FontWeight.w900)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
+            onPressed: () => engine.clear(),
+          )
+        ],
+      ),
+      body: stateAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (state) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        onChanged: (v) => engine.filter(v, state.typeFilter),
+                        decoration: InputDecoration(
+                          hintText: 'Search...',
+                          prefixIcon: const Icon(Icons.search),
+                          filled: true,
+                          fillColor: const Color(0xFF171A21),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 1,
+                      child: DropdownButtonFormField<String?>(
+                        value: state.typeFilter,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: const Color(0xFF171A21),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: null, child: Text('All')),
+                          DropdownMenuItem(value: 'purchase', child: Text('Buy')),
+                          DropdownMenuItem(value: 'sale', child: Text('Sell')),
+                          DropdownMenuItem(value: 'report', child: Text('Report')),
+                          DropdownMenuItem(value: 'watchlist', child: Text('Watch')),
+                        ],
+                        onChanged: (v) => engine.filter(state.searchQuery, v),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
+              Expanded(
+                child: state.visibleLogs.isEmpty
+                    ? const Center(child: Text('No matching records found.', style: TextStyle(color: Colors.white54)))
+                    : ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: state.visibleLogs.length,
+                        itemBuilder: (context, index) {
+                          final item = state.visibleLogs[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            color: const Color(0xFF171A21),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            child: ListTile(
+                              title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Text(item.subtitle),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(item.type.toUpperCase(), style: const TextStyle(fontSize: 10, color: Colors.blueAccent, fontWeight: FontWeight.w900)),
+                                  const SizedBox(height: 4),
+                                  Text(item.createdAt.toIso8601String().split('T').first, style: const TextStyle(fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
             ],
-            ActivityBalanceSummaryCard(model: balanceSummary),
-            const SizedBox(height: 12),
-            ActivityBalanceInsightBanner(model: balanceInsight),
-            const SizedBox(height: 12),
-            ActivityStreakCard(model: streak),
-            const SizedBox(height: 12),
-            ActivityStreakInsightCard(model: streakInsight),
-            const SizedBox(height: 12),
-            ActivityInsightStackCard(
-              momentum: i18n.t(momentum.label),
-              balance: i18n.t(balanceInsight.label),
-              streakLabel: '${i18n.t(streakInsight.label)} (${streakInsight.value})',
-            ),
-            const SizedBox(height: 12),
-            ActivityDateRangeQuickChips(
-              value: dateRangeFilter,
-              onChanged: (value) {
-                ref.read(activityDateRangeQuickFilterProvider.notifier).set(value);
-              },
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: latest.when(
-                data: (items) {
-                  final visible = items.where((item) {
-                    if (query.isNotEmpty) {
-                      final matchesQuery = item.title.toLowerCase().contains(query) ||
-                          item.subtitle.toLowerCase().contains(query);
-                      if (!matchesQuery) return false;
-                    }
-                    
-                    if (type != null && item.type != type) return false;
-                    
-                    final now = DateTime.now();
-                    final dayOnly = DateTime(item.createdAt.year, item.createdAt.month, item.createdAt.day);
-                    final today = DateTime(now.year, now.month, now.day);
-                    final diff = today.difference(dayOnly).inDays;
-                    
-                    final matchesDate = switch (dateRangeFilter) {
-                      ActivityDateRangeQuickFilter.all => true,
-                      ActivityDateRangeQuickFilter.today => diff == 0,
-                      ActivityDateRangeQuickFilter.last3days => diff >= 0 && diff < 3,
-                      ActivityDateRangeQuickFilter.last7days => diff >= 0 && diff < 7,
-                    };
-                    
-                    if (!matchesDate) return false;
-                    return true;
-                  }).toList();
-
-                  if (visible.isEmpty) {
-                    return Center(child: Text(i18n.t('activity.timeline.empty')));
-                  }
-
-                  DateTime? lastDate;
-
-                  return ListView(
-                    children: [
-                      ActivityDayInsightCard(model: dayInsight),
-                      const SizedBox(height: 12),
-                      ActivityTopTypeSummaryCard(items: topTypeSummary),
-                      const SizedBox(height: 12),
-                      ActivityBestTypeInsightCard(model: bestTypeInsight),
-                      const SizedBox(height: 12),
-                      ActivityExportSummaryCard(items: groupedSummary),
-                      const SizedBox(height: 12),
-                      ...visible.map((item) {
-                        final currentDate = DateTime(
-                          item.createdAt.year,
-                          item.createdAt.month,
-                          item.createdAt.day,
-                        );
-
-                        final widgets = <Widget>[];
-
-                        if (lastDate == null || lastDate != currentDate) {
-                          lastDate = currentDate;
-                          widgets.add(ActivityDateHeader(date: currentDate));
-                        }
-
-                        widgets.add(ActivityTimelineCard(entry: item));
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: widgets,
-                        );
-                      }),
-                    ],
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, __) => Center(child: Text(i18n.t('activity.timeline.error'))),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

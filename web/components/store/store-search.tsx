@@ -1,16 +1,20 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState, useEffect, Suspense } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/components/providers/i18n-provider';
 
-export function StoreSearch() {
+function StoreSearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useI18n();
-  const [value, setValue] = useState(searchParams.get('q') ?? '');
+  const [value, setValue] = useState('');
+
+  useEffect(() => {
+    setValue(searchParams.get('q') ?? '');
+  }, [searchParams]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -35,13 +39,21 @@ export function StoreSearch() {
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={t('search.placeholder')}
-          className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-sm text-slate-900 shadow-sm transition-all focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
+          placeholder={(t('search.placeholder' as any) as string)}
+          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] py-3.5 pl-11 pr-4 text-sm font-medium text-[var(--foreground)] shadow-sm transition-all focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
         />
       </div>
       <Button type="submit" className="py-3.5 px-8 sm:w-auto w-full text-base h-[50px]">
-        {t('search.button')}
+        {(t('search.button' as any) as string)}
       </Button>
     </form>
+  );
+}
+
+export function StoreSearch() {
+  return (
+    <Suspense fallback={<div className="h-[50px] w-full bg-[var(--card)] animate-pulse rounded-2xl border border-[var(--border)]" />}>
+      <StoreSearchContent />
+    </Suspense>
   );
 }

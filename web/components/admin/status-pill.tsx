@@ -1,4 +1,4 @@
-import { Badge } from '@/components/ui/badge'; // <-- Ось тут правильний імпорт
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -6,7 +6,6 @@ type Props = {
 };
 
 export function StatusPill({ value }: Props) {
-  // Захист від null/undefined
   const normalized = String(value || 'unknown').toLowerCase();
   
   const statusConfig: Record<string, string> = {

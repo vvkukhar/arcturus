@@ -1,65 +1,78 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { useI18n } from '@/components/providers/i18n-provider';
 import { Activity, TrendingUp, TrendingDown, DollarSign, Package, Loader2 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { apiFetch } from '@/lib/client-api';
+import dynamic from 'next/dynamic';
+import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney } from '@/lib/format';
+
+const ResponsiveContainer = dynamic(
+  () => import('recharts').then((mod) => mod.ResponsiveContainer),
+  { ssr: false }
+);
+const AreaChart = dynamic(() => import('recharts').then((mod) => mod.AreaChart), { ssr: false });
+const Area = dynamic(() => import('recharts').then((mod) => mod.Area), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then((mod) => mod.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then((mod) => mod.YAxis), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then((mod) => mod.Tooltip), { ssr: false });
+
+interface HistoryData {
+  date?: string;
+  month?: string;
+  revenue: number | string;
+}
+
+interface CatalogItem {
+  itemId: string;
+  totalCost: number;
+  expectedSalePriceManual?: number;
+  titleSnapshot: string;
+  item?: { setNumber: string };
+}
+
+interface PortfolioSummary {
+  inventory?: { expectedRevenue: number; inventoryItems: number };
+  sales?: { totalRevenue: number };
+}
+
+const parseVal = (val: string | number | undefined): number => {
+  if (val === undefined) return 0;
+  return typeof val === 'string' ? parseFloat(val.replace(/[^0-9.-]+/g, "")) || 0 : val;
+};
 
 export default function MarketPage() {
   const { t } = useI18n();
-  const [loading, setLoading] = useState(true);
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [movers, setMovers] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  
+  const { data: historyData, isLoading: hLoading } = useSWR<HistoryData[]>('/api/profit/monthly', swrFetcher);
+  const { data: catalogData, isLoading: cLoading } = useSWR<CatalogItem[]>('/api/public/catalog?limit=10', swrFetcher);
+  const { data: stats, isLoading: sLoading } = useSWR<PortfolioSummary>('/api/portfolio/summary', swrFetcher);
 
-  useEffect(() => {
-    let mounted = true;
-    Promise.all([
-      apiFetch<any[]>('/api/profit/monthly').catch(() => []),
-      apiFetch<any[]>('/api/public/catalog?limit=10').catch(() => []),
-      apiFetch<any>('/api/portfolio/summary').catch(() => null)
-    ]).then(([history, catalog, portfolio]) => {
-      if (mounted) {
-        if (Array.isArray(history) && history.length > 0) {
-          setChartData(history.map(d => ({
-            time: d.date || d.month,
-            value: typeof d.revenue === 'string' ? parseFloat(d.revenue.replace(/[^0-9.-]+/g,"")) : d.revenue
-          })));
-        }
-
-        if (Array.isArray(catalog)) {
-          const sorted = catalog
-            .map(item => {
-              const cost = item.totalCost || 1;
-              const price = item.expectedSalePriceManual ?? cost;
-              const change = ((price - cost) / cost) * 100;
-              return {
-                id: item.item?.setNumber || item.itemId.slice(0, 6),
-                name: item.titleSnapshot,
-                price: formatMoney(price),
-                change: `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`,
-                up: change >= 0,
-                rawChange: change
-              };
-            })
-            .sort((a, b) => Math.abs(b.rawChange) - Math.abs(a.rawChange))
-            .slice(0, 5);
-          setMovers(sorted);
-        }
-
-        setStats(portfolio);
-        setLoading(false);
-      }
-    });
-
-    return () => { mounted = false; };
-  }, []);
-
-  if (loading) {
+  if (hLoading || cLoading || sLoading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
   }
+
+  const chartData = Array.isArray(historyData) ? historyData.map(d => ({
+    time: d.date || d.month,
+    value: parseVal(d.revenue)
+  })) : [];
+
+  const movers = Array.isArray(catalogData) ? catalogData
+    .map(item => {
+      const cost = item.totalCost || 1;
+      const price = item.expectedSalePriceManual ?? cost;
+      const change = ((price - cost) / cost) * 100;
+      return {
+        id: item.item?.setNumber || item.itemId.slice(0, 6),
+        name: item.titleSnapshot,
+        price: formatMoney(price),
+        change: `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`,
+        up: change >= 0,
+        rawChange: change
+      };
+    })
+    .sort((a, b) => Math.abs(b.rawChange) - Math.abs(a.rawChange))
+    .slice(0, 5) : [];
 
   const marketCap = stats?.inventory?.expectedRevenue ?? 0;
   const realizedRevenue = stats?.sales?.totalRevenue ?? 0;
@@ -68,8 +81,8 @@ export default function MarketPage() {
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto animate-fade-in-up">
       <div className="mb-10">
-        <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('market.title')}</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('market.subtitle')}</p>
+        <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('market.title' as any)}</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('market.subtitle' as any)}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -79,10 +92,10 @@ export default function MarketPage() {
               <Activity size={24} />
             </div>
             <span className="flex items-center gap-1 text-green-500 font-bold text-sm bg-green-500/10 px-2 py-1 rounded-md">
-              <TrendingUp size={14} /> {t('market.active')}
+              <TrendingUp size={14} /> {t('market.active' as any)}
             </span>
           </div>
-          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">{t('market.globalCap')}</h3>
+          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">{t('market.globalCap' as any)}</h3>
           <p className="text-3xl font-black">{formatMoney(marketCap)}</p>
         </div>
         <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
@@ -91,10 +104,10 @@ export default function MarketPage() {
               <DollarSign size={24} />
             </div>
             <span className="flex items-center gap-1 text-green-500 font-bold text-sm bg-green-500/10 px-2 py-1 rounded-md">
-              <TrendingUp size={14} /> {t('market.growth')}
+              <TrendingUp size={14} /> {t('market.growth' as any)}
             </span>
           </div>
-          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">{t('market.tradingVol')}</h3>
+          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">{t('market.tradingVol' as any)}</h3>
           <p className="text-3xl font-black">{formatMoney(realizedRevenue)}</p>
         </div>
         <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
@@ -103,14 +116,14 @@ export default function MarketPage() {
               <Package size={24} />
             </div>
           </div>
-          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">{t('market.activePos')}</h3>
+          <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-1">{t('market.activePos' as any)}</h3>
           <p className="text-3xl font-black">{activeListings}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-[var(--card)] p-6 rounded-3xl border border-[var(--border)] shadow-sm">
-          <h2 className="text-xl font-black mb-6">{t('market.chartTitle')}</h2>
+          <h2 className="text-xl font-black mb-6">{t('market.chartTitle' as any)}</h2>
           <div className="h-[400px] w-full">
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -131,14 +144,14 @@ export default function MarketPage() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 font-medium">{t('market.noData')}</div>
+              <div className="h-full flex items-center justify-center text-slate-400 font-medium">{t('market.noData' as any)}</div>
             )}
           </div>
         </div>
 
         <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden flex flex-col">
           <div className="p-6 border-b border-[var(--border)]">
-            <h2 className="text-xl font-black">{t('market.topMovers')}</h2>
+            <h2 className="text-xl font-black">{t('market.topMovers' as any)}</h2>
           </div>
           <div className="p-2 flex-1 overflow-y-auto">
             {movers.length > 0 ? movers.map((mover, idx) => (
@@ -156,7 +169,7 @@ export default function MarketPage() {
                 </div>
               </div>
             )) : (
-              <div className="p-6 text-center text-slate-400 font-medium">{t('market.noMovers')}</div>
+              <div className="p-6 text-center text-slate-400 font-medium">{t('market.noMovers' as any)}</div>
             )}
           </div>
         </div>

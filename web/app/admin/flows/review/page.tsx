@@ -5,9 +5,17 @@ import { StatusPill } from '@/components/admin/status-pill';
 import { api } from '@/lib/api';
 import type { ReviewFlowItem } from '@/lib/types';
 
-async function getReviewFlow(): Promise<ReviewFlowItem[]> {
+export const revalidate = 0;
+
+interface ExtendedReviewFlowItem extends ReviewFlowItem {
+  inventoryItem?: {
+    titleSnapshot?: string;
+  };
+}
+
+async function getReviewFlow(): Promise<ExtendedReviewFlowItem[]> {
   try {
-    return await api.get<ReviewFlowItem[]>('/flows/review');
+    return await api.get<ExtendedReviewFlowItem[]>('/flows/review');
   } catch {
     return [];
   }
@@ -17,13 +25,13 @@ export default async function AdminReviewFlowPage() {
   const rows = await getReviewFlow();
 
   return (
-    <div className="animate-fade-in-up space-y-6">
-      <div>
-        <h1 className="text-3xl font-black text-slate-900">Review Flow Pipeline</h1>
-        <p className="mt-1 text-sm text-slate-500">Items requiring manual review and verification.</p>
+    <div className="animate-fade-in-up space-y-6 hardware-accelerated">
+      <div className="bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm">
+        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Review Flow Pipeline</h1>
+        <p className="mt-1 text-sm font-medium text-slate-500">Items requiring manual review and verification by an operator.</p>
       </div>
 
-      <SectionCard title="Review Queue">
+      <SectionCard title="Review Queue" contentClassName="p-0 sm:p-6">
         <DataTable
           rows={rows}
           emptyText="No items require review at the moment."
@@ -34,7 +42,7 @@ export default async function AdminReviewFlowPage() {
               header: 'Flow Item',
               render: (row) => (
                 <div className="flex flex-col">
-                  <span className="font-bold text-slate-900">{row.inventoryItemId}</span>
+                  <span className="font-bold text-[var(--foreground)]">{row.inventoryItem?.titleSnapshot ?? row.inventoryItemId}</span>
                   <span className="mt-1 font-mono text-xs font-medium text-slate-400">ID: {row.id}</span>
                 </div>
               ),
@@ -43,7 +51,7 @@ export default async function AdminReviewFlowPage() {
               key: 'reason',
               header: 'Reason for Review',
               render: (row) => (
-                <span className="text-sm text-slate-700">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   {row.reason ?? 'No specific reason provided'}
                 </span>
               ),

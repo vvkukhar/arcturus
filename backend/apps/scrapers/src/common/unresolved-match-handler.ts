@@ -1,35 +1,27 @@
-import { prisma } from '../prisma';
-import { extractSetNumber, normalizeTitle } from '@arcturus/shared';
+import { prisma } from '../../prisma';
 
-export async function enqueueUnresolvedMatch(params: {
+export interface UnresolvedMatchPayload {
   listingId: string;
   sourceCode: string;
   titleRaw: string;
-  suggestedItemId?: string | null;
-}): Promise<void> {
-  const normalizedTitle = normalizeTitle(params.titleRaw);
-  const extractedSetNo = extractSetNumber(params.titleRaw);
+}
 
-  const existing = await prisma.unresolvedMatchQueue.findFirst({
-    where: {
-      listingId: params.listingId,
-      status: 'pending',
+export async function enqueueUnresolvedMatch(payload: UnresolvedMatchPayload): Promise<void> {
+  await prisma.unresolvedListing.upsert({
+    where: { listingId: payload.listingId },
+    update: {
+      titleRaw: payload.titleRaw,
+      lastSeenAt: new Date(),
+      attempts: { increment: 1 }
     },
-  });
-
-  if (existing) {
-    return;
-  }
-
-  await prisma.unresolvedMatchQueue.create({
-    data: {
-      listingId: params.listingId,
-      sourceCode: params.sourceCode,
-      titleRaw: params.titleRaw,
-      normalizedTitle,
-      extractedSetNo,
-      suggestedItemId: params.suggestedItemId ?? null,
-      status: 'pending',
-    },
+    create: {
+      listingId: payload.listingId,
+      sourceCode: payload.sourceCode,
+      titleRaw: payload.titleRaw,
+      firstSeenAt: new Date(),
+      lastSeenAt: new Date(),
+      attempts: 1,
+      status: 'pending'
+    }
   });
 }

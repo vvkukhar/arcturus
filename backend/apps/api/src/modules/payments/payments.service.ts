@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { RedisService } from '../redis/redis.service';
+import { toCents } from '@arcturus/shared';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -31,7 +32,7 @@ export class PaymentsService {
       throw new BadRequestException('Invalid order price for checkout');
     }
 
-    const amountKopecks = Math.round(order.sellPrice * 100);
+    const amountKopecks = toCents(order.sellPrice);
 
     const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
       method: 'POST',
@@ -91,24 +92,32 @@ export class PaymentsService {
     }
   }
 
-  async handleWebhook(body: any, xSignBase64?: string): Promise<{ received: boolean }> {
-    if (!xSignBase64) throw new BadRequestException('Missing X-Sign header');
-
+  async getMonoPubKey(): Promise<string> {
     let pubKeyBase64 = await this.redis.get<string>('mono_pubkey');
-    
     if (!pubKeyBase64) {
       const keyRes = await fetch('https://api.monobank.ua/api/merchant/pubkey', {
         headers: { 'X-Token': this.monoToken },
       });
-      
       if (!keyRes.ok) throw new BadRequestException('Failed to fetch Mono pubkey');
       const data = await keyRes.json();
       pubKeyBase64 = String((data as any).key);
       await this.redis.set('mono_pubkey', pubKeyBase64, 86400);
     }
+    return pubKeyBase64;
+  }
 
-    if (!this.verifySignature(pubKeyBase64 as string, xSignBase64, body)) {
-      throw new BadRequestException('Invalid signature');
+  async handleWebhook(body: any, xSignBase64?: string): Promise<{ received: boolean }> {
+    if (!xSignBase64) throw new BadRequestException('Missing X-Sign header');
+
+    let pubKeyBase64 = await this.getMonoPubKey();
+    
+    if (!this.verifySignature(pubKeyBase64, xSignBase64, body)) {
+      await this.redis.del('mono_pubkey');
+      pubKeyBase64 = await this.getMonoPubKey();
+      
+      if (!this.verifySignature(pubKeyBase64, xSignBase64, body)) {
+        throw new BadRequestException('Invalid signature');
+      }
     }
 
     if (body.status === 'success' && body.reference) {

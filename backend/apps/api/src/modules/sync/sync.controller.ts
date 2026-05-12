@@ -32,13 +32,13 @@ export class SyncController {
   }
 
   @Get('state')
-  getSyncState(): unknown {
+  async getSyncState(): Promise<unknown> {
     return this.syncStateService.getState();
   }
 
   @Post('state/reset')
-  resetSyncState(): unknown {
-    this.syncStateService.reset();
+  async resetSyncState(): Promise<unknown> {
+    await this.syncStateService.reset();
     return this.syncStateService.getState();
   }
 

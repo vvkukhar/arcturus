@@ -1,0 +1,42 @@
+import { Worker, Job } from 'bullmq';
+import { QUEUE_NAMES } from './queue.constants';
+import { createRedisConnection } from './redis-connection';
+import { routeJob } from './job-router';
+
+export function startWorkers() {
+  const handleJob = async (job: Job) => routeJob(job);
+  const connection = createRedisConnection();
+
+  const concurrencyLevels = {
+    [QUEUE_NAMES.MARKET]: Number(process.env.MARKET_CONCURRENCY) || 4,
+    [QUEUE_NAMES.DECISIONS]: Number(process.env.DECISIONS_CONCURRENCY) || 4,
+    [QUEUE_NAMES.MAINTENANCE]: Number(process.env.MAINTENANCE_CONCURRENCY) || 1,
+    [QUEUE_NAMES.SCRAPERS]: Number(process.env.SCRAPERS_CONCURRENCY) || 8,
+    [QUEUE_NAMES.SYNC]: Number(process.env.SYNC_CONCURRENCY) || 2,
+  };
+
+  const workers = Object.values(QUEUE_NAMES).map((queueName) => {
+    const worker = new Worker(queueName, handleJob, { 
+      connection, 
+      concurrency: concurrencyLevels[queueName],
+      lockDuration: 1000 * 60 * 5,
+      removeOnComplete: { count: 100 },
+      removeOnFail: { count: 1000 },
+      stalledInterval: 30000,
+    });
+
+    worker.on('failed', (job, err) => {
+      console.error(`[CRITICAL] Queue: ${queueName} | Job: ${job?.name} | ID: ${job?.id}`, err);
+    });
+
+    return worker;
+  });
+
+  const shutdown = async () => {
+    await Promise.all(workers.map(w => w.close()));
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+}

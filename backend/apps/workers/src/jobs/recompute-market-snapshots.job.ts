@@ -1,7 +1,7 @@
 import { prisma } from '../prisma';
 
 export async function recomputeMarketSnapshotsJob(): Promise<{ totalItems: number; snapshotsCreated: number }> {
-  const chunkSize = 200;
+  const chunkSize = 500;
   let snapshotsCreated = 0;
   let totalItems = 0;
 
@@ -9,13 +9,13 @@ export async function recomputeMarketSnapshotsJob(): Promise<{ totalItems: numbe
   let lastId: string | undefined = undefined;
 
   while (hasMore) {
-    const chunk = (await prisma.item.findMany({
+    const chunk = await prisma.item.findMany({
       select: { id: true },
       take: chunkSize,
       skip: lastId ? 1 : undefined,
       cursor: lastId ? { id: lastId } : undefined,
       orderBy: { id: 'asc' },
-    })) as { id: string }[];
+    });
 
     if (chunk.length === 0) {
       hasMore = false;
@@ -73,8 +73,8 @@ export async function recomputeMarketSnapshotsJob(): Promise<{ totalItems: numbe
       const prices: number[] = [];
 
       for (const listing of listings) {
-        const p = listing.price;
-        const s = listing.shippingPrice ?? 0;
+        const p = Number(listing.price);
+        const s = Number(listing.shippingPrice ?? 0);
         const pws = p + s;
 
         prices.push(p);

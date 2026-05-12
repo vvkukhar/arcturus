@@ -1,47 +1,39 @@
-import { prisma } from '../prisma';
-import { extractSetNumber, normalizeTitle } from '@arcturus/shared';
+import { prisma } from '../../prisma';
+import * as stringSimilarity from 'string-similarity';
 
-export async function resolveItemIdFromTitle(
-  rawTitle: string,
-): Promise<string | null> {
-  const setNumber = extractSetNumber(rawTitle);
-
-  if (setNumber) {
-    const exact = await prisma.item.findFirst({
-      where: {
-        setNumber,
-      },
-      select: {
-        id: true,
-      },
+export async function resolveItemIdFromTitle(titleRaw: string): Promise<string | null> {
+  const normalizedTitle = titleRaw.toLowerCase().replace(/[^a-z0-9]/g, ' ');
+  
+  const setNumberMatch = normalizedTitle.match(/\b\d{4,5}\b/);
+  
+  if (setNumberMatch) {
+    const setNumber = setNumberMatch[0];
+    const exactMatch = await prisma.item.findFirst({
+      where: { setNumber: setNumber },
+      select: { id: true }
     });
-
-    if (exact) {
-      return exact.id;
-    }
+    if (exactMatch) return exactMatch.id;
   }
 
-  const normalized = normalizeTitle(rawTitle);
-
-  const items = await prisma.item.findMany({
-    select: {
-      id: true,
-      title: true,
-      setNumber: true,
-    },
-    take: 1000,
+  const activeWatchlist = await prisma.watchlistItem.findMany({
+    where: { active: true },
+    select: { itemId: true, item: { select: { title: true, setNumber: true } } }
   });
 
-  for (const item of items) {
-    const normalizedItemTitle = normalizeTitle(item.title);
+  let bestMatchId: string | null = null;
+  let highestRating = 0.55; 
 
-    if (
-      normalized.includes(normalizedItemTitle) ||
-      normalizedItemTitle.includes(normalized)
-    ) {
-      return item.id;
+  for (const target of activeWatchlist) {
+    if (!target.item) continue;
+    
+    const targetName = target.item.title.toLowerCase();
+    const rating = stringSimilarity.compareTwoStrings(normalizedTitle, targetName);
+    
+    if (rating > highestRating) {
+      highestRating = rating;
+      bestMatchId = target.itemId;
     }
   }
 
-  return null;
+  return bestMatchId;
 }

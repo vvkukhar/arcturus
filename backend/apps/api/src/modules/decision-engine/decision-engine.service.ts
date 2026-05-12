@@ -19,12 +19,40 @@ interface BuyScoreResult {
 
 @Injectable()
 export class DecisionEngineService {
+  private readonly BUY_MATRIX = [
+    { minScore: 85, action: 'BUY_NOW', reason: 'High ROI and strong expected profit' },
+    { minScore: 70, action: 'BUY', reason: 'Good expected margin' },
+    { minScore: 45, action: 'WATCH', reason: 'Acceptable but not urgent' },
+    { minScore: -Infinity, action: 'SKIP', reason: 'Weak economics' }
+  ];
+
+  private readonly INV_MATRIX = [
+    { minRoiRatio: 1.5, action: 'SELL_FAST', score: 85, reason: 'Strong expected ROI; prioritize listing' },
+    { minRoiRatio: 1.0, action: 'HOLD', score: 50, reason: 'Inventory is within normal range' },
+    { minRoiRatio: 0.0, action: 'REPRICE_UP', score: 70, reason: 'Expected ROI is below target' },
+    { minRoiRatio: -Infinity, action: 'REPRICE_UP_OR_REVIEW', score: 80, reason: 'Expected profit is negative' }
+  ];
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
     private readonly realtime: RealtimeGateway,
     private readonly unitEconomics: UnitEconomicsService,
   ) {}
+
+  private resolveActionFromMatrix(score: number, matrix: { minScore: number; action: string; reason: string }[]) {
+    for (const tier of matrix) {
+      if (score >= tier.minScore) return { action: tier.action, reasonPrimary: tier.reason };
+    }
+    return { action: 'SKIP', reasonPrimary: 'Unknown' };
+  }
+
+  private resolveInventoryActionFromMatrix(roiRatio: number, matrix: { minRoiRatio: number; action: string; score: number; reason: string }[]) {
+    for (const tier of matrix) {
+      if (roiRatio >= tier.minRoiRatio) return { action: tier.action, score: tier.score, reasonPrimary: tier.reason };
+    }
+    return { action: 'HOLD', score: 50, reasonPrimary: 'Unknown' };
+  }
 
   private scoreBuy(params: {
     buyPrice: number;
@@ -46,23 +74,8 @@ export class DecisionEngineService {
 
     score = Math.max(0, Math.min(100, toMoney(score)));
 
-    let action = 'WATCH';
-    let reasonPrimary = 'Potential deal needs monitoring';
+    let { action, reasonPrimary } = this.resolveActionFromMatrix(score, this.BUY_MATRIX);
     let reasonSecondary: string | undefined;
-
-    if (score >= 85) {
-      action = 'BUY_NOW';
-      reasonPrimary = 'High ROI and strong expected profit';
-    } else if (score >= 70) {
-      action = 'BUY';
-      reasonPrimary = 'Good expected margin';
-    } else if (score >= 45) {
-      action = 'WATCH';
-      reasonPrimary = 'Acceptable but not urgent';
-    } else {
-      action = 'SKIP';
-      reasonPrimary = 'Weak economics';
-    }
 
     if (expectedProfit < 0) {
       action = 'SKIP';
@@ -186,18 +199,12 @@ export class DecisionEngineService {
       action = 'SOLD_OUT';
       score = 100;
       reasonPrimary = 'No stock remaining';
-    } else if (roiPercent < 0) {
-      action = 'REPRICE_UP_OR_REVIEW';
-      score = 80;
-      reasonPrimary = 'Expected profit is negative';
-    } else if (roiPercent < targetRoiPercent) {
-      action = 'REPRICE_UP';
-      score = 70;
-      reasonPrimary = 'Expected ROI is below target';
-    } else if (roiPercent >= targetRoiPercent * 1.5) {
-      action = 'SELL_FAST';
-      score = 85;
-      reasonPrimary = 'Strong expected ROI; prioritize listing';
+    } else {
+      const roiRatio = targetRoiPercent > 0 ? roiPercent / targetRoiPercent : 0;
+      const matrixResult = this.resolveInventoryActionFromMatrix(roiRatio, this.INV_MATRIX);
+      action = matrixResult.action;
+      score = matrixResult.score;
+      reasonPrimary = matrixResult.reasonPrimary;
     }
 
     const snapshot = await this.prisma.decisionSnapshot.create({

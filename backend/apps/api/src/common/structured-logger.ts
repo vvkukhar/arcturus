@@ -1,25 +1,27 @@
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+import { ConsoleLogger, LogLevel } from '@nestjs/common';
 
-export function logStructured(
-  level: LogLevel,
-  event: string,
-  payload?: Record<string, unknown>,
-): void {
-  const row = {
-    level,
-    event,
-    service: 'arcturus-api',
-    time: new Date().toISOString(),
-    ...(payload ?? {}),
-  };
+export class StructuredJsonLogger extends ConsoleLogger {
+  protected printMessages(
+    messages: unknown[],
+    context?: string,
+    logLevel?: LogLevel,
+    writeStreamType?: 'stdout' | 'stderr'
+  ) {
+    messages.forEach((message) => {
+      const logObj = {
+        timestamp: new Date().toISOString(),
+        level: logLevel,
+        context: context || 'Application',
+        message: typeof message === 'object' ? JSON.stringify(message) : message,
+      };
 
-  const text = JSON.stringify(row);
-
-  if (level === 'error') {
-    console.error(text);
-  } else if (level === 'warn') {
-    console.warn(text);
-  } else {
-    console.log(text);
+      const out = JSON.stringify(logObj) + '\n';
+      
+      if (writeStreamType === 'stderr') {
+        process.stderr.write(out);
+      } else {
+        process.stdout.write(out);
+      }
+    });
   }
 }

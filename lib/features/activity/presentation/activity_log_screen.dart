@@ -1,128 +1,196 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_log_entry_model.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_log_filter_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_log_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_log_query_provider.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_log_card.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_log_search_field.dart';
-import 'package:lego_trading_manager/features/activity/presentation/widgets/activity_log_type_dropdown.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_engine.dart';
+import 'package:lego_trading_manager/features/activity/presentation/activity_timeline_screen.dart';
 
-class ActivityLogScreen extends ConsumerStatefulWidget {
+class ActivityLogScreen extends ConsumerWidget {
   const ActivityLogScreen({super.key});
 
   @override
-  ConsumerState<ActivityLogScreen> createState() => _ActivityLogScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stateAsync = ref.watch(activityEngineProvider);
 
-class _ActivityLogScreenState extends ConsumerState<ActivityLogScreen> {
-  bool _loading = true;
-  List<ActivityLogEntryModel> _entries = const [];
-  final _searchController = TextEditingController();
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Activity Center', style: TextStyle(fontWeight: FontWeight.w900)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ActivityTimelineScreen())),
+          )
+        ],
+      ),
+      body: stateAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (state) {
+          if (state.logs.isEmpty) {
+            return const Center(child: Text('System activity is empty.', style: TextStyle(color: Colors.white54)));
+          }
 
-  @override
-  void initState() {
-    super.initState();
-    _searchController.text = ref.read(activityLogQueryProvider);
-    Future.microtask(_load);
-  }
-
-  Future<void> _load() async {
-    final data = await ref.read(activityLogProvider).getAll();
-    if (!mounted) return;
-
-    setState(() {
-      _entries = data;
-      _loading = false;
-    });
-  }
-
-  Future<void> _clear() async {
-    final i18n = ref.read(i18nProvider.notifier);
-    await ref.read(activityLogProvider).clear();
-    if (!mounted) return;
-
-    setState(() {
-      _entries = const [];
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(i18n.t('activity.log.cleared'))),
+          return CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeroCard(state),
+                      const SizedBox(height: 16),
+                      _buildMetricGrid(state),
+                      const SizedBox(height: 16),
+                      _buildInsights(state),
+                      const SizedBox(height: 24),
+                      const Text('Recent Operations', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final item = state.logs[index];
+                    return _LogTile(item: item);
+                  },
+                  childCount: state.logs.length > 10 ? 10 : state.logs.length,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
+  Widget _buildHeroCard(ActivityEngineState state) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.deepPurpleAccent.withValues(alpha: 0.15), Colors.blueAccent.withValues(alpha: 0.15)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${state.controlScore.toStringAsFixed(0)} Control Score', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          Text('Momentum: ${state.momentumLabel} • Discipline: ${state.disciplineLabel}', style: const TextStyle(color: Colors.white70)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricGrid(ActivityEngineState state) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 2.0,
+      children: [
+        _MiniCard(title: 'Active Streak', value: '${state.activeDayStreak}d', color: Colors.greenAccent),
+        _MiniCard(title: '7-Day Activity', value: '${state.activeDaysInLast7}/7', color: Colors.blueAccent),
+        _MiniCard(title: 'Best Day', value: '${state.bestDayCount} acts', color: Colors.orangeAccent),
+        _MiniCard(title: 'Top Type', value: state.topType, color: Colors.purpleAccent),
+      ],
+    );
+  }
+
+  Widget _buildInsights(ActivityEngineState state) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        children: [
+          _RowStat('Total Reports', state.reports.toString()),
+          const Divider(color: Colors.white10),
+          _RowStat('Total Purchases', state.purchases.toString()),
+          const Divider(color: Colors.white10),
+          _RowStat('Total Sales', state.sales.toString()),
+          const Divider(color: Colors.white10),
+          _RowStat('Watchlist Actions', state.watchlist.toString()),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final Color color;
+  const _MiniCard({required this.title, required this.value, required this.color});
+
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withValues(alpha: 0.2))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(title, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RowStat extends StatelessWidget {
+  final String label;
+  final String value;
+  const _RowStat(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white70)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+class _LogTile extends StatelessWidget {
+  final ActivityLogEntryModel item;
+  const _LogTile({required this.item});
+
+  IconData _icon() {
+    switch (item.type) {
+      case 'purchase': return Icons.shopping_cart;
+      case 'sale': return Icons.sell;
+      case 'report': return Icons.analytics;
+      case 'watchlist': return Icons.bookmark;
+      default: return Icons.bolt;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final i18n = ref.watch(i18nProvider.notifier);
-    final query = ref.watch(activityLogQueryProvider).trim().toLowerCase();
-    final typeFilter = ref.watch(activityLogTypeFilterProvider);
-
-    final visible = _entries.where((e) {
-      final matchesQuery = query.isEmpty ||
-          e.title.toLowerCase().contains(query) ||
-          e.subtitle.toLowerCase().contains(query);
-
-      final matchesType = typeFilter == null || e.type == typeFilter;
-      return matchesQuery && matchesType;
-    }).toList();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(i18n.t('activity.log.title')),
-        actions: [
-          IconButton(
-            onPressed: _entries.isEmpty ? null : _clear,
-            icon: const Icon(Icons.delete_sweep_outlined),
-          ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  ActivityLogSearchField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      ref.read(activityLogQueryProvider.notifier).set(value);
-                    },
-                    onClear: () {
-                      _searchController.clear();
-                      ref.read(activityLogQueryProvider.notifier).set('');
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  ActivityLogTypeDropdown(
-                    value: typeFilter,
-                    onChanged: (value) {
-                      ref.read(activityLogTypeFilterProvider.notifier).set(value);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: visible.isEmpty
-                        ? Center(child: Text(i18n.t('activity.log.empty')))
-                        : ListView.builder(
-                            itemCount: visible.length,
-                            itemBuilder: (context, index) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: ActivityLogCard(entry: visible[index]),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            ),
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: CircleAvatar(backgroundColor: Colors.white10, child: Icon(_icon(), color: Colors.white, size: 20)),
+      title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(item.subtitle, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+      trailing: Text(item.createdAt.toIso8601String().split('T').first, style: const TextStyle(fontSize: 12)),
     );
   }
 }

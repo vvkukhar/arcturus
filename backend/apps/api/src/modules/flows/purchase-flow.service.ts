@@ -3,10 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { toMoney } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { FlowsEventsService } from './flows-events.service';
+import { toMoney } from '@arcturus/shared';
 
 @Injectable()
 export class PurchaseFlowService {
@@ -268,6 +268,12 @@ export class PurchaseFlowService {
     const totalCost = body.purchasePrice + extraCosts;
 
     const result = await this.prisma.$transaction(async (tx) => {
+      const lockResult = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "WatchlistItem" WHERE "id" = ${flowItem.watchlistItemId} FOR UPDATE
+      `;
+      
+      if (!lockResult || lockResult.length === 0) throw new NotFoundException('Watchlist lock failed');
+
       const inventoryItem = await tx.inventoryItem.create({
         data: {
           itemId: flowItem.watchlistItem.itemId,
@@ -446,7 +452,6 @@ export class PurchaseFlowService {
       status: updated.status,
     });
 
-    // Використовуємо events замість realtime
     this.events.purchaseChanged(updated);
 
     return updated;

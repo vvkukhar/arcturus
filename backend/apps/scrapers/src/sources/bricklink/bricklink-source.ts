@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { browserManager } from '../../common/browser-manager';
 import { estimateUaShippingBySource } from '../../common/shipping-estimator';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
 import { stableListingId } from '../../common/listing-id';
@@ -9,11 +9,20 @@ import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
 import { parseBrickLinkSearchHtml } from './bricklink-parser';
 
-const searchQueries = ['70621', '70624', '70659', '71700', '75301', '75367'];
-
 export async function runBrickLinkSource(): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'bricklink' } });
   if (!source || !source.enabled) return;
+
+  const activeWatchlist = await prisma.watchlistItem.findMany({
+    where: { active: true },
+    select: { item: { select: { setNumber: true } } }
+  });
+
+  const searchQueries = Array.from(
+    new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))
+  ) as string[];
+
+  if (searchQueries.length === 0) return;
 
   const runId = await startSourceRun('bricklink');
 
@@ -29,16 +38,8 @@ export async function runBrickLinkSource(): Promise<void> {
 
     for (const query of searchQueries) {
       const url = `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(query)}#T=S`;
-
-      const response = await axios.get<string>(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
-          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        },
-        timeout: 15000,
-      });
-
-      const listings = parseBrickLinkSearchHtml(response.data);
+      const html = await browserManager.fetchHtml(url);
+      const listings = parseBrickLinkSearchHtml(html);
 
       for (const listing of listings) {
         itemsSeen += 1;
@@ -49,12 +50,10 @@ export async function runBrickLinkSource(): Promise<void> {
 
         const shippingPrice = listing.shippingPrice ?? estimateUaShippingBySource({
           sourceCode: 'bricklink',
-          itemPrice: listing.price,
-          currency: listing.currency,
+          price: listing.price,
+          country: listing.country,
           sealed: listing.sealed,
         });
-
-        const shippingCurrency = listing.shippingCurrency ?? listing.currency ?? 'USD';
 
         upsertOperations.push(
           prisma.marketListing.upsert({
@@ -69,7 +68,7 @@ export async function runBrickLinkSource(): Promise<void> {
               price: listing.price,
               currency: listing.currency,
               shippingPrice,
-              shippingCurrency,
+              shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'USD',
               condition: listing.condition,
               sealed: listing.sealed,
               status: 'active',
@@ -90,7 +89,7 @@ export async function runBrickLinkSource(): Promise<void> {
               price: listing.price,
               currency: listing.currency,
               shippingPrice,
-              shippingCurrency,
+              shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'USD',
               condition: listing.condition,
               sealed: listing.sealed,
               status: 'active',
@@ -131,6 +130,5 @@ export async function runBrickLinkSource(): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
     await logSourceError({ scope: 'scraper', sourceCode: 'bricklink', message: 'BrickLink source failed', detailsJson: { error: message } });
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });
-    throw error;
   }
 }

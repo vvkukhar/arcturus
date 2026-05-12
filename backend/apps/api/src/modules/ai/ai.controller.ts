@@ -1,31 +1,20 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Roles } from '../auth/roles.decorator';
-import { RolesGuard } from '../auth/roles.guard';
-import { AiService } from './ai.service';
+import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
+import { OpenAiService } from './openai.service';
+import { AdminGuard } from '../auth/guards/admin.guard';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin', 'operator')
 @Controller('ai')
+@UseGuards(AdminGuard)
 export class AiController {
-  constructor(private readonly aiService: AiService) {}
+  constructor(private readonly aiService: OpenAiService) {}
 
   @Post('explain-deal')
-  explainDeal(
-    @Body()
-    body: {
-      buyPrice: number;
-      sellPrice: number;
-      marketFloor?: number | null;
-      marketAverage?: number | null;
-      liquidityScore?: number | null;
-    },
-  ): unknown {
-    return this.aiService.explainDeal(body);
+  async explain(@Body() body: any) {
+    return this.aiService.analyzeDeal(body);
   }
 
-  @Get('suggestions')
-  suggestions(): Promise<unknown[]> {
-    return this.aiService.suggestions();
+  @Get('market-suggestions')
+  async getSuggestions() {
+    const dummyTrends = { popularThemes: ['Star Wars', 'Ninjago'], volatility: 'low' };
+    return this.aiService.generateMarketInsight(dummyTrends);
   }
 }

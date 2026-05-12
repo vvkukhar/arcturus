@@ -1,45 +1,55 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, CartesianGrid } from 'recharts';
-import { Coins, TrendingUp, TrendingDown, Activity, Loader2, ArrowUpRight } from 'lucide-react';
-import { apiFetch } from '@/lib/client-api';
+import useSWR from 'swr';
+import { Coins, Loader2, ArrowUpRight } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney, formatPercent } from '@/lib/format';
-import { useI18n } from '@/components/providers/i18n-provider';
 import { MetricCard } from '@/components/admin/metric-card';
 
+const ResponsiveContainer = dynamic(() => import('recharts').then((mod) => mod.ResponsiveContainer), { ssr: false });
+const AreaChart = dynamic(() => import('recharts').then((mod) => mod.AreaChart), { ssr: false });
+const Area = dynamic(() => import('recharts').then((mod) => mod.Area), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then((mod) => mod.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then((mod) => mod.YAxis), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then((mod) => mod.Tooltip), { ssr: false });
+
+interface ProfitSummary {
+  totalProfit: number;
+  totalRevenue: number;
+  salesCount: number;
+  avgProfitPerSale: number;
+  realizedRoiPercent: number;
+  expectedInventoryRevenue: number;
+  expectedInventoryProfit: number;
+  expectedInventoryRoiPercent: number;
+}
+
+interface MonthlyProfit {
+  date: string;
+  revenue: number;
+  netProfit: number;
+}
+
+interface ThemeProfit {
+  theme: string;
+  salesCount: number;
+  profit: number;
+  roiPercent: number;
+}
+
+interface VelocityStats {
+  soldPerDay: number;
+  estimatedDaysToClear: number | null;
+}
+
 export default function AdminProfitPage() {
-  const { t } = useI18n();
-  const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<any>(null);
-  const [monthly, setMonthly] = useState<any[]>([]);
-  const [themes, setThemes] = useState<any[]>([]);
-  const [velocity, setVelocity] = useState<any>(null);
+  const { data: summary, isLoading: sLoading } = useSWR<ProfitSummary>('/api/profit/summary', swrFetcher);
+  const { data: monthly = [], isLoading: mLoading } = useSWR<MonthlyProfit[]>('/api/profit/monthly', swrFetcher);
+  const { data: themes = [], isLoading: tLoading } = useSWR<ThemeProfit[]>('/api/profit/by-theme', swrFetcher);
+  const { data: velocity, isLoading: vLoading } = useSWR<VelocityStats>('/api/profit/velocity?days=30', swrFetcher);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [sumData, monthData, themeData, velData] = await Promise.all([
-        apiFetch<any>('/api/profit/summary'),
-        apiFetch<any[]>('/api/profit/monthly'),
-        apiFetch<any[]>('/api/profit/by-theme'),
-        apiFetch<any>('/api/profit/velocity?days=30'),
-      ]);
-      setSummary(sumData);
-      setMonthly(Array.isArray(monthData) ? monthData : []);
-      setThemes(Array.isArray(themeData) ? themeData : []);
-      setVelocity(velData);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  if (loading) {
+  if (sLoading || mLoading || tLoading || vLoading) {
     return (
       <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
@@ -68,26 +78,10 @@ export default function AdminProfitPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard 
-          title="Total Revenue" 
-          value={formatMoney(summary?.totalRevenue)} 
-          subtitle={`${summary?.salesCount ?? 0} total sales completed`} 
-        />
-        <MetricCard 
-          title="Average Profit / Sale" 
-          value={formatMoney(summary?.avgProfitPerSale)} 
-          subtitle="Net gain per transaction" 
-        />
-        <MetricCard 
-          title="Realized ROI" 
-          value={formatPercent(summary?.realizedRoiPercent)} 
-          subtitle="Return on sold capital" 
-        />
-        <MetricCard 
-          title="Sales Velocity (30d)" 
-          value={`${velocity?.soldPerDay ?? 0} / day`} 
-          subtitle={velocity?.estimatedDaysToClear ? `Est. clear time: ${velocity.estimatedDaysToClear} days` : 'Insufficient data'} 
-        />
+        <MetricCard title="Total Revenue" value={formatMoney(summary?.totalRevenue)} subtitle={`${summary?.salesCount ?? 0} total sales completed`} />
+        <MetricCard title="Average Profit / Sale" value={formatMoney(summary?.avgProfitPerSale)} subtitle="Net gain per transaction" />
+        <MetricCard title="Realized ROI" value={formatPercent(summary?.realizedRoiPercent)} subtitle="Return on sold capital" />
+        <MetricCard title="Sales Velocity (30d)" value={`${velocity?.soldPerDay ?? 0} / day`} subtitle={velocity?.estimatedDaysToClear ? `Est. clear time: ${velocity.estimatedDaysToClear} days` : 'Insufficient data'} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
@@ -117,10 +111,7 @@ export default function AdminProfitPage() {
                   </defs>
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} dy={10} />
                   <YAxis hide />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '1rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--foreground)', fontWeight: 'bold' }}
-                    itemStyle={{ fontWeight: '900' }}
-                  />
+                  <Tooltip contentStyle={{ borderRadius: '1rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--foreground)', fontWeight: 'bold' }} itemStyle={{ fontWeight: '900' }} />
                   <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
                   <Area type="monotone" dataKey="netProfit" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorProf)" />
                 </AreaChart>
@@ -165,7 +156,7 @@ export default function AdminProfitPage() {
         <div className="rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Unrealized Potential</h2>
-            <Activity className="text-blue-500" />
+            <Coins className="text-blue-500" />
           </div>
           <div className="grid grid-cols-2 gap-6">
             <div className="p-5 rounded-2xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
@@ -175,27 +166,116 @@ export default function AdminProfitPage() {
             <div className="p-5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30">
               <div className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">Expected Profit</div>
               <div className="text-3xl font-black text-emerald-700 dark:text-emerald-400">{formatMoney(summary?.expectedInventoryProfit)}</div>
-              <div className="text-xs font-bold text-emerald-600/70 mt-1">ROI {formatPercent(summary?.expectedInventoryRoiPercent)}</div>
-            </div>
-          </div>
+              <div className="text-xs font-bold text-emerald-600/70 mt-1">ROI {formatPercent(**`web/components/store/product-modal.tsx`**
+```tsx
+'use client';
+
+import Image from 'next/image';
+import { useEffect } from 'react';
+import { InventoryItem } from '@/lib/types';
+import { useCart } from '../providers/cart-provider';
+import { useI18n } from '../providers/i18n-provider';
+import { X, ShoppingCart, CheckCircle2, ShieldCheck, Package } from 'lucide-react';
+import { formatMoney } from '@/lib/format';
+import { ConversionEngine } from './conversion-engine';
+
+export function ProductModal({ item, isOpen, onCloseAction }: { item: InventoryItem; isOpen: boolean; onCloseAction: () => void }) {
+  const { addItem, items } = useCart();
+  const { t } = useI18n();
+  
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const price = item.expectedSalePriceManual ?? item.totalCost;
+  const imageUrl = item.images?.[0]?.imageUrl;
+  const inCart = items.some((i) => i.id === item.id);
+  const status = (item.quantity ?? 0) > 0 ? 'Available' : 'Sold';
+
+  const handleAddToCart = () => {
+    if (!inCart && status === 'Available') {
+      addItem({
+        id: item.id,
+        title: item.titleSnapshot,
+        price,
+        imageUrl,
+      });
+      onCloseAction();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6">
+      <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm animate-in fade-in" onClick={onCloseAction} />
+      
+      <div className="relative w-full max-w-5xl max-h-[95vh] md:max-h-[90vh] bg-[var(--background)] rounded-2xl lg:rounded-3xl shadow-2xl overflow-y-auto overflow-x-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-200 hardware-accelerated">
+        <button onClick={onCloseAction} className="absolute top-2 right-2 md:top-4 md:right-4 z-10 p-2 md:p-3 bg-[var(--card)]/80 backdrop-blur text-slate-500 hover:text-[var(--foreground)] rounded-full shadow-sm transition-colors">
+          <X className="w-5 h-5 md:w-6 md:h-6"/>
+        </button>
+
+        <div className="relative w-full md:w-1/2 bg-[var(--card)] p-6 md:p-8 lg:p-12 flex items-center justify-center min-h-[250px] sm:min-h-[350px] md:min-h-full border-b md:border-b-0 md:border-r border-[var(--border)]">
+          {imageUrl ? (
+            <Image alt="{item.titleSnapshot}" className="object-contain mix-blend-multiply dark:mix-blend-normal p-6 md:p-12" fill sizes="(max-width: 768px) 100vw, 50vw" src="{imageUrl}"/>
+          ) : (
+            <Package className="text-slate-300 dark:text-slate-700 w-16 h-16 md:w-24 md:h-24"/>
+          )}
         </div>
 
-        <div className="rounded-[2.5rem] border border-[var(--border)] bg-slate-900 dark:bg-white p-8 shadow-xl text-white dark:text-slate-900 relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-transform">
-          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-            <ArrowUpRight className="w-32 h-32" />
+        <div className="w-full md:w-1/2 p-6 md:p-8 lg:p-12 flex flex-col justify-center">
+          <div className="flex flex-wrap gap-2 mb-4">
+            <span className="px-2.5 py-1 md:px-3 md:py-1.5 bg-[var(--card)] border border-[var(--border)] text-slate-600 dark:text-slate-300 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-md">
+              {item.condition}
+            </span>
+            {item.sealed && (
+              <span className="px-2.5 py-1 md:px-3 md:py-1.5 bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-400 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-md">
+                Sealed
+              </span>
+            )}
           </div>
-          <div className="relative z-10 h-full flex flex-col justify-between">
-            <div>
-              <div className="inline-flex px-3 py-1 bg-white/20 dark:bg-black/10 rounded-lg text-xs font-black uppercase tracking-widest mb-4">
-                Strategy Export
-              </div>
-              <h2 className="text-3xl font-black tracking-tight leading-tight max-w-sm">
-                Generate Full Financial Report
-              </h2>
+
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-[var(--foreground)] leading-tight mb-2">
+            {item.titleSnapshot}
+          </h2>
+          
+          {item.itemId && <p className="text-xs md:text-sm text-slate-500 font-medium mb-4 md:mb-6 font-mono tracking-widest uppercase">ID: {item.itemId}</p>}
+
+          <div className="text-3xl sm:text-4xl md:text-5xl font-black text-[var(--foreground)]">
+            {formatMoney(price)}
+          </div>
+
+          <ConversionEngine itemId="{item.id}"/>
+
+          <div className="space-y-3 mb-6 md:mb-8 mt-2">
+            <div className="flex items-center gap-4 text-base text-[var(--foreground)] font-bold">
+              <CheckCircle2 className="text-emerald-500 shrink-0 w-5 h-5 md:w-6 md:h-6"/>
+              {t('product.inStock' as any) as string}
             </div>
-            <p className="font-medium opacity-70 max-w-sm">
-              Compile all historical P&L, balance sheets, and tax-ready CSV exports.
-            </p>
+            <div className="flex items-center gap-4 text-base text-[var(--foreground)] font-bold">
+              <ShieldCheck className="text-blue-500 shrink-0 w-5 h-5 md:w-6 md:h-6"/>
+              {t('product.authentic' as any) as string}
+            </div>
+          </div>
+
+          <div className="mt-auto pt-4 md:pt-0">
+            <button 
+              onClick={handleAddToCart}
+              disabled={inCart || status !== 'Available'}
+              className={`w-full py-4 md:py-5 rounded-xl lg:rounded-2xl font-black text-base md:text-lg flex items-center justify-center gap-3 transition-all ${
+                inCart || status !== 'Available'
+                  ? 'bg-slate-100 text-slate-400 dark:bg-slate-800 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-blue-600/30'
+              }`}
+            >
+              <ShoppingCart size="{24}"/>
+              {status !== 'Available' ? 'Продано' : inCart ? 'У кошику' : (t('product.addToCart' as any) as string)}
+            </button>
           </div>
         </div>
       </div>

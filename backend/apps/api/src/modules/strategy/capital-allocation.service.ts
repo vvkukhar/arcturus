@@ -24,10 +24,7 @@ export type CapitalAllocationResult = {
 
 @Injectable()
 export class CapitalAllocationService {
-  allocate(
-    capital: number,
-    candidates: CapitalAllocationCandidate[],
-  ): CapitalAllocationResult[] {
+  allocate(capital: number, candidates: CapitalAllocationCandidate[]): CapitalAllocationResult[] {
     if (!Number.isFinite(capital) || capital <= 0 || candidates.length === 0) {
       return [];
     }
@@ -52,24 +49,17 @@ export class CapitalAllocationService {
     const output: CapitalAllocationResult[] = [];
 
     for (const candidate of scored) {
-      if (remaining < candidate.buyPrice) {
-        continue;
-      }
+      if (remaining < candidate.buyPrice) continue;
 
       const maxShare =
-        candidate.strategy === 'quick_flip'
-          ? 0.35
-          : candidate.strategy === 'hold_flip'
-            ? 0.25
-            : 0.2;
+        candidate.strategy === 'fast_flip' ? 0.35 :
+        candidate.strategy === 'premium_hold' ? 0.25 : 0.2;
 
       const bucket = Math.min(remaining, capital * maxShare);
       const units = Math.max(1, Math.floor(bucket / candidate.buyPrice));
       const reservedCapital = toMoney(units * candidate.buyPrice);
 
-      if (units <= 0 || reservedCapital > remaining) {
-        continue;
-      }
+      if (units <= 0 || reservedCapital > remaining) continue;
 
       output.push({
         itemId: candidate.itemId,
@@ -83,9 +73,7 @@ export class CapitalAllocationService {
 
       remaining = toMoney(remaining - reservedCapital);
 
-      if (remaining <= 0) {
-        break;
-      }
+      if (remaining <= 0) break;
     }
 
     return output;

@@ -1,16 +1,14 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Package, User, ShoppingCart, MapPin, LineChart, ShieldCheck } from 'lucide-react';
-import { useCart } from '../providers/cart-provider';
+import { Search, Package, User, MapPin, LineChart, ShieldCheck } from 'lucide-react';
 
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
-  const { setIsCartOpen } = useCart();
 
   const commands = useMemo(() => [
     { name: 'Catalog', path: '/store/catalog', icon: Package, category: 'Navigation' },
@@ -18,6 +16,8 @@ export function CommandMenu() {
     { name: 'Account Dashboard', path: '/account', icon: User, category: 'Account' },
     { name: 'Order Tracking', path: '/track', icon: MapPin, category: 'Navigation' },
     { name: 'Authenticity Checks', path: '/authenticity', icon: ShieldCheck, category: 'Information' },
+    { name: 'Sell to Us', path: '/sell', icon: Package, category: 'Information' },
+    { name: 'Delivery', path: '/delivery', icon: Package, category: 'Information' },
   ], []);
 
   const filteredCommands = useMemo(() => {
@@ -30,27 +30,31 @@ export function CommandMenu() {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((o) => !open);
+        setOpen((o) => !o);
       }
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape' && open) {
+        e.preventDefault();
+        setOpen(false);
+      }
     };
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
   }, [open]);
 
+  const navigate = useCallback((path: string) => {
+    setOpen(false);
+    setQuery('');
+    router.push(path);
+  }, [router]);
+
   if (!mounted || !open) return null;
 
-  const navigate = (path: string) => {
-    setOpen(false);
-    router.push(path);
-  };
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh] sm:pt-[20vh] px-4">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh] sm:pt-[20vh] px-4 animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setOpen(false)} />
-      <div className="relative w-full max-w-2xl bg-[var(--card)] rounded-2xl shadow-2xl border border-[var(--border)] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center px-4 py-4 border-b border-[var(--border)]">
-          <Search size={20} className="text-slate-400 mr-3 shrink-0" />
+      <div className="relative w-full max-w-2xl bg-[var(--card)] rounded-[2rem] shadow-2xl border border-[var(--border)] overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex items-center px-6 py-5 border-b border-[var(--border)]">
+          <Search size={20} className="text-slate-400 mr-4 shrink-0" />
           <input
             autoFocus
             value={query}
@@ -58,14 +62,14 @@ export function CommandMenu() {
             placeholder="Type a command or search..."
             className="flex-1 bg-transparent border-none outline-none text-lg text-[var(--foreground)] placeholder-slate-400 font-medium"
           />
-          <div className="hidden sm:flex items-center gap-1 text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
+          <div className="hidden sm:flex items-center gap-1 text-[10px] font-black text-slate-400 bg-[var(--background)] border border-[var(--border)] px-2.5 py-1.5 rounded-lg shadow-sm">
             ESC
           </div>
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto p-2 custom-scrollbar">
+        <div className="max-h-[50vh] overflow-y-auto p-3 custom-scrollbar">
           {filteredCommands.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 font-medium">No results found for "{query}"</div>
+            <div className="p-12 text-center text-slate-500 font-medium">No results found for "{query}"</div>
           ) : (
             <div className="space-y-1">
               {filteredCommands.map((cmd, idx) => {
@@ -74,13 +78,15 @@ export function CommandMenu() {
                   <button 
                     key={idx}
                     onClick={() => navigate(cmd.path)}
-                    className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-blue-600 hover:text-white text-slate-700 dark:text-slate-300 transition-all group"
+                    className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-blue-600 hover:text-white text-slate-700 dark:text-slate-300 transition-all group"
                   >
-                    <div className="flex items-center gap-3">
-                      <Icon size={18} className="text-slate-400 group-hover:text-white transition-colors" />
-                      <span className="font-bold">{cmd.name}</span>
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:bg-white/20 group-hover:text-white transition-colors">
+                        <Icon size={18} />
+                      </div>
+                      <span className="font-bold text-base">{cmd.name}</span>
                     </div>
-                    <span className="text-[10px] font-black uppercase opacity-40 group-hover:opacity-100 transition-opacity">{cmd.category}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">{cmd.category}</span>
                   </button>
                 );
               })}

@@ -12,32 +12,28 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({
       email: body.email,
       password: body.password,
-      token: body.token,
       rememberMe: body.rememberMe,
     }),
     cache: 'no-store',
   });
 
   if (!apiRes.ok) {
+    const errorData = await apiRes.json().catch(() => ({}));
     return NextResponse.json(
-      { ok: false, error: 'Invalid credentials' },
-      { status: 401 },
+      { ok: false, error: errorData.message || 'Authentication failed' },
+      { status: apiRes.status },
     );
   }
 
   const data = await apiRes.json();
   const response = NextResponse.json({ ok: true, user: data.user });
 
-  const maxAge = body.rememberMe 
-    ? 60 * 60 * 24 * 30 
-    : 60 * 60 * 24;
-
   response.cookies.set('arcturus_admin_token', data.token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge,
+    maxAge: (body.rememberMe ? 30 : 1) * 24 * 60 * 60,
   });
 
   return response;

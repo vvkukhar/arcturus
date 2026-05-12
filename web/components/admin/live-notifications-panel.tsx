@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import useSWR from 'swr';
+import { swrFetcher } from '@/lib/swr-fetcher';
 import { getSocket } from '@/lib/socket';
 
 type NotificationRow = {
@@ -12,39 +14,32 @@ type NotificationRow = {
 };
 
 export function LiveNotificationsPanel() {
-  const [rows, setRows] = useState<NotificationRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error: fetchError } = useSWR<NotificationRow[]>('/api/notifications', swrFetcher, { revalidateOnFocus: false });
+  const [liveRows, setLiveRows] = useState<NotificationRow[]>([]);
 
   useEffect(() => {
-    let mounted = true;
+    if (Array.isArray(data)) {
+      setLiveRows(data);
+    }
+  }, [data]);
 
-    const load = async () => {
-      try {
-        setError(null);
-        const response = await fetch('/api/notifications', { cache: 'no-store' });
-        if (!response.ok) throw new Error(`Notifications failed: ${response.status}`);
-        const data = await response.json();
-        if (mounted) setRows(Array.isArray(data) ? data : []);
-      } catch (err) {
-        if (mounted) setError(err instanceof Error ? err.message : 'Failed to load notifications');
-      }
-    };
-
+  useEffect(() => {
     const socket = getSocket();
+    
     const onNotification = (payload: NotificationRow) => {
-      setRows((current) => [payload, ...current]);
+      setLiveRows((current) => {
+        if (payload.id && current.some(r => r.id === payload.id)) return current;
+        return [payload, ...current].slice(0, 50);
+      });
     };
 
-    load();
     socket.on('notification', onNotification);
-
     return () => {
-      mounted = false;
       socket.off('notification', onNotification);
     };
   }, []);
 
-  const unreadCount = useMemo(() => rows.filter((x) => !x.read).length, [rows]);
+  const unreadCount = useMemo(() => liveRows.filter((x) => !x.read).length, [liveRows]);
 
   return (
     <div className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
@@ -55,23 +50,25 @@ export function LiveNotificationsPanel() {
         </div>
       </div>
 
-      {error ? (
+      {fetchError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">
-          {error}
+          Failed to load initial notifications
         </div>
       ) : null}
 
-      {rows.length === 0 ? (
-        <div className="text-sm text-slate-500">No notifications</div>
-      ) : (
-        rows.slice(0, 12).map((row, index) => (
-          <div key={row.id ?? `${row.title}-${index}`} className="rounded-xl border border-[var(--border)] bg-[var(--background)]/30 p-3 hover:bg-[var(--background)]/80 transition-colors">
-            <div className="font-bold text-[var(--foreground)]">{row.title}</div>
-            <div className="mt-1 text-sm text-slate-500">{row.message}</div>
-            <div className="mt-1 text-xs font-bold text-slate-400 uppercase tracking-widest">{row.type ?? 'info'}</div>
-          </div>
-        ))
-      )}
+      <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar space-y-2">
+        {liveRows.length === 0 ? (
+          <div className="text-sm text-slate-500 p-2">No notifications</div>
+        ) : (
+          liveRows.slice(0, 15).map((row, index) => (
+            <div key={row.id ?? `${row.title}-${index}`} className="rounded-xl border border-[var(--border)] bg-[var(--background)]/30 p-3 hover:bg-[var(--background)]/80 transition-colors">
+              <div className="font-bold text-[var(--foreground)]">{row.title}</div>
+              <div className="mt-1 text-sm text-slate-500 leading-tight">{row.message}</div>
+              <div className="mt-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">{row.type ?? 'info'}</div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

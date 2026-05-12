@@ -1,18 +1,12 @@
-import IORedis from 'ioredis';
+import Redis from 'ioredis';
 
-export function createRedisConnection(): IORedis {
-  const redisUrl = process.env.REDIS_URL?.trim();
-
-  if (redisUrl) {
-    return new IORedis(redisUrl, {
-      maxRetriesPerRequest: null,
-    });
-  }
-
-  return new IORedis({
-    host: process.env.REDIS_HOST ?? 'localhost',
-    port: Number(process.env.REDIS_PORT ?? 6379),
-    password: process.env.REDIS_PASSWORD || undefined,
+export function createRedisConnection(): Redis {
+  return new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
     maxRetriesPerRequest: null,
+    family: 0,
+    enableReadyCheck: false,
+    retryStrategy(times) {
+      return Math.min(times * 100, 3000);
+    }
   });
 }

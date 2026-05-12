@@ -2880,7 +2880,7 @@ class SourceHealthCachedRepository {
 lib\features\source_health\data\source_health_cached_repository_provider.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/core/storage/cache_repository_provider.dart';
+import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/features/source_health/data/source_health_api_repository_provider.dart';
 import 'package:lego_trading_manager/features/source_health/data/source_health_cached_repository.dart';
 
@@ -3016,7 +3016,7 @@ lib\features\watchlist\application\watchlist_controller.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/watchlist_repository.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_filter_model.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_sort_option.dart';
@@ -3163,7 +3163,7 @@ lib\features\watchlist\application\watchlist_visible_provider.dart
 // lib/features/watchlist/application/watchlist_visible_provider.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_controller.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_sort_option.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_ui_controller.dart';
@@ -3255,7 +3255,7 @@ lib\features\watchlist\application\watchlist_visible_items_provider.dart
 
 // lib/features/watchlist/application/watchlist_visible_items_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_controller.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_sort_option.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_ui_controller.dart';
@@ -3529,14 +3529,14 @@ import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
 import 'package:lego_trading_manager/core/enums/purchase_payment_method.dart';
 import 'package:lego_trading_manager/core/utils/id_generator.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_purchase_create_result_model.dart';
 
 class WatchlistPurchaseCreateService {
   WatchlistPurchaseCreateResultModel build(WatchlistItemModel watchlist) {
-    final itemId = IdGenerator.next();
+    final itemId = AppUtils.generateId();
 
     final item = ItemModel(
       id: itemId,
@@ -3573,7 +3573,7 @@ class WatchlistPurchaseCreateService {
     final price = watchlist.marketPrice ?? watchlist.desiredBuyPrice;
 
     final purchase = PurchaseModel(
-      id: IdGenerator.next(),
+      id: AppUtils.generateId(),
       itemId: itemId,
       source: watchlist.theme == null
           ? 'watchlist'
@@ -3714,7 +3714,7 @@ Future<void> run(WatchlistItemModel item) async {
 lib\features\watchlist\application\watchlist_review_queue_provider.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_controller.dart';
 
 final watchlistReviewQueueProvider = Provider<List<WatchlistItemModel>>((ref) {
@@ -3776,7 +3776,7 @@ lib\features\watchlist\application\watchlist_top_targets_provider.dart
 // lib/features/watchlist/application/watchlist_top_targets_provider.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_controller.dart';
 
 final watchlistTopTargetsProvider = Provider<List<WatchlistItemModel>>((ref) {
@@ -3833,7 +3833,7 @@ import 'package:lego_trading_manager/app/router/app_router.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/empty_state_view.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/settings/application/save_action_report_flow_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/action_report_helper_provider.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_allocation_stability_provider.dart';
@@ -4787,7 +4787,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/core/widgets/details_action_bar.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_controller.dart';
 import 'package:lego_trading_manager/features/settings/application/app_settings_controller.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_convert_flow_provider.dart';
@@ -5104,7 +5104,7 @@ class WatchlistOpportunityCard extends StatelessWidget {
 lib\features\watchlist\presentation\widgets\watchlist_review_queue_card.dart
 
 import 'package:flutter/material.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/widgets/watchlist_review_queue_action_bar.dart';
 import 'package:lego_trading_manager.features/watchlist/presentation/widgets/watchlist_review_queue_priority_badge.dart';
 
@@ -5235,7 +5235,7 @@ lib\features\inventory\application\inventory_controller.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_filter_model.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_sort_option.dart';
@@ -5477,7 +5477,7 @@ lib\features\inventory\application\inventory_bulk_action_service.dart
 
 // lib/features/inventory/application/inventory_bulk_action_service.dart
 import 'package:lego_trading_manager/core/enums/item_status.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_bulk_action_type.dart';
 
 class InventoryBulkActionService {
@@ -5590,7 +5590,7 @@ lib\features\inventory\application\inventory_bulk_reprice_usecase.dart
 
 // lib/features/inventory/application/inventory_bulk_reprice_usecase.dart
 
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_reprice_service.dart';
 
@@ -6189,7 +6189,7 @@ final inventoryTradeDecisionProvider =
 lib\features\inventory\application\inventory_visible_items_provider.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_controller.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_show_archived_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_sort_option.dart';
@@ -6284,7 +6284,7 @@ lib\features\inventory\application\item_lifecycle_service.dart
 // lib/features/inventory/application/item_lifecycle_service.dart
 
 import 'package:lego_trading_manager/core/enums/item_status.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/inventory/application/item_lifecycle_step_model.dart';
 
 class ItemLifecycleService {
@@ -6341,7 +6341,7 @@ class ItemLifecycleService {
 lib\features\inventory\application\item_status_transition_service.dart
 
 import 'package:lego_trading_manager/core/enums/item_status.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/inventory/application/item_status_transition_result.dart';
 
 class ItemStatusTransitionService {
@@ -6408,7 +6408,7 @@ lib\features\inventory\application\item_timeline_service.dart
 
 // lib/features/inventory/application/item_timeline_service.dart
 
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/market_repository.dart';
 import 'package:lego_trading_manager/data/repositories/purchases_repository.dart';
 import 'package:lego_trading_manager/data/repositories/sales_repository.dart';
@@ -6815,7 +6815,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_helper_provider.dart';
 import 'package:lego_trading_manager/features/analytics/application/analytics_reprice_apply_provider.dart';
 import 'package:lego_trading_manager/features/inventory/application/action_report_helper_provider.dart';
@@ -7566,7 +7566,7 @@ class InventoryQuickStatusChips extends StatelessWidget {
 lib\features\inventory\presentation\widgets\inventory_selectable_card.dart
 
 import 'package:flutter/material.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_risk_flag_model.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/widgets/inventory_inline_action_bar.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/widgets/inventory_quick_status_chips.dart';
@@ -7762,8 +7762,8 @@ import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/empty_state_view.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import
 'package:lego_trading_manager/features/activity/application/activity_log_provider.dart';
@@ -7863,8 +7863,8 @@ import 'package:lego_trading_manager/core/enums/sale_platform.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/core/utils/id_generator.dart';
 import 'package:lego_trading_manager/core/utils/profit_calculator.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/settings/application/app_settings_controller.dart';
 
 class QuickSaleScreen extends ConsumerStatefulWidget {
@@ -7926,7 +7926,7 @@ class _QuickSaleScreenState extends ConsumerState<QuickSaleScreen> {
     final metrics = _metrics;
 
     final sale = SaleModel(
-      id: IdGenerator.next(),
+      id: AppUtils.generateId(),
       itemId: widget.item.id,
       platform: _platform,
       buyerName: _buyerNameController.text.trim().isEmpty
@@ -8225,8 +8225,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/purchase_payment_method.dart';
 import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchase_record_payload.dart';
 import 'package:lego_trading_manager/features/settings/application/app_settings_controller.dart';
@@ -8556,8 +8556,8 @@ import 'package:lego_trading_manager/core/utils/currency_formatter.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/empty_state_view.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
-import 'package:lego_trading_manager/data/models/sale_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/repositories/inventory_repository.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_log_provider.dart';
 import 'package:lego_trading_manager/features/sales/application/sales_controller.dart';
@@ -9269,11 +9269,11 @@ lib\features\search\presentation\global_search_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/models/item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/data/models/market_snapshot_model.dart';
-import 'package:lego_trading_manager/data/models/purchase_model.dart';
-import 'package:lego_trading_manager/data/models/sale_model.dart';
-import 'package:lego_trading_manager/data/models/watchlist_item_model.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_controller.dart';
 import 'package:lego_trading_manager/features/item_details/presentation/item_details_screen.dart';
 import 'package:lego_trading_manager/features/market/application/market_controller.dart';

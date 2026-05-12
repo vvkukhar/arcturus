@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { browserManager } from '../../common/browser-manager';
 import { estimateUaShippingBySource } from '../../common/shipping-estimator';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
 import { stableListingId } from '../../common/listing-id';
@@ -9,15 +9,20 @@ import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
 import { parseEbaySearchHtml } from './ebay-parser';
 
-const searchQueries = [
-  'lego star wars lot',
-  'lego ninjago collection',
-  'lego minifigures lot',
-];
-
 export async function runEbaySource(): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'ebay' } });
   if (!source || !source.enabled) return;
+
+  const activeWatchlist = await prisma.watchlistItem.findMany({
+    where: { active: true },
+    select: { item: { select: { setNumber: true } } }
+  });
+
+  const searchQueries = Array.from(
+    new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))
+  ) as string[];
+
+  if (searchQueries.length === 0) return;
 
   const runId = await startSourceRun('ebay');
 
@@ -32,18 +37,9 @@ export async function runEbaySource(): Promise<void> {
     const now = new Date();
 
     for (const query of searchQueries) {
-      const url = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&_sacat=19006&LH_BIN=1`;
-
-      const response = await axios.get<string>(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
-          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-        },
-        timeout: 15000,
-      });
-
-      const listings = parseEbaySearchHtml(response.data);
+      const url = `https://www.ebay.com/sch/i.html?_nkw=lego+${encodeURIComponent(query)}&_sacat=0`;
+      const html = await browserManager.fetchHtml(url);
+      const listings = parseEbaySearchHtml(html);
 
       for (const listing of listings) {
         itemsSeen += 1;
@@ -54,12 +50,10 @@ export async function runEbaySource(): Promise<void> {
 
         const shippingPrice = listing.shippingPrice ?? estimateUaShippingBySource({
           sourceCode: 'ebay',
-          itemPrice: listing.price,
-          currency: listing.currency,
+          price: listing.price,
+          country: listing.country,
           sealed: listing.sealed,
         });
-
-        const shippingCurrency = listing.shippingCurrency ?? listing.currency ?? 'USD';
 
         upsertOperations.push(
           prisma.marketListing.upsert({
@@ -67,17 +61,14 @@ export async function runEbaySource(): Promise<void> {
             update: {
               sourceCode: source.code,
               itemId,
-              externalListingId: listing.externalListingId,
-              externalId: listing.externalListingId,
               titleRaw: listing.titleRaw,
               title: listing.titleRaw,
               url: listing.url,
               imageUrl: listing.imageUrl,
               price: listing.price,
-              currency: listing.currency,
+              currency: listing.currency ?? 'USD',
               shippingPrice,
-              shippingCurrency,
-              country: listing.country,
+              shippingCurrency: listing.shippingCurrency ?? 'USD',
               condition: listing.condition,
               sealed: listing.sealed,
               status: 'active',
@@ -96,10 +87,9 @@ export async function runEbaySource(): Promise<void> {
               url: listing.url,
               imageUrl: listing.imageUrl,
               price: listing.price,
-              currency: listing.currency,
+              currency: listing.currency ?? 'USD',
               shippingPrice,
-              shippingCurrency,
-              country: listing.country,
+              shippingCurrency: listing.shippingCurrency ?? 'USD',
               condition: listing.condition,
               sealed: listing.sealed,
               status: 'active',

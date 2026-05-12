@@ -3,6 +3,7 @@ export const QUEUE_NAMES = {
   DECISIONS: 'decisions',
   SCRAPER: 'scraper',
   MAINTENANCE: 'maintenance',
+  SYNC: 'sync',
 } as const;
 
 export const JOB_NAMES = {
@@ -14,4 +15,5 @@ export const JOB_NAMES = {
   CLEANUP_OLD_SNAPSHOTS: 'cleanup_old_snapshots',
   SCHEDULED_REFRESH: 'scheduled_refresh',
   RUN_SCANNER_JOB: 'run_scanner_job',
+  GLOBAL_SYNC_REFRESH: 'global_sync_refresh',
 } as const;

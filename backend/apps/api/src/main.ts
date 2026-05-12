@@ -1,24 +1,51 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
+import { nodeProfilingIntegration } from '@sentry/profiling-node';
+import helmet from 'helmet';
+import compression from 'compression';
 import { AppModule } from './app.module';
-import { strictValidationPipe } from './common/strict-validation.pipe';
+import { RedisIoAdapter } from './modules/realtime/redis-io.adapter';
+import { GlobalHttpExceptionFilter } from './common/http-exception.filter';
 
-async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { cors: false });
-  const corsEnv = process.env.CORS_ORIGINS ?? '';
-  const allowedOrigins = corsEnv.split(',').map((o) => o.trim()).filter(Boolean);
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn', 'log'] : ['error', 'warn', 'log', 'debug', 'verbose'],
+  });
+
+  if (process.env.SENTRY_DSN) {
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      integrations: [nodeProfilingIntegration()],
+      tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+      profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    });
+  }
+
+  app.use(helmet());
+  app.use(compression());
 
   app.enableCors({
-    origin: corsEnv === '*' ? true : (origin, cb) => {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return cb(null, true);
-      cb(new Error('CORS Error'), false);
-    },
+    origin: process.env.CORS_ORIGINS?.split(',') || '*',
     credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
   });
 
   app.setGlobalPrefix('api');
-  app.useGlobalPipes(strictValidationPipe);
+  app.useGlobalPipes(new ValidationPipe({ 
+    whitelist: true, 
+    transform: true, 
+    forbidNonWhitelisted: true,
+    transformOptions: { enableImplicitConversion: true }
+  }));
+  app.useGlobalFilters(new GlobalHttpExceptionFilter());
 
-  await app.listen(Number(process.env.PORT ?? 4000));
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
+
+  const port = process.env.PORT || 4000;
+  await app.listen(port, '0.0.0.0');
 }
 bootstrap();

@@ -14,6 +14,8 @@ type Props = {
   }>;
 };
 
+export const revalidate = 0;
+
 async function getBuyOpportunities(): Promise<OpportunityItem[]> {
   try {
     return await api.get<OpportunityItem[]>('/opportunities/buy?limit=100');
@@ -23,7 +25,8 @@ async function getBuyOpportunities(): Promise<OpportunityItem[]> {
 }
 
 export default async function AdminBuyOpportunitiesPage({ searchParams }: Props) {
-  const { q } = await searchParams;
+  const resolvedParams = await searchParams;
+  const q = resolvedParams.q;
   const rows = await getBuyOpportunities();
   
   const filtered = q
@@ -50,7 +53,7 @@ export default async function AdminBuyOpportunitiesPage({ searchParams }: Props)
                 <div className="flex flex-col gap-1 max-w-[280px]">
                   <Link
                     href={`/admin/opportunities/buy/${row.itemId}`}
-                    className="font-black text-slate-900 hover:text-blue-600 transition-colors line-clamp-2 leading-tight"
+                    className="font-black text-[var(--foreground)] hover:text-blue-600 transition-colors line-clamp-2 leading-tight"
                   >
                     {row.title}
                   </Link>
@@ -63,7 +66,7 @@ export default async function AdminBuyOpportunitiesPage({ searchParams }: Props)
               header: 'Score',
               render: (row) => (
                 <div className="flex items-center">
-                  <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black ${row.score > 80 ? 'bg-emerald-100 text-emerald-700' : row.score > 50 ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
+                  <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black ${row.score > 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : row.score > 50 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
                     {row.score.toFixed(0)}
                   </span>
                 </div>
@@ -77,29 +80,29 @@ export default async function AdminBuyOpportunitiesPage({ searchParams }: Props)
             {
               key: 'buy',
               header: 'Entry',
-              render: (row) => <span className="font-bold text-slate-900">{formatMoney(row.totalBuy)}</span>,
+              render: (row) => <span className="font-bold text-[var(--foreground)]">{formatMoney(row.totalBuy)}</span>,
             },
             {
               key: 'sell',
               header: 'Target',
-              render: (row) => <span className="font-bold text-blue-600">{formatMoney(row.targetSellPrice)}</span>,
+              render: (row) => <span className="font-bold text-blue-600 dark:text-blue-400">{formatMoney(row.targetSellPrice)}</span>,
             },
             {
               key: 'profit',
               header: 'Profit',
-              render: (row) => <span className="font-black text-emerald-600">{formatMoney(row.profit)}</span>,
+              render: (row) => <span className="font-black text-emerald-600 dark:text-emerald-400">{formatMoney(row.profit)}</span>,
             },
             {
               key: 'roi',
               header: 'ROI',
-              render: (row) => <span className="font-black text-emerald-600">{formatPercent(row.roi)}</span>,
+              render: (row) => <span className="font-black text-emerald-600 dark:text-emerald-400">{formatPercent(row.roi)}</span>,
             },
             {
               key: 'strategy',
               header: 'Strategy & Source',
               render: (row) => (
                 <div className="flex flex-col gap-1.5">
-                  <span className="inline-flex w-fit px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white">
+                  <span className="inline-flex w-fit px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-[var(--foreground)] text-[var(--background)]">
                     {row.flipStrategy ?? '—'}
                   </span>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{row.sourceCode ?? '—'}</span>
@@ -113,7 +116,7 @@ export default async function AdminBuyOpportunitiesPage({ searchParams }: Props)
                 <div className="flex items-center justify-end gap-2">
                   <Link
                     href={`/admin/opportunities/buy/${row.itemId}`}
-                    className="inline-flex items-center justify-center rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 transition-all hover:bg-slate-200 hover:text-slate-900 active:scale-95"
+                    className="inline-flex items-center justify-center rounded-xl bg-[var(--background)] border border-[var(--border)] px-4 py-2 text-xs font-bold text-[var(--foreground)] transition-all hover:bg-slate-200 dark:hover:bg-slate-800 active:scale-95"
                   >
                     View
                   </Link>

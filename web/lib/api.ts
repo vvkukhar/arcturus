@@ -1,54 +1,132 @@
-import { appConfig } from '@/lib/config';
-import { getAdminToken } from '@/lib/server-auth';
+import { appConfig } from './config';
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = await getAdminToken();
-  const headers = new Headers(init?.headers);
-
-  if (!(init?.body instanceof FormData) && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
+export class CircuitBreakerError extends Error {
+  constructor(endpoint: string) {
+    super(`Service unavailable: ${endpoint}`);
+    this.name = 'CircuitBreakerError';
   }
+}
 
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+interface CircuitState {
+  failures: number;
+  lastFailure: number;
+  isOpen: boolean;
+}
+
+const circuitStates = new Map<string, CircuitState>();
+const CB_MAX_FAILURES = 3;
+const CB_RESET_TIMEOUT = 15000;
+
+function getCircuitState(endpoint: string): CircuitState {
+  const key = endpoint.split('?')[0];
+  if (!circuitStates.has(key)) {
+    circuitStates.set(key, { failures: 0, lastFailure: 0, isOpen: false });
   }
+  return circuitStates.get(key)!;
+}
 
+async function fetchWithRetry(url: string, options: RequestInit, retries = 1, backoff = 500): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
-    const response = await fetch(`${appConfig.apiBaseUrl}${path}`, {
-      ...init,
-      headers,
-      signal: controller.signal,
-      cache: 'no-store',
-    });
-
+    const res = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(timeoutId);
+    if (!res.ok && res.status >= 500 && retries > 0) {
+      await new Promise((r) => setTimeout(r, backoff));
+      return fetchWithRetry(url, options, retries - 1, backoff * 2);
+    }
+    return res;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (retries > 0) {
+      await new Promise((r) => setTimeout(r, backoff));
+      return fetchWithRetry(url, options, retries - 1, backoff * 2);
+    }
+    throw err;
+  }
+}
+
+export interface FetchOptions extends RequestInit {
+  requireAuth?: boolean;
+  tags?: string[];
+  revalidate?: number;
+}
+
+export async function request<T>(path: string, options: FetchOptions = {}): Promise<T> {
+  const { requireAuth = true, tags, revalidate, headers: customHeaders, ...init } = options;
+  const headers = new Headers(customHeaders);
+  const isServer = typeof window === 'undefined';
+  const targetUrl = path.startsWith('http') ? path : `${appConfig.apiBaseUrl}${path}`;
+  const state = getCircuitState(targetUrl);
+
+  if (state.isOpen) {
+    if (Date.now() - state.lastFailure > CB_RESET_TIMEOUT) {
+      state.isOpen = false;
+      state.failures = 0;
+    } else {
+      throw new CircuitBreakerError(targetUrl);
+    }
+  }
+
+  if (!(init.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  if (requireAuth) {
+    let token: string | null = null;
+    if (isServer) {
+      const { cookies } = await import('next/headers');
+      token = (await cookies()).get('arcturus_admin_token')?.value || null;
+    } else {
+      token = document.cookie.split('; ').find(row => row.startsWith('arcturus_admin_token='))?.split('=')[1] || null;
+    }
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const fetchConfig: RequestInit = {
+    ...init,
+    headers,
+    cache: revalidate === undefined ? 'no-store' : undefined,
+    next: revalidate !== undefined || tags ? { revalidate, tags } : undefined,
+  };
+
+  try {
+    const response = await fetchWithRetry(targetUrl, fetchConfig);
 
     if (!response.ok) {
-      let message = `API error ${response.status}`;
+      state.failures += 1;
+      if (state.failures >= CB_MAX_FAILURES) {
+        state.isOpen = true;
+        state.lastFailure = Date.now();
+      }
+      let errorMessage = `API error ${response.status}`;
       try {
-        const data = await response.json();
-        message = data?.message || data?.error || message;
+        const errorData = await response.json();
+        errorMessage = errorData?.message || errorData?.error || errorMessage;
       } catch {}
-      throw new Error(message);
+      throw new Error(errorMessage);
     }
 
+    state.failures = 0;
     if (response.status === 204) return null as T;
     return response.json() as Promise<T>;
   } catch (error) {
-    clearTimeout(timeoutId);
+    state.failures += 1;
+    if (state.failures >= CB_MAX_FAILURES) {
+      state.isOpen = true;
+      state.lastFailure = Date.now();
+    }
     throw error;
   }
 }
 
 export const api = {
-  get: <T>(path: string, init?: RequestInit) => request<T>(path, init),
-  post: <T>(path: string, body?: unknown, init?: RequestInit) =>
-    request<T>(path, { ...init, method: 'POST', body: JSON.stringify(body ?? {}) }),
-  patch: <T>(path: string, body?: unknown, init?: RequestInit) =>
-    request<T>(path, { ...init, method: 'PATCH', body: JSON.stringify(body ?? {}) }),
-  delete: <T>(path: string, body?: unknown, init?: RequestInit) =>
-    request<T>(path, { ...init, method: 'DELETE', body: JSON.stringify(body ?? {}) }),
+  get: <T>(path: string, opts?: FetchOptions) => request<T>(path, { ...opts, method: 'GET' }),
+  post: <T>(path: string, body?: unknown, opts?: FetchOptions) => request<T>(path, { ...opts, method: 'POST', body: JSON.stringify(body ?? {}) }),
+  patch: <T>(path: string, body?: unknown, opts?: FetchOptions) => request<T>(path, { ...opts, method: 'PATCH', body: JSON.stringify(body ?? {}) }),
+  delete: <T>(path: string, body?: unknown, opts?: FetchOptions) => request<T>(path, { ...opts, method: 'DELETE', body: JSON.stringify(body ?? {}) }),
 };
+
+export const apiFetch = request;
+export const publicApi = api;

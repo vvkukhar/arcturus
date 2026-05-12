@@ -50,9 +50,7 @@ export class ScannerService {
 
   private async getOrCreatePlaceholderItemId(): Promise<string> {
     const placeholder = await this.prisma.item.upsert({
-      where: {
-        id: 'item_unresolved_placeholder',
-      },
+      where: { id: 'item_unresolved_placeholder' },
       update: {},
       create: {
         id: 'item_unresolved_placeholder',
@@ -72,15 +70,10 @@ export class ScannerService {
     suggestedItemId?: string | null;
   }): Promise<void> {
     const existing = await this.prisma.unresolvedMatchQueue.findFirst({
-      where: {
-        listingId: params.listingId,
-        status: 'pending',
-      },
+      where: { listingId: params.listingId, status: 'pending' },
     });
 
-    if (existing) {
-      return;
-    }
+    if (existing) return;
 
     await this.prisma.unresolvedMatchQueue.create({
       data: {
@@ -103,44 +96,28 @@ export class ScannerService {
 
     if (setNumber) {
       const exact = await this.prisma.item.findFirst({
-        where: {
-          setNumber,
-        },
-        select: {
-          id: true,
-        },
+        where: { setNumber },
+        select: { id: true },
       });
 
       if (exact) {
-        return {
-          itemId: exact.id,
-          resolved: true,
-        };
+        return { itemId: exact.id, resolved: true };
       }
     }
 
     const normalized = this.normalizeTitle(title);
-
     const candidates = await this.prisma.item.findMany({
-      select: {
-        id: true,
-        title: true,
-        setNumber: true,
-      },
+      select: { id: true, title: true, setNumber: true },
       take: 500,
     });
 
     for (const candidate of candidates) {
       const normalizedCandidateTitle = this.normalizeTitle(candidate.title);
-
       if (
         normalized.includes(normalizedCandidateTitle) ||
         normalizedCandidateTitle.includes(normalized)
       ) {
-        return {
-          itemId: candidate.id,
-          resolved: true,
-        };
+        return { itemId: candidate.id, resolved: true };
       }
     }
 
@@ -160,20 +137,9 @@ export class ScannerService {
     const name = body.name.trim();
 
     const source = await this.prisma.marketSource.upsert({
-      where: {
-        code,
-      },
-      update: {
-        name,
-        type: body.type ?? 'manual',
-        enabled: body.enabled ?? true,
-      },
-      create: {
-        code,
-        name,
-        type: body.type ?? 'manual',
-        enabled: body.enabled ?? true,
-      },
+      where: { code },
+      update: { name, type: body.type ?? 'manual', enabled: body.enabled ?? true },
+      create: { code, name, type: body.type ?? 'manual', enabled: body.enabled ?? true },
     });
 
     this.realtime.emitCustom('scanner.source_saved', source);
@@ -182,130 +148,68 @@ export class ScannerService {
 
   async getSources(): Promise<unknown[]> {
     return this.prisma.marketSource.findMany({
-      orderBy: {
-        createdAt: 'asc',
-      },
+      orderBy: { createdAt: 'asc' },
     });
   }
 
-  async enqueueScan(body: {
-    sourceCode: string;
-    query?: string | null;
-  }): Promise<unknown> {
+  async enqueueScan(body: { sourceCode: string; query?: string | null }): Promise<unknown> {
     const source = await this.prisma.marketSource.findUnique({
-      where: {
-        code: body.sourceCode,
-      },
+      where: { code: body.sourceCode },
     });
 
-    if (!source) {
-      throw new NotFoundException('Source not found');
-    }
+    if (!source) throw new NotFoundException('Source not found');
 
     const job = await this.prisma.scanJob.create({
-      data: {
-        sourceCode: body.sourceCode,
-        query: body.query ?? '',
-        status: 'queued',
-      },
+      data: { sourceCode: body.sourceCode, query: body.query ?? '', status: 'queued' },
     });
 
     this.realtime.emitCustom('scanner.job_queued', job);
-
     return job;
   }
 
   async getJobs(): Promise<unknown[]> {
     return this.prisma.scanJob.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
       take: 100,
     });
   }
 
-  async ingestListings(body: {
-    sourceCode: string;
-    listings: IngestListingInput[];
-  }): Promise<unknown[]> {
+  async ingestListings(body: { sourceCode: string; listings: IngestListingInput[] }): Promise<unknown[]> {
     const source = await this.prisma.marketSource.findUnique({
-      where: {
-        code: body.sourceCode,
-      },
+      where: { code: body.sourceCode },
     });
 
-    if (!source) {
-      throw new NotFoundException('Source not found');
-    }
+    if (!source) throw new NotFoundException('Source not found');
 
-    const rows: unknown[] = [];
     let unresolved = 0;
-    
-    const upsertOperations = [];
     const unresolvedOperations = [];
-    
     const now = new Date();
+    const formattedNow = now.toISOString();
+
+    const dbRows = [];
 
     for (const listing of body.listings) {
-      if (!listing.externalId || !listing.title || !Number.isFinite(listing.price)) {
-        continue;
-      }
+      if (!listing.externalId || !listing.title || !Number.isFinite(listing.price)) continue;
 
       const id = this.createListingId(body.sourceCode, listing.externalId);
       const resolved = await this.resolveItemId(listing.title);
 
-      upsertOperations.push(
-        this.prisma.marketListing.upsert({
-          where: { id },
-          update: {
-            sourceCode: source.code,
-            itemId: resolved.itemId,
-            externalListingId: listing.externalId,
-            externalId: listing.externalId,
-            titleRaw: listing.title,
-            title: listing.title,
-            url: listing.url ?? '',
-            imageUrl: listing.imageUrl,
-            price: listing.price,
-            currency: listing.currency ?? 'UAH',
-            shippingPrice: listing.shippingPrice ?? null,
-            shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'UAH',
-            country: listing.country ?? 'UA',
-            condition: listing.condition,
-            sealed: listing.sealed,
-            completenessPercent: listing.completenessPercent,
-            quantityAvailable: listing.quantityAvailable ?? 1,
-            status: 'active',
-            fetchedAt: now,
-            lastSeenAt: now,
-          },
-          create: {
-            id,
-            sourceId: source.id,
-            sourceCode: source.code,
-            itemId: resolved.itemId,
-            externalListingId: listing.externalId,
-            externalId: listing.externalId,
-            titleRaw: listing.title,
-            title: listing.title,
-            url: listing.url ?? '',
-            imageUrl: listing.imageUrl,
-            price: listing.price,
-            currency: listing.currency ?? 'UAH',
-            shippingPrice: listing.shippingPrice ?? null,
-            shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'UAH',
-            country: listing.country ?? 'UA',
-            condition: listing.condition,
-            sealed: listing.sealed,
-            completenessPercent: listing.completenessPercent,
-            quantityAvailable: listing.quantityAvailable ?? 1,
-            status: 'active',
-            fetchedAt: now,
-            firstSeenAt: now,
-            lastSeenAt: now,
-          },
-        })
-      );
+      const titleSafe = listing.title.replace(/'/g, "''");
+      const urlSafe = (listing.url ?? '').replace(/'/g, "''");
+      const imageUrlSafe = listing.imageUrl ? `'${listing.imageUrl.replace(/'/g, "''")}'` : 'NULL';
+      const shippingPriceSafe = listing.shippingPrice !== null && listing.shippingPrice !== undefined ? listing.shippingPrice : 'NULL';
+      const conditionSafe = listing.condition ? `'${listing.condition.replace(/'/g, "''")}'` : 'NULL';
+      const sealedSafe = listing.sealed !== null && listing.sealed !== undefined ? listing.sealed : 'NULL';
+      const cpSafe = listing.completenessPercent !== null && listing.completenessPercent !== undefined ? listing.completenessPercent : 'NULL';
+      const qaSafe = listing.quantityAvailable ?? 1;
+
+      dbRows.push(`(
+        '${id}', '${source.id}', '${source.code}', '${resolved.itemId}', '${listing.externalId}', '${listing.externalId}',
+        '${titleSafe}', '${titleSafe}', '${urlSafe}', ${imageUrlSafe},
+        ${listing.price}, '${listing.currency ?? 'UAH'}', ${shippingPriceSafe}, '${listing.shippingCurrency ?? listing.currency ?? 'UAH'}',
+        '${listing.country ?? 'UA'}', ${conditionSafe}, ${sealedSafe}, ${cpSafe}, ${qaSafe},
+        'active', '${formattedNow}', '${formattedNow}', '${formattedNow}', '${formattedNow}', '${formattedNow}'
+      )`);
 
       if (!resolved.resolved) {
         unresolved += 1;
@@ -317,69 +221,64 @@ export class ScannerService {
       }
     }
 
-    if (upsertOperations.length > 0) {
-      const chunkSize = 100;
-      for (let i = 0; i < upsertOperations.length; i += chunkSize) {
-        const chunk = upsertOperations.slice(i, i + chunkSize);
-        const results = await this.prisma.$transaction(chunk);
-        rows.push(...results);
+    if (dbRows.length > 0) {
+      const chunkSize = 1000;
+      for (let i = 0; i < dbRows.length; i += chunkSize) {
+        const chunk = dbRows.slice(i, i + chunkSize);
+        const query = `
+          INSERT INTO "MarketListing" (
+            "id", "sourceId", "sourceCode", "itemId", "externalListingId", "externalId",
+            "titleRaw", "title", "url", "imageUrl",
+            "price", "currency", "shippingPrice", "shippingCurrency",
+            "country", "condition", "sealed", "completenessPercent", "quantityAvailable",
+            "status", "fetchedAt", "firstSeenAt", "lastSeenAt", "createdAt", "updatedAt"
+          ) VALUES ${chunk.join(',')}
+          ON CONFLICT ("id") DO UPDATE SET
+            "price" = EXCLUDED."price",
+            "lastSeenAt" = EXCLUDED."lastSeenAt",
+            "status" = 'active',
+            "updatedAt" = EXCLUDED."updatedAt";
+        `;
+        await this.prisma.$executeRawUnsafe(query);
       }
     }
-    
-    for(const u of unresolvedOperations) {
-        await this.enqueueUnresolvedMatch(u);
+
+    for (const u of unresolvedOperations) {
+      await this.enqueueUnresolvedMatch(u);
     }
 
     this.realtime.emitListingsRefresh({
       sourceCode: body.sourceCode,
-      count: rows.length,
+      count: dbRows.length,
       unresolved,
     });
 
     this.realtime.emitOpportunityRefresh('scanner_ingest');
 
-    return rows;
+    return [];
   }
 
-  async getListings(params?: {
-    sourceCode?: string;
-    limit?: number;
-  }): Promise<unknown[]> {
+  async getListings(params?: { sourceCode?: string; limit?: number }): Promise<unknown[]> {
     const source = params?.sourceCode
       ? await this.prisma.marketSource.findUnique({
-          where: {
-            code: params.sourceCode,
-          },
+          where: { code: params.sourceCode },
         })
       : null;
 
     return this.prisma.marketListing.findMany({
-      where: source
-        ? {
-            sourceId: source.id,
-          }
-        : undefined,
-      orderBy: {
-        fetchedAt: 'desc',
-      },
+      where: source ? { sourceId: source.id } : undefined,
+      orderBy: { fetchedAt: 'desc' },
       take: params?.limit ?? 100,
-      include: {
-        source: true,
-        item: true,
-      },
+      include: { source: true, item: true },
     });
   }
 
   async markStaleMissingListings(sourceCode: string): Promise<unknown> {
     const source = await this.prisma.marketSource.findUnique({
-      where: {
-        code: sourceCode,
-      },
+      where: { code: sourceCode },
     });
 
-    if (!source) {
-      throw new NotFoundException('Source not found');
-    }
+    if (!source) throw new NotFoundException('Source not found');
 
     const threshold = new Date(Date.now() - 1000 * 60 * 60 * 24);
 
@@ -387,13 +286,9 @@ export class ScannerService {
       where: {
         sourceId: source.id,
         status: 'active',
-        lastSeenAt: {
-          lt: threshold,
-        },
+        lastSeenAt: { lt: threshold },
       },
-      data: {
-        status: 'stale',
-      },
+      data: { status: 'stale' },
     });
 
     this.realtime.emitListingsRefresh({

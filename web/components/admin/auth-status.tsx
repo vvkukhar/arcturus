@@ -1,29 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/client-api';
+import useSWR from 'swr';
+import { swrFetcher } from '@/lib/swr-fetcher';
 import type { User } from '@/lib/types';
 import { UserCircle } from 'lucide-react';
 import { StatusPill } from '@/components/admin/status-pill';
 
 export function AuthStatus() {
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    apiFetch<User>('/api/auth/me')
-      .then((data) => {
-        if (mounted) setUser(data);
-      })
-      .catch(() => {
-        if (mounted) setUser(null);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const { data: user, isLoading } = useSWR<User>('/api/auth/me', swrFetcher as any);
 
   return (
     <div className="flex items-center gap-4 rounded-[1.5rem] border border-border bg-white px-5 py-3 shadow-sm">
@@ -37,8 +21,10 @@ export function AuthStatus() {
             <StatusPill value={user.role} />
           </div>
         </div>
-      ) : (
+      ) : isLoading ? (
         <div className="text-sm font-medium text-slate-400">Loading session...</div>
+      ) : (
+        <div className="text-sm font-medium text-red-500">Session error</div>
       )}
     </div>
   );

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { apiFetch } from '@/lib/client-api';
 import { Loader2 } from 'lucide-react';
-import { formatMoney, formatPercent } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
 
 export function RepricerFromCompsPanel() {
   const [inventoryItemId, setInventoryItemId] = useState('');
@@ -20,7 +20,9 @@ export function RepricerFromCompsPanel() {
         body: JSON.stringify({ inventoryItemId: inventoryItemId.trim(), targetRoiPercent: Number(targetRoiPercent) }),
       });
       setResult(data);
-    } finally { setLoading(false); }
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   return (
@@ -31,11 +33,26 @@ export function RepricerFromCompsPanel() {
       </div>
 
       <div className="space-y-4">
-        <input value={inventoryItemId} onChange={(e) => setInventoryItemId(e.target.value)} placeholder="Inventory Item ID" className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm focus:border-blue-500 outline-none text-[var(--foreground)]" />
-        <input type="number" value={targetRoiPercent} onChange={(e) => setTargetRoiPercent(e.target.value)} placeholder="Target ROI (%)" className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm focus:border-blue-500 outline-none text-[var(--foreground)]" />
+        <input 
+          value={inventoryItemId} 
+          onChange={(e) => setInventoryItemId(e.target.value)} 
+          placeholder="Inventory Item ID" 
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm focus:border-blue-500 outline-none text-[var(--foreground)]" 
+        />
+        <input 
+          type="number" 
+          value={targetRoiPercent} 
+          onChange={(e) => setTargetRoiPercent(e.target.value)} 
+          placeholder="Target ROI (%)" 
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm focus:border-blue-500 outline-none text-[var(--foreground)]" 
+        />
       </div>
 
-      <button onClick={handleAnalyze} disabled={loading || !inventoryItemId} className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+      <button 
+        onClick={handleAnalyze} 
+        disabled={loading || !inventoryItemId} 
+        className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+      >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />} Analyze From Comps
       </button>
 

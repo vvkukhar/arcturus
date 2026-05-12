@@ -1,54 +1,40 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import useSWR from 'swr';
 import { getSocket } from '@/lib/socket';
+import { swrFetcher } from '@/lib/swr-fetcher';
+
+interface NotificationRow {
+  id: string;
+  read: boolean;
+}
 
 export function NotificationBadge() {
-  const [count, setCount] = useState(0);
+  const { data, mutate } = useSWR<NotificationRow[]>('/api/notifications', swrFetcher, {
+    fallbackData: [],
+  });
+
+  const count = Array.isArray(data) ? data.filter((x) => !x.read).length : 0;
 
   useEffect(() => {
-    let mounted = true;
-
-    const load = async () => {
-      try {
-        const response = await fetch('/api/notifications', {
-          cache: 'no-store',
-        });
-
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const rows = Array.isArray(data) ? data : [];
-        const unread = rows.filter((x: any) => !x.read).length;
-
-        if (mounted) {
-          setCount(unread);
-        }
-      } catch {
-        // keep current count
-      }
-    };
-
     const socket = getSocket();
-
     const onNotification = () => {
-      setCount((x) => x + 1);
+      mutate();
     };
 
-    load();
     socket.on('notification', onNotification);
 
     return () => {
-      mounted = false;
       socket.off('notification', onNotification);
     };
-  }, []);
+  }, [mutate]);
 
   if (count === 0) return null;
 
   return (
-    <div className="absolute -right-1 -top-1 rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
-      {count}
+    <div className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black text-white shadow-sm ring-2 ring-[var(--card)]">
+      {count > 99 ? '99+' : count}
     </div>
   );
 }

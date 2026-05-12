@@ -30,11 +30,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   };
 
   const t = (key: DictKey): string => {
-    // Безпечне отримання перекладу з fallback
     return dict[lang]?.[key] || dict['en']?.[key] || key;
   };
 
-  // ЗАВЖДИ повертаємо провайдер
   return (
     <I18nContext.Provider value={{ lang, setLang, t }}>
       {children}

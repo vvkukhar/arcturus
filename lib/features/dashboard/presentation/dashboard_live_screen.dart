@@ -1,195 +1,93 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
-import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
-import 'package:lego_trading_manager/features/dashboard/application/dashboard_execution_summary_provider.dart';
-import 'package:lego_trading_manager/features/dashboard/application/dashboard_flow_counters_api_provider.dart';
-import 'package:lego_trading_manager/features/dashboard/application/dashboard_market_pulse_provider.dart';
-import 'package:lego_trading_manager/features/dashboard/application/dashboard_offline_banner_provider.dart';
-import 'package:lego_trading_manager/features/dashboard/application/dashboard_opportunities_block_provider.dart';
-import 'package:lego_trading_manager/features/dashboard/application/dashboard_priority_queue_api_provider.dart';
-import 'package:lego_trading_manager/features/dashboard/application/dashboard_priority_queue_provider.dart';
-import 'package:lego_trading_manager/features/dashboard/application/dashboard_realtime_bridge_provider.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_execution_summary_card.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_flow_shortcuts_card.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_live_backend_card.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_market_pulse_card.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_offline_banner.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_operator_health_card.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_operator_shortcuts_card.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_opportunities_block_card.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_unresolved_match_card.dart';
-import 'package:lego_trading_manager/features/operator/application/operator_health_summary_provider.dart';
-import 'package:lego_trading_manager/features/operator/application/unresolved_summary_provider.dart';
-import 'package:lego_trading_manager/features/source_health/application/source_health_summary_provider.dart';
-import 'package:lego_trading_manager/features/source_health/presentation/widgets/source_health_summary_card.dart';
-import 'package:lego_trading_manager/features/sync/application/dashboard_sync_summary_provider.dart';
-import 'package:lego_trading_manager/features/sync/application/global_sync_state_provider.dart';
-import 'package:lego_trading_manager/features/sync/application/sync_health_center_provider.dart';
-import 'package:lego_trading_manager/features/sync/data/sync_api_repository_provider.dart';
-import 'package:lego_trading_manager/features/sync/presentation/widgets/dashboard_sync_status_card.dart';
-import 'package:lego_trading_manager/features/sync/presentation/widgets/global_sync_action_card.dart';
-import 'package:lego_trading_manager/features/sync/presentation/widgets/sync_health_center_card.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/widgets/dashboard_priority_queue_card.dart';
+import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
+import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
+import 'package:lego_trading_manager/features/dashboard/application/dashboard_engine.dart';
+import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 
 class DashboardLiveScreen extends ConsumerWidget {
   const DashboardLiveScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(dashboardRealtimeBridgeProvider);
-    final i18n = ref.watch(i18nProvider.notifier);
-
-    final executionSummary = ref.watch(dashboardExecutionSummaryProvider);
-    final flowCounters = ref.watch(dashboardFlowCountersApiProvider);
-    final priorityQueue = ref.watch(dashboardPriorityQueueApiProvider);
-    final opportunitiesBlock = ref.watch(dashboardOpportunitiesBlockProvider);
-    final marketPulse = ref.watch(dashboardMarketPulseProvider);
-    final syncSummary = ref.watch(dashboardSyncSummaryProvider);
-    final globalSyncState = ref.watch(globalSyncStateProvider);
-    final sourceHealth = ref.watch(sourceHealthSummaryProvider);
-    final unresolvedSummary = ref.watch(unresolvedSummaryProvider);
-    final operatorHealth = ref.watch(operatorHealthSummaryProvider);
-    final offlineBanner = ref.watch(dashboardOfflineBannerProvider);
-    final syncHealthCenter = ref.watch(syncHealthCenterProvider);
-    final syncRepository = ref.watch(syncApiRepositoryProvider);
+    final state = ref.watch(dashboardEngineProvider);
+    final syncState = ref.watch(syncEngineProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(i18n.t('dashboard.title')),
+        title: const Text('Live Dashboard', style: TextStyle(fontWeight: FontWeight.w900)),
+        actions: [
+          IconButton(icon: const Icon(Icons.hub_outlined), onPressed: () => Navigator.pushNamed(context, AppRouter.commandCenter)),
+        ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          offlineBanner.when(
-            data: (offline) => offline
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: DashboardOfflineBanner(
-                      text: i18n.t('dashboard.offline'),
+      drawer: const AppDrawer(),
+      floatingActionButton: const GlobalQuickAddFab(),
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  if (!(syncState.value?.isOnline ?? true))
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                      child: const Row(children: [Icon(Icons.cloud_off, color: Colors.orange), SizedBox(width: 10), Text('Offline Mode')]),
                     ),
-                  )
-                : const SizedBox.shrink(),
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
-          ),
-          DashboardFlowShortcutsCard(
-            onOpenPurchase: () => Navigator.of(context).pushNamed(AppRouter.purchaseFlow),
-            onOpenReprice: () => Navigator.of(context).pushNamed(AppRouter.repriceFlow),
-            onOpenReview: () => Navigator.of(context).pushNamed(AppRouter.reviewFlow),
-          ),
-          const SizedBox(height: 16),
-          DashboardOperatorShortcutsCard(
-            onOpenUnresolved: () => Navigator.of(context).pushNamed(AppRouter.unresolvedMatches),
-            onOpenSourceRuns: () => Navigator.of(context).pushNamed(AppRouter.sourceRuns),
-            onOpenSourceHealth: () => Navigator.of(context).pushNamed(AppRouter.sourceHealthDetails),
-            onOpenSyncErrors: () => Navigator.of(context).pushNamed(AppRouter.syncErrors),
-          ),
-          const SizedBox(height: 16),
-          syncHealthCenter.when(
-            data: (data) => SyncHealthCenterCard(
-              model: data,
-              onOpenSyncQueue: () => Navigator.of(context).pushNamed(AppRouter.manualSyncQueue),
-              onOpenConflicts: () => Navigator.of(context).pushNamed(AppRouter.conflictQueue),
+                  _buildHeroCard(state),
+                  const SizedBox(height: 24),
+                  _buildMetricsGrid(state),
+                ],
+              ),
             ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('${i18n.t('Sync health error')}: $error'),
-          ),
-          const SizedBox(height: 16),
-          executionSummary.when(
-            data: (data) => DashboardExecutionSummaryCard(model: data),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('${i18n.t('Execution summary error')}: $error'),
-          ),
-          const SizedBox(height: 16),
-          operatorHealth.when(
-            data: (data) => DashboardOperatorHealthCard(model: data),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('${i18n.t('Operator health error')}: $error'),
-          ),
-          const SizedBox(height: 16),
-          globalSyncState.when(
-            data: (data) => GlobalSyncActionCard(
-              state: data,
-              onRefreshAll: () async {
-                await syncRepository.refreshAll();
-                ref.invalidate(globalSyncStateProvider);
-                ref.invalidate(dashboardSyncSummaryProvider);
-                ref.invalidate(dashboardFlowCountersApiProvider);
-                ref.invalidate(dashboardPriorityQueueApiProvider);
-                ref.invalidate(dashboardMarketPulseProvider);
-                ref.invalidate(dashboardOpportunitiesBlockProvider);
-                ref.invalidate(sourceHealthSummaryProvider);
-                ref.invalidate(unresolvedSummaryProvider);
-                ref.invalidate(operatorHealthSummaryProvider);
-                ref.invalidate(dashboardExecutionSummaryProvider);
-                ref.invalidate(syncHealthCenterProvider);
-              },
-            ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('${i18n.t('Global sync error')}: $error'),
-          ),
-          const SizedBox(height: 16),
-          syncSummary.when(
-            data: (data) => DashboardSyncStatusCard(model: data),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('${i18n.t('Sync summary error')}: $error'),
-          ),
-          const SizedBox(height: 16),
-          unresolvedSummary.when(
-            data: (data) => DashboardUnresolvedMatchCard(model: data),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('${i18n.t('Unresolved summary error')}: $error'),
-          ),
-          const SizedBox(height: 16),
-          sourceHealth.when(
-            data: (data) => SourceHealthSummaryCard(items: data),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('${i18n.t('Source health error')}: $error'),
-          ),
-          const SizedBox(height: 16),
-          marketPulse.when(
-            data: (data) => DashboardMarketPulseCard(
-              model: data,
-              onOpenBuy: () => Navigator.of(context).pushNamed(AppRouter.bestBuy),
-              onOpenSell: () => Navigator.of(context).pushNamed(AppRouter.bestSell),
-              onOpenReprice: () => Navigator.of(context).pushNamed(AppRouter.bestReprice),
-              onOpenReview: () => Navigator.of(context).pushNamed(AppRouter.bestReview),
-            ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('${i18n.t('Market pulse error')}: $error'),
-          ),
-          const SizedBox(height: 16),
-          opportunitiesBlock.when(
-            data: (data) => DashboardOpportunitiesBlockCard(
-              model: data,
-              onOpenBuy: () => Navigator.of(context).pushNamed(AppRouter.bestBuy),
-              onOpenSell: () => Navigator.of(context).pushNamed(AppRouter.bestSell),
-            ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('${i18n.t('Opportunities error')}: $error'),
-          ),
-          const SizedBox(height: 16),
-          flowCounters.when(
-            data: (data) => DashboardLiveBackendCard(model: data),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('${i18n.t('Flow counters error')}: $error'),
-          ),
-          const SizedBox(height: 16),
-          priorityQueue.when(
-            data: (items) => DashboardPriorityQueueCard(
-              items: items.map((e) => DashboardPriorityQueueItemModel(
-                title: e.reasonPrimary,
-                type: e.action,
-                score: e.score,
-                reason: e.reasonPrimary,
-              )).toList(),
-            ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Text('${i18n.t('Priority queue error')}: $error'),
-          ),
+          )
         ],
       ),
     );
   }
+
+  Widget _buildHeroCard(DashboardEngineState state) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [Colors.blueAccent.withValues(alpha: 0.15), Colors.greenAccent.withValues(alpha: 0.15)]),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Text(state.headline, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(state.subline, style: const TextStyle(color: Colors.white70)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricsGrid(DashboardEngineState state) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1.5,
+      children: [
+        _MetricTile('Capital', state.totalInvested.toStringAsFixed(0), Colors.blue),
+        _MetricTile('Profit', state.expectedOpenProfit.toStringAsFixed(0), Colors.green),
+      ],
+    );
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  final String title, value;
+  final Color color;
+  const _MetricTile(this.title, this.value, this.color);
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
+    child: Column(children: [Text(title, style: TextStyle(color: color)), Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))]),
+  );
 }

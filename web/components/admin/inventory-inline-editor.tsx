@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { apiFetch } from '@/lib/client-api';
 import { Loader2, Save } from 'lucide-react';
@@ -8,6 +7,7 @@ import type { InventoryItem } from '@/lib/types';
 
 type Props = {
   item: InventoryItem;
+  onSuccessAction?: () => void;
 };
 
 function parseNumber(value: string, fallback: number | null = 0): number | null {
@@ -16,9 +16,7 @@ function parseNumber(value: string, fallback: number | null = 0): number | null 
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-export function InventoryInlineEditor({ item }: Props) {
-  const router = useRouter();
-
+export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
   const [titleSnapshot, setTitleSnapshot] = useState(item.titleSnapshot ?? '');
   const [purchasePrice, setPurchasePrice] = useState(String(item.purchasePrice ?? ''));
   const [quantity, setQuantity] = useState(String(item.quantity ?? '1'));
@@ -32,6 +30,7 @@ export function InventoryInlineEditor({ item }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
+    if (loading) return;
     try {
       setLoading(true);
       setError(null);
@@ -49,7 +48,7 @@ export function InventoryInlineEditor({ item }: Props) {
         method: 'PATCH',
         body: JSON.stringify({
           id: item.id,
-          titleSnapshot,
+          titleSnapshot: titleSnapshot.trim(),
           purchasePrice: parsedPurchasePrice,
           quantity: parsedQuantity,
           expectedSalePriceManual: parsedExpectedSalePrice,
@@ -58,7 +57,7 @@ export function InventoryInlineEditor({ item }: Props) {
         }),
       });
 
-      router.refresh();
+      if (onSuccessAction) onSuccessAction();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed');
     } finally {

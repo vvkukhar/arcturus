@@ -1,13 +1,17 @@
 import { prisma } from '../prisma';
+import {
+  runOlxSource,
+  runBrickLinkSource,
+  runEbaySource,
+  runBrickowlSource
+} from '@arcturus/scrapers';
 
 export async function runScannerJob(jobId: string): Promise<{
   jobId: string;
   status: string;
 }> {
   const job = await prisma.scanJob.findUnique({
-    where: {
-      id: jobId,
-    },
+    where: { id: jobId },
   });
 
   if (!job) {
@@ -15,9 +19,7 @@ export async function runScannerJob(jobId: string): Promise<{
   }
 
   await prisma.scanJob.update({
-    where: {
-      id: jobId,
-    },
+    where: { id: jobId },
     data: {
       status: 'running',
       startedAt: new Date(),
@@ -26,13 +28,26 @@ export async function runScannerJob(jobId: string): Promise<{
   });
 
   try {
-    // ОПТИМІЗАЦІЯ: Транзакція гарантує, що якщо база впаде, ми не отримаємо 
-    // статус "success" без запису в ActivityLog. Вони виконаються лише разом.
-    await prisma.$transaction(async (tx: any) => {
+    switch (job.sourceCode) {
+      case 'olx':
+        await runOlxSource();
+        break;
+      case 'bricklink':
+        await runBrickLinkSource();
+        break;
+      case 'ebay':
+        await runEbaySource();
+        break;
+      case 'brickowl':
+        await runBrickowlSource();
+        break;
+      default:
+        throw new Error(`Unknown source code: ${job.sourceCode}`);
+    }
+
+    await prisma.$transaction(async (tx) => {
       await tx.scanJob.update({
-        where: {
-          id: jobId,
-        },
+        where: { id: jobId },
         data: {
           status: 'success',
           finishedAt: new Date(),
@@ -51,19 +66,13 @@ export async function runScannerJob(jobId: string): Promise<{
       });
     });
 
-    return {
-      jobId,
-      status: 'success',
-    };
+    return { jobId, status: 'success' };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 
-    // Те ж саме для помилок: оновлюємо статус і пишемо лог разом
-    await prisma.$transaction(async (tx: any) => {
+    await prisma.$transaction(async (tx) => {
       await tx.scanJob.update({
-        where: {
-          id: jobId,
-        },
+        where: { id: jobId },
         data: {
           status: 'failed',
           finishedAt: new Date(),
@@ -77,9 +86,7 @@ export async function runScannerJob(jobId: string): Promise<{
           sourceCode: job.sourceCode,
           referenceId: jobId,
           message: 'Scanner job failed',
-          detailsJson: {
-            error: message,
-          },
+          detailsJson: { error: message },
         },
       });
     });

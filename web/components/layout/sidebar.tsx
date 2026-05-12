@@ -5,10 +5,11 @@ import { usePathname } from 'next/navigation';
 import { useI18n } from '../providers/i18n-provider';
 import { useSidebar } from '../providers/sidebar-provider';
 import { 
-  LineChart, Activity, Filter, BarChart2, BookOpen, Clock, 
+  LineChart, Activity, Filter, BarChart2, Clock, 
   FileText, PieChart, Wallet, Heart, TrendingUp, Package, 
-  HelpCircle, ShieldCheck, X
+  HelpCircle, ShieldCheck, X, ScanBarcode
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function Sidebar() {
   const { t } = useI18n();
@@ -48,6 +49,7 @@ export function Sidebar() {
         { name: 'sidebar.sell', path: '/sell', icon: Package },
         { name: 'nav.auth', path: '/authenticity', icon: ShieldCheck },
         { name: 'footer.faq', path: '/faq', icon: HelpCircle },
+        { name: 'POS Terminal', path: '/admin/pos', icon: ScanBarcode }
       ]
     }
   ];
@@ -55,19 +57,19 @@ export function Sidebar() {
   return (
     <>
       <div 
-        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] transition-opacity duration-300 lg:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
+        className={cn("fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] transition-opacity duration-300 lg:hidden", isOpen ? "opacity-100" : "opacity-0 pointer-events-none")} 
         onClick={() => setIsOpen(false)} 
       />
 
       <aside 
-        className={`fixed inset-y-0 left-0 z-[70] w-72 bg-[var(--card)] border-r border-[var(--border)] shadow-2xl flex flex-col transform transition-transform duration-300 ease-out-expo ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={cn("fixed inset-y-0 left-0 z-[70] w-72 bg-[var(--card)] border-r border-[var(--border)] shadow-2xl flex flex-col transform transition-transform duration-300 ease-out-expo", isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:static lg:h-[calc(100vh-5rem)]")}
       >
-        <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
-          <span className="font-extrabold text-xl flex items-center gap-2">
-            <Package size={24} className="text-blue-600" />
+        <div className="flex items-center justify-between p-6 border-b border-[var(--border)] lg:hidden">
+          <span className="font-extrabold text-xl flex items-center gap-2 text-[var(--foreground)]">
+            <Package className="text-blue-600" size={24} />
             Terminal
           </span>
-          <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+          <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:bg-[var(--background)] hover:text-slate-600 rounded-full transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -81,15 +83,13 @@ export function Sidebar() {
               <div className="space-y-1">
                 {section.items.map((item, iIdx) => {
                   const Icon = item.icon;
-                  const isActive = pathname === item.path;
+                  const isActive = pathname === item.path || (pathname?.startsWith(`${item.path}/`) && item.path !== '/');
                   return (
-                    <Link 
-                      key={iIdx} 
-                      href={item.path}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
+                    <Link href={item.path} key={iIdx} onClick={() => setIsOpen(false)}
+                      className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all", isActive ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-600 dark:text-slate-400 hover:bg-[var(--background)] hover:text-[var(--foreground)]")}
                     >
-                      <Icon size={16} />
-                      {t(item.name as any)}
+                      <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                      <span>{item.name === 'POS Terminal' ? item.name : t(item.name as any)}</span>
                     </Link>
                   );
                 })}

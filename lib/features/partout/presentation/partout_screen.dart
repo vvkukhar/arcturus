@@ -1,164 +1,90 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
+import 'package:lego_trading_manager/features/partout/application/partout_engine.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
-import 'package:lego_trading_manager/core/widgets/empty_state_view.dart';
-import 'package:lego_trading_manager/data/models/partout_project_model.dart';
-import 'package:lego_trading_manager/features/partout/application/partout_controller.dart';
-import 'package:lego_trading_manager/features/partout/application/partout_sort_option.dart';
-import 'package:lego_trading_manager/features/partout/application/partout_summary_provider.dart';
-import 'package:lego_trading_manager/features/partout/application/partout_ui_controller.dart';
-import 'package:lego_trading_manager/features/partout/application/partout_visible_metrics_provider.dart';
-import 'package:lego_trading_manager/features/partout/application/partout_visible_projects_provider.dart';
-import 'package:lego_trading_manager/features/partout/presentation/add_partout_project_screen.dart';
-import 'package:lego_trading_manager/features/partout/presentation/partout_project_details_screen.dart';
-import 'package:lego_trading_manager/features/partout/presentation/widgets/partout_active_filter_chips.dart';
-import 'package:lego_trading_manager/features/partout/presentation/widgets/partout_filter_sheet.dart';
-import 'package:lego_trading_manager/features/partout/presentation/widgets/partout_project_card.dart';
-import 'package:lego_trading_manager/features/partout/presentation/widgets/partout_search_field.dart';
-import 'package:lego_trading_manager/features/partout/presentation/widgets/partout_sort_dropdown.dart';
-import 'package:lego_trading_manager/features/partout/presentation/widgets/partout_summary_bar.dart';
-import 'package:lego_trading_manager/features/partout/presentation/widgets/partout_summary_card.dart';
-import 'package:lego_trading_manager/features/partout/presentation/widgets/partout_toolbar.dart';
-import 'package:lego_trading_manager/features/partout/presentation/widgets/partout_visible_metrics_card.dart';
-import 'package:lego_trading_manager/features/settings/application/app_settings_controller.dart';
 
-class PartOutScreen extends ConsumerStatefulWidget {
+class PartOutScreen extends ConsumerWidget {
   const PartOutScreen({super.key});
 
   @override
-  ConsumerState<PartOutScreen> createState() => _PartOutScreenState();
-}
-
-class _PartOutScreenState extends ConsumerState<PartOutScreen> {
-  final TextEditingController _searchController = TextEditingController();
-
-  String _sortLabel(PartOutSortOption option, I18nNotifier i18n) {
-    switch (option) {
-      case PartOutSortOption.newest: return i18n.t('Newest');
-      case PartOutSortOption.oldest: return i18n.t('Oldest');
-      case PartOutSortOption.titleAsc: return i18n.t('Title A-Z');
-      case PartOutSortOption.titleDesc: return i18n.t('Title Z-A');
-      case PartOutSortOption.costHighToLow: return i18n.t('Cost High-Low');
-      case PartOutSortOption.expectedHighToLow: return i18n.t('Expected High-Low');
-      case PartOutSortOption.actualHighToLow: return i18n.t('Actual High-Low');
-      case PartOutSortOption.profitExpectedHighToLow: return i18n.t('Expected Profit');
-      case PartOutSortOption.profitActualHighToLow: return i18n.t('Actual Profit');
-    }
-  }
-
-  Future<void> _openAdd(BuildContext context, WidgetRef ref) async {
-    final result = await Navigator.of(context).push<PartOutProjectModel>(
-      MaterialPageRoute(builder: (_) => const AddPartOutProjectScreen()),
-    );
-    if (result == null) return;
-    ref.read(partOutControllerProvider.notifier).addProject(result);
-  }
-
-  Future<void> _openProject(BuildContext context, PartOutProjectModel project) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => PartOutProjectDetailsScreen(project: project)),
-    );
-  }
-
-  Future<void> _openFilters() async {
-    final state = ref.read(partOutUiControllerProvider);
-    final result = await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => PartOutFilterSheet(initialFilter: state.filter),
-    );
-    if (result != null) ref.read(partOutUiControllerProvider.notifier).setFilter(result);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _searchController.text = ref.read(partOutUiControllerProvider).query;
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final state = ref.watch(partOutControllerProvider);
-    final allProjects = state.projects;
-    final visibleProjects = ref.watch(partOutVisibleProjectsProvider);
-    final summary = ref.watch(partOutSummaryProvider);
-    final visibleMetrics = ref.watch(partOutVisibleMetricsProvider);
-    final currency = ref.watch(appSettingsControllerProvider).baseCurrency;
-    final ui = ref.watch(partOutUiControllerProvider);
-    final i18n = ref.watch(i18nProvider.notifier);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stateAsync = ref.watch(partOutEngineProvider);
+    final engine = ref.read(partOutEngineProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: Text(i18n.t('partout.title'))),
+      appBar: AppBar(title: const Text('Part-out Projects', style: TextStyle(fontWeight: FontWeight.w900))),
       drawer: const AppDrawer(),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openAdd(context, ref),
-        icon: const Icon(Icons.precision_manufacturing_outlined),
-        label: Text(i18n.t('partout.add')),
+        onPressed: () {}, // Add logic later
+        icon: const Icon(Icons.precision_manufacturing),
+        label: const Text('Add Project'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: allProjects.isEmpty
-            ? EmptyStateView(
-                title: 'partout.empty',
-                subtitle: 'Create a set breakdown project and track value line by line.',
-              )
-            : Column(
-                children: [
-                  PartOutSearchField(
-                    controller: _searchController,
-                    onChanged: (value) => ref.read(partOutUiControllerProvider.notifier).search(value),
-                    onClear: () {
-                      _searchController.clear();
-                      ref.read(partOutUiControllerProvider.notifier).search('');
-                    },
+      body: stateAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (state) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: TextField(
+                  onChanged: engine.search,
+                  decoration: InputDecoration(
+                    hintText: 'Search projects...',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: const Color(0xFF171A21),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                   ),
-                  const SizedBox(height: 12),
-                  PartOutToolbar(
-                    onOpenFilters: _openFilters,
-                    sortDropdown: PartOutSortDropdown(
-                      value: ui.sortOption,
-                      onChanged: (value) {
-                        if (value != null) ref.read(partOutUiControllerProvider.notifier).setSort(value);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  PartOutSummaryBar(
-                    visibleCount: visibleProjects.length,
-                    totalCount: allProjects.length,
-                    sortLabel: _sortLabel(ui.sortOption, i18n),
-                  ),
-                  const SizedBox(height: 12),
-                  PartOutActiveFilterChips(filter: ui.filter),
-                  const SizedBox(height: 12),
-                  PartOutSummaryCard(summary: summary, currency: currency),
-                  const SizedBox(height: 12),
-                  PartOutVisibleMetricsCard(metrics: visibleMetrics, currency: currency),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: visibleProjects.isEmpty
-                        ? Center(child: Text(i18n.t('Nothing found for current filters.')))
-                        : ListView.separated(
-                            itemCount: visibleProjects.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 10),
-                            itemBuilder: (context, index) {
-                              final project = visibleProjects[index];
-                              return PartOutProjectCard(
-                                project: project,
-                                onTap: () => _openProject(context, project),
-                              );
-                            },
-                          ),
-                  ),
-                ],
+                ),
               ),
+              Expanded(
+                child: state.projects.isEmpty
+                    ? const Center(child: Text('No part-out projects found.', style: TextStyle(color: Colors.white54)))
+                    : ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: state.projects.length,
+                        itemBuilder: (context, index) {
+                          final computed = state.projects[index];
+                          final p = computed.project;
+                          final isProfitable = computed.expectedProfit > 0;
+                          
+                          return Card(
+                            color: const Color(0xFF171A21),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            child: ExpansionTile(
+                              title: Text(p.sourceSetTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Text('Status: ${p.status.name} • Lines: ${computed.lines.length}'),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  const Text('Exp. Profit', style: TextStyle(fontSize: 10, color: Colors.white54)),
+                                  Text(
+                                    computed.expectedProfit.toStringAsFixed(0),
+                                    style: TextStyle(fontWeight: FontWeight.w900, color: isProfitable ? Colors.greenAccent : Colors.redAccent),
+                                  ),
+                                ],
+                              ),
+                              children: [
+                                const Divider(color: Colors.white10),
+                                ...computed.lines.map((line) => ListTile(
+                                  dense: true,
+                                  title: Text(line.title),
+                                  subtitle: Text('${line.quantity}x ${line.expectedUnitPrice} = ${line.expectedTotalPrice}'),
+                                  trailing: Text(line.status.name.toUpperCase(), style: const TextStyle(fontSize: 10, color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+                                ))
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

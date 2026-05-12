@@ -1,12 +1,17 @@
 import Link from 'next/link';
 import { ArrowRight, ShieldCheck, Truck, Clock } from 'lucide-react';
 
+export const metadata = {
+  title: 'Premium LEGO Store | Arcturus',
+  description: 'Exclusive access to rare, retired, and authenticated LEGO sets.',
+};
+
 export default function StoreHomePage() {
   return (
     <div className="flex flex-col min-h-screen">
-      <section className="relative w-full bg-slate-900 dark:bg-black text-white py-24 sm:py-32 overflow-hidden">
+      <section className="relative w-full bg-slate-900 dark:bg-black text-white py-24 sm:py-32 overflow-hidden hardware-accelerated">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-900/40 via-slate-900 to-slate-900 dark:from-blue-900/20 dark:via-black dark:to-black"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="max-w-2xl">
             <h1 className="text-5xl sm:text-7xl font-black tracking-tight mb-6 leading-tight">
               Rare LEGO.<br />Real Stock.<br />Right Now.
@@ -23,7 +28,7 @@ export default function StoreHomePage() {
         </div>
       </section>
 
-      <section className="py-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 transition-colors duration-300">
+      <section className="py-12 border-b border-[var(--border)] bg-[var(--background)] transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="flex items-center gap-4">
@@ -31,7 +36,7 @@ export default function StoreHomePage() {
                 <ShieldCheck size={28} />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white">100% Authenticated</h3>
+                <h3 className="font-bold text-[var(--foreground)]">100% Authenticated</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Every piece is verified original LEGO.</p>
               </div>
             </div>
@@ -40,7 +45,7 @@ export default function StoreHomePage() {
                 <Truck size={28} />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white">Fast Delivery</h3>
+                <h3 className="font-bold text-[var(--foreground)]">Fast Delivery</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Shipped securely within 24 hours.</p>
               </div>
             </div>
@@ -49,7 +54,7 @@ export default function StoreHomePage() {
                 <Clock size={28} />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white">Real-Time Inventory</h3>
+                <h3 className="font-bold text-[var(--foreground)]">Real-Time Inventory</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400">If you can add it to cart, it's in stock.</p>
               </div>
             </div>
@@ -57,9 +62,9 @@ export default function StoreHomePage() {
         </div>
       </section>
 
-      <section className="py-20 bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+      <section className="py-20 bg-[var(--background)] transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-8">Ready to build?</h2>
+          <h2 className="text-3xl font-black text-[var(--foreground)] mb-8">Ready to build?</h2>
           <Link href="/store/catalog" className="inline-block px-10 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl transition-transform hover:scale-105 shadow-xl">
             View All Inventory
           </Link>

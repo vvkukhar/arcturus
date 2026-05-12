@@ -1,25 +1,13 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@arcturus/db';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { createPrismaClient } from '@arcturus/db';
 
 @Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
-  constructor() {
-    super({
-      log:
-        process.env.NODE_ENV === 'development'
-          ? ['error', 'warn']
-          : ['error'],
-    });
-  }
-
-  async onModuleInit(): Promise<void> {
+export class PrismaService extends createPrismaClient() implements OnModuleInit, OnModuleDestroy {
+  async onModuleInit() {
     await this.$connect();
   }
 
-  async onModuleDestroy(): Promise<void> {
+  async onModuleDestroy() {
     await this.$disconnect();
   }
 }

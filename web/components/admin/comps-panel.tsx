@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import useSWR from 'swr';
+import { swrFetcher } from '@/lib/swr-fetcher';
 import { apiFetch } from '@/lib/client-api';
 import { Loader2, DatabaseZap } from 'lucide-react';
 import { formatMoney } from '@/lib/format';
@@ -16,27 +18,17 @@ interface CompRow {
 }
 
 export function CompsPanel() {
-  const [rows, setRows] = useState<CompRow[]>([]);
+  const { data, mutate } = useSWR<CompRow[]>('/api/comps/sold', swrFetcher);
+  const rows = Array.isArray(data) ? data : [];
+
   const [sourceCode, setSourceCode] = useState('');
   const [payload, setPayload] = useState(`[\n  {\n    "externalId": "demo-1",\n    "title": "LEGO Ninjago 71700",\n    "soldPrice": 120,\n    "soldAt": "${new Date().toISOString()}"\n  }\n]`);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    try {
-      const data = await apiFetch<CompRow[]>('/api/comps/sold');
-      setRows(Array.isArray(data) ? data : []);
-    } catch {
-      setRows([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const handleIngest = async () => {
+  const handleIngest = useCallback(async () => {
+    if (loading) return;
     try {
       setLoading(true);
       setError(null);
@@ -51,17 +43,17 @@ export function CompsPanel() {
 
       await apiFetch('/api/comps/ingest', {
         method: 'POST',
-        body: JSON.stringify({ sourceCode, comps }),
+        body: JSON.stringify({ sourceCode: sourceCode.trim(), comps }),
       });
 
       setPayload('[\n\n]');
-      await loadData();
+      await mutate();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ingest failed');
     } finally {
       setLoading(false);
     }
-  };
+  }, [loading, payload, sourceCode, mutate]);
 
   return (
     <div className="space-y-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-sm transition-all hover:shadow-md h-full flex flex-col">

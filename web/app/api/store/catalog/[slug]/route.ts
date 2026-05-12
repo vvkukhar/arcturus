@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { appConfig } from '@/lib/config';
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export async function GET(
+  request: NextRequest,
+  props: { params: Promise<{ slug: string }> }
+) {
+  const params = await props.params;
 
-  const res = await fetch(`${appConfig.apiBaseUrl}/public/catalog/${encodeURIComponent(slug)}`, {
+  const response = await fetch(`${appConfig.apiBaseUrl}/public/catalog/${encodeURIComponent(params.slug)}`, {
     cache: 'no-store',
   });
 
-  if (!res.ok) {
-    return NextResponse.json({ ok: false }, { status: res.status });
+  if (!response.ok) {
+    return NextResponse.json({ ok: false }, { status: response.status });
   }
 
-  return NextResponse.json(await res.json());
+  return NextResponse.json(await response.json());
 }

@@ -49,7 +49,7 @@ export function ImageUploadForm({ inventoryItemId }: Props) {
   };
 
   return (
-    <div className="space-y-4 rounded-[2rem] border border-border bg-white p-6 shadow-sm">
+    <div className="space-y-4 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
       <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-slate-500">
         <UploadCloud className="h-4 w-4" />
         Upload Media
@@ -66,7 +66,7 @@ export function ImageUploadForm({ inventoryItemId }: Props) {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/avif"
             onChange={(e) => {
               setError(null);
               setFile(e.target.files?.[0] ?? null);

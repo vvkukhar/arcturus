@@ -1,9 +1,12 @@
 {
   "name": "@arcturus/scrapers",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "postinstall": "npx playwright install chromium",
     "start": "node dist/scraper-loop.js",
     "start:dev": "ts-node src/main.ts",
     "loop": "ts-node src/scraper-loop.ts"
@@ -12,9 +15,11 @@
     "@arcturus/db": "*",
     "@arcturus/shared": "*",
     "@prisma/client": "^5.22.0",
-    "axios": "^1.7.9",
     "cheerio": "^1.0.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "playwright": "^1.42.1",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

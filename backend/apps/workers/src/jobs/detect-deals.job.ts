@@ -14,7 +14,7 @@ export async function detectDealsJob(): Promise<{
   scannedListings: number;
   createdOrUpdated: number;
 }> {
-  const chunkSize = 500;
+  const chunkSize = 1500;
   let scannedListings = 0;
   let createdOrUpdated = 0;
 
@@ -22,13 +22,14 @@ export async function detectDealsJob(): Promise<{
   let lastId: string | undefined = undefined;
 
   while (hasMore) {
-    const listings = (await prisma.marketListing.findMany({
+    const listings = await prisma.marketListing.findMany({
       where: { status: 'active' },
       orderBy: { id: 'asc' },
       take: chunkSize,
       skip: lastId ? 1 : undefined,
       cursor: lastId ? { id: lastId } : undefined,
-    })) as { id: string; itemId: string; price: number; shippingPrice: number | null }[];
+      select: { id: true, itemId: true, price: true, shippingPrice: true }
+    });
 
     if (listings.length === 0) {
       hasMore = false;
@@ -58,27 +59,31 @@ export async function detectDealsJob(): Promise<{
     });
 
     const existingDealsMap = new Map(existingDeals.map((d) => [`${d.listingId}_${d.watchlistItemId}`, d.id]));
-    const dbOperations: any[] = [];
+    const updates: any[] = [];
+    const creates: any[] = [];
 
     for (const listing of listings) {
       const matchedWatchlists = watchlistMap.get(listing.itemId) || [];
 
       for (const watchlistItem of matchedWatchlists) {
         const buyPrice = toMoney(Number(listing.price) + Number(listing.shippingPrice ?? 0));
-        const targetSellPrice = toMoney(watchlistItem.targetSellPrice ?? watchlistItem.maxBuyPrice * 1.4);
+        const targetSellPrice = toMoney(Number(watchlistItem.targetSellPrice ?? Number(watchlistItem.maxBuyPrice) * 1.4));
         const profit = toMoney(targetSellPrice - buyPrice);
         const roiPercent = roi(profit, buyPrice);
 
         let action = 'SKIP';
         let score = 35;
 
-        if (buyPrice <= watchlistItem.desiredBuyPrice && roiPercent >= 30) {
+        const maxBuyPrice = Number(watchlistItem.maxBuyPrice);
+        const desiredBuyPrice = Number(watchlistItem.desiredBuyPrice);
+
+        if (buyPrice <= desiredBuyPrice && roiPercent >= 30) {
           action = 'BUY_NOW';
           score = 92;
-        } else if (buyPrice <= watchlistItem.maxBuyPrice && roiPercent >= 20) {
+        } else if (buyPrice <= maxBuyPrice && roiPercent >= 20) {
           action = 'BUY';
           score = 78;
-        } else if (buyPrice <= watchlistItem.maxBuyPrice) {
+        } else if (buyPrice <= maxBuyPrice) {
           action = 'WATCH';
           score = 60;
         }
@@ -88,22 +93,25 @@ export async function detectDealsJob(): Promise<{
         const dealKey = `${listing.id}_${watchlistItem.id}`;
         const existingId = existingDealsMap.get(dealKey);
 
-        const dealData = { buyPrice, targetSellPrice, profit, roiPercent, action, score, status: 'open' };
+        const dealData = { buyPrice, targetSellPrice, profit, roiPercent, action, score, status: 'open', updatedAt: new Date() };
 
         if (existingId) {
-          dbOperations.push(prisma.deal.update({ where: { id: existingId }, data: dealData }));
+          updates.push(prisma.deal.update({ where: { id: existingId }, data: dealData }));
         } else {
-          dbOperations.push(prisma.deal.create({ data: { listingId: listing.id, watchlistItemId: watchlistItem.id, ...dealData } }));
+          creates.push({ id: dealKey, listingId: listing.id, watchlistItemId: watchlistItem.id, ...dealData });
         }
         createdOrUpdated += 1;
       }
     }
 
-    if (dbOperations.length > 0) {
-      const dbChunkSize = 100;
-      for (let i = 0; i < dbOperations.length; i += dbChunkSize) {
-        const chunk = dbOperations.slice(i, i + dbChunkSize);
-        await prisma.$transaction(chunk);
+    if (creates.length > 0) {
+      await prisma.deal.createMany({ data: creates, skipDuplicates: true });
+    }
+
+    if (updates.length > 0) {
+      const dbChunkSize = 50; 
+      for (let i = 0; i < updates.length; i += dbChunkSize) {
+        await prisma.$transaction(updates.slice(i, i + dbChunkSize));
       }
     }
   }

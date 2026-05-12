@@ -67,8 +67,7 @@ export class SmartPricingService {
       suggestedPrice: toMoney(suggestedPrice),
       stretchPrice: toMoney(stretchPrice),
       classification: input.volatility > 0.45 ? 'defensive' : 'balanced',
-      reason:
-        input.volatility > 0.45
+      reason: input.volatility > 0.45
           ? 'Volatile market requires defensive pricing'
           : 'Balanced pricing based on median market and cost basis',
     };

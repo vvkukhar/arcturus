@@ -11,13 +11,7 @@ export type FlipStrategyInput = {
 };
 
 export type FlipStrategyResult = {
-  strategy:
-    | 'fast_flip'
-    | 'premium_hold'
-    | 'bundle_breakdown'
-    | 'minifigure_arbitrage'
-    | 'slow_hold'
-    | 'avoid';
+  strategy: 'fast_flip' | 'premium_hold' | 'bundle_breakdown' | 'minifigure_arbitrage' | 'slow_hold' | 'avoid';
   score: number;
   reasonPrimary: string;
   reasonSecondary: string;
@@ -27,8 +21,7 @@ export type FlipStrategyResult = {
 export class FlipStrategyService {
   decide(input: FlipStrategyInput): FlipStrategyResult {
     const spread = input.targetSellPrice - input.buyPrice;
-    const roi =
-      input.buyPrice > 0 ? ((input.targetSellPrice - input.buyPrice) / input.buyPrice) * 100 : 0;
+    const roi = input.buyPrice > 0 ? ((input.targetSellPrice - input.buyPrice) / input.buyPrice) * 100 : 0;
 
     if (input.itemType === 'bundle' && roi >= 30) {
       return {
@@ -48,12 +41,7 @@ export class FlipStrategyService {
       };
     }
 
-    if (
-      roi >= 35 &&
-      spread >= 250 &&
-      input.volatility <= 0.35 &&
-      input.confidenceScore >= 0.55
-    ) {
+    if (roi >= 35 && spread >= 250 && input.volatility <= 0.35 && input.confidenceScore >= 0.55) {
       return {
         strategy: 'fast_flip',
         score: 90,

@@ -2,15 +2,16 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { Suspense, useCallback } from 'react';
 
 const themes = ['Ninjago', 'Star Wars', 'Harry Potter', 'Marvel', 'Minecraft'];
 
-export function SourceFilterChips() {
+function SourceFilterChipsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentTheme = searchParams.get('theme') ?? '';
 
-  const update = (theme: string | null) => {
+  const update = useCallback((theme: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
 
     if (theme) {
@@ -20,7 +21,7 @@ export function SourceFilterChips() {
     }
 
     router.push(`/store/catalog?${params.toString()}`);
-  };
+  }, [router, searchParams]);
 
   return (
     <div className="flex flex-wrap gap-2 pt-2">
@@ -29,8 +30,8 @@ export function SourceFilterChips() {
         className={cn(
           'rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200 border',
           currentTheme === ''
-            ? 'bg-slate-900 border-slate-900 text-white shadow-md'
-            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-900'
+            ? 'bg-slate-900 border-slate-900 text-white dark:bg-white dark:border-white dark:text-slate-900 shadow-md'
+            : 'bg-[var(--card)] border-[var(--border)] text-slate-500 hover:text-[var(--foreground)] hover:bg-[var(--background)]'
         )}
       >
         All Themes
@@ -46,7 +47,7 @@ export function SourceFilterChips() {
               'rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200 border',
               isActive
                 ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-900'
+                : 'bg-[var(--card)] border-[var(--border)] text-slate-500 hover:text-[var(--foreground)] hover:bg-[var(--background)]'
             )}
           >
             {theme}
@@ -54,5 +55,13 @@ export function SourceFilterChips() {
         );
       })}
     </div>
+  );
+}
+
+export function SourceFilterChips() {
+  return (
+    <Suspense fallback={<div className="h-8 w-full bg-transparent" />}>
+      <SourceFilterChipsContent />
+    </Suspense>
   );
 }

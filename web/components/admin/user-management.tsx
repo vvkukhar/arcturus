@@ -1,35 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
+import useSWR from 'swr';
 import type { User } from '@/lib/types';
 import { apiFetch } from '@/lib/client-api';
 import { Loader2, Plus, UserCircle } from 'lucide-react';
 import { StatusPill } from '@/components/admin/status-pill';
+import { swrFetcher } from '@/lib/swr-fetcher';
 
 export function UserManagement() {
-  const [users, setUsers] = useState<User[]>([]);
+  const { data, isLoading, mutate } = useSWR<User[]>('/api/collaboration/users', swrFetcher);
+  const users = Array.isArray(data) ? data : [];
+
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true);
 
-  const loadData = async () => {
-    try {
-      const data = await apiFetch<User[]>('/api/collaboration/users');
-      setUsers(Array.isArray(data) ? data : []);
-    } catch {
-      setUsers([]);
-    } finally {
-      setInitialLoad(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleAdd = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || loading) return;
 
     try {
       setLoading(true);
@@ -38,13 +26,13 @@ export function UserManagement() {
         body: JSON.stringify({ name: name.trim(), role: 'operator' }),
       });
       setName('');
-      await loadData();
+      await mutate();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to add user');
     } finally {
       setLoading(false);
     }
-  };
+  }, [name, loading, mutate]);
 
   return (
     <div className="space-y-6 rounded-[2rem] border border-border bg-white p-6 shadow-sm flex flex-col h-full">
@@ -72,7 +60,7 @@ export function UserManagement() {
       </form>
 
       <div className="flex-1 overflow-y-auto pr-2 space-y-3 min-h-[200px]">
-        {initialLoad ? (
+        {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
           </div>

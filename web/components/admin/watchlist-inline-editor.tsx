@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { apiFetch } from '@/lib/client-api';
 import { Loader2, Save } from 'lucide-react';
@@ -8,6 +7,7 @@ import type { WatchlistItem } from '@/lib/types';
 
 type Props = {
   item: WatchlistItem;
+  onSuccessAction?: () => void;
 };
 
 function parseNumber(value: string, fallback: number | null = 0): number | null {
@@ -16,9 +16,7 @@ function parseNumber(value: string, fallback: number | null = 0): number | null 
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-export function WatchlistInlineEditor({ item }: Props) {
-  const router = useRouter();
-
+export function WatchlistInlineEditor({ item, onSuccessAction }: Props) {
   const [titleSnapshot, setTitleSnapshot] = useState(item.titleSnapshot ?? '');
   const [desiredBuyPrice, setDesiredBuyPrice] = useState(String(item.desiredBuyPrice ?? ''));
   const [maxBuyPrice, setMaxBuyPrice] = useState(String(item.maxBuyPrice ?? ''));
@@ -32,6 +30,7 @@ export function WatchlistInlineEditor({ item }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
+    if (loading) return;
     try {
       setLoading(true);
       setError(null);
@@ -48,7 +47,7 @@ export function WatchlistInlineEditor({ item }: Props) {
         method: 'PATCH',
         body: JSON.stringify({
           id: item.id,
-          titleSnapshot,
+          titleSnapshot: titleSnapshot.trim(),
           desiredBuyPrice: parsedDesired,
           maxBuyPrice: parsedMax,
           targetSellPrice: parsedTarget,
@@ -57,7 +56,7 @@ export function WatchlistInlineEditor({ item }: Props) {
         }),
       });
 
-      router.refresh();
+      if (onSuccessAction) onSuccessAction();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed');
     } finally {
@@ -111,7 +110,7 @@ export function WatchlistInlineEditor({ item }: Props) {
         <input
           type="number"
           min="0"
-          max="10"
+          max="100"
           value={priority}
           onChange={(e) => setPriority(e.target.value)}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-blue-500 outline-none"

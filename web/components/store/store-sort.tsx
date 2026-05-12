@@ -3,8 +3,9 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowDownWideNarrow } from 'lucide-react';
 import { useI18n } from '@/components/providers/i18n-provider';
+import { Suspense } from 'react';
 
-export function StoreSort() {
+function StoreSortContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useI18n();
@@ -30,14 +31,22 @@ export function StoreSort() {
       <select
         value={searchParams.get('sort') ?? ''}
         onChange={handleSortChange}
-        className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-2.5 pl-11 pr-10 text-sm font-semibold text-slate-700 shadow-sm outline-none transition-all hover:bg-slate-50 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer"
+        className="w-full appearance-none rounded-2xl border border-[var(--border)] bg-[var(--card)] py-2.5 pl-11 pr-10 text-sm font-semibold text-[var(--foreground)] shadow-sm outline-none transition-all hover:bg-[var(--background)] focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer"
       >
-        <option value="">{t('sort.newest')}</option>
-        <option value="price_asc">{t('sort.priceAsc')}</option>
-        <option value="price_desc">{t('sort.priceDesc')}</option>
-        <option value="title_asc">{t('sort.nameAsc')}</option>
+        <option value="">{(t('sort.newest' as any) as string)}</option>
+        <option value="price_asc">{(t('sort.priceAsc' as any) as string)}</option>
+        <option value="price_desc">{(t('sort.priceDesc' as any) as string)}</option>
+        <option value="title_asc">{(t('sort.nameAsc' as any) as string)}</option>
       </select>
       <div className="pointer-events-none absolute right-4 border-l-4 border-r-4 border-t-[5px] border-l-transparent border-r-transparent border-t-slate-400" />
     </div>
+  );
+}
+
+export function StoreSort() {
+  return (
+    <Suspense fallback={<div className="h-10 w-48 bg-[var(--card)] animate-pulse rounded-2xl border border-[var(--border)]" />}>
+      <StoreSortContent />
+    </Suspense>
   );
 }

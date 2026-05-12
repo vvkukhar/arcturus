@@ -30,7 +30,7 @@ export function Magnetic({ children }: { children: React.ReactElement }) {
       ref={ref}
       onMouseMove={handleMouse}
       onMouseLeave={reset}
-      className="relative inline-flex will-change-transform"
+      className="relative inline-flex will-change-transform transform-gpu"
       style={{
         transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
         transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',

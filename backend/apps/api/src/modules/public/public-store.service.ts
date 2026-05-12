@@ -93,6 +93,35 @@ export class PublicStoreService {
     return { ...entry, slug: this.slugify(entry.titleSnapshot || entry.item?.title || entry.id), related };
   }
 
+  async trackOrder(query: string): Promise<unknown> {
+    const normalized = query.trim();
+    if (!normalized) throw new BadRequestException('Tracking query is required');
+
+    const order = await this.prisma.order.findFirst({
+      where: {
+        OR: [
+          { id: normalized },
+          { contact: { contains: normalized } }
+        ]
+      },
+      select: {
+        id: true,
+        status: true,
+        productTitle: true,
+        sellPrice: true,
+        quantity: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    return order;
+  }
+
   async createReserve(params: { inventoryItemId?: string | null; productTitle: string; name: string; contact: string; message?: string | null }): Promise<unknown> {
     const name = params.name.trim();
     const contact = params.contact.trim();
@@ -133,7 +162,14 @@ export class PublicStoreService {
     });
 
     await this.activity.log('reserve.created', { reserveRequestId: result.reserve.id, orderId: result.order.id, inventoryItemId: result.reserve.inventoryItemId, productTitle: result.reserve.productTitle, name: result.reserve.name, contact: result.reserve.contact });
-    await this.notifications.create({ title: 'New reserve request', message: `${result.reserve.productTitle} • ${result.reserve.name}`, type: 'reserve', payloadJson: { reserveRequestId: result.reserve.id, orderId: result.order.id } });
+    
+    await this.notifications.createReserveNotification({ 
+      reserveId: result.reserve.id,
+      productTitle: result.reserve.productTitle,
+      customerName: result.reserve.name,
+      contact: result.reserve.contact
+    });
+
     this.realtime.emitCustom('reserve.created', result.reserve);
     this.realtime.emitCustom('order.created', result.order);
     this.realtime.emitDashboardRefresh('reserve_created');

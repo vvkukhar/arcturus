@@ -1,14 +1,18 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import type { ScannerJob, ScannerSource } from '@/lib/types';
+import { useState } from 'react';
+import useSWR from 'swr';
+import { swrFetcher } from '@/lib/swr-fetcher';
+import type { ScannerSource } from '@/lib/types';
 import { apiFetch } from '@/lib/client-api';
 import { Loader2 } from 'lucide-react';
-import { StatusPill } from '@/components/admin/status-pill';
 
 export function ScannerPanel() {
-  const [sources, setSources] = useState<ScannerSource[]>([]);
-  const [jobs, setJobs] = useState<ScannerJob[]>([]);
+  const { data: rawSources, mutate: mutateSources } = useSWR<ScannerSource[]>('/api/scanner/sources', swrFetcher);
+  const { mutate: mutateJobs } = useSWR('/api/scanner/jobs', swrFetcher);
+
+  const sources = Array.isArray(rawSources) ? rawSources : [];
+  
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [sourceCode, setSourceCode] = useState('');
@@ -16,45 +20,41 @@ export function ScannerPanel() {
   const [loading, setLoading] = useState<'source' | 'job' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [sourcesRes, jobsRes] = await Promise.all([
-        apiFetch<ScannerSource[]>('/api/scanner/sources'),
-        apiFetch<ScannerJob[]>('/api/scanner/jobs'),
-      ]);
-      const sourceRows = Array.isArray(sourcesRes) ? sourcesRes : [];
-      setSources(sourceRows);
-      setJobs(Array.isArray(jobsRes) ? jobsRes : []);
-      if (sourceRows.length > 0 && !sourceCode) setSourceCode(sourceRows[0].code);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load scanner data');
-    }
-  }, [sourceCode]);
-
-  useEffect(() => { loadData(); }, [loadData]);
-
   const handleAddSource = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code.trim() || !name.trim()) return;
+    if (loading || !code.trim() || !name.trim()) return;
     try {
       setLoading('source');
-      await apiFetch('/api/scanner/sources', { method: 'POST', body: JSON.stringify({ code: code.trim(), name: name.trim(), type: 'manual', enabled: true }) });
-      setCode(''); setName(''); await loadData();
+      await apiFetch('/api/scanner/sources', { 
+        method: 'POST', 
+        body: JSON.stringify({ code: code.trim(), name: name.trim(), type: 'manual', enabled: true }) 
+      });
+      setCode(''); 
+      setName(''); 
+      await mutateSources();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add source');
-    } finally { setLoading(null); }
+    } finally { 
+      setLoading(null); 
+    }
   };
 
   const handleEnqueueScan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sourceCode.trim()) return;
+    if (loading || !sourceCode.trim()) return;
     try {
       setLoading('job');
-      await apiFetch('/api/scanner/jobs', { method: 'POST', body: JSON.stringify({ sourceCode: sourceCode.trim(), query: query.trim() }) });
-      setQuery(''); await loadData();
+      await apiFetch('/api/scanner/jobs', { 
+        method: 'POST', 
+        body: JSON.stringify({ sourceCode: sourceCode.trim(), query: query.trim() }) 
+      });
+      setQuery(''); 
+      await mutateJobs();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to enqueue scan');
-    } finally { setLoading(null); }
+    } finally { 
+      setLoading(null); 
+    }
   };
 
   return (
@@ -81,7 +81,7 @@ export function ScannerPanel() {
       <form onSubmit={handleEnqueueScan} className="space-y-4 bg-blue-500/10 p-5 rounded-2xl border border-blue-500/20">
         <h3 className="text-xs font-black uppercase tracking-widest text-blue-500">Enqueue Scan Job</h3>
         <div className="grid gap-3 md:grid-cols-2">
-          <select required value={sourceCode} onChange={(e) => setSourceCode(e.target.value)} className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm font-bold text-[var(--foreground)] focus:border-blue-500 outline-none">
+          <select required value={sourceCode} onChange={(e) => setSourceCode(e.target.value)} className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm font-bold text-[var(--foreground)] focus:border-blue-500 outline-none cursor-pointer">
             <option value="" disabled>Select Source</option>
             {sources.map((source) => <option key={source.code} value={source.code}>{source.name}</option>)}
           </select>

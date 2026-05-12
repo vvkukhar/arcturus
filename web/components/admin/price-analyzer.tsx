@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/client-api';
 import { Loader2, Calculator } from 'lucide-react';
 import { formatMoney, formatPercent } from '@/lib/format';
@@ -27,7 +27,7 @@ export function PriceAnalyzer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAnalyze = async (e: React.FormEvent) => {
+  const handleAnalyze = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedBuy = parseNumber(buy);
     const parsedSell = parseNumber(sell);
@@ -56,7 +56,7 @@ export function PriceAnalyzer() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [buy, sell]);
 
   return (
     <div className="space-y-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-sm transition-all hover:shadow-md h-full">

@@ -43,11 +43,7 @@ export class ProfitAnalyticsService {
 
   async getMonthlyBreakdown(): Promise<unknown[]> {
     const salesData = await this.prisma.sale.findMany({
-      select: {
-        createdAt: true,
-        sellPrice: true,
-        profit: true,
-      },
+      select: { createdAt: true, sellPrice: true, profit: true },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -71,38 +67,6 @@ export class ProfitAnalyticsService {
       profit: toMoney(row.profit),
       avgProfit: row.salesCount > 0 ? toMoney(row.profit / row.salesCount) : 0,
     }));
-  }
-
-  async getProfitByTheme(): Promise<unknown[]> {
-    const salesData = await this.prisma.sale.findMany({
-      select: {
-        sellPrice: true,
-        profit: true,
-        inventoryItem: { select: { item: { select: { theme: true } } } },
-      },
-    });
-
-    const map = new Map<string, { theme: string; salesCount: number; revenue: number; profit: number }>();
-
-    for (const sale of salesData) {
-      const theme = sale.inventoryItem?.item?.theme ?? 'Unknown';
-
-      const current = map.get(theme) ?? { theme, salesCount: 0, revenue: 0, profit: 0 };
-      current.salesCount += 1;
-      current.revenue += Number(sale.sellPrice ?? 0);
-      current.profit += Number(sale.profit ?? 0);
-
-      map.set(theme, current);
-    }
-
-    return [...map.values()]
-      .map((row) => ({
-        ...row,
-        revenue: toMoney(row.revenue),
-        profit: toMoney(row.profit),
-        avgProfit: row.salesCount > 0 ? toMoney(row.profit / row.salesCount) : 0,
-      }))
-      .sort((a, b) => b.profit - a.profit);
   }
 
   async getSalesVelocity(days = 30): Promise<unknown> {

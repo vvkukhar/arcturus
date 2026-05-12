@@ -1,37 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import useSWR from 'swr';
+import { swrFetcher } from '@/lib/swr-fetcher';
 import { apiFetch } from '@/lib/client-api';
 import type { User } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
 export function CollaborativeAssignmentPanel() {
-  const [users, setUsers] = useState<User[]>([]);
+  const { data: rawUsers, mutate } = useSWR<User[]>('/api/collaboration/users', swrFetcher);
+  const users = Array.isArray(rawUsers) ? rawUsers : [];
+
   const [inventoryItemId, setInventoryItemId] = useState('');
   const [watchlistItemId, setWatchlistItemId] = useState('');
   const [userId, setUserId] = useState('');
   const [loading, setLoading] = useState<'inventory' | 'watchlist' | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-    apiFetch<User[]>('/api/collaboration/users')
-      .then((data) => {
-        if (!mounted) return;
-        const rows = Array.isArray(data) ? data : [];
-        setUsers(rows);
-        if (rows[0]?.id) setUserId(rows[0].id);
-      })
-      .catch(() => {
-        if (mounted) setUsers([]);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    if (users.length > 0 && !userId) {
+      setUserId(users[0].id);
+    }
+  }, [users, userId]);
 
-  const handleAssignInventory = async (e: React.FormEvent) => {
+  const handleAssignInventory = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inventoryItemId.trim() || !userId) return;
+    if (loading || !inventoryItemId.trim() || !userId) return;
 
     try {
       setLoading('inventory');
@@ -40,17 +33,17 @@ export function CollaborativeAssignmentPanel() {
         body: JSON.stringify({ inventoryItemId: inventoryItemId.trim(), userId }),
       });
       setInventoryItemId('');
-      alert('Inventory assigned successfully');
+      mutate();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Assignment failed');
     } finally {
       setLoading(null);
     }
-  };
+  }, [inventoryItemId, userId, loading, mutate]);
 
-  const handleAssignWatchlist = async (e: React.FormEvent) => {
+  const handleAssignWatchlist = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!watchlistItemId.trim() || !userId) return;
+    if (loading || !watchlistItemId.trim() || !userId) return;
 
     try {
       setLoading('watchlist');
@@ -59,18 +52,18 @@ export function CollaborativeAssignmentPanel() {
         body: JSON.stringify({ watchlistItemId: watchlistItemId.trim(), userId }),
       });
       setWatchlistItemId('');
-      alert('Watchlist item assigned successfully');
+      mutate();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Assignment failed');
     } finally {
       setLoading(null);
     }
-  };
+  }, [watchlistItemId, userId, loading, mutate]);
 
   return (
-    <div className="space-y-6 rounded-[2rem] border border-border bg-white p-6 shadow-sm">
+    <div className="space-y-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
       <div>
-        <h2 className="text-xl font-black text-slate-900">Task Assignments</h2>
+        <h2 className="text-xl font-black text-[var(--foreground)]">Task Assignments</h2>
         <p className="mt-1 text-sm font-medium text-slate-500">Assign inventory or watchlist items to operators.</p>
       </div>
 
@@ -80,7 +73,7 @@ export function CollaborativeAssignmentPanel() {
           required
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
-          className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 outline-none cursor-pointer"
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm focus:bg-[var(--card)] focus:border-blue-500 outline-none cursor-pointer text-[var(--foreground)]"
         >
           <option value="" disabled>Select user...</option>
           {users.map((user) => (
@@ -89,7 +82,7 @@ export function CollaborativeAssignmentPanel() {
         </select>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-slate-100">
+      <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-[var(--border)]">
         <form onSubmit={handleAssignInventory} className="space-y-3">
           <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Assign Inventory</label>
           <input
@@ -97,12 +90,12 @@ export function CollaborativeAssignmentPanel() {
             value={inventoryItemId}
             onChange={(e) => setInventoryItemId(e.target.value)}
             placeholder="Inventory Item ID"
-            className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 outline-none"
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm focus:bg-[var(--card)] focus:border-blue-500 outline-none text-[var(--foreground)]"
           />
           <button
             type="submit"
             disabled={loading !== null || !inventoryItemId.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
           >
             {loading === 'inventory' && <Loader2 className="h-4 w-4 animate-spin" />}
             {loading === 'inventory' ? 'Assigning...' : 'Assign'}
@@ -116,12 +109,12 @@ export function CollaborativeAssignmentPanel() {
             value={watchlistItemId}
             onChange={(e) => setWatchlistItemId(e.target.value)}
             placeholder="Watchlist Item ID"
-            className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 outline-none"
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm focus:bg-[var(--card)] focus:border-blue-500 outline-none text-[var(--foreground)]"
           />
           <button
             type="submit"
             disabled={loading !== null || !watchlistItemId.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
           >
             {loading === 'watchlist' && <Loader2 className="h-4 w-4 animate-spin" />}
             {loading === 'watchlist' ? 'Assigning...' : 'Assign'}

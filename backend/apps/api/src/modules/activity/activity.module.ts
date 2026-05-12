@@ -1,11 +1,8 @@
-import { Module } from '@nestjs/common';
-import { RealtimeModule } from '../realtime/realtime.module';
-import { ActivityController } from './activity.controller';
+import { Global, Module } from '@nestjs/common';
 import { ActivityService } from './activity.service';
 
+@Global()
 @Module({
-  imports: [RealtimeModule],
-  controllers: [ActivityController],
   providers: [ActivityService],
   exports: [ActivityService],
 })

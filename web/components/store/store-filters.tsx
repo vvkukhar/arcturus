@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { Suspense, useCallback } from 'react';
 
 const types = [
   { label: 'All Models', value: null },
@@ -10,13 +11,13 @@ const types = [
   { label: 'Bundles', value: 'bundle' },
 ];
 
-export function StoreFilters() {
+function StoreFiltersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentType = searchParams.get('type') ?? '';
   const availableOnly = searchParams.get('availableOnly') === 'true';
 
-  const update = (key: string, value: string | null) => {
+  const update = useCallback((key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
 
     if (value) {
@@ -26,11 +27,11 @@ export function StoreFilters() {
     }
 
     router.push(`/store/catalog?${params.toString()}`);
-  };
+  }, [router, searchParams]);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-2xl">
+      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-[var(--background)] rounded-2xl border border-[var(--border)]">
         {types.map((type) => {
           const isActive = (type.value ?? '') === currentType;
           return (
@@ -40,8 +41,8 @@ export function StoreFilters() {
               className={cn(
                 'px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200',
                 isActive
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                  ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm border border-[var(--border)]'
+                  : 'text-slate-500 hover:text-[var(--foreground)] hover:bg-[var(--card)] border border-transparent'
               )}
             >
               {type.label}
@@ -50,23 +51,31 @@ export function StoreFilters() {
         })}
       </div>
 
-      <div className="w-px h-8 bg-slate-200 hidden sm:block mx-1" />
+      <div className="w-px h-8 bg-[var(--border)] hidden sm:block mx-1" />
 
       <button
         onClick={() => update('availableOnly', availableOnly ? null : 'true')}
         className={cn(
           'px-4 py-2.5 text-sm font-semibold rounded-2xl border transition-all duration-200 shadow-sm flex items-center gap-2',
           availableOnly
-            ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
-            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+            ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+            : 'bg-[var(--card)] border-[var(--border)] text-slate-500 hover:text-[var(--foreground)] hover:bg-[var(--background)]'
         )}
       >
         <div className={cn(
-          "w-2 h-2 rounded-full",
-          availableOnly ? "bg-blue-600" : "bg-slate-300"
+          "w-2 h-2 rounded-full transition-colors",
+          availableOnly ? "bg-blue-600 dark:bg-blue-500" : "bg-slate-300 dark:bg-slate-600"
         )} />
         In Stock Only
       </button>
     </div>
+  );
+}
+
+export function StoreFilters() {
+  return (
+    <Suspense fallback={<div className="h-12 w-64 bg-[var(--card)] animate-pulse rounded-2xl border border-[var(--border)]" />}>
+      <StoreFiltersContent />
+    </Suspense>
   );
 }

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { httpClient } from '../../common/http-client';
 import { estimateUaShippingBySource } from '../../common/shipping-estimator';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
 import { stableListingId } from '../../common/listing-id';
@@ -7,20 +7,22 @@ import { finishSourceRun, startSourceRun } from '../../common/source-run-logger'
 import { enqueueUnresolvedMatch } from '../../common/unresolved-match-handler';
 import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
-import { parseBrickowlSearchHtml } from './brickowl-parser';
+import { parseBrickOwlSearchHtml } from './brickowl-parser';
 
-const searchQueries = ['70621', '75301', '71700'];
+export async function runBrickOwlSource(): Promise<void> {
+  const source = await prisma.marketSource.findUnique({ where: { code: 'brickowl' } });
+  if (!source || !source.enabled) return;
 
-export async function runBrickowlSource(): Promise<void> {
-  let source = await prisma.marketSource.findUnique({ where: { code: 'brickowl' } });
+  const activeWatchlist = await prisma.watchlistItem.findMany({
+    where: { active: true },
+    select: { item: { select: { setNumber: true } } }
+  });
 
-  if (!source) {
-    source = await prisma.marketSource.create({
-      data: { code: 'brickowl', name: 'BrickOwl', type: 'marketplace', enabled: true },
-    });
-  }
+  const searchQueries = Array.from(
+    new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))
+  ) as string[];
 
-  if (!source.enabled) return;
+  if (searchQueries.length === 0) return;
 
   const runId = await startSourceRun('brickowl');
 
@@ -36,16 +38,8 @@ export async function runBrickowlSource(): Promise<void> {
 
     for (const query of searchQueries) {
       const url = `https://www.brickowl.com/search/catalog?query=${encodeURIComponent(query)}`;
-
-      const response = await axios.get<string>(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-          Accept: 'text/html',
-        },
-        timeout: 15000,
-      });
-
-      const listings = parseBrickowlSearchHtml(response.data);
+      const response = await httpClient.get<string>(url);
+      const listings = parseBrickOwlSearchHtml(response.data);
 
       for (const listing of listings) {
         itemsSeen += 1;
@@ -56,8 +50,8 @@ export async function runBrickowlSource(): Promise<void> {
 
         const shippingPrice = listing.shippingPrice ?? estimateUaShippingBySource({
           sourceCode: 'brickowl',
-          itemPrice: listing.price,
-          currency: listing.currency,
+          price: listing.price,
+          country: listing.country,
           sealed: listing.sealed,
         });
 
@@ -67,16 +61,16 @@ export async function runBrickowlSource(): Promise<void> {
             update: {
               sourceCode: source.code,
               itemId,
-              externalListingId: listing.externalListingId,
-              externalId: listing.externalListingId,
               titleRaw: listing.titleRaw,
               title: listing.titleRaw,
               url: listing.url,
               imageUrl: listing.imageUrl,
               price: listing.price,
-              currency: listing.currency,
+              currency: listing.currency ?? 'USD',
               shippingPrice,
-              shippingCurrency: listing.currency,
+              shippingCurrency: listing.shippingCurrency ?? 'USD',
+              condition: listing.condition,
+              sealed: listing.sealed,
               status: 'active',
               fetchedAt: now,
               lastSeenAt: now,
@@ -93,9 +87,11 @@ export async function runBrickowlSource(): Promise<void> {
               url: listing.url,
               imageUrl: listing.imageUrl,
               price: listing.price,
-              currency: listing.currency,
+              currency: listing.currency ?? 'USD',
               shippingPrice,
-              shippingCurrency: listing.currency,
+              shippingCurrency: listing.shippingCurrency ?? 'USD',
+              condition: listing.condition,
+              sealed: listing.sealed,
               status: 'active',
               fetchedAt: now,
               firstSeenAt: now,
@@ -114,6 +110,7 @@ export async function runBrickowlSource(): Promise<void> {
           itemsMatched += 1;
         }
       }
+      await new Promise((res) => setTimeout(res, 2500 + Math.random() * 3500));
     }
 
     if (upsertOperations.length > 0) {

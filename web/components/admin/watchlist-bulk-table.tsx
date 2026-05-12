@@ -44,7 +44,8 @@ export function WatchlistBulkTable({ rows }: Props) {
 
   const clear = useCallback(() => setSelected(new Set()), []);
 
-  const bulkAdd = async () => {
+  const bulkAdd = useCallback(async () => {
+    if (bulkLoading || selected.size === 0) return;
     try {
       setBulkLoading(true);
       const requests = Array.from(selected).map((id) =>
@@ -59,12 +60,13 @@ export function WatchlistBulkTable({ rows }: Props) {
     } finally {
       setBulkLoading(false);
     }
-  };
+  }, [bulkLoading, selected, clear, router]);
 
-  const bulkSetActive = async (active: boolean) => {
+  const bulkSetActive = useCallback(async (active: boolean) => {
+    if (bulkLoading || selected.size === 0) return;
     try {
       setBulkLoading(true);
-      await apiFetch('/api/admin/watchlist/bulk-activate', {
+      await apiFetch<ApiResponse<null>>('/api/admin/watchlist/bulk-activate', {
         method: 'PATCH',
         body: JSON.stringify({ ids: Array.from(selected), active }),
       });
@@ -73,13 +75,14 @@ export function WatchlistBulkTable({ rows }: Props) {
     } finally {
       setBulkLoading(false);
     }
-  };
+  }, [bulkLoading, selected, clear, router]);
 
-  const bulkDelete = async () => {
+  const bulkDelete = useCallback(async () => {
+    if (bulkLoading || selected.size === 0) return;
     if (!window.confirm('Delete selected watchlist items?')) return;
     try {
       setBulkLoading(true);
-      await apiFetch('/api/admin/watchlist/bulk-delete', {
+      await apiFetch<ApiResponse<null>>('/api/admin/watchlist/bulk-delete', {
         method: 'DELETE',
         body: JSON.stringify({ ids: Array.from(selected) }),
       });
@@ -88,7 +91,7 @@ export function WatchlistBulkTable({ rows }: Props) {
     } finally {
       setBulkLoading(false);
     }
-  };
+  }, [bulkLoading, selected, clear, router]);
 
   if (rows.length === 0) {
     return (
@@ -142,7 +145,7 @@ export function WatchlistBulkTable({ rows }: Props) {
               <th className="border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-5 py-4 text-left">
                 <input
                   type="checkbox"
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
                   checked={selected.size > 0 && selected.size === rows.length}
                   ref={(input) => {
                     if (input) input.indeterminate = selected.size > 0 && selected.size < rows.length;
@@ -168,7 +171,7 @@ export function WatchlistBulkTable({ rows }: Props) {
                   <td className="px-5 py-4 align-middle">
                     <input
                       type="checkbox"
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
                       checked={selectedSet.has(row.id)}
                       onChange={() => toggle(row.id)}
                     />

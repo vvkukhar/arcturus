@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import useSWR from 'swr';
 import { apiFetch } from '@/lib/client-api';
 import { Loader2, ReceiptText } from 'lucide-react';
 import { formatMoney } from '@/lib/format';
+import { swrFetcher } from '@/lib/swr-fetcher';
 import type { SalesStats } from '@/lib/types';
 
 function parseNumber(value: string, fallback: number | null = null): number | null {
@@ -13,29 +15,18 @@ function parseNumber(value: string, fallback: number | null = null): number | nu
 }
 
 export function SalesRegistrationPanel() {
+  const { data: stats, mutate } = useSWR<SalesStats>('/api/sales/stats', swrFetcher, {
+    fallbackData: { totalProfit: 0, salesCount: 0 }
+  });
+
   const [inventoryItemId, setInventoryItemId] = useState('');
   const [sellPrice, setSellPrice] = useState('');
-  
-  const [stats, setStats] = useState<SalesStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadStats = useCallback(async () => {
-    try {
-      const data = await apiFetch<SalesStats>('/api/sales/stats');
-      setStats(data);
-    } catch {
-      setStats({ totalProfit: 0, salesCount: 0 });
-    }
-  }, []);
-
-  useEffect(() => {
-    loadStats();
-  }, [loadStats]);
-
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inventoryItemId.trim() || !sellPrice.trim()) return;
+    if (loading || !inventoryItemId.trim() || !sellPrice.trim()) return;
 
     try {
       setLoading(true);
@@ -56,15 +47,13 @@ export function SalesRegistrationPanel() {
 
       setInventoryItemId('');
       setSellPrice('');
-      await loadStats();
-      
-      alert('Sale registered successfully!');
+      await mutate();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
     }
-  };
+  }, [loading, inventoryItemId, sellPrice, mutate]);
 
   return (
     <div className="space-y-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-sm transition-all hover:shadow-md">

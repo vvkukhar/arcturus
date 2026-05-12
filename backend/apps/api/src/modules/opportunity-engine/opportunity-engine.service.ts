@@ -10,20 +10,6 @@ import { LiquidityRankService } from '../strategy/liquidity-rank.service';
 import { RiskManagementService } from '../strategy/risk-management.service';
 
 type EngineScanOptions = { limit: number; autoQueue: boolean; minScore: number };
-type EngineOpportunity = {
-  watchlistItemId: string;
-  listingId: string;
-  itemId: string;
-  title: string;
-  sourceCode: string;
-  buyPrice: number;
-  targetSellPrice: number;
-  profit: number;
-  roiPercent: number;
-  score: number;
-  action: 'buy_now' | 'queue' | 'watch' | 'skip';
-  reason: string;
-};
 
 @Injectable()
 export class OpportunityEngineService {
@@ -38,14 +24,14 @@ export class OpportunityEngineService {
     private readonly riskManagementService: RiskManagementService,
   ) {}
 
-  private resolveAction(score: number): EngineOpportunity['action'] {
+  private resolveAction(score: number): 'buy_now' | 'queue' | 'watch' | 'skip' {
     if (score >= 85) return 'buy_now';
     if (score >= 75) return 'queue';
     if (score >= 55) return 'watch';
     return 'skip';
   }
 
-  async scan(options: Partial<EngineScanOptions>): Promise<{ count: number; queued: number; opportunities: EngineOpportunity[] }> {
+  async scan(options: Partial<EngineScanOptions>) {
     const limit = options.limit ?? 50;
     const autoQueue = options.autoQueue ?? false;
     const minScore = options.minScore ?? 75;
@@ -53,7 +39,7 @@ export class OpportunityEngineService {
     const watchlist = await this.prisma.watchlistItem.findMany({
       where: { active: true },
       include: { item: true },
-      take: limit * 2,
+      take: limit * 3,
       orderBy: { priority: 'desc' },
     });
 
@@ -82,20 +68,22 @@ export class OpportunityEngineService {
     }
 
     const snapshotsMap = new Map(allSnapshots.map((s) => [s.itemId, s]));
-    const opportunities: EngineOpportunity[] = [];
+    const opportunities = [];
     let queued = 0;
-    const dbOperations: any[] = [];
+    const dbOperations = [];
 
     for (const watch of watchlist) {
       const listings = listingsMap.get(watch.itemId) || [];
+      if (listings.length === 0) continue;
+
       const snapshot = snapshotsMap.get(watch.itemId);
-      const prices = listings.map((l) => l.price);
+      const prices = listings.map((l) => Number(l.price));
       const volatility = this.volatilityService.calculate(prices);
       const itemType = this.itemTypeService.detect(watch.titleSnapshot);
 
       for (const listing of listings) {
-        const buyPrice = toMoney(listing.price + (listing.shippingPrice ?? 0));
-        const targetSellPrice = toMoney(watch.targetSellPrice ?? 0);
+        const buyPrice = toMoney(Number(listing.price) + Number(listing.shippingPrice ?? 0));
+        const targetSellPrice = toMoney(Number(watch.targetSellPrice ?? 0));
 
         if (targetSellPrice <= 0 || buyPrice <= 0) continue;
 
@@ -106,17 +94,7 @@ export class OpportunityEngineService {
         const liquidity = this.liquidityRankService.rank({
           soldCount: snapshot?.listingsCount ?? listings.length,
           volatility,
-          confidence: snapshot?.confidenceScore ?? 0,
-        });
-
-        const flipStrategy = this.flipStrategyService.decide({
-          itemType,
-          buyPrice,
-          targetSellPrice,
-          medianPrice: snapshot?.medianPrice ?? targetSellPrice,
-          soldCount: snapshot?.listingsCount ?? listings.length,
-          volatility,
-          confidenceScore: snapshot?.confidenceScore ?? 0,
+          confidence: Number(snapshot?.confidenceScore ?? 0),
         });
 
         const risk = this.riskManagementService.evaluate({
@@ -125,7 +103,7 @@ export class OpportunityEngineService {
           roiPercent,
           liquidityScore: liquidity.score / 100,
           volatility,
-          confidenceScore: snapshot?.confidenceScore ?? 0,
+          confidenceScore: Number(snapshot?.confidenceScore ?? 0),
         });
 
         const rawScore =
@@ -133,8 +111,7 @@ export class OpportunityEngineService {
           profit * 0.08 +
           sourceWeight * 12 +
           liquidity.score * 0.2 +
-          (100 - risk.riskScore) * 0.15 +
-          flipStrategy.score * 0.1;
+          (100 - risk.riskScore) * 0.15;
 
         const score = Number(Math.max(0, Math.min(100, rawScore)).toFixed(2));
         const action = this.resolveAction(score);
@@ -153,7 +130,6 @@ export class OpportunityEngineService {
           roiPercent,
           score,
           action,
-          reason: action === 'buy_now' ? 'High-score opportunity' : action === 'queue' ? 'Good candidate' : 'Watch',
         });
 
         if (autoQueue && (action === 'buy_now' || action === 'queue')) {

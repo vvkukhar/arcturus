@@ -40,10 +40,10 @@ export function ReserveFilters({ currentStatus }: Props) {
             key={status.value}
             onClick={() => setStatus(status.value)}
             className={cn(
-              'rounded-xl px-4 py-2 text-sm font-bold transition-all',
+              'rounded-xl px-4 py-2 text-sm font-bold transition-all border',
               isActive
-                ? 'bg-slate-900 text-white shadow-md'
-                : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'
+                ? 'bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)] shadow-md'
+                : 'bg-[var(--card)] text-slate-500 hover:text-[var(--foreground)] hover:bg-[var(--background)] border-[var(--border)]'
             )}
           >
             {status.label}

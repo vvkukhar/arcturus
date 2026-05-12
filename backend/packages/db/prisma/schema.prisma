@@ -9,14 +9,14 @@ datasource db {
 }
 
 model User {
-  id                     String             @id @default(cuid())
+  id                     String            @id @default(cuid())
   name                   String
-  email                  String?            @unique
+  email                  String?           @unique
   passwordHash           String?
-  role                   String             @default("operator")
-  active                 Boolean            @default(true)
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
+  role                   String            @default("operator")
+  active                 Boolean           @default(true)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
   sessions               UserSession[]
   assignedInventoryItems InventoryItem[]
   assignedWatchlistItems WatchlistItem[]
@@ -32,7 +32,7 @@ model User {
 model UserSession {
   id        String    @id @default(cuid())
   userId    String
-  token     String    @unique
+  tokenHash String    @unique
   expiresAt DateTime?
   createdAt DateTime  @default(now())
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -102,12 +102,12 @@ model InventoryItem {
   id                      String            @id @default(cuid())
   itemId                  String
   titleSnapshot           String
-  purchasePrice           Float
-  totalCost               Float
+  purchasePrice           Decimal           @db.Decimal(10, 2)
+  totalCost               Decimal           @db.Decimal(10, 2)
   quantity                Int               @default(1)
   condition               String            @default("used")
   sealed                  Boolean           @default(false)
-  expectedSalePriceManual Float?
+  expectedSalePriceManual Decimal?          @db.Decimal(10, 2)
   source                  String?
   purchaseUrl             String?
   storageLocation         String?
@@ -175,9 +175,9 @@ model WatchlistItem {
   id              String             @id @default(cuid())
   itemId          String
   titleSnapshot   String
-  desiredBuyPrice Float
-  maxBuyPrice     Float
-  targetSellPrice Float?
+  desiredBuyPrice Decimal            @db.Decimal(10, 2)
+  maxBuyPrice     Decimal            @db.Decimal(10, 2)
+  targetSellPrice Decimal?           @db.Decimal(10, 2)
   active          Boolean            @default(true)
   priority        Int                @default(50)
   notes           String?
@@ -207,11 +207,11 @@ model PurchaseOrder {
   supplierName    String?
   sourceUrl       String?
   status          String         @default("planned")
-  plannedPrice    Float?
-  actualPrice     Float?
-  shippingPrice   Float?
-  totalCost       Float?
-  targetSellPrice Float?
+  plannedPrice    Decimal?       @db.Decimal(10, 2)
+  actualPrice     Decimal?       @db.Decimal(10, 2)
+  shippingPrice   Decimal?       @db.Decimal(10, 2)
+  totalCost       Decimal?       @db.Decimal(10, 2)
+  targetSellPrice Decimal?       @db.Decimal(10, 2)
   quantity        Int            @default(1)
   condition       String         @default("used")
   sealed          Boolean        @default(false)
@@ -257,10 +257,10 @@ model MarketListing {
   url                 String
   imageUrl            String?
   sellerName          String?
-  sellerRating        Float?
-  price               Float
+  sellerRating        Decimal?               @db.Decimal(5, 2)
+  price               Decimal                @db.Decimal(10, 2)
   currency            String                 @default("UAH")
-  shippingPrice       Float?
+  shippingPrice       Decimal?               @db.Decimal(10, 2)
   shippingCurrency    String?
   country             String?
   condition           String?
@@ -289,16 +289,16 @@ model MarketSnapshot {
   itemId                  String
   scope                   String   @default("ua")
   listingsCount           Int      @default(0)
-  lowestPrice             Float?
-  lowestPriceWithShipping Float?
-  avgPrice                Float?
-  medianPrice             Float?
-  avgShipping             Float?
-  minShipping             Float?
-  maxShipping             Float?
-  sealedAvgPrice          Float?
-  usedAvgPrice            Float?
-  confidenceScore         Float    @default(0)
+  lowestPrice             Decimal? @db.Decimal(10, 2)
+  lowestPriceWithShipping Decimal? @db.Decimal(10, 2)
+  avgPrice                Decimal? @db.Decimal(10, 2)
+  medianPrice             Decimal? @db.Decimal(10, 2)
+  avgShipping             Decimal? @db.Decimal(10, 2)
+  minShipping             Decimal? @db.Decimal(10, 2)
+  maxShipping             Decimal? @db.Decimal(10, 2)
+  sealedAvgPrice          Decimal? @db.Decimal(10, 2)
+  usedAvgPrice            Decimal? @db.Decimal(10, 2)
+  confidenceScore         Decimal  @default(0) @db.Decimal(5, 4)
   computedAt              DateTime @default(now())
   item                    Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
@@ -311,8 +311,8 @@ model DecisionSnapshot {
   contextType     String
   contextId       String
   action          String
-  score           Float
-  confidence      Float
+  score           Decimal   @db.Decimal(5, 2)
+  confidence      Decimal   @db.Decimal(5, 4)
   reasonPrimary   String
   reasonSecondary String?
   payloadJson     Json?
@@ -330,7 +330,7 @@ model DecisionSnapshot {
 model PurchaseFlowItem {
   id              String        @id @default(cuid())
   watchlistItemId String
-  selectedPrice   Float?
+  selectedPrice   Decimal?      @db.Decimal(10, 2)
   status          String        @default("pending")
   reason          String?
   createdAt       DateTime      @default(now())
@@ -344,8 +344,8 @@ model PurchaseFlowItem {
 model RepriceFlowItem {
   id              String        @id @default(cuid())
   inventoryItemId String
-  currentPrice    Float?
-  suggestedPrice  Float?
+  currentPrice    Decimal?      @db.Decimal(10, 2)
+  suggestedPrice  Decimal?      @db.Decimal(10, 2)
   status          String        @default("pending")
   reason          String?
   createdAt       DateTime      @default(now())
@@ -373,12 +373,12 @@ model Deal {
   id              String        @id @default(cuid())
   listingId       String
   watchlistItemId String
-  buyPrice        Float
-  targetSellPrice Float
-  profit          Float
-  roiPercent      Float
+  buyPrice        Decimal       @db.Decimal(10, 2)
+  targetSellPrice Decimal       @db.Decimal(10, 2)
+  profit          Decimal       @db.Decimal(10, 2)
+  roiPercent      Decimal       @db.Decimal(10, 2)
   action          String
-  score           Float
+  score           Decimal       @db.Decimal(5, 2)
   status          String        @default("open")
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -395,10 +395,10 @@ model Sale {
   inventoryItemId String
   itemId          String
   quantity        Int             @default(1)
-  sellPrice       Float
-  costBasis       Float
-  profit          Float
-  roiPercent      Float
+  sellPrice       Decimal         @db.Decimal(10, 2)
+  costBasis       Decimal         @db.Decimal(10, 2)
+  profit          Decimal         @db.Decimal(10, 2)
+  roiPercent      Decimal         @db.Decimal(10, 2)
   channel         String?
   buyerName       String?
   notes           String?
@@ -425,7 +425,7 @@ model Order {
   buyerName        String
   contact          String
   status           String          @default("pending")
-  sellPrice        Float?
+  sellPrice        Decimal?        @db.Decimal(10, 2)
   quantity         Int             @default(1)
   channel          String?
   adminNote        String?
@@ -450,7 +450,7 @@ model ReturnRequest {
   inventoryItemId String
   status          String        @default("requested")
   reason          String?
-  refundAmount    Float?
+  refundAmount    Decimal?      @db.Decimal(10, 2)
   restock         Boolean       @default(true)
   quantity        Int           @default(1)
   adminNote       String?
@@ -471,7 +471,7 @@ model Expense {
   id              String         @id @default(cuid())
   type            String
   category        String
-  amount          Float
+  amount          Decimal        @db.Decimal(10, 2)
   currency        String         @default("UAH")
   description     String?
   inventoryItemId String?
@@ -624,16 +624,16 @@ model SyncErrorLog {
 }
 
 model ScanJob {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   sourceCode   String
   query        String?
-  status       String    @default("queued")
-  resultCount  Int       @default(0)
+  status       String   @default("queued")
+  resultCount  Int      @default(0)
   errorMessage String?
   startedAt    DateTime?
   finishedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([status, createdAt])
 }
@@ -646,7 +646,7 @@ model SoldComp {
   title           String
   normalizedTitle String
   extractedSetNo  String?
-  soldPrice       Float
+  soldPrice       Decimal  @db.Decimal(10, 2)
   currency        String   @default("UAH")
   soldAt          DateTime
   url             String?

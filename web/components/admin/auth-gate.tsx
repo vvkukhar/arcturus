@@ -11,28 +11,17 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/me', {
-          cache: 'no-store',
-        });
-
-        if (!response.ok) {
-          throw new Error('Unauthorized');
-        }
-
+        const response = await fetch('/api/auth/me', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Unauthorized');
         if (mounted) setReady(true);
-      } catch (error) {
+      } catch {
         await fetch('/api/auth/logout', { method: 'POST' });
-        if (mounted) {
-          window.location.href = '/login';
-        }
+        if (mounted) window.location.href = '/login';
       }
     };
 
     checkAuth();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   if (!ready) {

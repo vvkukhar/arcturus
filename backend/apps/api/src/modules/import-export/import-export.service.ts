@@ -78,11 +78,8 @@ export class ImportExportService {
         condition: row.condition,
         sealed: row.sealed,
         source: row.source,
-        storageLocation: row.storageLocation,
         warehouse: row.location?.warehouse?.name ?? '',
-        assignedUser: row.assignedUser?.email ?? '',
         createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
       })),
     );
   }
@@ -96,11 +93,8 @@ export class ImportExportService {
     return this.toCsv(
       rows.map((row) => ({
         id: row.id,
-        inventoryItemId: row.inventoryItemId,
-        itemId: row.itemId,
         title: row.inventoryItem?.titleSnapshot ?? '',
         setNumber: row.item?.setNumber ?? '',
-        theme: row.item?.theme ?? '',
         quantity: row.quantity,
         sellPrice: row.sellPrice,
         costBasis: row.costBasis,
@@ -108,54 +102,6 @@ export class ImportExportService {
         roiPercent: row.roiPercent,
         channel: row.channel,
         buyerName: row.buyerName,
-        createdAt: row.createdAt,
-      })),
-    );
-  }
-
-  async exportExpenses(): Promise<string> {
-    const rows = await this.prisma.expense.findMany({
-      orderBy: { incurredAt: 'desc' },
-    });
-
-    return this.toCsv(
-      rows.map((row) => ({
-        id: row.id,
-        type: row.type,
-        category: row.category,
-        amount: row.amount,
-        currency: row.currency,
-        description: row.description,
-        inventoryItemId: row.inventoryItemId,
-        purchaseOrderId: row.purchaseOrderId,
-        saleId: row.saleId,
-        orderId: row.orderId,
-        assignedUserId: row.assignedUserId,
-        incurredAt: row.incurredAt,
-      })),
-    );
-  }
-
-  async exportWatchlist(): Promise<string> {
-    const rows = await this.prisma.watchlistItem.findMany({
-      include: { item: true, assignedUser: true },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return this.toCsv(
-      rows.map((row) => ({
-        id: row.id,
-        itemId: row.itemId,
-        title: row.titleSnapshot,
-        setNumber: row.item.setNumber,
-        theme: row.item.theme,
-        desiredBuyPrice: row.desiredBuyPrice,
-        maxBuyPrice: row.maxBuyPrice,
-        targetSellPrice: row.targetSellPrice,
-        active: row.active,
-        priority: row.priority,
-        assignedUser: row.assignedUser?.email ?? '',
-        notes: row.notes,
         createdAt: row.createdAt,
       })),
     );
@@ -178,54 +124,12 @@ export class ImportExportService {
         theme: row.theme?.trim() || null,
         kind: row.kind?.trim() || 'set',
         conditionDefault: row.conditionDefault?.trim() || 'used',
-        imageUrl: row.imageUrl?.trim() || null,
-        notes: row.notes?.trim() || null,
       });
     }
 
     if (!dryRun && validData.length > 0) {
       await this.prisma.item.createMany({ data: validData, skipDuplicates: true });
     }
-
-    await this.activity.log('import.items_csv', { dryRun, rows: rows.length, created: validData.length });
-    await this.audit.log({ action: 'import.items_csv', entityType: 'Item', entityId: null, beforeJson: null, afterJson: { dryRun, rows: rows.length } });
-
-    return { dryRun, rows: rows.length, successCount: validData.length, errors };
-  }
-
-  async importExpenses(csv: string, dryRun = false): Promise<unknown> {
-    const rows = this.parseCsv(csv);
-    const validData = [];
-    const errors = [];
-
-    for (const row of rows) {
-      const amount = Number(row.amount ?? 0);
-      if (!Number.isFinite(amount) || amount <= 0) {
-        errors.push({ error: 'Invalid amount', row });
-        continue;
-      }
-
-      validData.push({
-        type: row.type?.trim() || 'operations',
-        category: row.category?.trim() || 'misc',
-        amount: toMoney(amount),
-        currency: row.currency?.trim() || 'UAH',
-        description: row.description?.trim() || null,
-        inventoryItemId: row.inventoryItemId?.trim() || null,
-        purchaseOrderId: row.purchaseOrderId?.trim() || null,
-        saleId: row.saleId?.trim() || null,
-        orderId: row.orderId?.trim() || null,
-        assignedUserId: row.assignedUserId?.trim() || null,
-        incurredAt: row.incurredAt ? new Date(row.incurredAt) : new Date(),
-      });
-    }
-
-    if (!dryRun && validData.length > 0) {
-      await this.prisma.expense.createMany({ data: validData, skipDuplicates: true });
-    }
-
-    await this.activity.log('import.expenses_csv', { dryRun, rows: rows.length, created: validData.length });
-    await this.audit.log({ action: 'import.expenses_csv', entityType: 'Expense', entityId: null, beforeJson: null, afterJson: { dryRun, rows: rows.length } });
 
     return { dryRun, rows: rows.length, successCount: validData.length, errors };
   }

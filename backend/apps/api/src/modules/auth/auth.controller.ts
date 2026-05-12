@@ -1,98 +1,61 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Headers,
-  Post,
-  Req,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Body, Get, Req, Res, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { CurrentUser, CurrentUserPayload } from './current-user.decorator';
-import { JwtAuthGuard } from './jwt-auth.guard';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 import { extractAuthToken } from './token.utils';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('login')
-  async login(
-    @Body()
-    body: {
-      email?: string;
-      password?: string;
-      token?: string;
-      rememberMe?: boolean;
-    },
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<unknown> {
-    const result = await this.authService.login(body);
-
-    const maxAge = body.rememberMe 
-      ? 1000 * 60 * 60 * 24 * 30 
-      : 1000 * 60 * 60 * 24;
-
-    response.cookie('arcturus_admin_token', result.token, {
+  @Post('register')
+  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+    const { token, user } = await this.authService.register(dto);
+    
+    res.cookie('arcturus_admin_token', token, {
       httpOnly: true,
-      sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       path: '/',
-      maxAge,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    return result;
+    return res.json({ ok: true, user });
   }
 
-  @Post('register')
-  async register(
-    @Body()
-    body: {
-      name: string;
-      email: string;
-      password: string;
-      inviteCode: string;
-    },
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<unknown> {
-    const result = await this.authService.register(body);
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const { token, user } = await this.authService.login(dto);
 
-    response.cookie('arcturus_admin_token', result.token, {
+    res.cookie('arcturus_admin_token', token, {
       httpOnly: true,
-      sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       path: '/',
-      maxAge: 1000 * 60 * 60 * 24 * 30,
+      maxAge: (dto.rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000,
     });
 
-    return result;
+    return res.json({ ok: true, user });
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const token = extractAuthToken(req);
+    if (token) {
+      await this.authService.logout(token);
+    }
+
+    res.clearCookie('arcturus_admin_token', { path: '/' });
+    return res.json({ ok: true });
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  me(@CurrentUser() user: CurrentUserPayload): Promise<unknown> {
-    return this.authService.me(user.id);
-  }
-
-  @Post('logout')
-  async logout(
-    @Req() request: Request,
-    @Headers('authorization') authorization: string | undefined,
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<{ ok: true }> {
-    const token =
-      extractAuthToken(request) ?? authorization?.replace('Bearer ', '') ?? '';
-
-    response.cookie('arcturus_admin_token', '', {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      expires: new Date(0),
-    });
-
-    return this.authService.logout(token);
+  async me(@Req() req: Request & { user: any }) {
+    return req.user;
   }
 }

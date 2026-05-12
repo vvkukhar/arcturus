@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { TelegramService } from './telegram.service';
@@ -11,191 +11,104 @@ export class NotificationsService {
     private readonly telegram: TelegramService,
   ) {}
 
-  async create(params: {
-    title: string;
-    message: string;
-    type?: string;
-    targetUserId?: string | null;
-    payloadJson?: object;
-  }): Promise<unknown> {
-    if (params.targetUserId) {
-      const user = await this.prisma.user.findUnique({
-        where: {
-          id: params.targetUserId,
-        },
-      });
-
-      if (!user) {
-        throw new NotFoundException('Target user not found');
-      }
-    }
-
+  async create(data: { title: string; message: string; type: string; payloadJson?: any; targetUserId?: string | null }) {
     const notification = await this.prisma.notification.create({
       data: {
-        title: params.title,
-        message: params.message,
-        type: params.type ?? 'info',
-        targetUserId: params.targetUserId ?? null,
-        payloadJson: params.payloadJson ?? {},
-        read: false,
-      },
-      include: {
-        targetUser: true,
+        title: data.title,
+        message: data.message,
+        type: data.type,
+        payloadJson: data.payloadJson ?? {},
+        targetUserId: data.targetUserId,
       },
     });
-
-    this.realtime.emitNotification(notification);
-
+    this.realtime.emitCustom('notification', notification);
     return notification;
   }
 
-  async createDealNotification(params: {
-    itemTitle: string;
-    roi: number;
-    action: string;
-    targetUserId?: string | null;
-  }): Promise<unknown> {
-    const notification = await this.create({
-      title: 'Deal detected',
-      message: `${params.itemTitle} • ${params.action} • ROI ${params.roi.toFixed(2)}%`,
-      type: 'deal',
-      targetUserId: params.targetUserId ?? null,
-      payloadJson: params,
-    });
-
-    if (params.action === 'BUY_NOW') {
-      const tgMessage = `🚨 <b>УВАГА: STRONG BUY</b> 🚨\n\n📦 <b>Товар:</b> ${params.itemTitle}\n📈 <b>ROI:</b> ${params.roi.toFixed(2)}%\n\n<i>Дій швидко, заходь в адмінку!</i>`;
-      await this.telegram.sendMessage(tgMessage);
-    }
-
-    return notification;
-  }
-
-  async createSaleNotification(params: {
-    itemTitle: string;
-    profit: number;
-    targetUserId?: string | null;
-  }): Promise<unknown> {
-    const notification = await this.create({
-      title: 'Sale registered',
-      message: `${params.itemTitle} • profit ${params.profit}`,
-      type: 'sale',
-      targetUserId: params.targetUserId ?? null,
-      payloadJson: params,
-    });
-
-    const tgMessage = `💰 <b>НОВИЙ ПРОДАЖ</b> 💰\n\n📦 <b>Товар:</b> ${params.itemTitle}\n💵 <b>Чистий профіт:</b> ${params.profit} UAH\n\n<i>Гарна робота!</i>`;
-    await this.telegram.sendMessage(tgMessage);
-
-    return notification;
-  }
-
-  async createAssignmentNotification(params: {
-    targetUserId: string;
-    title: string;
-    entityType: 'inventory' | 'watchlist' | 'flow';
-    entityId: string;
-  }): Promise<unknown> {
+  async createSaleNotification(data: { itemTitle: string; profit: number; targetUserId?: string | null }) {
+    const msg = `${data.itemTitle} продано. Прибуток: +${data.profit}₴`;
+    await this.telegram.sendMessage(`✅ <b>SALE CONFIRMED</b>\n\n${msg}`);
     return this.create({
-      title: 'New assignment',
-      message: `${params.title} assigned to you`,
-      type: 'assignment',
-      targetUserId: params.targetUserId,
-      payloadJson: {
-        entityType: params.entityType,
-        entityId: params.entityId,
-      },
+      title: 'Новий продаж!',
+      message: msg,
+      type: 'sale',
+      payloadJson: { profit: data.profit },
+      targetUserId: data.targetUserId,
     });
   }
 
-  async list(params?: {
-    targetUserId?: string | null;
-    unreadOnly?: boolean;
-    limit?: number;
-  }): Promise<unknown[]> {
+  async createReserveNotification(data: { reserveId: string; productTitle: string; customerName: string; contact: string }) {
+    const msg = `🔔 <b>НОВИЙ РЕЗЕРВ</b>\n\n📦 Товар: ${data.productTitle}\n👤 Клієнт: ${data.customerName}\n📱 Контакт: ${data.contact}`;
+    const keyboard = [
+      [
+        { text: '✅ Підтвердити', callback_data: `reserve_approve_${data.reserveId}` },
+        { text: '❌ Відхилити', callback_data: `reserve_reject_${data.reserveId}` }
+      ]
+    ];
+    await this.telegram.sendMessage(msg, keyboard);
+    return this.create({
+      title: 'Новий резерв',
+      message: `${data.productTitle} • ${data.customerName}`,
+      type: 'reserve',
+      payloadJson: { reserveRequestId: data.reserveId },
+    });
+  }
+
+  async createDealNotification(data: { itemTitle: string; roi: number; action: string; profit?: number; buyPrice?: number; url?: string; targetUserId?: string | null }) {
+    if (data.action === 'BUY_NOW' && data.url && data.profit && data.buyPrice) {
+      await this.telegram.sendDealAlert({
+        title: data.itemTitle,
+        roi: data.roi,
+        profit: data.profit,
+        buyPrice: data.buyPrice,
+        url: data.url,
+      });
+    }
+    return this.create({
+      title: 'New Deal Detected!',
+      message: `${data.itemTitle} - ROI: ${data.roi}%`,
+      type: 'deal',
+      payloadJson: { roi: data.roi, action: data.action },
+      targetUserId: data.targetUserId,
+    });
+  }
+
+  async createAssignmentNotification(data: { targetUserId: string; title: string; entityType: string; entityId: string }) {
+    return this.create({
+      title: 'New Assignment',
+      message: `You have been assigned to ${data.title}`,
+      type: 'assignment',
+      payloadJson: { entityType: data.entityType, entityId: data.entityId },
+      targetUserId: data.targetUserId,
+    });
+  }
+
+  async markAsRead(id: string) {
+    return this.prisma.notification.update({ where: { id }, data: { read: true } });
+  }
+
+  async markAllRead(targetUserId?: string) {
+    return this.prisma.notification.updateMany({
+      where: { read: false, ...(targetUserId ? { targetUserId } : {}) },
+      data: { read: true },
+    });
+  }
+
+  async list(params: { targetUserId?: string; unreadOnly?: boolean; limit?: number }) {
     return this.prisma.notification.findMany({
       where: {
-        ...(params?.targetUserId
-          ? {
-              OR: [
-                {
-                  targetUserId: params.targetUserId,
-                },
-                {
-                  targetUserId: null,
-                },
-              ],
-            }
-          : {}),
-        ...(params?.unreadOnly ? { read: false } : {}),
+        ...(params.targetUserId ? { targetUserId: params.targetUserId } : {}),
+        ...(params.unreadOnly ? { read: false } : {}),
       },
-      include: {
-        targetUser: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: params?.limit ?? 50,
+      orderBy: { createdAt: 'desc' },
+      take: params.limit ?? 50,
     });
   }
 
-  async markRead(id: string): Promise<unknown> {
-    return this.prisma.notification.update({
-      where: {
-        id,
-      },
-      data: {
-        read: true,
-      },
-    });
-  }
-
-  async markAllRead(targetUserId?: string): Promise<unknown> {
-    return this.prisma.notification.updateMany({
-      where: {
-        read: false,
-        ...(targetUserId
-          ? {
-              OR: [
-                {
-                  targetUserId,
-                },
-                {
-                  targetUserId: null,
-                },
-              ],
-            }
-          : {}),
-      },
-      data: {
-        read: true,
-      },
-    });
-  }
-
-  async unreadCount(targetUserId?: string): Promise<{
-    unread: number;
-  }> {
+  async unreadCount(targetUserId?: string) {
     const unread = await this.prisma.notification.count({
-      where: {
-        read: false,
-        ...(targetUserId
-          ? {
-              OR: [
-                {
-                  targetUserId,
-                },
-                {
-                  targetUserId: null,
-                },
-              ],
-            }
-          : {}),
-      },
+      where: { read: false, ...(targetUserId ? { targetUserId } : {}) },
     });
-
-    return {
-      unread,
-    };
+    return { unread };
   }
 }

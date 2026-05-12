@@ -8,46 +8,41 @@ import { MetricCard } from '@/components/admin/metric-card';
 import { NotificationsCenter } from '@/components/admin/notifications-center';
 import { SalesRegistrationPanel } from '@/components/admin/sales-registration-panel';
 import { SuggestionsPanel } from '@/components/admin/suggestions-panel';
-import { api } from '@/lib/api-client';
-import type { DailyPlanTask, DashboardExecutionSummary, DashboardFlowCounters, OpportunityItem, ReserveRequest, InventoryItem, DealItem } from '@/lib/types';
+import { api } from '@/lib/api';
+import type { DashboardExecutionSummary, DashboardFlowCounters, ReserveRequest, InventoryItem, DealItem } from '@/lib/types';
 
 export const revalidate = 0;
 
 async function getDashboardData() {
-  const requests = [
+  const [
+    executionRes,
+    countersRes,
+    reservesRes,
+    inventoryRes,
+    storeAnalyticsRes,
+    dealsRes
+  ] = await Promise.allSettled([
     api.get<DashboardExecutionSummary>('/dashboard/execution-summary'),
     api.get<DashboardFlowCounters>('/dashboard/flow-counters'),
-    api.get<OpportunityItem[]>('/opportunities/buy?limit=5'),
-    api.get<OpportunityItem[]>('/opportunities/sell?limit=5'),
-    api.get<DailyPlanTask[]>('/planning/daily'),
-    api.get<ReserveRequest[]>('/public/reserve-requests', { requireAuth: false }),
+    api.get<ReserveRequest[]>('/public/reserve-requests', { headers: { Authorization: '' } }),
     api.get<InventoryItem[]>('/inventory'),
-    api.get<any>('/public/analytics', { requireAuth: false }),
+    api.get<any>('/public/analytics', { headers: { Authorization: '' } }),
     api.get<DealItem[]>('/deals')
-  ] as const;
-
-  const results = await Promise.allSettled(requests);
-
-  const getValue = <T,>(result: PromiseSettledResult<T>, fallback: T): T => 
-    result.status === 'fulfilled' ? result.value : fallback;
+  ]);
 
   return {
-    execution: getValue(results[0], null),
-    counters: getValue(results[1], null),
-    buyOpps: getValue(results[2], []),
-    sellOpps: getValue(results[3], []),
-    dailyPlan: getValue(results[4], []),
-    reserves: getValue(results[5], []),
-    inventory: getValue(results[6], []),
-    storeAnalytics: getValue(results[7], null),
-    deals: getValue(results[8], [])
+    execution: executionRes.status === 'fulfilled' ? executionRes.value : null,
+    counters: countersRes.status === 'fulfilled' ? countersRes.value : null,
+    reserves: reservesRes.status === 'fulfilled' ? reservesRes.value : [],
+    inventory: inventoryRes.status === 'fulfilled' ? inventoryRes.value : [],
+    storeAnalytics: storeAnalyticsRes.status === 'fulfilled' ? storeAnalyticsRes.value : null,
+    deals: dealsRes.status === 'fulfilled' ? dealsRes.value : []
   };
 }
 
 export default async function AdminDashboardPage() {
   const data = await getDashboardData();
   
-  // Бронебійна перевірка масивів перед викликом .filter()
   const safeReserves = Array.isArray(data.reserves) ? data.reserves : [];
   const safeInventory = Array.isArray(data.inventory) ? data.inventory : [];
   const safeDeals = Array.isArray(data.deals) ? data.deals : [];
@@ -57,7 +52,7 @@ export default async function AdminDashboardPage() {
   const hotDeals = safeDeals.filter((x) => x.action === 'BUY_NOW').length;
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 hardware-accelerated">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <AuthStatus />
         <CreateItemDialog />

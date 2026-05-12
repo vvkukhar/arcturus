@@ -46,6 +46,11 @@ export class PublicStoreController {
     return this.publicStoreService.analytics();
   }
 
+  @Get('track/:query')
+  trackOrder(@Param('query') query: string): Promise<unknown> {
+    return this.publicStoreService.trackOrder(query);
+  }
+
   @Post('reserve')
   createReserve(
     @Body()

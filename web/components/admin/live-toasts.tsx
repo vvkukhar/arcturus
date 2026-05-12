@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { getSocket } from '@/lib/socket';
 import { useToast } from '@/components/ui/toast-provider';
 
@@ -14,33 +14,38 @@ interface WsPayload {
 
 export function LiveToasts() {
   const { push } = useToast();
+  const pushRef = useRef(push);
+
+  useEffect(() => {
+    pushRef.current = push;
+  }, [push]);
 
   useEffect(() => {
     const socket = getSocket();
 
     const onSaleRegistered = (x: WsPayload) => {
-      push({
+      pushRef.current({
         title: '💰 Новий продаж!',
         message: `${x?.title ?? 'Товар продано'} • Прибуток: +${x?.profit ?? 0}₴`,
       });
     };
 
     const onInventoryUpdated = (x: WsPayload) => {
-      push({
+      pushRef.current({
         title: '📦 Інвентар оновлено',
         message: x?.titleSnapshot ?? x?.title ?? 'Дані синхронізовано',
       });
     };
 
     const onUserCreated = (x: WsPayload) => {
-      push({
+      pushRef.current({
         title: '👤 Новий користувач',
         message: x?.name ?? 'Оператора додано до системи',
       });
     };
 
     const onNotification = (x: WsPayload) => {
-      push({
+      pushRef.current({
         title: x?.title ?? '🔔 Системне сповіщення',
         message: x?.message ?? '',
       });
@@ -57,7 +62,7 @@ export function LiveToasts() {
       socket.off('user_created', onUserCreated);
       socket.off('notification', onNotification);
     };
-  }, [push]);
+  }, []);
 
   return null;
 }

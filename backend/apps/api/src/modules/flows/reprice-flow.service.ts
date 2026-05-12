@@ -231,6 +231,12 @@ export class RepriceFlowService {
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
+      const lockResult = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "InventoryItem" WHERE "id" = ${flowItem.inventoryItemId} FOR UPDATE
+      `;
+      
+      if (!lockResult || lockResult.length === 0) throw new NotFoundException('Inventory lock failed');
+
       const inventoryItem = await tx.inventoryItem.update({
         where: {
           id: flowItem.inventoryItemId,

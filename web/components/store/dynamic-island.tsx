@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Sparkles } from 'lucide-react';
 import { useI18n } from '@/components/providers/i18n-provider';
@@ -9,33 +9,35 @@ export function DynamicIsland() {
   const { t } = useI18n();
   const [active, setActive] = useState(false);
   const [message, setMessage] = useState('');
+  const timeoutRef = useRef<NodeJS.Timeout>(undefined);
+  const intervalRef = useRef<NodeJS.Timeout>(undefined);
 
   useEffect(() => {
     const messages = [
-      t('dynamic.msg1'),
-      t('dynamic.msg2'),
-      t('dynamic.msg3')
+      t('dynamic.msg1' as any),
+      t('dynamic.msg2' as any),
+      t('dynamic.msg3' as any)
     ];
 
     let currentIndex = 0;
-    let timeoutId: NodeJS.Timeout;
 
     const runSequence = () => {
       setMessage(messages[currentIndex]);
       setActive(true);
       
-      timeoutId = setTimeout(() => {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
         setActive(false);
       }, 5000);
 
       currentIndex = (currentIndex + 1) % messages.length;
     };
 
-    const intervalId = setInterval(runSequence, 15000);
+    intervalRef.current = setInterval(runSequence, 15000);
 
     return () => {
-      clearInterval(intervalId);
-      clearTimeout(timeoutId);
+      clearInterval(intervalRef.current);
+      clearTimeout(timeoutRef.current);
     };
   }, [t]);
 

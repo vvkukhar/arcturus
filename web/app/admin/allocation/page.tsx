@@ -1,39 +1,31 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import useSWR from 'swr';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { ChartNoAxesCombined, Loader2, Landmark, Boxes, PiggyBank } from 'lucide-react';
-import { apiFetch } from '@/lib/client-api';
+import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney } from '@/lib/format';
-import { useI18n } from '@/components/providers/i18n-provider';
+
+interface AllocationData {
+  capitalAtWork: number;
+  inventoryCost: number;
+  committedProcurementCost: number;
+  byTheme: Array<{ theme: string; units: number; cost: number }>;
+}
+
+interface CashflowPlan {
+  reserveAmount: number;
+  reinvestAmount: number;
+  monthlyBudget: number;
+  reinvestPercent: number;
+  estimatedNewItems: number;
+}
 
 export default function AdminAllocationPage() {
-  const { t } = useI18n();
-  const [loading, setLoading] = useState(true);
-  const [allocation, setAllocation] = useState<any>(null);
-  const [cashflow, setCashflow] = useState<any>(null);
+  const { data: allocation, isLoading: aLoading } = useSWR<AllocationData>('/api/allocation', swrFetcher);
+  const { data: cashflow, isLoading: cLoading } = useSWR<CashflowPlan>('/api/allocation/cashflow-plan', swrFetcher);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [allocData, cashData] = await Promise.all([
-        apiFetch<any>('/api/allocation'),
-        apiFetch<any>('/api/allocation/cashflow-plan'),
-      ]);
-      setAllocation(allocData);
-      setCashflow(cashData);
-    } catch (error) {
-      setAllocation(null);
-      setCashflow(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  if (loading) {
+  if (aLoading || cLoading) {
     return (
       <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
@@ -42,9 +34,9 @@ export default function AdminAllocationPage() {
   }
 
   const chartData = [
-    { name: 'Inventory Cost', value: typeof allocation?.inventoryCost === 'number' ? allocation.inventoryCost : 0, color: '#3b82f6' },
-    { name: 'Procurement', value: typeof allocation?.committedProcurementCost === 'number' ? allocation.committedProcurementCost : 0, color: '#f59e0b' },
-    { name: 'Liquid Reserve', value: typeof cashflow?.reserveAmount === 'number' ? cashflow.reserveAmount : 0, color: '#10b981' },
+    { name: 'Inventory Cost', value: allocation?.inventoryCost ?? 0, color: '#3b82f6' },
+    { name: 'Procurement', value: allocation?.committedProcurementCost ?? 0, color: '#f59e0b' },
+    { name: 'Liquid Reserve', value: cashflow?.reserveAmount ?? 0, color: '#10b981' },
   ].filter(d => d.value > 0);
 
   return (
@@ -75,24 +67,12 @@ export default function AdminAllocationPage() {
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={70}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                    stroke="none"
-                  >
+                  <Pie data={chartData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={5} dataKey="value" stroke="none">
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <RechartsTooltip 
-                    contentStyle={{ borderRadius: '1rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', fontWeight: 'bold' }}
-                    formatter={(val: any) => [formatMoney(Number(val) || 0), 'Value']}
-                  />
+                  <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', fontWeight: 'bold' }} formatter={(val: number) => [formatMoney(val), 'Value']} />
                   <Legend verticalAlign="bottom" height={36} iconType="circle" />
                 </PieChart>
               </ResponsiveContainer>
@@ -109,7 +89,7 @@ export default function AdminAllocationPage() {
               <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Exposure by Theme</h2>
             </div>
             <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
-              {allocation?.byTheme?.map((t: any, idx: number) => (
+              {allocation?.byTheme?.map((t, idx) => (
                 <div key={idx} className="flex justify-between items-center group">
                   <div>
                     <div className="font-bold text-[var(--foreground)] group-hover:text-emerald-500 transition-colors">{t.theme}</div>
@@ -137,11 +117,11 @@ export default function AdminAllocationPage() {
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-[var(--border)]">
                 <span className="font-bold text-slate-500">Reinvest Rate</span>
-                <span className="font-black text-[var(--foreground)]">{cashflow?.reinvestPercent}%</span>
+                <span className="font-black text-[var(--foreground)]">{cashflow?.reinvestPercent ?? 0}%</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="font-bold text-slate-500">Est. New Assets</span>
-                <span className="font-black text-blue-600 dark:text-blue-400">~{cashflow?.estimatedNewItems} items</span>
+                <span className="font-black text-blue-600 dark:text-blue-400">~{cashflow?.estimatedNewItems ?? 0} items</span>
               </div>
             </div>
           </div>

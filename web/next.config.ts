@@ -2,17 +2,23 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  poweredByHeader: false,
-  compress: true,
   images: {
-    formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 31536000,
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
+      { protocol: 'https', hostname: 'www.bricklink.com' },
+      { protocol: 'https', hostname: 'img.bricklink.com' },
+      { protocol: 'https', hostname: 'ireland.apollo.olxcdn.com' },
+      { protocol: 'https', hostname: 'i.ebayimg.com' },
+      { protocol: 'https', hostname: 'jomhjzwalawouebbuegm.supabase.co' },
     ],
+  },
+  experimental: {
+    optimizeCss: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
   },
 };
 

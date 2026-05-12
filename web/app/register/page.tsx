@@ -25,7 +25,7 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim() || !formData.inviteCode.trim()) return;
+    if (loading || !formData.name.trim() || !formData.email.trim() || !formData.password.trim() || !formData.inviteCode.trim()) return;
 
     try {
       setLoading(true);

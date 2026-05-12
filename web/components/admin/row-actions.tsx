@@ -5,28 +5,28 @@ import { Button } from '@/components/ui/button';
 type Props = {
   primaryLabel?: string;
   secondaryLabel?: string;
-  onPrimary?: () => void;
-  onSecondary?: () => void;
+  onPrimaryAction?: () => void;
+  onSecondaryAction?: () => void;
 };
 
 export function RowActions({
   primaryLabel = 'Open',
   secondaryLabel,
-  onPrimary,
-  onSecondary,
+  onPrimaryAction,
+  onSecondaryAction,
 }: Props) {
   return (
     <div className="flex flex-wrap gap-2">
-      {onPrimary && (
-        <Button size="sm" onClick={onPrimary}>
+      {onPrimaryAction && (
+        <Button size="sm" onClick={onPrimaryAction}>
           {primaryLabel}
         </Button>
       )}
-      {secondaryLabel && onSecondary && (
+      {secondaryLabel && onSecondaryAction && (
         <Button
           variant="secondary"
           size="sm"
-          onClick={onSecondary}
+          onClick={onSecondaryAction}
         >
           {secondaryLabel}
         </Button>

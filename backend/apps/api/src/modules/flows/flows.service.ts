@@ -438,7 +438,7 @@ export class FlowsService {
     const created = await this.prisma.reviewFlowItem.create({
       data: {
         inventoryItemId: params.inventoryItemId,
-        reason: params.reason ?? 'Manual review required',
+        reason: params.reason ?? 'Manual review requested',
         status: 'pending',
       },
       include: {

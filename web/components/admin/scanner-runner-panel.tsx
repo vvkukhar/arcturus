@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import type { ScannerJob } from '@/lib/types';
 import { apiFetch } from '@/lib/client-api';
 import { Loader2, PlaySquare } from 'lucide-react';
-import { StatusPill } from '@/components/admin/status-pill';
+import { swrFetcher } from '@/lib/swr-fetcher';
 
 interface ListingPayload {
   externalId: string;
@@ -14,40 +15,35 @@ interface ListingPayload {
 }
 
 function parseListings(value: string): ListingPayload[] {
-  const parsed = JSON.parse(value);
-  if (!Array.isArray(parsed)) {
-    throw new Error('Listings payload must be a JSON array');
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      throw new Error('Listings payload must be a JSON array');
+    }
+    return parsed as ListingPayload[];
+  } catch {
+    throw new Error('Invalid JSON format');
   }
-  return parsed as ListingPayload[];
 }
 
 export function ScannerRunnerPanel() {
-  const [jobs, setJobs] = useState<ScannerJob[]>([]);
+  const { data: rawJobs, mutate } = useSWR<ScannerJob[]>('/api/scanner/jobs', swrFetcher);
+  const jobs = Array.isArray(rawJobs) ? rawJobs : [];
+
   const [jobId, setJobId] = useState('');
-  const [payload, setPayload] = useState(`[\n  {\n    "externalId": "listing-1",\n    "title": "LEGO Ninjago 71700 Kai Mech",\n    "price": 80,\n    "url": "https://example.com/listing-1"\n  }\n]`);
+  const [payload, setPayload] = useState(`[\n  {\n    "externalId": "listing-1",\n    "title": "LEGO Ninjago 71700 Kai Mech",\n    "price": 80,\n    "url": "[https://example.com/listing-1](https://example.com/listing-1)"\n  }\n]`);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadJobs = useCallback(async () => {
-    try {
-      const data = await apiFetch<ScannerJob[]>('/api/scanner/jobs');
-      const rows = Array.isArray(data) ? data : [];
-      setJobs(rows);
-      if (rows.length > 0 && !jobId) {
-        setJobId(rows[0].id);
-      }
-    } catch {
-      setJobs([]);
-    }
-  }, [jobId]);
-
   useEffect(() => {
-    loadJobs();
-  }, [loadJobs]);
+    if (jobs.length > 0 && !jobId) {
+      setJobId(jobs[0].id);
+    }
+  }, [jobs, jobId]);
 
   const handleRun = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!jobId) return;
+    if (!jobId || loading) return;
 
     try {
       setLoading(true);
@@ -61,7 +57,7 @@ export function ScannerRunnerPanel() {
       });
 
       setPayload('[\n\n]');
-      await loadJobs();
+      await mutate();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Scanner run failed');
     } finally {
@@ -73,7 +69,7 @@ export function ScannerRunnerPanel() {
     <div className="space-y-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-sm transition-all hover:shadow-md h-full flex flex-col">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 shadow-md">
-          <PlaySquare className="h-5 w-5 text-white" />
+          <PlaySquare className="h-5 w-5 text-white"/>
         </div>
         <div>
           <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Manual Payload Runner</h2>
@@ -121,7 +117,7 @@ export function ScannerRunnerPanel() {
           disabled={loading || !jobId || !payload.trim()}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-md shadow-emerald-600/20"
         >
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          {loading && <Loader2 className="h-4 w-4 animate-spin"/>}
           {loading ? 'Executing...' : 'Run Payload'}
         </button>
       </form>

@@ -1,20 +1,29 @@
-import { Body, Controller, Post, Param, Headers } from '@nestjs/common';
-import { PaymentsService } from './payments.service';
+import { Controller, Post, Body, BadRequestException, HttpCode, HttpStatus } from '@nestjs/common';
+import { LiqPayService } from './liqpay.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly liqpay: LiqPayService,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  @Post('webhook')
-  async handleWebhook(
-    @Body() body: any,
-    @Headers('X-Sign') xSign?: string
-  ): Promise<{ received: boolean }> {
-    return this.paymentsService.handleWebhook(body, xSign);
-  }
+  @Post('liqpay-callback')
+  @HttpCode(HttpStatus.OK)
+  async handleCallback(@Body() body: { data: string; signature: string }) {
+    const isValid = await this.liqpay.verifyCallback(body.data, body.signature);
+    if (!isValid) throw new BadRequestException('Invalid signature');
 
-  @Post('checkout/:orderId')
-  async createCheckoutSession(@Param('orderId') orderId: string): Promise<{ url: string }> {
-    return this.paymentsService.createCheckoutSession(orderId);
+    const decodedData = JSON.parse(Buffer.from(body.data, 'base64').toString());
+    
+    if (decodedData.status === 'success' || decodedData.status === 'sandbox') {
+      await this.prisma.order.update({
+        where: { id: decodedData.order_id },
+        data: { status: 'paid' },
+      });
+    }
+
+    return { status: 'ok' };
   }
 }

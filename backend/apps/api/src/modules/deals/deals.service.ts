@@ -14,7 +14,7 @@ export class DealsService {
     private readonly activity: ActivityService,
   ) {}
 
-  async detectDeals(): Promise<unknown[]> {
+  async detectDeals() {
     const listings = await this.prisma.marketListing.findMany({
       where: { status: 'active' },
       include: { item: true, source: true },
@@ -24,51 +24,34 @@ export class DealsService {
 
     if (listings.length === 0) return [];
 
-    const itemIds = Array.from(new Set(listings.map((l) => l.itemId)));
-
-    const watchlistItems = await this.prisma.watchlistItem.findMany({
-      where: { itemId: { in: itemIds }, active: true },
-      include: { assignedUser: true },
-    });
-
-    if (watchlistItems.length === 0) return [];
-
-    const watchlistMap = new Map<string, typeof watchlistItems>();
-    for (const w of watchlistItems) {
-      const arr = watchlistMap.get(w.itemId) || [];
-      arr.push(w);
-      watchlistMap.set(w.itemId, arr);
-    }
-
-    const listingIds = listings.map((l) => l.id);
-    const existingDeals = await this.prisma.deal.findMany({
-      where: { listingId: { in: listingIds } },
-    });
-
-    const existingDealsMap = new Map(existingDeals.map((d) => [`${d.listingId}_${d.watchlistItemId}`, d]));
-
-    const dbOperations: any[] = [];
-    const notificationsToSend: any[] = [];
+    const dbOperations = [];
+    const notificationsToSend = [];
 
     for (const listing of listings) {
-      const matchedWatchlists = watchlistMap.get(listing.itemId) || [];
+      const watchlists = await this.prisma.watchlistItem.findMany({
+        where: { itemId: listing.itemId, active: true },
+        include: { assignedUser: true },
+      });
 
-      for (const watchlist of matchedWatchlists) {
+      for (const watchlist of watchlists) {
         const buyPrice = toMoney(Number(listing.price) + Number(listing.shippingPrice ?? 0));
-        const targetSellPrice = toMoney(watchlist.targetSellPrice ?? watchlist.maxBuyPrice * 1.4);
+        const targetSellPrice = toMoney(Number(watchlist.targetSellPrice ?? Number(watchlist.maxBuyPrice) * 1.4));
         const profit = calculateProfit({ revenue: targetSellPrice, cost: buyPrice });
         const roiPercent = calculateRoiPercent({ profit, cost: buyPrice });
 
         let action = 'SKIP';
         let score = 35;
 
-        if (buyPrice <= watchlist.desiredBuyPrice && roiPercent >= 30) {
+        const desiredBuy = Number(watchlist.desiredBuyPrice);
+        const maxBuy = Number(watchlist.maxBuyPrice);
+
+        if (buyPrice <= desiredBuy && roiPercent >= 30) {
           action = 'BUY_NOW';
           score = 92;
-        } else if (buyPrice <= watchlist.maxBuyPrice && roiPercent >= 20) {
+        } else if (buyPrice <= maxBuy && roiPercent >= 20) {
           action = 'BUY';
           score = 78;
-        } else if (buyPrice <= watchlist.maxBuyPrice) {
+        } else if (buyPrice <= maxBuy) {
           action = 'WATCH';
           score = 60;
         }
@@ -76,7 +59,9 @@ export class DealsService {
         if (action === 'SKIP') continue;
 
         const dealKey = `${listing.id}_${watchlist.id}`;
-        const existing = existingDealsMap.get(dealKey);
+        const existing = await this.prisma.deal.findFirst({
+          where: { listingId: listing.id, watchlistItemId: watchlist.id }
+        });
 
         const dealData = {
           buyPrice,
@@ -93,40 +78,36 @@ export class DealsService {
             this.prisma.deal.update({
               where: { id: existing.id },
               data: dealData,
-              include: {
-                listing: { include: { item: true, source: true } },
-                watchlistItem: { include: { assignedUser: true } },
-              },
             })
           );
         } else {
           dbOperations.push(
             this.prisma.deal.create({
               data: {
+                id: dealKey,
                 listingId: listing.id,
                 watchlistItemId: watchlist.id,
                 ...dealData,
               },
-              include: {
-                listing: { include: { item: true, source: true } },
-                watchlistItem: { include: { assignedUser: true } },
-              },
             })
           );
-        }
 
-        if (action === 'BUY_NOW' && !existing) {
-          notificationsToSend.push({
-            itemTitle: watchlist.titleSnapshot,
-            roi: roiPercent,
-            action,
-            targetUserId: watchlist.assignedUserId ?? null,
-          });
+          if (action === 'BUY_NOW') {
+            notificationsToSend.push({
+              itemTitle: watchlist.titleSnapshot,
+              roi: roiPercent,
+              action,
+              profit,
+              buyPrice,
+              url: listing.url,
+              targetUserId: watchlist.assignedUserId ?? null,
+            });
+          }
         }
       }
     }
 
-    const createdOrUpdated: unknown[] = [];
+    const createdOrUpdated = [];
     
     if (dbOperations.length > 0) {
       const chunkSize = 50;
@@ -150,7 +131,7 @@ export class DealsService {
     return createdOrUpdated;
   }
 
-  async list(params?: { status?: string; action?: string; limit?: number }): Promise<unknown[]> {
+  async list(params: { status?: string; action?: string; limit?: number }) {
     return this.prisma.deal.findMany({
       where: {
         ...(params?.status && params.status !== 'all' ? { status: params.status } : {}),
@@ -165,25 +146,19 @@ export class DealsService {
     });
   }
 
-  async updateStatus(params: { id: string; status: string }): Promise<unknown> {
+  async updateStatus(params: { id: string; status: string }) {
     const updated = await this.prisma.deal.update({
       where: { id: params.id },
       data: { status: params.status },
-      include: { listing: true, watchlistItem: true },
     });
 
-    await this.activity.log('deal.status_updated', {
-      dealId: updated.id,
-      status: updated.status,
-    });
-
+    await this.activity.log('deal.status_updated', { dealId: updated.id, status: updated.status });
     this.realtime.emitOpportunityRefresh('deal_status_updated');
     return updated;
   }
 
-  async stats(): Promise<unknown> {
+  async stats() {
     const deals = await this.prisma.deal.findMany({ select: { status: true, action: true, roiPercent: true, profit: true } });
-    
     return {
       total: deals.length,
       open: deals.filter((deal) => deal.status === 'open').length,

@@ -24,36 +24,27 @@ export class SalesService {
   }): Promise<unknown> {
     const quantity = params.quantity ?? 1;
 
-    if (!params.inventoryItemId) {
-      throw new BadRequestException('inventoryItemId is required');
-    }
-
-    if (!Number.isFinite(params.sellPrice) || params.sellPrice <= 0) {
-      throw new BadRequestException('sellPrice must be positive');
-    }
-
-    if (!Number.isInteger(quantity) || quantity <= 0) {
-      throw new BadRequestException('quantity must be positive integer');
-    }
-
-    const inventoryItem = await this.prisma.inventoryItem.findUnique({
-      where: { id: params.inventoryItemId },
-      include: { item: true, assignedUser: true },
-    });
-
-    if (!inventoryItem) throw new NotFoundException('Inventory item not found');
-
-    if (inventoryItem.quantity < quantity) {
-      throw new BadRequestException('Not enough quantity in inventory');
-    }
-
-    const unitCost = inventoryItem.quantity > 0 ? inventoryItem.totalCost / inventoryItem.quantity : inventoryItem.totalCost;
-    const costBasis = toMoney(unitCost * quantity);
-    const sellPrice = toMoney(params.sellPrice);
-    const profit = calculateProfit({ revenue: sellPrice, cost: costBasis });
-    const roiPercent = calculateRoiPercent({ profit, cost: costBasis });
+    if (!params.inventoryItemId) throw new BadRequestException('inventoryItemId is required');
+    if (!Number.isFinite(params.sellPrice) || params.sellPrice <= 0) throw new BadRequestException('sellPrice must be positive');
+    if (!Number.isInteger(quantity) || quantity <= 0) throw new BadRequestException('quantity must be positive integer');
 
     const result = await this.prisma.$transaction(async (tx) => {
+      const inventoryItem = await tx.inventoryItem.findUnique({
+        where: { id: params.inventoryItemId }
+      });
+
+      if (!inventoryItem) throw new NotFoundException('Inventory item not found');
+      
+      if (inventoryItem.quantity < quantity) {
+        throw new BadRequestException('Not enough quantity in inventory');
+      }
+
+      const unitCost = inventoryItem.quantity > 0 ? Number(inventoryItem.totalCost) / inventoryItem.quantity : Number(inventoryItem.totalCost);
+      const costBasis = toMoney(unitCost * quantity);
+      const sellPrice = toMoney(params.sellPrice);
+      const profit = calculateProfit({ revenue: sellPrice, cost: costBasis });
+      const roiPercent = calculateRoiPercent({ profit, cost: costBasis });
+
       const sale = await tx.sale.create({
         data: {
           inventoryItemId: params.inventoryItemId,
@@ -81,8 +72,8 @@ export class SalesService {
       await tx.stockMovement.create({
         data: {
           inventoryItemId: params.inventoryItemId,
-          warehouseId: inventoryItem.warehouseId ?? null,
-          fromStorageLocationId: inventoryItem.storageLocationId ?? null,
+          warehouseId: inventoryItem.warehouseId,
+          fromStorageLocationId: inventoryItem.storageLocationId,
           toStorageLocationId: null,
           type: 'sale',
           quantity,
@@ -96,26 +87,26 @@ export class SalesService {
     await this.activity.log('sale.registered', {
       saleId: result.id,
       inventoryItemId: params.inventoryItemId,
-      itemId: inventoryItem.itemId,
-      title: inventoryItem.titleSnapshot,
-      sellPrice,
-      costBasis,
-      profit,
-      roiPercent,
+      itemId: result.itemId,
+      title: result.inventoryItem.titleSnapshot,
+      sellPrice: result.sellPrice,
+      costBasis: result.costBasis,
+      profit: result.profit,
+      roiPercent: result.roiPercent,
       quantity,
     });
 
     await this.notifications.createSaleNotification({
-      itemTitle: inventoryItem.titleSnapshot,
-      profit,
-      targetUserId: inventoryItem.assignedUserId ?? null,
+      itemTitle: result.inventoryItem.titleSnapshot,
+      profit: Number(result.profit),
+      targetUserId: result.inventoryItem.assignedUserId ?? null,
     });
 
     this.realtime.emitSaleRegistered({
       id: result.id,
-      title: inventoryItem.titleSnapshot,
-      profit,
-      sellPrice,
+      title: result.inventoryItem.titleSnapshot,
+      profit: result.profit,
+      sellPrice: result.sellPrice,
       quantity,
     });
 

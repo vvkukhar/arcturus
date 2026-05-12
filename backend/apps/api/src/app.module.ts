@@ -1,105 +1,55 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { RedisModule } from './modules/redis/redis.module';
-import { ActivityModule } from './modules/activity/activity.module';
-import { AiModule } from './modules/ai/ai.module';
-import { AllocationModule } from './modules/allocation/allocation.module';
-import { AuditModule } from './modules/audit/audit.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { BackupModule } from './modules/backup/backup.module';
-import { CollaborationModule } from './modules/collaboration/collaboration.module';
-import { CompsModule } from './modules/comps/comps.module';
-import { DashboardModule } from './modules/dashboard/dashboard.module';
-import { DealsModule } from './modules/deals/deals.module';
-import { DecisionEngineModule } from './modules/decision-engine/decision-engine.module';
-import { DocsModule } from './modules/docs/docs.module';
-import { ExpensesModule } from './modules/expenses/expenses.module';
-import { FinanceModule } from './modules/finance/finance.module';
-import { FlowsModule } from './modules/flows/flows.module';
-import { HealthModule } from './modules/health/health.module';
-import { ImportExportModule } from './modules/import-export/import-export.module';
-import { InventoryModule } from './modules/inventory/inventory.module';
-import { ItemsModule } from './modules/items/items.module';
-import { MediaModule } from './modules/media/media.module';
-import { MetricsModule } from './modules/metrics/metrics.module';
-import { NotificationsModule } from './modules/notifications/notifications.module';
-import { OpportunitiesModule } from './modules/opportunities/opportunities.module';
-import { OperatorModule } from './modules/operator/operator.module';
-import { OrdersModule } from './modules/orders/orders.module';
-import { PlanningModule } from './modules/planning/planning.module';
-import { PricingModule } from './modules/pricing/pricing.module';
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
+import { ScheduleModule } from '@nestjs/schedule';
+
 import { PrismaModule } from './modules/prisma/prisma.module';
-import { ProcurementModule } from './modules/procurement/procurement.module';
-import { PublicStoreModule } from './modules/public/public-store.module';
-import { QueueModule } from './modules/queue/queue.module';
-import { RateLimitModule } from './modules/rate-limit/rate-limit.module';
-import { RealtimeModule } from './modules/realtime/realtime.module';
-import { ReportsModule } from './modules/reports/reports.module';
-import { RepricerModule } from './modules/repricer/repricer.module';
-import { ReturnsModule } from './modules/returns/returns.module';
-import { SalesModule } from './modules/sales/sales.module';
-import { ScannerModule } from './modules/scanner/scanner.module';
-import { SourceHealthModule } from './modules/source-health/source-health.module';
-import { StrategyModule } from './modules/strategy/strategy.module';
-import { SuggestionsModule } from './modules/suggestions/suggestions.module';
-import { SyncModule } from './modules/sync/sync.module';
-import { WarehouseModule } from './modules/warehouse/warehouse.module';
+import { RedisModule } from './modules/redis/redis.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 import { WatchlistModule } from './modules/watchlist/watchlist.module';
-import { PaymentsModule } from './modules/payments/payments.module';
-import { RequestLoggerMiddleware } from './common/request-logger.middleware';
-import { SecurityHeadersMiddleware } from './common/security-headers.middleware';
+import { MarketModule } from './modules/market/market.module';
+import { DealDetectionService } from './modules/deals/deal-detection.service';
+import { DealsController } from './modules/deals/deals.controller';
+import { RepricerService } from './modules/repricer/repricer.service';
+import { AiService } from './modules/ai/ai.service';
+import { CronService } from './modules/cron/cron.service';
+import { PlanningController } from './modules/planning/planning.controller';
+import { QueueBoardModule } from './modules/queue/queue-board.module';
+import { QueueModule } from './modules/queue/queue.module';
+import { PosModule } from './modules/pos/pos.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     RedisModule,
-    RealtimeModule,
-    RateLimitModule,
     AuthModule,
-    HealthModule,
-    DocsModule,
-    MetricsModule,
-    QueueModule,
-    ActivityModule,
-    AuditModule,
-    BackupModule,
-    NotificationsModule,
-    StrategyModule,
-    ItemsModule,
     InventoryModule,
     WatchlistModule,
-    WarehouseModule,
-    MediaModule,
-    ScannerModule,
-    SourceHealthModule,
-    SyncModule,
-    OperatorModule,
-    OpportunitiesModule,
-    DealsModule,
-    PricingModule,
-    RepricerModule,
-    CompsModule,
-    AiModule,
-    SuggestionsModule,
-    FlowsModule,
-    SalesModule,
-    OrdersModule,
-    ReturnsModule,
-    ProcurementModule,
-    ExpensesModule,
-    ReportsModule,
-    FinanceModule,
-    DecisionEngineModule,
-    ImportExportModule,
-    PublicStoreModule,
-    CollaborationModule,
-    DashboardModule,
-    PlanningModule,
-    AllocationModule,
-    PaymentsModule,
+    MarketModule,
+    QueueModule,
+    QueueBoardModule,
+    PosModule,
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        connection: {
+          host: configService.get('REDIS_HOST', 'localhost'),
+          port: configService.get<number>('REDIS_PORT', 6379),
+          password: configService.get('REDIS_PASSWORD'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
+  ],
+  controllers: [DealsController, PlanningController],
+  providers: [
+    DealDetectionService,
+    RepricerService,
+    AiService,
+    CronService,
   ],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(SecurityHeadersMiddleware, RequestLoggerMiddleware).forRoutes('*');
-  }
-}
+export class AppModule {}

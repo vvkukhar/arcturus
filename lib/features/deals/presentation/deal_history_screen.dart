@@ -1,112 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
-import 'package:lego_trading_manager/features/deals/application/deal_history_provider.dart';
-import 'package:lego_trading_manager/features/deals/application/deal_history_query_provider.dart';
-import 'package:lego_trading_manager/features/deals/application/deal_history_entry_model.dart';
-import 'package:lego_trading_manager/features/deals/presentation/widgets/deal_history_card.dart';
-import 'package:lego_trading_manager/features/deals/presentation/widgets/deal_history_search_field.dart';
+import 'package:lego_trading_manager/features/deals/application/deals_engine.dart';
 
-class DealHistoryScreen extends ConsumerStatefulWidget {
+class DealHistoryScreen extends ConsumerWidget {
   const DealHistoryScreen({super.key});
 
   @override
-  ConsumerState<DealHistoryScreen> createState() => _DealHistoryScreenState();
-}
-
-class _DealHistoryScreenState extends ConsumerState<DealHistoryScreen> {
-  bool _loading = true;
-  List<DealHistoryEntryModel> _entries = const [];
-  final _searchController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _searchController.text = ref.read(dealHistoryQueryProvider);
-    Future.microtask(_load);
-  }
-
-  Future<void> _load() async {
-    final data = await ref.read(dealHistoryServiceProvider).getAll();
-    if (!mounted) return;
-    setState(() {
-      _entries = data;
-      _loading = false;
-    });
-  }
-
-  Future<void> _clear() async {
-    final i18n = ref.read(i18nProvider.notifier);
-    await ref.read(dealHistoryServiceProvider).clear();
-    if (!mounted) return;
-    setState(() {
-      _entries = const [];
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(i18n.t('history.cleared'))),
-    );
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final i18n = ref.watch(i18nProvider.notifier);
-    final query = ref.watch(dealHistoryQueryProvider).trim().toLowerCase();
-    final visible = query.isEmpty
-        ? _entries
-        : _entries.where((e) {
-            return e.title.toLowerCase().contains(query) ||
-                e.verdict.toLowerCase().contains(query);
-          }).toList();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stateAsync = ref.watch(dealsEngineProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(i18n.t('history.title')),
+        title: const Text('Deal History', style: TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
-            onPressed: _entries.isEmpty ? null : _clear,
-            icon: const Icon(Icons.delete_sweep_outlined),
-          ),
+            icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
+            onPressed: () => ref.read(dealsEngineProvider.notifier).clearHistory(),
+          )
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  DealHistorySearchField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      ref.read(dealHistoryQueryProvider.notifier).set(value);
-                    },
-                    onClear: () {
-                      _searchController.clear();
-                      ref.read(dealHistoryQueryProvider.notifier).set('');
-                    },
+      body: stateAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (deals) {
+          if (deals.isEmpty) return const Center(child: Text('No deal history found.', style: TextStyle(color: Colors.white54)));
+
+          return ListView.builder(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: deals.length,
+            itemBuilder: (context, index) {
+              final deal = deals[index];
+              final isGood = deal.verdict == 'strong buy' || deal.verdict == 'good';
+              return Card(
+                color: const Color(0xFF171A21),
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: ListTile(
+                  title: Text(deal.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('Ask: ${deal.askingPrice} • Profit: ${deal.expectedProfit.toStringAsFixed(0)}'),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: isGood ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                    child: Text(deal.verdict.toUpperCase(), style: TextStyle(color: isGood ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 10)),
                   ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: visible.isEmpty
-                        ? Center(child: Text(i18n.t('history.empty')))
-                        : ListView.builder(
-                            itemCount: visible.length,
-                            itemBuilder: (context, index) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: DealHistoryCard(entry: visible[index]),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

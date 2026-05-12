@@ -5,6 +5,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { SalesService } from '../sales/sales.service';
+import { NovaPoshtaService } from '../shipping/nova-poshta.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 
@@ -16,6 +17,7 @@ export class OrdersService {
     private readonly notifications: NotificationsService,
     private readonly realtime: RealtimeGateway,
     private readonly salesService: SalesService,
+    private readonly novaPoshta: NovaPoshtaService,
   ) {}
 
   async list(params?: { status?: string; q?: string; limit?: number }): Promise<unknown[]> {
@@ -194,10 +196,37 @@ export class OrdersService {
 
     const saleId = (sale as any).id;
 
+    let ttn = '';
+    try {
+      if (order.contact.includes('Київ') || order.contact.includes('Львів') || order.contact.includes('Одеса') || order.adminNote?.includes('NP')) {
+         const parts = order.buyerName.split(' ');
+         ttn = await this.novaPoshta.createExpressWaybill({
+           orderId: order.id,
+           firstName: parts[0] || 'Клієнт',
+           lastName: parts[1] || '',
+           phone: order.contact.replace(/[^\d+]/g, '').slice(0, 13),
+           cityRecipient: 'Київ',
+           warehouseRecipient: 'Відділення №1',
+           weight: 2.5,
+           cost: order.sellPrice
+         });
+      }
+    } catch (e) {
+      ttn = 'NP_SYNC_FAILED';
+    }
+
+    const updatedAdminNote = ttn ? `${order.adminNote ?? ''} [TTN: ${ttn}]`.trim() : order.adminNote;
+
     const updated = await this.prisma.$transaction(async (tx) => {
+      const lockResult = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE
+      `;
+
+      if (!lockResult || lockResult.length === 0) throw new NotFoundException('Order lock failed');
+
       const upd = await tx.order.update({
         where: { id },
-        data: { status: 'sold', saleId },
+        data: { status: 'sold', saleId, adminNote: updatedAdminNote },
         include: { reserveRequest: true, inventoryItem: true, sale: true },
       });
 
@@ -210,7 +239,7 @@ export class OrdersService {
       return upd;
     });
 
-    await this.activity.log('order.completed_as_sale', { orderId: id, saleId });
+    await this.activity.log('order.completed_as_sale', { orderId: id, saleId, ttn });
     this.realtime.emitCustom('order.sold', updated);
     this.realtime.emitDashboardRefresh('order_sold');
 

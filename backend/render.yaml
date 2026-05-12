@@ -4,11 +4,8 @@ services:
     env: docker
     plan: starter
     rootDir: backend
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    dockerfilePath: ./apps/api/Dockerfile
     autoDeploy: true
-    # Використовуємо --prefix, щоб точно запустити скрипт з кореня /backend
-    preDeployCommand: npm run db:migrate --prefix /backend
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -17,15 +14,50 @@ services:
         value: 4000
       - key: DATABASE_URL
         sync: false
-      - key: DIRECT_URL
-        sync: false
       - key: REDIS_URL
         sync: false
       - key: JWT_SECRET
-        sync: false
+        generateValue: true
       - key: ADMIN_BOOTSTRAP_TOKEN
-        sync: false
-      - key: INTERNAL_API_KEY
         sync: false
       - key: CORS_ORIGINS
         sync: false
+
+  - type: worker
+    name: arcturus-bullmq-workers
+    env: docker
+    plan: starter
+    rootDir: backend
+    dockerfilePath: ./apps/workers/Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromService:
+          type: web
+          name: arcturus-api
+          envVarKey: DATABASE_URL
+      - key: REDIS_URL
+        fromService:
+          type: web
+          name: arcturus-api
+          envVarKey: REDIS_URL
+
+  - type: worker
+    name: arcturus-scrapers
+    env: docker
+    plan: starter
+    rootDir: backend
+    dockerfilePath: ./apps/scrapers/Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromService:
+          type: web
+          name: arcturus-api
+          envVarKey: DATABASE_URL
+      - key: SCRAPER_INTERVAL_MS
+        value: "1200000"

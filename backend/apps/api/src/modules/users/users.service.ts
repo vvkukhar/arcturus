@@ -1,32 +1,26 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { AuthService } from '../auth/auth.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
+    private readonly authService: AuthService
   ) {}
 
   async list(params?: { q?: string; role?: string; active?: boolean; }): Promise<unknown[]> {
     const q = params?.q?.trim();
-
     return this.prisma.user.findMany({
       where: {
         role: params?.role,
         active: params?.active,
-        OR:
-          q && q.length > 0
-            ? [
-                { name: { contains: q, mode: 'insensitive' } },
-                { email: { contains: q, mode: 'insensitive' } },
-              ]
-            : undefined,
+        OR: q && q.length > 0 ? [
+          { name: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } },
+        ] : undefined,
       },
       orderBy: [{ active: 'desc' }, { name: 'asc' }],
     });
@@ -43,13 +37,11 @@ export class UsersService {
     });
 
     if (!user) throw new NotFoundException('User not found');
-
     return user;
   }
 
   async create(body: { name: string; email?: string | null; role?: string | null; }): Promise<unknown> {
     const name = body.name?.trim();
-
     if (!name) throw new BadRequestException('User name is required');
 
     const created = await this.prisma.user.create({
@@ -63,15 +55,12 @@ export class UsersService {
 
     this.realtime.emitCustom('user_created', created);
     this.realtime.emitDashboardRefresh('user_created');
-
     return created;
   }
 
   async update(id: string, body: { name?: string; email?: string | null; role?: string | null; active?: boolean; }): Promise<unknown> {
     if (!id) throw new BadRequestException('User id is required');
-
     const existing = await this.prisma.user.findUnique({ where: { id } });
-
     if (!existing) throw new NotFoundException('User not found');
 
     const updated = await this.prisma.user.update({
@@ -84,9 +73,12 @@ export class UsersService {
       },
     });
 
+    if (existing.active !== updated.active || existing.role !== updated.role) {
+      await this.authService.invalidateUserSessions(id);
+    }
+
     this.realtime.emitCustom('user_updated', updated);
     this.realtime.emitDashboardRefresh('user_updated');
-
     return updated;
   }
 }

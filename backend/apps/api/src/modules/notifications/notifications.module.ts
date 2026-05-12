@@ -1,14 +1,13 @@
-import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
-import { RealtimeModule } from '../realtime/realtime.module';
-import { NotificationsController } from './notifications.controller';
+import { Global, Module } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { TelegramService } from './telegram.service';
+import { TelegramWebhookController } from './telegram-webhook.controller';
+import { TelegramWebhookService } from './telegram-webhook.service';
 
+@Global()
 @Module({
-  imports: [AuthModule, RealtimeModule],
-  controllers: [NotificationsController],
-  providers: [NotificationsService, TelegramService],
-  exports: [NotificationsService],
+  controllers: [TelegramWebhookController],
+  providers: [NotificationsService, TelegramService, TelegramWebhookService],
+  exports: [NotificationsService, TelegramService, TelegramWebhookService],
 })
 export class NotificationsModule {}

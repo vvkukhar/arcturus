@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/client-api';
+import useSWR from 'swr';
+import { swrFetcher } from '@/lib/swr-fetcher';
 import { Loader2 } from 'lucide-react';
 
 interface AssignmentsSummary {
@@ -10,27 +10,7 @@ interface AssignmentsSummary {
 }
 
 export function CollaborationPanel() {
-  const [assignments, setAssignments] = useState<AssignmentsSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-
-    apiFetch<AssignmentsSummary>('/api/collaboration/assignments')
-      .then((data) => {
-        if (mounted) setAssignments(data);
-      })
-      .catch(() => {
-        if (mounted) setAssignments({ inventory: [], watchlist: [] });
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const { data: assignments, isLoading } = useSWR<AssignmentsSummary>('/api/collaboration/assignments', swrFetcher as any);
 
   return (
     <div className="space-y-4 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
@@ -39,7 +19,7 @@ export function CollaborationPanel() {
         <p className="mt-1 text-sm font-medium text-slate-500">Overview of active task assignments.</p>
       </div>
       
-      {loading ? (
+      {isLoading ? (
         <div className="flex justify-center py-6">
           <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
         </div>

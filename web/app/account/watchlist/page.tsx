@@ -1,39 +1,35 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { useI18n } from '@/components/providers/i18n-provider';
 import { Heart, TrendingUp, TrendingDown, Bell, Search, Loader2 } from 'lucide-react';
-import { apiFetch } from '@/lib/client-api';
+import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney } from '@/lib/format';
 import Link from 'next/link';
 
+interface WatchlistRow {
+  id: string;
+  itemId: string;
+  titleSnapshot: string;
+  maxBuyPrice: number;
+  targetSellPrice?: number;
+  priority: number;
+  active: boolean;
+}
+
 export default function WatchlistPage() {
   const { t } = useI18n();
-  const [watchlist, setWatchlist] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useSWR<WatchlistRow[]>('/api/watchlist', swrFetcher as any);
 
-  useEffect(() => {
-    let mounted = true;
-    apiFetch<any[]>('/api/watchlist')
-      .then((data) => {
-        if (mounted) {
-          setWatchlist(Array.isArray(data) ? data.filter(x => x.active) : []);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (mounted) setLoading(false);
-      });
-    return () => { mounted = false; };
-  }, []);
+  const watchlist = Array.isArray(data) ? data.filter((x) => x.active) : [];
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
 
   return (
     <div className="p-6 md:p-10 max-w-4xl mx-auto animate-fade-in-up">
       <div className="mb-10 flex flex-col md:flex-row justify-between items-end gap-6">
         <div>
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('sidebar.watchlist')}</h1>
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('sidebar.watchlist' as any)}</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">Monitoring active assets for potential entry points.</p>
         </div>
         <Link href="/store/catalog" className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors">
@@ -45,7 +41,7 @@ export default function WatchlistPage() {
         {watchlist.length === 0 ? (
           <div className="p-12 text-center text-slate-500 font-medium">Your watchlist is currently empty.</div>
         ) : (
-          watchlist.map((item, idx) => {
+          watchlist.map((item) => {
             const spread = (item.targetSellPrice ?? item.maxBuyPrice) - item.maxBuyPrice;
             const roi = item.maxBuyPrice > 0 ? (spread / item.maxBuyPrice) * 100 : 0;
             const isUp = roi > 0;
@@ -58,7 +54,7 @@ export default function WatchlistPage() {
                   </div>
                   <div>
                     <p className="font-black text-lg leading-tight line-clamp-1">{item.titleSnapshot}</p>
-                    <p className="text-xs text-slate-500 font-bold mt-1">ID: {item.itemId}</p>
+                    <p className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-widest">ID: {item.itemId}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-8">

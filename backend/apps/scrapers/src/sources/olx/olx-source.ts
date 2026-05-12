@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { estimateUaShippingBySource } from '../../common/shipping-estimator';
+import { browserManager } from '../../common/browser-manager';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
 import { stableListingId } from '../../common/listing-id';
 import { logSourceError } from '../../common/source-error-logger';
@@ -9,20 +8,20 @@ import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
 import { parseOlxSearchHtml } from './olx-parser';
 
-const searchQueries = [
-  'lego ninjago',
-  'lego star wars',
-  'lego minifigures',
-  'lego harry potter',
-  'lego marvel',
-];
-
 export async function runOlxSource(): Promise<void> {
-  const source = await prisma.marketSource.findUnique({
-    where: { code: 'olx' },
+  const source = await prisma.marketSource.findUnique({ where: { code: 'olx' } });
+  if (!source || !source.enabled) return;
+
+  const activeWatchlist = await prisma.watchlistItem.findMany({
+    where: { active: true },
+    select: { item: { select: { setNumber: true } } }
   });
 
-  if (!source || !source.enabled) return;
+  const searchQueries = Array.from(
+    new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))
+  ) as string[];
+
+  if (searchQueries.length === 0) return;
 
   const runId = await startSourceRun('olx');
 
@@ -37,17 +36,9 @@ export async function runOlxSource(): Promise<void> {
     const now = new Date();
 
     for (const query of searchQueries) {
-      const url = `https://www.olx.ua/uk/list/q-${encodeURIComponent(query)}/`;
-
-      const response = await axios.get<string>(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
-          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        },
-        timeout: 15000,
-      });
-
-      const listings = parseOlxSearchHtml(response.data);
+      const url = `https://www.olx.ua/uk/list/q-lego-${encodeURIComponent(query)}/`;
+      const html = await browserManager.fetchHtml(url);
+      const listings = parseOlxSearchHtml(html);
 
       for (const listing of listings) {
         itemsSeen += 1;
@@ -55,17 +46,6 @@ export async function runOlxSource(): Promise<void> {
         const resolvedItemId = await resolveItemIdFromTitle(listing.titleRaw);
         const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
         const listingId = stableListingId('olx', listing.externalListingId);
-
-        const shippingPrice =
-          listing.shippingPrice ??
-          estimateUaShippingBySource({
-            sourceCode: 'olx',
-            itemPrice: listing.price,
-            currency: listing.currency,
-            sealed: listing.sealed,
-          });
-
-        const shippingCurrency = listing.shippingCurrency ?? listing.currency ?? 'UAH';
 
         upsertOperations.push(
           prisma.marketListing.upsert({
@@ -78,9 +58,9 @@ export async function runOlxSource(): Promise<void> {
               url: listing.url,
               imageUrl: listing.imageUrl,
               price: listing.price,
-              currency: listing.currency,
-              shippingPrice,
-              shippingCurrency,
+              currency: listing.currency ?? 'UAH',
+              shippingPrice: listing.shippingPrice ?? 0,
+              shippingCurrency: listing.shippingCurrency ?? 'UAH',
               condition: listing.condition,
               sealed: listing.sealed,
               status: 'active',
@@ -99,9 +79,9 @@ export async function runOlxSource(): Promise<void> {
               url: listing.url,
               imageUrl: listing.imageUrl,
               price: listing.price,
-              currency: listing.currency,
-              shippingPrice,
-              shippingCurrency,
+              currency: listing.currency ?? 'UAH',
+              shippingPrice: listing.shippingPrice ?? 0,
+              shippingCurrency: listing.shippingCurrency ?? 'UAH',
               condition: listing.condition,
               sealed: listing.sealed,
               status: 'active',
@@ -137,34 +117,10 @@ export async function runOlxSource(): Promise<void> {
       await enqueueUnresolvedMatch(u);
     }
 
-    await finishSourceRun({
-      runId,
-      itemsSeen,
-      itemsMatched,
-      itemsInserted,
-      itemsUpdated,
-      status: 'success',
-    });
+    await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-
-    await logSourceError({
-      scope: 'scraper',
-      sourceCode: 'olx',
-      message: 'OLX source failed',
-      detailsJson: { error: message },
-    });
-
-    await finishSourceRun({
-      runId,
-      itemsSeen,
-      itemsMatched,
-      itemsInserted,
-      itemsUpdated,
-      status: 'failed',
-      errorMessage: message,
-    });
-
-    throw error;
+    await logSourceError({ scope: 'scraper', sourceCode: 'olx', message: 'OLX source failed', detailsJson: { error: message } });
+    await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });
   }
 }

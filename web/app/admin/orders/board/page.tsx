@@ -10,6 +10,8 @@ type BoardData = {
   rejected: ReserveRequest[];
 };
 
+export const revalidate = 0;
+
 async function getBoard(): Promise<BoardData> {
   try {
     return await api.get<BoardData>('/public/reserve-board');
@@ -47,7 +49,7 @@ function KanbanColumn({
       
       <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
         {items.length === 0 ? (
-          <div className="flex h-32 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--border)] text-sm font-bold text-slate-400 bg-[var(--background)]/50">
+          <div className="flex h-32 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--border)] text-sm font-bold text-slate-500 bg-[var(--background)]/50">
             <Package size={24} className="mb-2 opacity-50" />
             Empty
           </div>
@@ -66,7 +68,7 @@ function KanbanColumn({
                   <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{item.name}</span>
                   <span className="text-xs font-medium text-slate-500 truncate max-w-[140px]">{item.contact}</span>
                 </div>
-                <span className="text-[10px] font-black font-mono tracking-widest text-slate-400 uppercase bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
+                <span className="text-[10px] font-black font-mono tracking-widest text-slate-400 uppercase bg-[var(--background)] px-2 py-1 rounded-md border border-[var(--border)]">
                   {item.id.slice(-6)}
                 </span>
               </div>

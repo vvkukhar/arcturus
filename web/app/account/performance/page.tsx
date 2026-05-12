@@ -1,54 +1,75 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { useI18n } from '@/components/providers/i18n-provider';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import dynamic from 'next/dynamic';
 import { TrendingUp, Award, Box, Loader2 } from 'lucide-react';
-import { apiFetch } from '@/lib/client-api';
+import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney } from '@/lib/format';
+import Image from 'next/image';
+import { ChartLoader } from '@/components/ui/chart-loader';
+
+const ResponsiveContainer = dynamic(
+  () => import('recharts').then((m) => m.ResponsiveContainer), 
+  { ssr: false, loading: () => <ChartLoader /> }
+);
+const PieChart = dynamic(() => import('recharts').then((m) => m.PieChart), { ssr: false, loading: () => <ChartLoader /> });
+const Pie = dynamic(() => import('recharts').then((m) => m.Pie), { ssr: false });
+const Cell = dynamic(() => import('recharts').then((m) => m.Cell), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then((m) => m.Tooltip), { ssr: false });
+const Legend = dynamic(() => import('recharts').then((m) => m.Legend), { ssr: false });
+
+interface ThemeData {
+  theme: string;
+  profit: number | string;
+}
+
+interface CatalogData {
+  totalCost: number;
+  expectedSalePriceManual?: number;
+  titleSnapshot: string;
+  images?: { imageUrl: string }[];
+}
+
+interface PortfolioData {
+  sales?: { realizedProfit: number };
+}
+
+const parseVal = (val: string | number | undefined): number => {
+  if (val === undefined) return 0;
+  return typeof val === 'string' ? parseFloat(val.replace(/[^0-9.-]+/g, "")) || 0 : val;
+};
 
 export default function PerformancePage() {
   const { t } = useI18n();
-  const [allocation, setAllocation] = useState<any[]>([]);
-  const [topPerformer, setTopPerformer] = useState<any>(null);
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
-    Promise.all([
-      apiFetch<any[]>('/api/profit/by-theme').catch(() => []),
-      apiFetch<any[]>('/api/public/catalog').catch(() => []),
-      apiFetch<any>('/api/portfolio/summary').catch(() => null)
-    ]).then(([themeData, catalogData, portfolioData]) => {
-      if (mounted) {
-        if (Array.isArray(themeData)) {
-          const colors = ['#3b82f6', '#ef4444', '#8b5cf6', '#f97316', '#10b981', '#f43f5e'];
-          setAllocation(themeData.map((d, i) => ({
-            name: d.theme,
-            value: typeof d.profit === 'string' ? parseFloat(d.profit.replace(/[^0-9.-]+/g,"")) : d.profit,
-            color: colors[i % colors.length]
-          })).filter(x => x.value > 0));
-        }
+  const { data: themeData, isLoading: tLoading } = useSWR<ThemeData[]>('/api/profit/by-theme', swrFetcher);
+  const { data: catalogData, isLoading: cLoading } = useSWR<CatalogData[]>('/api/public/catalog', swrFetcher);
+  const { data: stats, isLoading: sLoading } = useSWR<PortfolioData>('/api/portfolio/summary', swrFetcher);
 
-        if (Array.isArray(catalogData) && catalogData.length > 0) {
-          const sorted = [...catalogData].sort((a, b) => {
-            const aRoi = a.totalCost > 0 ? ((a.expectedSalePriceManual ?? a.totalCost) - a.totalCost) / a.totalCost : 0;
-            const bRoi = b.totalCost > 0 ? ((b.expectedSalePriceManual ?? b.totalCost) - b.totalCost) / b.totalCost : 0;
-            return bRoi - aRoi;
-          });
-          setTopPerformer(sorted[0]);
-        }
+  if (tLoading || cLoading || sLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
+  }
 
-        setStats(portfolioData);
-        setLoading(false);
-      }
+  let allocation: { name: string; value: number; color: string }[] = [];
+  if (Array.isArray(themeData)) {
+    const colors = ['#3b82f6', '#ef4444', '#8b5cf6', '#f97316', '#10b981', '#f43f5e'];
+    allocation = themeData.map((d, i) => ({
+      name: d.theme,
+      value: parseVal(d.profit),
+      color: colors[i % colors.length]
+    })).filter(x => x.value > 0);
+  }
+
+  let topPerformer = null;
+  if (Array.isArray(catalogData) && catalogData.length > 0) {
+    const sorted = [...catalogData].sort((a, b) => {
+      const aRoi = a.totalCost > 0 ? ((a.expectedSalePriceManual ?? a.totalCost) - a.totalCost) / a.totalCost : 0;
+      const bRoi = b.totalCost > 0 ? ((b.expectedSalePriceManual ?? b.totalCost) - b.totalCost) / b.totalCost : 0;
+      return bRoi - aRoi;
     });
-
-    return () => { mounted = false; };
-  }, []);
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
+    topPerformer = sorted[0];
+  }
 
   const realizedProfit = stats?.sales?.realizedProfit ?? 0;
   const alpha = 4.1;
@@ -56,15 +77,15 @@ export default function PerformancePage() {
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto animate-fade-in-up">
       <div className="mb-10">
-        <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('performance.title')}</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('performance.subtitle')}</p>
+        <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('performance.title' as any)}</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('performance.subtitle' as any)}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-[var(--card)] p-8 rounded-3xl border border-[var(--border)] shadow-sm">
           <h3 className="text-xl font-black mb-8 flex items-center gap-2">
             <Box size={24} className="text-blue-600" />
-            Asset Allocation (By Profit)
+            {t('performance.assetAlloc' as any)}
           </h3>
           <div className="h-[350px] w-full">
             {allocation.length > 0 ? (
@@ -85,13 +106,13 @@ export default function PerformancePage() {
                   </Pie>
                   <Tooltip 
                     contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 'bold' }}
-                    formatter={(value: any) => [`${value} ₴`, 'Profit'] as any}
+                    formatter={(value: any) => [`${formatMoney(value)}`, 'Profit']}
                   />
                   <Legend verticalAlign="bottom" height={36}/>
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 font-medium">No profitable sales data yet.</div>
+              <div className="h-full flex items-center justify-center text-slate-400 font-medium">{t('performance.noSales' as any)}</div>
             )}
           </div>
         </div>
@@ -100,13 +121,13 @@ export default function PerformancePage() {
           <div className="bg-[var(--card)] p-8 rounded-3xl border border-[var(--border)] shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <TrendingUp size={24} className="text-green-500" />
-              <h3 className="text-xl font-black">Top Performer</h3>
+              <h3 className="text-xl font-black">{t('performance.topPerformer' as any)}</h3>
             </div>
             {topPerformer ? (
               <div className="flex gap-6 items-center">
-                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-200">
+                <div className="relative w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center overflow-hidden border border-[var(--border)]">
                   {topPerformer.images?.[0]?.imageUrl ? (
-                    <img src={topPerformer.images[0].imageUrl} className="w-full h-full object-cover" alt="" />
+                    <Image src={topPerformer.images[0].imageUrl} fill className="object-cover mix-blend-multiply dark:mix-blend-normal" alt="" />
                   ) : (
                     <Award size={40} className="text-orange-500" />
                   )}
@@ -119,17 +140,17 @@ export default function PerformancePage() {
                 </div>
               </div>
             ) : (
-              <div className="text-slate-400 font-medium">No assets acquired yet.</div>
+              <div className="text-slate-400 font-medium">{t('performance.noAssets' as any)}</div>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-6">
-            <div className="bg-slate-900 text-white p-6 rounded-3xl">
-              <p className="text-[10px] font-black uppercase opacity-60 mb-2">Total Realized Gain</p>
+            <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl">
+              <p className="text-[10px] font-black uppercase opacity-60 mb-2 tracking-widest">{t('performance.totalGain' as any)}</p>
               <p className="text-2xl font-black text-green-400">+{formatMoney(realizedProfit)}</p>
             </div>
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-[var(--border)] shadow-sm">
-              <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Alpha vs Market Baseline</p>
+            <div className="bg-[var(--card)] p-6 rounded-3xl border border-[var(--border)] shadow-sm">
+              <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">{t('performance.alpha' as any)}</p>
               <p className="text-2xl font-black">+{alpha}%</p>
             </div>
           </div>

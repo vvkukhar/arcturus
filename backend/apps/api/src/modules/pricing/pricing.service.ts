@@ -1,31 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import {
-  calculateProfit,
-  calculateRoiPercent,
-  toMoney,
-} from '@arcturus/shared';
+import { calculateProfit, calculateRoiPercent, toMoney } from '@arcturus/shared';
 import { SmartPricingService } from '../strategy/smart-pricing.service';
 
 @Injectable()
 export class PricingService {
   constructor(private readonly smartPricing: SmartPricingService) {}
 
-  calculateROI(params: {
-    buyPrice: number;
-    sellPrice: number;
-  }): number {
+  calculateROI(params: { buyPrice: number; sellPrice: number }): number {
     const buyPrice = toMoney(params.buyPrice);
     const sellPrice = toMoney(params.sellPrice);
-
-    const profit = calculateProfit({
-      revenue: sellPrice,
-      cost: buyPrice,
-    });
-
-    return calculateRoiPercent({
-      profit,
-      cost: buyPrice,
-    });
+    const profit = calculateProfit({ revenue: sellPrice, cost: buyPrice });
+    return calculateRoiPercent({ profit, cost: buyPrice });
   }
 
   analyze(params: {
@@ -41,15 +26,8 @@ export class PricingService {
     const fallbackSellPrice = buyPrice * (1 + targetRoiPercent / 100);
     const sellPrice = toMoney(params.sellPrice ?? fallbackSellPrice);
 
-    const profit = calculateProfit({
-      revenue: sellPrice,
-      cost: buyPrice,
-    });
-
-    const roi = calculateRoiPercent({
-      profit,
-      cost: buyPrice,
-    });
+    const profit = calculateProfit({ revenue: sellPrice, cost: buyPrice });
+    const roi = calculateRoiPercent({ profit, cost: buyPrice });
 
     const smart = this.smartPricing.suggest({
       costBasis: buyPrice,
@@ -61,14 +39,9 @@ export class PricingService {
     });
 
     let classification = 'weak';
-
-    if (roi >= 45 && profit >= 300) {
-      classification = 'excellent';
-    } else if (roi >= 30 && profit >= 150) {
-      classification = 'good';
-    } else if (roi >= 18) {
-      classification = 'acceptable';
-    }
+    if (roi >= 45 && profit >= 300) classification = 'excellent';
+    else if (roi >= 30 && profit >= 150) classification = 'good';
+    else if (roi >= 18) classification = 'acceptable';
 
     return {
       buyPrice,

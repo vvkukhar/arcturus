@@ -1,17 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_log_helper_provider.dart';
-import 'package:lego_trading_manager/features/deals/application/deal_evaluation_model.dart';
-import 'package:lego_trading_manager/features/deals/application/deal_history_provider.dart';
-import 'package:lego_trading_manager/features/deals/application/deal_watchlist_create_provider.dart';
-import 'package:lego_trading_manager/features/deals/application/deal_to_watchlist_draft_provider.dart';
-import 'package:lego_trading_manager/features/deals/application/deal_evaluator_provider.dart';
-import 'package:lego_trading_manager/features/deals/presentation/deal_to_watchlist_preview_screen.dart';
-import 'package:lego_trading_manager/features/deals/presentation/widgets/deal_create_watchlist_button.dart';
-import 'package:lego_trading_manager/features/deals/presentation/widgets/deal_evaluation_result_card.dart';
-import 'package:lego_trading_manager/features/deals/presentation/widgets/deal_to_watchlist_button.dart';
-import 'package:lego_trading_manager/features/watchlist/application/watchlist_controller.dart';
+import 'package:lego_trading_manager/features/deals/application/deals_engine.dart';
 
 class DealEvaluatorScreen extends ConsumerStatefulWidget {
   const DealEvaluatorScreen({super.key});
@@ -21,122 +10,101 @@ class DealEvaluatorScreen extends ConsumerStatefulWidget {
 }
 
 class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
-  final _titleController = TextEditingController();
-  final _askingController = TextEditingController(text: '0');
-  final _marketController = TextEditingController(text: '0');
+  final _title = TextEditingController();
+  final _ask = TextEditingController();
+  final _market = TextEditingController();
+  DealEvaluation? _result;
 
-  DealEvaluationModel? _result;
-
-  double _parse(String value) {
-    return double.tryParse(value.replaceAll(',', '.')) ?? 0;
-  }
-
-  Future<void> _evaluate() async {
-    final result = ref.read(dealEvaluatorProvider).evaluate(
-          title: _titleController.text.trim().isEmpty ? 'Untitled Deal' : _titleController.text.trim(),
-          askingPrice: _parse(_askingController.text),
-          marketPrice: _parse(_marketController.text),
-        );
-
-    await ref.read(dealHistoryServiceProvider).add(result);
-
-    await ref.read(activityLogHelperProvider).inventoryAction(
-          title: 'Deal evaluated',
-          subtitle: '${result.title} | ${result.verdict} | ${result.marginPercent.toStringAsFixed(1)}%',
-        );
-
+  void _evaluate() {
+    final ask = double.tryParse(_ask.text.replaceAll(',', '.')) ?? 0;
+    final market = double.tryParse(_market.text.replaceAll(',', '.')) ?? 0;
+    
     setState(() {
-      _result = result;
+      _result = ref.read(dealsEngineProvider.notifier).evaluate(
+        title: _title.text,
+        askingPrice: ask,
+        marketPrice: market,
+      );
     });
   }
 
-  void _openWatchlistDraft() {
-    if (_result == null) return;
-
-    final draft = ref.read(dealToWatchlistDraftProvider).build(_result!);
-
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => DealToWatchlistPreviewScreen(draft: draft)),
-    );
-  }
-
-  Future<void> _createWatchlistItem() async {
-    if (_result == null) return;
-    final i18n = ref.read(i18nProvider.notifier);
-
-    final result = ref.read(dealWatchlistCreateProvider).build(_result!);
-    ref.read(watchlistControllerProvider.notifier).addItem(result.watchlistItem);
-
-    await ref.read(activityLogHelperProvider).inventoryAction(
-          title: 'Watchlist item created from deal',
-          subtitle: result.watchlistItem.title,
-        );
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(i18n.t('eval.itemCreated'))),
-    );
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _askingController.dispose();
-    _marketController.dispose();
-    super.dispose();
+  Future<void> _save() async {
+    if (_result != null) {
+      await ref.read(dealsEngineProvider.notifier).saveEvaluation(_result!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deal saved to history')));
+        Navigator.pop(context);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final i18n = ref.watch(i18nProvider.notifier);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(i18n.t('eval.title')),
-        actions: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pushNamed('/deal-history'),
-            icon: const Icon(Icons.history),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Deal Evaluator', style: TextStyle(fontWeight: FontWeight.w900))),
       body: ListView(
+        physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          TextField(
-            controller: _titleController,
-            decoration: InputDecoration(labelText: i18n.t('draft.title')),
-          ),
+          TextField(controller: _title, decoration: const InputDecoration(labelText: 'Deal Title')),
           const SizedBox(height: 12),
-          TextField(
-            controller: _askingController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(labelText: i18n.t('eval.askingPrice')),
-          ),
+          TextField(controller: _ask, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Asking Price')),
           const SizedBox(height: 12),
-          TextField(
-            controller: _marketController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(labelText: i18n.t('eval.marketPrice')),
-          ),
-          const SizedBox(height: 16),
+          TextField(controller: _market, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Market Price')),
+          const SizedBox(height: 24),
           FilledButton(
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
             onPressed: _evaluate,
-            child: Text(i18n.t('eval.evaluate')),
+            child: const Text('Evaluate', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
-          const SizedBox(height: 16),
-          if (_result != null) ...[
-            DealEvaluationResultCard(model: _result!),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                DealToWatchlistButton(onPressed: _openWatchlistDraft),
-                DealCreateWatchlistButton(onPressed: _createWatchlistItem),
-              ],
-            ),
-          ],
+          const SizedBox(height: 24),
+          if (_result != null) _buildResultCard(_result!),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultCard(DealEvaluation model) {
+    final color = model.verdict == 'strong buy' ? Colors.green : model.verdict == 'good' ? Colors.lightGreen : model.verdict == 'weak' ? Colors.orange : Colors.red;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Text(model.verdict.toUpperCase(), style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+          const Divider(height: 32, color: Colors.white10),
+          _Row('Expected Profit', model.expectedProfit.toStringAsFixed(2)),
+          _Row('Margin', '${model.marginPercent.toStringAsFixed(1)}%'),
+          const SizedBox(height: 24),
+          FilledButton.tonalIcon(
+            onPressed: _save,
+            icon: const Icon(Icons.save),
+            label: const Text('Save to History'),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+class _Row extends StatelessWidget {
+  final String label;
+  final String value;
+  const _Row(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white70)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         ],
       ),
     );
