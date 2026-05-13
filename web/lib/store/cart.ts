@@ -46,9 +46,7 @@ export const useCart = create<CartStore>()(
         const currentItems = get().items;
         const existing = currentItems.find((i) => i.id === item.id);
         
-        if (existing && existing.maxQuantity && existing.quantity >= existing.maxQuantity) {
-            return; 
-        }
+        if (existing && existing.maxQuantity && existing.quantity >= existing.maxQuantity) return;
 
         const newItems = existing
           ? currentItems.map((i) => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i)
@@ -129,8 +127,7 @@ export const useCart = create<CartStore>()(
             items: validatedItems, 
             totalItems: validatedItems.reduce((sum, i) => sum + i.quantity, 0) 
           });
-        } catch (e) {
-        }
+        } catch (e) {}
       }
     }),
     {

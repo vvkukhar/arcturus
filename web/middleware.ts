@@ -7,7 +7,7 @@ const STATIC_REGEX = /\.(.*)$/;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
+  
   if (pathname.startsWith('/_next') || pathname.startsWith('/api') || STATIC_REGEX.test(pathname)) {
     return NextResponse.next();
   }
@@ -28,8 +28,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isAdminRoute && !isAuthenticated) {
-    const url = new URL('/login', request.url);
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   if (isPublicPath && isAuthenticated && (pathname === '/login' || pathname === '/register')) {
@@ -37,7 +36,6 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
-
   response.headers.set('X-Arcturus-Auth-State', isAuthenticated ? '1' : '0');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');

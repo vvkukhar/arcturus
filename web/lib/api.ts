@@ -64,7 +64,6 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
     cleanPath = cleanPath.substring(4); 
   }
   const targetUrl = path.startsWith('http') ? path : `${base}${cleanPath}`;
-  
   const state = getCircuitState(targetUrl);
 
   if (state.isOpen) {
