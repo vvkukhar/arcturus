@@ -16,7 +16,7 @@ export class AiService {
 
   constructor(private readonly prisma: PrismaService) {
     this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: process.env.OPENAI_API_KEY || 'unconfigured_key_fallback',
     });
   }
 
@@ -78,7 +78,7 @@ export class AiService {
         (SELECT COUNT(*) FROM "Deal" WHERE status = 'open' AND score >= 80) as "hotDeals"
     `;
 
-    const stats = execution[0] || { purchasePending: 0, repricePending: 0, reviewPending: 0, hotDeals: 0 };
+    const stats = (execution as any[])[0] || { purchasePending: 0, repricePending: 0, reviewPending: 0, hotDeals: 0 };
 
     const prompt = `
       You are the chief operations AI for Arcturus, a high-volume LEGO trading firm.
