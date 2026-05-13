@@ -3,11 +3,14 @@ import { BullModule } from '@nestjs/bullmq';
 import { AuthModule } from '../auth/auth.module';
 import { DecisionsModule } from '../decisions/decisions.module';
 import { MarketModule } from '../market/market.module';
-import { RealtimeModule } from '../realtime/realtime.module';
+import { RealtimeModule } from '../realtime/realtime.gateway';
+import { PrismaModule } from '../prisma/prisma.module';
+import { RedisModule } from '../redis/redis.module';
 import { SyncController } from './sync.controller';
 import { SyncOrchestratorService } from './sync-orchestrator.service';
 import { SyncService } from './sync.service';
 import { SyncStateService } from './sync-state.service';
+import { QUEUE_NAMES } from '../queue/queue.constants';
 
 @Module({
   imports: [
@@ -15,8 +18,10 @@ import { SyncStateService } from './sync-state.service';
     MarketModule,
     DecisionsModule,
     RealtimeModule,
+    PrismaModule,
+    RedisModule,
     BullModule.registerQueue({
-      name: 'sync',
+      name: QUEUE_NAMES.SYNC,
     }),
   ],
   controllers: [SyncController],
