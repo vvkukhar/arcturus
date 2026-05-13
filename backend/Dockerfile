@@ -19,4 +19,4 @@ COPY . .
 
 RUN npm run build:all
 
-CMD ["npm", "run", "start:prod", "--workspace=@arcturus/api"]
+CMD ["sh", "-c", "node $(find . -type f -name main.js -not -path '*/node_modules/*' | grep api | grep dist | head -n 1)"]
