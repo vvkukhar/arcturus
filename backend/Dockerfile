@@ -19,4 +19,4 @@ COPY . .
 
 RUN npm run build:all
 
-CMD ["node", "dist/apps/api/main.js"]
+CMD ["node", "apps/api/dist/main.js"]
