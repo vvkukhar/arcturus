@@ -18,3 +18,5 @@ RUN npm ci
 COPY . .
 
 RUN npm run build:all
+
+CMD ["node", "dist/apps/api/main.js"]
