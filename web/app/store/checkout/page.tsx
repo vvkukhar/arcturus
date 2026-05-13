@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Trash2, ArrowRight, ShieldCheck, CreditCard, Loader2, Package } from 'lucide-react';
 import { useCart } from '@/lib/store/cart';
 import { formatMoney } from '@/lib/format';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 
 export default function CheckoutPage() {
   const router = useRouter();

@@ -4,24 +4,23 @@ import { createRedisConnection } from './redis-connection';
 import { routeJob } from './job-router';
 
 export function startWorkers() {
-  const handleJob = async (job: Job) => routeJob(job);
   const connection = createRedisConnection();
 
   const concurrencyLevels = {
-    [QUEUE_NAMES.MARKET]: Number(process.env.MARKET_CONCURRENCY) || 4,
-    [QUEUE_NAMES.DECISIONS]: Number(process.env.DECISIONS_CONCURRENCY) || 4,
-    [QUEUE_NAMES.MAINTENANCE]: Number(process.env.MAINTENANCE_CONCURRENCY) || 1,
+    [QUEUE_NAMES.MARKET]: Number(process.env.MARKET_CONCURRENCY) || 5,
+    [QUEUE_NAMES.DECISIONS]: Number(process.env.DECISIONS_CONCURRENCY) || 5,
+    [QUEUE_NAMES.MAINTENANCE]: Number(process.env.MAINTENANCE_CONCURRENCY) || 2,
     [QUEUE_NAMES.SCRAPERS]: Number(process.env.SCRAPERS_CONCURRENCY) || 8,
-    [QUEUE_NAMES.SYNC]: Number(process.env.SYNC_CONCURRENCY) || 2,
+    [QUEUE_NAMES.SYNC]: Number(process.env.SYNC_CONCURRENCY) || 3,
   };
 
   const workers = Object.values(QUEUE_NAMES).map((queueName) => {
-    const worker = new Worker(queueName, handleJob, { 
+    const worker = new Worker(queueName, async (job: Job) => routeJob(job), { 
       connection, 
       concurrency: concurrencyLevels[queueName],
       lockDuration: 1000 * 60 * 5,
       removeOnComplete: { count: 100 },
-      removeOnFail: { count: 1000 },
+      removeOnFail: { count: 500 },
       stalledInterval: 30000,
     });
 

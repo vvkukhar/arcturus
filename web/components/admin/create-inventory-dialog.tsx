@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ItemAutocomplete } from '@/components/admin/item-autocomplete';
 import { Button } from '@/components/ui/button';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { Loader2, Plus, X } from 'lucide-react';
 
 function parseNumber(value: string, fallback: number = 0): number {

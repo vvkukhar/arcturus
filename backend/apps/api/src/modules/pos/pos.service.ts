@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { ActivityService } from '../activity/activity.service';
 import { calculateProfit, calculateRoiPercent, toMoney } from '@arcturus/shared';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PosService {
@@ -15,10 +16,7 @@ export class PosService {
   async findItemByBarcode(barcode: string) {
     const item = await this.prisma.inventoryItem.findFirst({
       where: {
-        OR: [
-          { id: barcode },
-          { item: { setNumber: barcode } }
-        ],
+        OR: [{ id: barcode }, { item: { setNumber: barcode } }],
         quantity: { gt: 0 }
       },
       include: {
@@ -43,21 +41,25 @@ export class PosService {
       throw new BadRequestException('Cart is empty');
     }
 
+    const sortedItems = [...params.items].sort((a, b) => 
+      a.inventoryItemId.localeCompare(b.inventoryItemId)
+    );
+
     return this.prisma.$transaction(async (tx) => {
       const sales = [];
       let totalRevenue = 0;
       let totalProfit = 0;
 
-      for (const cartItem of params.items) {
+      for (const cartItem of sortedItems) {
         const inventory = await tx.$queryRaw<Array<any>>`
           SELECT "id", "quantity", "totalCost", "itemId", "titleSnapshot", "warehouseId", "storageLocationId" 
           FROM "InventoryItem" 
           WHERE "id" = ${cartItem.inventoryItemId} 
-          FOR UPDATE
+          FOR UPDATE SKIP LOCKED
         `;
 
         if (!inventory || inventory.length === 0) {
-          throw new NotFoundException(`Item ${cartItem.inventoryItemId} not found`);
+          throw new BadRequestException(`Item ${cartItem.inventoryItemId} is currently locked or unavailable`);
         }
 
         const inv = inventory[0];
@@ -108,7 +110,6 @@ export class PosService {
         });
 
         sales.push(sale);
-        
         this.realtime.emitInventoryRefresh({ inventoryItemId: inv.id, reason: 'pos_sale' });
       }
 
@@ -128,6 +129,6 @@ export class PosService {
         totalProfit,
         sales
       };
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
   }
 }

@@ -4,8 +4,8 @@ import { browserManager } from './common/browser-manager';
 import { runBrickLinkSource } from './sources/bricklink/bricklink-source';
 import { runOlxSource } from './sources/olx/olx-source';
 import { runEbaySource } from './sources/ebay/ebay-source';
-import { runBrickowlSource } from './sources/brickowl/brickowl-source';
-import { runBrickeconomySource } from './sources/brickeconomy/brickeconomy-source';
+import { runBrickOwlSource } from './sources/brickowl/brickowl-source';
+import { runBrickEconomySource } from './sources/brickeconomy/brickeconomy-source';
 
 let isShuttingDown = false;
 
@@ -25,8 +25,8 @@ async function runAll() {
     { name: 'Olx', fn: runOlxSource },
     { name: 'BrickLink', fn: runBrickLinkSource },
     { name: 'Ebay', fn: runEbaySource },
-    { name: 'BrickOwl', fn: runBrickowlSource },
-    { name: 'BrickEconomy', fn: runBrickeconomySource }
+    { name: 'BrickOwl', fn: runBrickOwlSource },
+    { name: 'BrickEconomy', fn: runBrickEconomySource }
   ];
 
   for (const source of sources) {

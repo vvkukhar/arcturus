@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { Loader2, Edit2, X } from 'lucide-react';
 import type { InventoryItem } from '@/lib/types';
 

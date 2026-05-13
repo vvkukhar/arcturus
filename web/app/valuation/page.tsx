@@ -4,7 +4,7 @@ import { useI18n } from '@/components/providers/i18n-provider';
 import { Calculator, Info, Search, ShieldCheck, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 
 interface CompSummary {

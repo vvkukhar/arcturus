@@ -4,11 +4,12 @@ import { appConfig } from '@/lib/config';
 class SocketManager {
   private static instance: Socket | null = null;
   private static currentToken: string | null = null;
+  private static reconnectTimer: NodeJS.Timeout | null = null;
 
   private static getCookie(name: string): string | null {
     if (typeof document === 'undefined') return null;
     const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
-    return match ? match[2] : null;
+    return match ? decodeURIComponent(match[2]) : null;
   }
 
   public static getSocket(): Socket {
@@ -16,8 +17,7 @@ class SocketManager {
 
     if (this.instance) {
       if (token !== this.currentToken) {
-        this.instance.disconnect();
-        this.instance = null;
+        this.disconnect();
       } else {
         return this.instance;
       }
@@ -37,10 +37,25 @@ class SocketManager {
       auth: token ? { token } : undefined,
     });
 
+    this.instance.on('disconnect', (reason) => {
+      if (reason === 'io server disconnect' || reason === 'io client disconnect') {
+        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = setTimeout(() => {
+          if (this.instance && !this.instance.connected) {
+            this.instance.connect();
+          }
+        }, 2000);
+      }
+    });
+
     return this.instance;
   }
 
   public static disconnect(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     if (this.instance) {
       this.instance.removeAllListeners();
       this.instance.disconnect();

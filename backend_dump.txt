@@ -35,6 +35,25 @@ coverage
 .prisma
 *.log
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\build.bat =====
+
+@echo off
+cd /d "%~dp0"
+if exist "node_modules" rmdir /s /q "node_modules"
+if exist "apps\api\node_modules" rmdir /s /q "apps\api\node_modules"
+if exist "apps\workers\node_modules" rmdir /s /q "apps\workers\node_modules"
+if exist "apps\scrapers\node_modules" rmdir /s /q "apps\scrapers\node_modules"
+call npm install
+call npm run build:all
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\build.sh =====
+
+#!/usr/bin/env bash
+set -euo pipefail
+rm -rf node_modules apps/api/node_modules apps/workers/node_modules apps/scrapers/node_modules
+npm install
+npm run build:all
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\DEPLOYMENT.md =====
 
 # Arcturus Backend Deployment
@@ -63,7 +82,7 @@ services:
     command: 
       - "postgres"
       - "-c"
-      - "max_connections=200"
+      - "max_connections=500"
       - "-c"
       - "shared_buffers=1GB"
       - "-c"
@@ -85,10 +104,6 @@ services:
       timeout: 5s
       retries: 5
     logging: *default-logging
-    deploy:
-      resources:
-        limits:
-          memory: 3G
 
   redis:
     image: redis:7-alpine
@@ -103,7 +118,7 @@ services:
       - "--maxmemory"
       - "1gb"
       - "--maxmemory-policy"
-      - "allkeys-lru"
+      - "noeviction"
       - "--tcp-keepalive"
       - "300"
     volumes:
@@ -131,10 +146,6 @@ services:
       - "127.0.0.1:4000:4000"
     command: sh -c "npx prisma generate && npx prisma migrate deploy && node apps/api/dist/main.js"
     logging: *default-logging
-    deploy:
-      resources:
-        limits:
-          memory: 1G
 
   workers:
     build:
@@ -150,10 +161,6 @@ services:
         condition: service_healthy
     command: sh -c "node apps/workers/dist/main.js"
     logging: *default-logging
-    deploy:
-      resources:
-        limits:
-          memory: 1.5G
 
   scrapers:
     build:
@@ -169,10 +176,6 @@ services:
         condition: service_healthy
     command: sh -c "node apps/scrapers/dist/scraper-loop.js"
     logging: *default-logging
-    deploy:
-      resources:
-        limits:
-          memory: 2G
 
 volumes:
   arcturus_pg_data:
@@ -336,10 +339,16 @@ bash scripts/ops-healthcheck.sh
     "apps/*"
   ],
   "scripts": {
+    "postinstall": "npm run db:generate",
+    "build:shared": "npm run build --workspace=@arcturus/shared",
+    "build:db": "npm run build --workspace=@arcturus/db",
+    "build:scrapers": "npm run build --workspace=@arcturus/scrapers",
+    "build:api": "npm run build --workspace=@arcturus/api",
+    "build:workers": "npm run build --workspace=@arcturus/workers",
+    "build:all": "npm run build:shared && npm run build:db && npm run build:scrapers && npm run build:api && npm run build:workers",
     "dev:api": "npm run start:dev --workspace=@arcturus/api",
     "dev:workers": "npm run start:dev --workspace=@arcturus/workers",
     "dev:scrapers": "npm run start:dev --workspace=@arcturus/scrapers",
-    "build:all": "npm run build --workspaces",
     "db:generate": "npm run generate --workspace=@arcturus/db",
     "db:push": "npm run push --workspace=@arcturus/db",
     "db:migrate": "npm run migrate --workspace=@arcturus/db",
@@ -374,6 +383,19 @@ cp .env.example .env
 npm install
 npm run db:reset
 npm run start:dev
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\README_ENV.md =====
+
+# Р†РЅСЃС‚СЂСѓРєС†С–СЏ С‰РѕРґРѕ РЅРµР·Р°РїРѕРІРЅРµРЅРёС… Р·РјС–РЅРЅРёС… Сѓ .env
+
+OPENAI_API_KEY
+- Р”Р¶РµСЂРµР»Рѕ: platform.openai.com -> РќР°РІС–РіР°С†С–СЏ Р»С–РІРѕСЂСѓС‡ -> API Keys -> Create new secret key.
+
+LIQPAY_PUBLIC_KEY / LIQPAY_PRIVATE_KEY
+- Р”Р¶РµСЂРµР»Рѕ: liqpay.ua -> РђРІС‚РѕСЂРёР·Р°С†С–СЏ -> РќР°Р»Р°С€С‚СѓРІР°РЅРЅСЏ РєРѕРјРїР°РЅС–С— -> API -> Public Key / Private Key.
+
+SENTRY_DSN
+- Р”Р¶РµСЂРµР»Рѕ: sentry.io -> Create Project (Nest.js / Node.js) -> Settings -> Client Keys (DSN).
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\render.yaml =====
 
@@ -440,6 +462,34 @@ services:
           envVarKey: DATABASE_URL
       - key: SCRAPER_INTERVAL_MS
         value: "1200000"
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\start-dev.bat =====
+
+@echo off
+start "API" powershell -NoExit -Command "npm run dev:api"
+start "WORKERS" powershell -NoExit -Command "npm run dev:workers"
+start "SCRAPERS" powershell -NoExit -Command "npm run dev:scrapers"
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\tsconfig.base.json =====
+
+{
+  "compilerOptions": {
+    "target": "es2021",
+    "module": "commonjs",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "ignoreDeprecations": "5.0",
+    "baseUrl": ".",
+    "paths": {
+      "@arcturus/shared": ["packages/shared/src"],
+      "@arcturus/db": ["packages/db/src"],
+      "@arcturus/scrapers": ["apps/scrapers/src"]
+    }
+  }
+}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\.vscode\settings.json =====
 
@@ -636,38 +686,31 @@ volumes:
 FROM node:22-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
-
-# РњРё С‚РµРїРµСЂ "РґРёРІРёРјРѕСЃСЊ" Р· РїР°РїРєРё backend, С‚РѕРјСѓ С€Р»СЏС…Рё С‚Р°РєС–:
-COPY api/package.json ./api/
-COPY workers/package.json ./workers/
-COPY scrapers/package.json ./scrapers/
-COPY package.json package-lock.json* ./
-
-RUN npm install
-
-# РљРѕРїС–СЋС”РјРѕ РІСЃРµ Р· РїР°РїРєРё backend
+COPY apps/api/package.json ./apps/api/
+COPY apps/workers/package.json ./apps/workers/
+COPY apps/scrapers/package.json ./apps/scrapers/
+COPY packages/db/package.json ./packages/db/
+COPY packages/shared/package.json ./packages/shared/
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
-
-# Р‘С–Р»РґРёРјРѕ API
-WORKDIR /app/api
-RUN npx prisma generate && npm run build
-
-# Р‘С–Р»РґРёРјРѕ Workers
-WORKDIR /app/workers
-RUN npx prisma generate && npm run build
-
-# Scrapers
-WORKDIR /app/scrapers
+WORKDIR /app/packages/db
 RUN npx prisma generate
+WORKDIR /app/packages/shared
+RUN npm run build
+WORKDIR /app/apps/api
+RUN npm run build
+WORKDIR /app/apps/workers
+RUN npm run build
+WORKDIR /app/apps/scrapers
+RUN npm run build
 
-# Runner stage
 FROM node:22-alpine AS runner
 WORKDIR /app
 RUN apk add --no-cache openssl
+ENV NODE_ENV=production
 COPY --from=builder /app /app
-
-# Р—Р°РїСѓСЃРє
-WORKDIR /app/api
+WORKDIR /app/apps/api
 RUN chmod +x start-all.sh
 EXPOSE 4000
 CMD ["./start-all.sh"]
@@ -788,24 +831,33 @@ unleashHell()
   },
   "dependencies": {
     "@arcturus/db": "*",
-    "@arcturus/shared": "*",
     "@arcturus/scrapers": "*",
+    "@arcturus/shared": "*",
+    "@bull-board/api": "^5.20.5",
+    "@bull-board/express": "^5.20.5",
+    "@nestjs/bullmq": "^10.1.1",
     "@nestjs/common": "^10.4.0",
+    "@nestjs/config": "^3.2.3",
     "@nestjs/core": "^10.4.0",
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/passport": "^10.0.3",
-    "@nestjs/platform-express": "^10.4.0",
+    "@nestjs/platform-express": "^10.4.22",
     "@nestjs/platform-socket.io": "^10.4.0",
     "@nestjs/schedule": "^4.1.0",
     "@nestjs/swagger": "^7.4.2",
     "@nestjs/websockets": "^10.4.0",
     "@prisma/client": "^5.22.0",
+    "@sentry/nestjs": "^8.20.0",
+    "@sentry/profiling-node": "^8.20.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.76.4",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "compression": "^1.7.4",
+    "helmet": "^7.1.0",
     "ioredis": "^5.4.1",
+    "openai": "^4.52.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "redis": "^5.12.1",
@@ -819,6 +871,7 @@ unleashHell()
     "@nestjs/schematics": "^10.2.3",
     "@nestjs/testing": "^10.4.0",
     "@types/bcryptjs": "^2.4.6",
+    "@types/compression": "^1.7.5",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
     "@types/multer": "^2.1.0",
@@ -997,11 +1050,8 @@ services:
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\start-all.sh =====
 
 #!/bin/sh
-
-cd /backend/apps/api && node dist/src/main.js &
-cd /backend/apps/workers && node dist/main.js &
-cd /backend/apps/scrapers && node dist/scraper-loop.js &
-
+cd /app/apps/api && node dist/src/main.js &
+cd /app/apps/workers && node dist/main.js &
 wait
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\tsconfig.build.json =====
@@ -1014,22 +1064,17 @@ wait
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\tsconfig.json =====
 
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "ES2021",
+    "outDir": "./dist",
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
-    "outDir": "./dist",
     "incremental": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "moduleResolution": "node",
-    "ignoreDeprecations": "5.0",
-    "types": ["node", "jest"]
+    "strict": false
   },
   "include": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules", "dist"]
@@ -3086,15 +3131,57 @@ import { AuthModule } from './modules/auth/auth.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { WatchlistModule } from './modules/watchlist/watchlist.module';
 import { MarketModule } from './modules/market/market.module';
-import { DealDetectionService } from './modules/deals/deal-detection.service';
-import { DealsController } from './modules/deals/deals.controller';
-import { RepricerService } from './modules/repricer/repricer.service';
-import { AiService } from './modules/ai/ai.service';
-import { CronService } from './modules/cron/cron.service';
-import { PlanningController } from './modules/planning/planning.controller';
+import { DealsModule } from './modules/deals/deals.module';
+import { RepricerModule } from './modules/repricer/repricer.module';
+import { AiModule } from './modules/ai/ai.module';
+import { CronModule } from './modules/cron/cron.module';
+import { PlanningModule } from './modules/planning/planning.module';
 import { QueueBoardModule } from './modules/queue/queue-board.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { PosModule } from './modules/pos/pos.module';
+import { RateLimitModule } from './modules/rate-limit/rate-limit.module';
+import { ActivityModule } from './modules/activity/activity.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { BackupModule } from './modules/backup/backup.module';
+import { CapitalModule } from './modules/capital/capital.module';
+import { CollaborationModule } from './modules/collaboration/collaboration.module';
+import { CompsModule } from './modules/comps/comps.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { DecisionEngineModule } from './modules/decision-engine/decision-engine.module';
+import { DecisionsModule } from './modules/decisions/decisions.module';
+import { DocsModule } from './modules/docs/docs.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
+import { FinanceModule } from './modules/finance/finance.module';
+import { FlowsModule } from './modules/flows/flows.module';
+import { HealthModule } from './modules/health/health.module';
+import { ImportExportModule } from './modules/import-export/import-export.module';
+import { InsightsModule } from './modules/insights/insights.module';
+import { ItemsModule } from './modules/items/items.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { OperatorModule } from './modules/operator/operator.module';
+import { OpportunitiesModule } from './modules/opportunities/opportunities.module';
+import { OpportunityEngineModule } from './modules/opportunity-engine/opportunity-engine.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { PortfolioModule } from './modules/portfolio/portfolio.module';
+import { PricingModule } from './modules/pricing/pricing.module';
+import { ProcurementModule } from './modules/procurement/procurement.module';
+import { ProfitModule } from './modules/profit/profit.module';
+import { PublicStoreModule } from './modules/public/public-store.module';
+import { PublicModule } from './modules/public/public.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { ReturnsModule } from './modules/returns/returns.module';
+import { SalesModule } from './modules/sales/sales.module';
+import { ScannerModule } from './modules/scanner/scanner.module';
+import { ShippingModule } from './modules/shipping/shipping.module';
+import { SourceHealthModule } from './modules/source-health/source-health.module';
+import { StrategyModule } from './modules/strategy/strategy.module';
+import { SuggestionsModule } from './modules/suggestions/suggestions.module';
+import { SyncModule } from './modules/sync/sync.module';
+import { UsersModule } from './modules/users/users.module';
+import { WarehouseModule } from './modules/warehouse/warehouse.module';
 
 @Module({
   imports: [
@@ -3106,28 +3193,60 @@ import { PosModule } from './modules/pos/pos.module';
     InventoryModule,
     WatchlistModule,
     MarketModule,
+    DealsModule,
+    RepricerModule,
+    AiModule,
+    CronModule,
+    PlanningModule,
     QueueModule,
     QueueBoardModule,
     PosModule,
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        connection: {
-          host: configService.get('REDIS_HOST', 'localhost'),
-          port: configService.get<number>('REDIS_PORT', 6379),
-          password: configService.get('REDIS_PASSWORD'),
-        },
-      }),
-      inject: [ConfigService],
-    }),
+    RateLimitModule,
+    ActivityModule,
+    AuditModule,
+    BackupModule,
+    CapitalModule,
+    CollaborationModule,
+    CompsModule,
+    DashboardModule,
+    DecisionEngineModule,
+    DecisionsModule,
+    DocsModule,
+    ExpensesModule,
+    FinanceModule,
+    FlowsModule,
+    HealthModule,
+    ImportExportModule,
+    InsightsModule,
+    ItemsModule,
+    MetricsModule,
+    NotificationsModule,
+    OperatorModule,
+    OpportunitiesModule,
+    OpportunityEngineModule,
+    OrdersModule,
+    PaymentsModule,
+    PortfolioModule,
+    PricingModule,
+    ProcurementModule,
+    ProfitModule,
+    PublicStoreModule,
+    PublicModule,
+    RealtimeModule,
+    ReportsModule,
+    ReturnsModule,
+    SalesModule,
+    ScannerModule,
+    ShippingModule,
+    SourceHealthModule,
+    StrategyModule,
+    SuggestionsModule,
+    SyncModule,
+    UsersModule,
+    WarehouseModule
   ],
-  controllers: [DealsController, PlanningController],
-  providers: [
-    DealDetectionService,
-    RepricerService,
-    AiService,
-    CronService,
-  ],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}
 
@@ -3145,7 +3264,7 @@ import { GlobalHttpExceptionFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn', 'log'] : ['error', 'warn', 'log', 'debug', 'verbose'],
+    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['error', 'warn', 'log', 'debug'],
   });
 
   if (process.env.SENTRY_DSN) {
@@ -3157,7 +3276,7 @@ async function bootstrap() {
     });
   }
 
-  app.use(helmet());
+  app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(compression());
 
   app.enableCors({
@@ -3567,6 +3686,21 @@ export class ActivityService {
       take: limit,
     });
   }
+
+  async list(params: { q?: string; action?: string; limit?: number }): Promise<any[]> {
+    return this.prisma.activityLog.findMany({
+      where: {
+        ...(params.action ? { action: params.action } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: params.limit ?? 100,
+    });
+  }
+
+  async stats(): Promise<any> {
+    const total = await this.prisma.activityLog.count();
+    return { total };
+  }
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\ai\ai-suggestions.controller.ts =====
@@ -3833,10 +3967,13 @@ export class AiSuggestionsService {
 
 import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
 import { OpenAiService } from './openai.service';
-import { AdminGuard } from '../auth/guards/admin.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @Controller('ai')
-@UseGuards(AdminGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin')
 export class AiController {
   constructor(private readonly aiService: OpenAiService) {}
 
@@ -4465,6 +4602,7 @@ export class AuditModule {}
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AuditService {
@@ -4477,8 +4615,8 @@ export class AuditService {
         action: dto.action,
         entityType: dto.entityType,
         entityId: dto.entityId ?? null,
-        beforeJson: dto.beforeJson ?? undefined,
-        afterJson: dto.afterJson ?? undefined,
+        beforeJson: dto.beforeJson ? (dto.beforeJson as Prisma.InputJsonValue) : Prisma.JsonNull,
+        afterJson: dto.afterJson ? (dto.afterJson as Prisma.InputJsonValue) : Prisma.JsonNull,
         ipAddress: dto.ipAddress ?? null,
         userAgent: dto.userAgent ?? null,
       },
@@ -4695,6 +4833,27 @@ export class AuthService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
+  public extractBearerToken(header?: string): string | null {
+    if (!header) return null;
+    const [type, token] = header.split(' ');
+    if (type !== 'Bearer' || !token) return null;
+    return token;
+  }
+
+  async validateToken(tokenRaw: string): Promise<any> {
+    const tokenHash = this.hashToken(tokenRaw);
+    const session = await this.prisma.userSession.findUnique({
+      where: { tokenHash },
+      include: { user: true }
+    });
+
+    if (!session || !(session as any).user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
+      throw new UnauthorizedException('Session expired or invalid');
+    }
+    
+    return (session as any).user;
+  }
+
   async register(dto: RegisterDto): Promise<{ token: string; user: any }> {
     if (dto.inviteCode !== (process.env.ADMIN_INVITE_CODE || 'arcturus-init')) {
       throw new BadRequestException('Invalid invite code');
@@ -4710,14 +4869,14 @@ export class AuthService {
       data: { name: dto.name, email: dto.email, passwordHash: hashedPassword, role: 'operator', active: true },
     });
 
-    const token = crypto.randomBytes(32).toString('hex');
-    const tokenHash = this.hashToken(token);
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(rawToken);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
     await this.prisma.userSession.create({ data: { userId: user.id, tokenHash, expiresAt } });
 
-    return { token, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+    return { token: rawToken, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
   }
 
   async login(dto: LoginDto): Promise<{ token: string; user: any }> {
@@ -4735,19 +4894,19 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const token = crypto.randomBytes(32).toString('hex');
-    const tokenHash = this.hashToken(token);
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(rawToken);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + (dto.rememberMe ? 30 : 1));
 
     await this.prisma.userSession.create({ data: { userId: user.id, tokenHash, expiresAt } });
 
-    return { token, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+    return { token: rawToken, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
   }
 
-  async logout(token: string): Promise<void> {
-    if (!token) return;
-    const tokenHash = this.hashToken(token);
+  async logout(rawToken: string): Promise<void> {
+    if (!rawToken) return;
+    const tokenHash = this.hashToken(rawToken);
     await this.prisma.userSession.deleteMany({ where: { tokenHash } });
     await this.redis.del(`session:${tokenHash}`);
   }
@@ -4806,13 +4965,13 @@ export class JwtAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request & { user?: any }>();
-    const token = extractAuthToken(request);
+    const rawToken = extractAuthToken(request);
 
-    if (!token) {
+    if (!rawToken) {
       throw new UnauthorizedException('Missing authentication token');
     }
 
-    const tokenHash = this.hashToken(token);
+    const tokenHash = this.hashToken(rawToken);
     const cacheKey = `session:${tokenHash}`;
     
     let sessionUser = await this.redis.get<any>(cacheKey);
@@ -4823,18 +4982,20 @@ export class JwtAuthGuard implements CanActivate {
         include: { user: true },
       });
 
-      if (!session || !session.user.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
+      if (!session || !(session as any).user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
         throw new UnauthorizedException('Session expired or invalid');
       }
 
+      const user = (session as any).user;
+
       sessionUser = {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-        role: session.user.role,
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
       };
 
-      await this.redis.set(cacheKey, sessionUser, 300); // РљРµС€СѓС”РјРѕ РЅР° 5 С…РІРёР»РёРЅ
+      await this.redis.set(cacheKey, sessionUser, 300);
     }
 
     request.user = sessionUser;
@@ -6263,10 +6424,24 @@ export class CompsService {
   }
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\cron\cron.module.ts =====
+
+import { Module } from '@nestjs/common';
+import { CronService } from './cron.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  providers: [CronService],
+  exports: [CronService],
+})
+export class CronModule {}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\cron\cron.service.ts =====
 
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { ModuleRef } from '@nestjs/core';
 import { RepricerService } from '../repricer/repricer.service';
 import { MarketSnapshotService } from '../market/market-snapshot.service';
 import { DealDetectionService } from '../deals/deal-detection.service';
@@ -6277,48 +6452,36 @@ export class CronService {
   private readonly logger = new Logger(CronService.name);
 
   constructor(
-    private readonly repricer: RepricerService,
-    private readonly snapshot: MarketSnapshotService,
-    private readonly dealDetection: DealDetectionService,
+    private readonly moduleRef: ModuleRef,
     private readonly prisma: PrismaService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
   async handleMarketSnapshots() {
-    this.logger.log('Starting hourly market snapshot recomputation...');
     try {
-      const count = await this.snapshot.recomputeAllActive();
-      this.logger.log(`Successfully recomputed ${count} market snapshots.`);
-    } catch (error) {
-      this.logger.error('Failed to recompute market snapshots', error);
-    }
+      const snapshot = this.moduleRef.get(MarketSnapshotService, { strict: false });
+      await snapshot.recomputeAllActive();
+    } catch (error) {}
   }
 
   @Cron(CronExpression.EVERY_30_MINUTES)
   async handleAutoReprice() {
-    this.logger.log('Starting automated reprice flow processing...');
     try {
-      const count = await this.repricer.processRepriceQueue();
-      this.logger.log(`Automatically repriced ${count} inventory items.`);
-    } catch (error) {
-      this.logger.error('Failed to process reprice queue', error);
-    }
+      const repricer = this.moduleRef.get(RepricerService, { strict: false });
+      await repricer.processRepriceQueue();
+    } catch (error) {}
   }
 
   @Cron(CronExpression.EVERY_10_MINUTES)
   async handleDealPruning() {
-    this.logger.log('Pruning stale and missed arbitrage deals...');
     try {
-      await this.dealDetection.pruneStaleDeals();
-      this.logger.log('Pruning complete.');
-    } catch (error) {
-      this.logger.error('Failed to prune deals', error);
-    }
+      const dealDetection = this.moduleRef.get(DealDetectionService, { strict: false });
+      await dealDetection.pruneStaleDeals();
+    } catch (error) {}
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleSystemCleanup() {
-    this.logger.log('Running daily database cleanup and optimization...');
     try {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -6330,11 +6493,7 @@ export class CronService {
       await this.prisma.activityLog.deleteMany({
         where: { createdAt: { lt: thirtyDaysAgo } },
       });
-
-      this.logger.log('Daily cleanup successful.');
-    } catch (error) {
-      this.logger.error('Failed daily cleanup', error);
-    }
+    } catch (error) {}
   }
 }
 
@@ -11511,7 +11670,7 @@ export class ImportExportService {
         source: row.source,
         warehouse: row.location?.warehouse?.name ?? '',
         createdAt: row.createdAt,
-      })),
+      })) as Record<string, unknown>[],
     );
   }
 
@@ -11534,7 +11693,48 @@ export class ImportExportService {
         channel: row.channel,
         buyerName: row.buyerName,
         createdAt: row.createdAt,
-      })),
+      })) as Record<string, unknown>[],
+    );
+  }
+
+  async exportExpenses(): Promise<string> {
+    const rows = await this.prisma.expense.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return this.toCsv(
+      rows.map((row) => ({
+        id: row.id,
+        type: row.type,
+        category: row.category,
+        amount: row.amount,
+        currency: row.currency,
+        description: row.description ?? '',
+        incurredAt: row.incurredAt,
+        createdAt: row.createdAt,
+      })) as Record<string, unknown>[],
+    );
+  }
+
+  async exportWatchlist(): Promise<string> {
+    const rows = await this.prisma.watchlistItem.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { item: true }
+    });
+
+    return this.toCsv(
+      rows.map((row) => ({
+        id: row.id,
+        itemId: row.itemId,
+        titleSnapshot: row.titleSnapshot,
+        setNumber: row.item?.setNumber ?? '',
+        desiredBuyPrice: row.desiredBuyPrice,
+        maxBuyPrice: row.maxBuyPrice,
+        targetSellPrice: row.targetSellPrice ?? '',
+        active: row.active,
+        priority: row.priority,
+        createdAt: row.createdAt,
+      })) as Record<string, unknown>[],
     );
   }
 
@@ -11560,6 +11760,33 @@ export class ImportExportService {
 
     if (!dryRun && validData.length > 0) {
       await this.prisma.item.createMany({ data: validData, skipDuplicates: true });
+    }
+
+    return { dryRun, rows: rows.length, successCount: validData.length, errors };
+  }
+
+  async importExpenses(csv: string, dryRun = false): Promise<unknown> {
+    const rows = this.parseCsv(csv);
+    const validData = [];
+    const errors = [];
+
+    for (const row of rows) {
+      const amount = Number(row.amount);
+      if (Number.isNaN(amount) || amount <= 0) {
+        errors.push({ error: 'Invalid amount', row });
+        continue;
+      }
+      validData.push({
+        type: row.type?.trim() || 'general',
+        category: row.category?.trim() || 'other',
+        amount: toMoney(amount),
+        currency: row.currency?.trim() || 'UAH',
+        description: row.description?.trim() || null,
+      });
+    }
+
+    if (!dryRun && validData.length > 0) {
+      await this.prisma.expense.createMany({ data: validData, skipDuplicates: true });
     }
 
     return { dryRun, rows: rows.length, successCount: validData.length, errors };
@@ -13894,7 +14121,6 @@ export class MarketSnapshotRecomputeService {
 
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class MarketSnapshotService {
@@ -13924,7 +14150,7 @@ export class MarketSnapshotService {
         data: {
           itemId,
           listingsCount: 0,
-          confidenceScore: new Prisma.Decimal(0),
+          confidenceScore: 0,
         },
       });
       return;
@@ -13970,16 +14196,16 @@ export class MarketSnapshotService {
       data: {
         itemId,
         listingsCount: listings.length,
-        lowestPrice: new Prisma.Decimal(lowestPrice),
-        lowestPriceWithShipping: new Prisma.Decimal(lowestPrice + minShipping),
-        avgPrice: new Prisma.Decimal(avgPrice),
-        medianPrice: new Prisma.Decimal(medianPrice),
-        minShipping: new Prisma.Decimal(minShipping),
-        maxShipping: new Prisma.Decimal(maxShipping),
-        avgShipping: new Prisma.Decimal(avgShipping),
-        sealedAvgPrice: sealedAvg ? new Prisma.Decimal(sealedAvg) : null,
-        usedAvgPrice: usedAvg ? new Prisma.Decimal(usedAvg) : null,
-        confidenceScore: new Prisma.Decimal(confidence),
+        lowestPrice: lowestPrice,
+        lowestPriceWithShipping: lowestPrice + minShipping,
+        avgPrice: avgPrice,
+        medianPrice: medianPrice,
+        minShipping: minShipping,
+        maxShipping: maxShipping,
+        avgShipping: avgShipping,
+        sealedAvgPrice: sealedAvg ? sealedAvg : null,
+        usedAvgPrice: usedAvg ? usedAvg : null,
+        confidenceScore: confidence,
       },
     });
 
@@ -14099,7 +14325,7 @@ export class MarketController {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\market\market.module.ts =====
 
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { AutoDecisionEngineService } from './auto-decision-engine.service';
 import { FeesEstimatorService } from './fees-estimator.service';
 import { ItemTypeService } from './item-type.service';
@@ -14108,6 +14334,7 @@ import { MarketAnomalyService } from './market-anomaly.service';
 import { MarketController } from './market.controller';
 import { MarketService } from './market.service';
 import { MarketSnapshotRecomputeService } from './market-snapshot-recompute.service';
+import { MarketSnapshotService } from './market-snapshot.service';
 import { MarketSyncService } from './market-sync.service';
 import { MinifigureLogicService } from './minifigure-logic.service';
 import { OpportunityScoreV3Service } from './opportunity-score-v3.service';
@@ -14122,11 +14349,13 @@ import { SourceFreshnessService } from './source-freshness.service';
 import { StaleListingPenaltyService } from './stale-listing-penalty.service';
 import { MarketIntelligenceService } from './market-intelligence.service';
 
+@Global()
 @Module({
   controllers: [MarketController],
   providers: [
     MarketService,
     MarketSnapshotRecomputeService,
+    MarketSnapshotService,
     MarketSyncService,
     ProfitabilityService,
     FeesEstimatorService,
@@ -14149,6 +14378,7 @@ import { MarketIntelligenceService } from './market-intelligence.service';
   exports: [
     MarketService,
     MarketSnapshotRecomputeService,
+    MarketSnapshotService,
     MarketSyncService,
     ProfitabilityService,
     FeesEstimatorService,
@@ -15285,7 +15515,7 @@ export class NotificationsController {
       id: string;
     },
   ): Promise<unknown> {
-    return this.notificationsService.markRead(body.id);
+    return this.notificationsService.markAsRead(body.id);
   }
 
   @Roles('admin', 'operator', 'viewer')
@@ -15341,7 +15571,6 @@ export class NotificationsService {
         targetUserId: data.targetUserId,
       },
     });
-
     this.realtime.emitCustom('notification', notification);
     return notification;
   }
@@ -15349,7 +15578,6 @@ export class NotificationsService {
   async createSaleNotification(data: { itemTitle: string; profit: number; targetUserId?: string | null }) {
     const msg = `${data.itemTitle} РїСЂРѕРґР°РЅРѕ. РџСЂРёР±СѓС‚РѕРє: +${data.profit}в‚ґ`;
     await this.telegram.sendMessage(`вњ… <b>SALE CONFIRMED</b>\n\n${msg}`);
-    
     return this.create({
       title: 'РќРѕРІРёР№ РїСЂРѕРґР°Р¶!',
       message: msg,
@@ -15361,16 +15589,13 @@ export class NotificationsService {
 
   async createReserveNotification(data: { reserveId: string; productTitle: string; customerName: string; contact: string }) {
     const msg = `рџ”” <b>РќРћР’РР™ Р Р•Р—Р•Р Р’</b>\n\nрџ“¦ РўРѕРІР°СЂ: ${data.productTitle}\nрџ‘¤ РљР»С–С”РЅС‚: ${data.customerName}\nрџ“± РљРѕРЅС‚Р°РєС‚: ${data.contact}`;
-    
     const keyboard = [
       [
         { text: 'вњ… РџС–РґС‚РІРµСЂРґРёС‚Рё', callback_data: `reserve_approve_${data.reserveId}` },
         { text: 'вќЊ Р’С–РґС…РёР»РёС‚Рё', callback_data: `reserve_reject_${data.reserveId}` }
       ]
     ];
-
     await this.telegram.sendMessage(msg, keyboard);
-
     return this.create({
       title: 'РќРѕРІРёР№ СЂРµР·РµСЂРІ',
       message: `${data.productTitle} вЂў ${data.customerName}`,
@@ -15389,7 +15614,6 @@ export class NotificationsService {
         url: data.url,
       });
     }
-
     return this.create({
       title: 'New Deal Detected!',
       message: `${data.itemTitle} - ROI: ${data.roi}%`,
@@ -15498,7 +15722,6 @@ export class TelegramWebhookService {
   async processMessage(message: any): Promise<void> {
     const chatId = message.chat?.id?.toString();
     const text = message.text?.trim();
-
     if (chatId !== process.env.TELEGRAM_CHAT_ID) return;
 
     if (text?.startsWith('/stats')) {
@@ -15514,12 +15737,10 @@ export class TelegramWebhookService {
   async processCallback(callbackQuery: any): Promise<void> {
     const data = callbackQuery.data;
     const chatId = callbackQuery.message?.chat?.id?.toString();
-
     if (chatId !== process.env.TELEGRAM_CHAT_ID) return;
 
     if (data.startsWith('reserve_')) {
       const [_, action, id] = data.split('_');
-      
       const reserve = await this.prisma.reserveRequest.findUnique({ where: { id } });
       if (!reserve) return;
 
@@ -18138,10 +18359,63 @@ export class PrismaModule {}
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\prisma\prisma.service.ts =====
 
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { createPrismaClient } from '@arcturus/db';
+import { PrismaClient } from '@prisma/client';
 
 @Injectable()
-export class PrismaService extends createPrismaClient() implements OnModuleInit, OnModuleDestroy {
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  constructor() {
+    super({
+      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    });
+
+    return this.$extends({
+      query: {
+        sale: this.createSoftDeleteExtension(),
+        order: this.createSoftDeleteExtension(),
+        returnRequest: this.createSoftDeleteExtension(),
+        expense: this.createSoftDeleteExtension(),
+      },
+    }) as this;
+  }
+
+  private createSoftDeleteExtension() {
+    return {
+      async findMany({ args, query }: any) {
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
+      },
+      async findFirst({ args, query }: any) {
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
+      },
+      async findFirstOrThrow({ args, query }: any) {
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
+      },
+      async findUnique({ args, query }: any) {
+        const result = await query(args);
+        return result?.deletedAt ? null : result;
+      },
+      async findUniqueOrThrow({ args, query }: any) {
+        const result = await query(args);
+        if (result?.deletedAt) throw new Error('Record not found');
+        return result;
+      },
+      async count({ args, query }: any) {
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
+      },
+      async aggregate({ args, query }: any) {
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
+      },
+      async groupBy({ args, query }: any) {
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
+      }
+    };
+  }
+
   async onModuleInit() {
     await this.$connect();
   }
@@ -18816,6 +19090,22 @@ export class ProfitAnalyticsService {
       estimatedDaysToClear,
       velocityTier: soldPerDay >= 2 ? 'fast' : soldPerDay >= 0.5 ? 'medium' : 'slow',
     };
+  }
+
+  async getProfitByTheme(): Promise<unknown[]> {
+    const sales = await this.prisma.sale.findMany({
+      select: { profit: true, item: { select: { theme: true } } },
+    });
+    
+    const map = new Map<string, number>();
+    for (const sale of sales) {
+      const theme = sale.item?.theme ?? 'Unknown';
+      map.set(theme, (map.get(theme) ?? 0) + Number(sale.profit ?? 0));
+    }
+    
+    return Array.from(map.entries())
+      .map(([theme, profit]) => ({ theme, profit: toMoney(profit) }))
+      .sort((a, b) => b.profit - a.profit);
   }
 }
 
@@ -19773,14 +20063,17 @@ export class QueueBoardModule implements NestModule {
     const serverAdapter = new ExpressAdapter();
     serverAdapter.setBasePath('/api/admin/queues');
 
-    const redisOptions = {
-      host: process.env.REDIS_HOST ?? 'localhost',
-      port: Number(process.env.REDIS_PORT ?? 6379),
-      password: process.env.REDIS_PASSWORD || undefined,
-    };
+    const redisUrl = process.env.REDIS_URL?.trim();
+    const redisOptions = redisUrl 
+      ? { url: redisUrl } 
+      : {
+          host: process.env.REDIS_HOST || '127.0.0.1',
+          port: Number(process.env.REDIS_PORT || 6379),
+          password: process.env.REDIS_PASSWORD || undefined,
+        };
 
     const queues = Object.values(QUEUE_NAMES).map(
-      (name) => new BullMQAdapter(new Queue(name, { connection: redisOptions }))
+      (name) => new BullMQAdapter(new Queue(name, { connection: redisOptions })) as any
     );
 
     createBullBoard({
@@ -19902,8 +20195,8 @@ function redisConnection(): ConnectionOptions {
   }
 
   return {
-    host: process.env.REDIS_HOST ?? 'localhost',
-    port: Number(process.env.REDIS_PORT ?? 6379),
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: Number(process.env.REDIS_PORT || 6379),
     password: process.env.REDIS_PASSWORD || undefined,
     maxRetriesPerRequest: null,
   };
@@ -19930,68 +20223,27 @@ export class QueueService {
   });
 
   async enqueueMarketSnapshots(): Promise<unknown> {
-    return this.marketQueue.add(
-      JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS,
-      {},
-      {
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
-    );
+    return this.marketQueue.add(JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS, {}, { removeOnComplete: 100, removeOnFail: 500 });
   }
 
   async enqueueDecisions(): Promise<unknown> {
-    return this.decisionsQueue.add(
-      JOB_NAMES.RECOMPUTE_DECISIONS,
-      {},
-      {
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
-    );
+    return this.decisionsQueue.add(JOB_NAMES.RECOMPUTE_DECISIONS, {}, { removeOnComplete: 100, removeOnFail: 500 });
   }
 
   async enqueueDealDetection(): Promise<unknown> {
-    return this.decisionsQueue.add(
-      JOB_NAMES.DETECT_DEALS,
-      {},
-      {
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
-    );
+    return this.decisionsQueue.add(JOB_NAMES.DETECT_DEALS, {}, { removeOnComplete: 100, removeOnFail: 500 });
   }
 
   async enqueueScheduledRefresh(): Promise<unknown> {
-    return this.maintenanceQueue.add(
-      JOB_NAMES.SCHEDULED_REFRESH,
-      {},
-      {
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
-    );
+    return this.maintenanceQueue.add(JOB_NAMES.SCHEDULED_REFRESH, {}, { removeOnComplete: 100, removeOnFail: 500 });
   }
 
   async enqueueScannerJob(jobId: string): Promise<unknown> {
-    return this.scraperQueue.add(
-      JOB_NAMES.RUN_SCANNER_JOB,
-      { jobId },
-      {
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
-    );
+    return this.scraperQueue.add(JOB_NAMES.RUN_SCANNER_JOB, { jobId }, { removeOnComplete: 100, removeOnFail: 500 });
   }
 
   async stats(): Promise<unknown> {
-    const queues = [
-      this.marketQueue,
-      this.decisionsQueue,
-      this.scraperQueue,
-      this.maintenanceQueue,
-    ];
-
+    const queues = [this.marketQueue, this.decisionsQueue, this.scraperQueue, this.maintenanceQueue];
     const result = [];
 
     for (const queue of queues) {
@@ -20003,14 +20255,7 @@ export class QueueService {
         queue.getDelayedCount(),
       ]);
 
-      result.push({
-        name: queue.name,
-        waiting,
-        active,
-        completed,
-        failed,
-        delayed,
-      });
+      result.push({ name: queue.name, waiting, active, completed, failed, delayed });
     }
 
     return result;
@@ -20133,29 +20378,27 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   async handleConnection(client: Socket) {
     try {
-      const token = client.handshake.auth?.token;
+      const rawToken = client.handshake.auth?.token;
       
-      if (!token) {
-        client.disconnect();
+      if (!rawToken) {
+        client.disconnect(true);
         return;
       }
 
-      const tokenHash = this.hashToken(token);
+      const tokenHash = this.hashToken(rawToken);
       const session = await this.prisma.userSession.findUnique({
         where: { tokenHash },
         include: { user: true },
       });
 
-      if (!session || !session.user.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
-        client.disconnect();
+      if (!session || !(session as any).user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
+        client.disconnect(true);
         return;
       }
 
-      // Р®Р·РµСЂ РІР°Р»С–РґРЅРёР№, РїС–РґРєР»СЋС‡Р°С”РјРѕ РґРѕ РєС–РјРЅР°С‚Рё РґР»СЏ СЂРѕР·СЃРёР»РѕРє
       client.join('admin_broadcast');
-      
     } catch (error) {
-      client.disconnect();
+      client.disconnect(true);
     }
   }
 
@@ -20237,14 +20480,17 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   async connectToRedis(): Promise<void> {
+    const url = process.env.REDIS_URL?.trim() || `redis://${process.env.REDIS_HOST || '127.0.0.1'}:${process.env.REDIS_PORT || 6379}`;
+    
     const pubClient = createClient({
-      url: process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`,
+      url,
       password: process.env.REDIS_PASSWORD || undefined,
     });
+    
     const subClient = pubClient.duplicate();
 
-    pubClient.on('error', (err) => console.error('[Redis PubClient Error]', err));
-    subClient.on('error', (err) => console.error('[Redis SubClient Error]', err));
+    pubClient.on('error', () => {});
+    subClient.on('error', () => {});
 
     await Promise.all([pubClient.connect(), subClient.connect()]);
 
@@ -20286,15 +20532,25 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: Redis;
 
   constructor() {
-    this.client = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-      maxRetriesPerRequest: 3,
-      family: 0,
-    });
+    const redisUrl = process.env.REDIS_URL?.trim();
+    
+    if (redisUrl) {
+      this.client = new Redis(redisUrl, {
+        maxRetriesPerRequest: 3,
+        family: 0,
+      });
+    } else {
+      this.client = new Redis({
+        host: process.env.REDIS_HOST || '127.0.0.1',
+        port: Number(process.env.REDIS_PORT || 6379),
+        password: process.env.REDIS_PASSWORD || undefined,
+        maxRetriesPerRequest: 3,
+        family: 0,
+      });
+    }
   }
 
-  async onModuleInit() {
-    this.client.on('error', (err) => console.error('Redis Client Error', err));
-  }
+  async onModuleInit() {}
 
   async onModuleDestroy() {
     await this.client.quit();
@@ -20920,13 +21176,10 @@ export class RepricerController {
     @Body()
     body: {
       inventoryItemId: string;
-      marketFloor?: number | null;
-      marketAverage?: number | null;
-      marketCeiling?: number | null;
       targetRoiPercent?: number | null;
     },
   ): Promise<unknown> {
-    return this.repricerService.analyze(body);
+    return this.repricerService.analyzeItem(body.inventoryItemId, body.targetRoiPercent ?? 40);
   }
 
   @Post('analyze-from-comps')
@@ -20937,7 +21190,7 @@ export class RepricerController {
       targetRoiPercent?: number | null;
     },
   ): Promise<unknown> {
-    return this.repricerService.analyzeFromComps(body);
+    return this.repricerService.analyzeItem(body.inventoryItemId, body.targetRoiPercent ?? 40);
   }
 
   @Patch('apply')
@@ -20948,7 +21201,7 @@ export class RepricerController {
       suggestedPrice: number;
     },
   ): Promise<unknown> {
-    return this.repricerService.apply(body);
+    return this.repricerService.applyReprice(body.inventoryItemId, body.suggestedPrice);
   }
 }
 
@@ -20981,7 +21234,6 @@ export class RepricerModule {}
 
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
 
 interface RepriceResult {
   inventoryItemId: string;
@@ -21056,14 +21308,14 @@ export class RepricerService {
     await this.prisma.$transaction(async (tx) => {
       await tx.inventoryItem.update({
         where: { id: inventoryItemId },
-        data: { expectedSalePriceManual: new Prisma.Decimal(suggestedPrice) },
+        data: { expectedSalePriceManual: suggestedPrice },
       });
 
       await tx.repriceFlowItem.updateMany({
         where: { inventoryItemId, status: 'pending' },
         data: { 
           status: 'completed', 
-          suggestedPrice: new Prisma.Decimal(suggestedPrice),
+          suggestedPrice: suggestedPrice,
           updatedAt: new Date()
         },
       });
@@ -21092,7 +21344,7 @@ export class RepricerService {
           await this.applyReprice(item.inventoryItemId, analysis.suggestedPrice);
           processed++;
         }
-      } catch (error) {
+      } catch (error: any) {
         this.logger.error(`Failed to reprice item ${item.inventoryItemId}: ${error.message}`);
       }
     }
@@ -26026,14 +26278,18 @@ CMD ["node", "dist/scraper-loop.js"]
     "@arcturus/db": "*",
     "@arcturus/shared": "*",
     "@prisma/client": "^5.22.0",
+    "axios": "^1.7.2",
+    "axios-retry": "^4.3.0",
     "cheerio": "^1.0.0",
     "dotenv": "^16.4.7",
     "playwright": "^1.42.1",
     "playwright-extra": "^4.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "string-similarity": "^4.0.4"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/string-similarity": "^4.0.2",
     "prisma": "^5.22.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
@@ -26043,20 +26299,46 @@ CMD ["node", "dist/scraper-loop.js"]
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\tsconfig.json =====
 
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "es2021",
     "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "ignoreDeprecations": "5.0"
+    "declaration": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\index.js =====
+
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.httpClient = void 0;
+__exportStar(require("./sources/olx/olx-source"), exports);
+__exportStar(require("./sources/bricklink/bricklink-source"), exports);
+__exportStar(require("./sources/ebay/ebay-source"), exports);
+__exportStar(require("./sources/brickowl/brickowl-source"), exports);
+__exportStar(require("./sources/brickeconomy/brickeconomy-source"), exports);
+__exportStar(require("./sources/olx/olx-parser"), exports);
+__exportStar(require("./sources/bricklink/bricklink-parser"), exports);
+__exportStar(require("./sources/ebay/ebay-parser"), exports);
+__exportStar(require("./sources/brickowl/brickowl-parser"), exports);
+__exportStar(require("./sources/brickeconomy/brickeconomy-parser"), exports);
+var http_client_1 = require("./common/http-client");
+Object.defineProperty(exports, "httpClient", { enumerable: true, get: function () { return http_client_1.httpClient; } });
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\index.ts =====
 
@@ -26081,8 +26363,8 @@ import { prisma } from './prisma';
 import { runBrickLinkSource } from './sources/bricklink/bricklink-source';
 import { runOlxSource } from './sources/olx/olx-source';
 import { runEbaySource } from './sources/ebay/ebay-source';
-import { runBrickowlSource } from './sources/brickowl/brickowl-source';
-import { runBrickeconomySource } from './sources/brickeconomy/brickeconomy-source';
+import { runBrickOwlSource } from './sources/brickowl/brickowl-source';
+import { runBrickEconomySource } from './sources/brickeconomy/brickeconomy-source';
 
 async function main(): Promise<void> {
   const mode = process.argv[2] ?? 'all';
@@ -26094,15 +26376,15 @@ async function main(): Promise<void> {
   } else if (mode === 'ebay') {
     await runEbaySource();
   } else if (mode === 'brickowl') {
-    await runBrickowlSource();
+    await runBrickOwlSource();
   } else if (mode === 'brickeconomy') {
-    await runBrickeconomySource();
+    await runBrickEconomySource();
   } else {
     await runOlxSource();
     await runBrickLinkSource();
     await runEbaySource();
-    await runBrickowlSource();
-    await runBrickeconomySource();
+    await runBrickOwlSource();
+    await runBrickEconomySource();
   }
 
   await prisma.$disconnect();
@@ -26112,6 +26394,18 @@ main().catch(async (error: unknown) => {
   console.error(error);
   await prisma.$disconnect();
   process.exit(1);
+});
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\prisma.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.prisma = void 0;
+const client_1 = require("@prisma/client");
+exports.prisma = new client_1.PrismaClient({
+    log: process.env.NODE_ENV === 'development'
+        ? ['error', 'warn']
+        : ['error'],
 });
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\prisma.ts =====
@@ -26133,8 +26427,8 @@ import { browserManager } from './common/browser-manager';
 import { runBrickLinkSource } from './sources/bricklink/bricklink-source';
 import { runOlxSource } from './sources/olx/olx-source';
 import { runEbaySource } from './sources/ebay/ebay-source';
-import { runBrickowlSource } from './sources/brickowl/brickowl-source';
-import { runBrickeconomySource } from './sources/brickeconomy/brickeconomy-source';
+import { runBrickOwlSource } from './sources/brickowl/brickowl-source';
+import { runBrickEconomySource } from './sources/brickeconomy/brickeconomy-source';
 
 let isShuttingDown = false;
 
@@ -26154,8 +26448,8 @@ async function runAll() {
     { name: 'Olx', fn: runOlxSource },
     { name: 'BrickLink', fn: runBrickLinkSource },
     { name: 'Ebay', fn: runEbaySource },
-    { name: 'BrickOwl', fn: runBrickowlSource },
-    { name: 'BrickEconomy', fn: runBrickeconomySource }
+    { name: 'BrickOwl', fn: runBrickOwlSource },
+    { name: 'BrickEconomy', fn: runBrickEconomySource }
   ];
 
   for (const source of sources) {
@@ -26198,9 +26492,78 @@ main().catch(async (error) => {
   process.exit(1);
 });
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\browser-manager.js =====
+
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.browserManager = exports.BrowserManager = void 0;
+const playwright_extra_1 = require("playwright-extra");
+const puppeteer_extra_plugin_stealth_1 = __importDefault(require("puppeteer-extra-plugin-stealth"));
+const proxy_manager_1 = require("./proxy-manager");
+playwright_extra_1.chromium.use((0, puppeteer_extra_plugin_stealth_1.default)());
+class BrowserManager {
+    constructor() {
+        this.browser = null;
+    }
+    async init() {
+        if (!this.browser) {
+            this.browser = await playwright_extra_1.chromium.launch({
+                headless: true,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-web-security',
+                    '--disable-features=IsolateOrigins,site-per-process'
+                ],
+            });
+        }
+    }
+    async fetchHtml(url) {
+        await this.init();
+        const proxyStr = proxy_manager_1.proxyManager.getRawProxy();
+        const proxyConfig = proxyStr ? { server: proxyStr } : undefined;
+        const context = await this.browser.newContext({
+            proxy: proxyConfig,
+            viewport: { width: 1920, height: 1080 },
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        });
+        const page = await context.newPage();
+        await page.route('**/*', (route) => {
+            const type = route.request().resourceType();
+            if (['image', 'media', 'font', 'stylesheet'].includes(type)) {
+                route.abort();
+            }
+            else {
+                route.continue();
+            }
+        });
+        try {
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+            await page.waitForTimeout(Math.random() * 2000 + 1500);
+            return await page.content();
+        }
+        finally {
+            await context.close();
+        }
+    }
+    async close() {
+        if (this.browser) {
+            await this.browser.close();
+            this.browser = null;
+        }
+    }
+}
+exports.BrowserManager = BrowserManager;
+exports.browserManager = new BrowserManager();
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\browser-manager.ts =====
 
-import { chromium, Browser, BrowserContext } from 'playwright-extra';
+import { chromium } from 'playwright-extra';
+import { Browser, BrowserContext } from 'playwright';
 import stealth from 'puppeteer-extra-plugin-stealth';
 import { proxyManager } from './proxy-manager';
 
@@ -26208,6 +26571,8 @@ chromium.use(stealth());
 
 export class BrowserManager {
   private browser: Browser | null = null;
+  private requestCount = 0;
+  private readonly MAX_REQUESTS = 300;
 
   async init(): Promise<void> {
     if (!this.browser) {
@@ -26218,13 +26583,22 @@ export class BrowserManager {
           '--disable-setuid-sandbox',
           '--disable-blink-features=AutomationControlled',
           '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process'
+          '--disable-features=IsolateOrigins,site-per-process',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--single-process'
         ],
       });
+      this.requestCount = 0;
     }
   }
 
   async fetchHtml(url: string): Promise<string> {
+    this.requestCount++;
+    if (this.requestCount > this.MAX_REQUESTS) {
+      await this.close();
+    }
+    
     await this.init();
     
     const proxyStr = proxyManager.getRawProxy();
@@ -26238,9 +26612,9 @@ export class BrowserManager {
 
     const page = await context.newPage();
 
-    await page.route('**/*', (route) => {
+    await page.route('**/*', (route: any) => {
       const type = route.request().resourceType();
-      if (['image', 'media', 'font', 'stylesheet'].includes(type)) {
+      if (['image', 'media', 'font', 'stylesheet', 'eventsource', 'websocket'].includes(type)) {
         route.abort();
       } else {
         route.continue();
@@ -26248,10 +26622,11 @@ export class BrowserManager {
     });
 
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      await page.waitForTimeout(Math.random() * 2000 + 1500);
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForTimeout(Math.floor(Math.random() * 1500) + 1000);
       return await page.content();
     } finally {
+      await page.close();
       await context.close();
     }
   }
@@ -26260,6 +26635,7 @@ export class BrowserManager {
     if (this.browser) {
       await this.browser.close();
       this.browser = null;
+      this.requestCount = 0;
     }
   }
 }
@@ -26292,6 +26668,59 @@ export function convertToUah(
   return Number((amount * rate).toFixed(2));
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\http-client.js =====
+
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.httpClient = void 0;
+const axios_1 = __importDefault(require("axios"));
+const axios_retry_1 = __importDefault(require("axios-retry"));
+const proxy_manager_1 = require("./proxy-manager");
+const user_agents_1 = require("./user-agents");
+exports.httpClient = axios_1.default.create({
+    timeout: 20000,
+    maxRedirects: 5,
+    validateStatus: (status) => status >= 200 && status < 400,
+});
+(0, axios_retry_1.default)(exports.httpClient, {
+    retries: 4,
+    retryDelay: (retryCount) => {
+        return axios_retry_1.default.exponentialDelay(retryCount) + Math.random() * 1000;
+    },
+    retryCondition: (error) => {
+        const status = error.response?.status;
+        return axios_retry_1.default.isNetworkOrIdempotentRequestError(error) || status === 429 || status === 403 || status === 503;
+    },
+});
+exports.httpClient.interceptors.request.use((config) => {
+    config.headers['User-Agent'] = (0, user_agents_1.getRandomUserAgent)();
+    config.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7';
+    config.headers['Accept-Language'] = 'en-US,en;q=0.9,uk-UA;q=0.8,uk;q=0.7';
+    config.headers['Cache-Control'] = 'max-age=0';
+    config.headers['Upgrade-Insecure-Requests'] = '1';
+    config.headers['Sec-Ch-Ua'] = '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"';
+    config.headers['Sec-Ch-Ua-Mobile'] = '?0';
+    config.headers['Sec-Ch-Ua-Platform'] = '"Windows"';
+    const proxyStr = proxy_manager_1.proxyManager.getRawProxy();
+    if (proxyStr) {
+        try {
+            const url = new URL(proxyStr);
+            config.proxy = {
+                protocol: url.protocol.replace(':', ''),
+                host: url.hostname,
+                port: parseInt(url.port),
+                auth: url.username ? { username: url.username, password: url.password } : undefined
+            };
+        }
+        catch {
+        }
+    }
+    return config;
+});
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\http-client.ts =====
 
 import axios from 'axios';
@@ -26307,10 +26736,10 @@ export const httpClient = axios.create({
 
 axiosRetry(httpClient, {
   retries: 4,
-  retryDelay: (retryCount) => {
+  retryDelay: (retryCount: number) => {
     return axiosRetry.exponentialDelay(retryCount) + Math.random() * 1000;
   },
-  retryCondition: (error) => {
+  retryCondition: (error: any) => {
     const status = error.response?.status;
     return axiosRetry.isNetworkOrIdempotentRequestError(error) || status === 429 || status === 403 || status === 503;
   },
@@ -26326,18 +26755,97 @@ httpClient.interceptors.request.use((config) => {
   config.headers['Sec-Ch-Ua-Mobile'] = '?0';
   config.headers['Sec-Ch-Ua-Platform'] = '"Windows"';
 
-  const agent = proxyManager.getAgent();
-  if (agent) {
-    config.httpsAgent = agent;
-    config.proxy = false; 
+  const proxyStr = proxyManager.getRawProxy();
+  if (proxyStr) {
+    try {
+      const url = new URL(proxyStr);
+      config.proxy = {
+        protocol: url.protocol.replace(':', ''),
+        host: url.hostname,
+        port: parseInt(url.port),
+        auth: url.username ? { username: url.username, password: url.password } : undefined
+      };
+    } catch {
+    }
   }
 
   return config;
 });
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\item-matcher.js =====
+
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.resolveItemIdFromTitle = resolveItemIdFromTitle;
+const prisma_1 = require("../prisma");
+const stringSimilarity = __importStar(require("string-similarity"));
+async function resolveItemIdFromTitle(titleRaw) {
+    const normalizedTitle = titleRaw.toLowerCase().replace(/[^a-z0-9]/g, ' ');
+    const setNumberMatch = normalizedTitle.match(/\b\d{4,5}\b/);
+    if (setNumberMatch) {
+        const setNumber = setNumberMatch[0];
+        const exactMatch = await prisma_1.prisma.item.findFirst({
+            where: { setNumber: setNumber },
+            select: { id: true }
+        });
+        if (exactMatch)
+            return exactMatch.id;
+    }
+    const activeWatchlist = await prisma_1.prisma.watchlistItem.findMany({
+        where: { active: true },
+        select: { itemId: true, item: { select: { title: true, setNumber: true } } }
+    });
+    let bestMatchId = null;
+    let highestRating = 0.55;
+    for (const target of activeWatchlist) {
+        if (!target.item)
+            continue;
+        const targetName = target.item.title.toLowerCase();
+        const rating = stringSimilarity.compareTwoStrings(normalizedTitle, targetName);
+        if (rating > highestRating) {
+            highestRating = rating;
+            bestMatchId = target.itemId;
+        }
+    }
+    return bestMatchId;
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\item-matcher.ts =====
 
-import { prisma } from '../../prisma';
+import { prisma } from '../prisma';
 import * as stringSimilarity from 'string-similarity';
 
 export async function resolveItemIdFromTitle(titleRaw: string): Promise<string | null> {
@@ -26377,6 +26885,20 @@ export async function resolveItemIdFromTitle(titleRaw: string): Promise<string |
   return bestMatchId;
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\listing-id.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.stableListingId = stableListingId;
+function stableListingId(sourceCode, externalListingId) {
+    const encoded = Buffer.from(externalListingId)
+        .toString('base64')
+        .replaceAll('=', '')
+        .replaceAll('+', '-')
+        .replaceAll('/', '_');
+    return `${sourceCode}_${encoded}`;
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\listing-id.ts =====
 
 export function stableListingId(sourceCode: string, externalListingId: string): string {
@@ -26387,6 +26909,31 @@ export function stableListingId(sourceCode: string, externalListingId: string): 
     .replaceAll('/', '_');
 
   return `${sourceCode}_${encoded}`;
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\placeholder-item.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getOrCreatePlaceholderItemId = getOrCreatePlaceholderItemId;
+const prisma_1 = require("../prisma");
+async function getOrCreatePlaceholderItemId() {
+    const placeholder = await prisma_1.prisma.item.upsert({
+        where: {
+            id: 'item_unresolved_placeholder',
+        },
+        update: {},
+        create: {
+            id: 'item_unresolved_placeholder',
+            kind: 'unknown',
+            title: 'UNRESOLVED_PLACEHOLDER',
+            conditionDefault: 'unknown',
+        },
+        select: {
+            id: true,
+        },
+    });
+    return placeholder.id;
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\placeholder-item.ts =====
@@ -26413,6 +26960,32 @@ export async function getOrCreatePlaceholderItemId(): Promise<string> {
   return placeholder.id;
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\proxy-manager.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.proxyManager = exports.ProxyManager = void 0;
+class ProxyManager {
+    constructor() {
+        this.proxies = [];
+        this.currentIndex = 0;
+        const proxyList = process.env.PROXY_LIST?.split(',') || [];
+        this.proxies = proxyList.map(p => p.trim()).filter(Boolean);
+    }
+    getRawProxy() {
+        if (this.proxies.length === 0)
+            return undefined;
+        const proxyUrl = this.proxies[this.currentIndex];
+        this.currentIndex = (this.currentIndex + 1) % this.proxies.length;
+        return proxyUrl;
+    }
+    getProxyCount() {
+        return this.proxies.length;
+    }
+}
+exports.ProxyManager = ProxyManager;
+exports.proxyManager = new ProxyManager();
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\proxy-manager.ts =====
 
 export class ProxyManager {
@@ -26437,6 +27010,45 @@ export class ProxyManager {
 }
 
 export const proxyManager = new ProxyManager();
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\shipping-estimator.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.estimateUaShippingBySource = estimateUaShippingBySource;
+function estimateUaShippingBySource(params) {
+    const source = params.sourceCode.toLowerCase();
+    const price = params.price ?? 0;
+    if (source === 'olx') {
+        if (price <= 500)
+            return 70;
+        if (price <= 1500)
+            return 80;
+        return 95;
+    }
+    if (source === 'bricklink') {
+        if (price <= 1000)
+            return 260;
+        if (price <= 3000)
+            return 340;
+        return 420;
+    }
+    if (source === 'brickowl') {
+        if (price <= 1000)
+            return 280;
+        if (price <= 3000)
+            return 360;
+        return 440;
+    }
+    if (source === 'ebay') {
+        if (price <= 1000)
+            return 350;
+        if (price <= 3000)
+            return 480;
+        return 620;
+    }
+    return params.sealed === true ? 120 : 90;
+}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\shipping-estimator.ts =====
 
@@ -26476,6 +27088,24 @@ export function estimateUaShippingBySource(params: {
   return params.sealed === true ? 120 : 90;
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\source-error-logger.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.logSourceError = logSourceError;
+const prisma_1 = require("../prisma");
+async function logSourceError(params) {
+    await prisma_1.prisma.syncErrorLog.create({
+        data: {
+            scope: params.scope,
+            sourceCode: params.sourceCode,
+            referenceId: params.referenceId,
+            message: params.message,
+            detailsJson: params.detailsJson ?? {},
+        },
+    });
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\source-error-logger.ts =====
 
 import { prisma } from '../prisma';
@@ -26496,6 +27126,52 @@ export async function logSourceError(params: {
       detailsJson: params.detailsJson ?? {},
     },
   });
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\source-run-logger.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.startSourceRun = startSourceRun;
+exports.finishSourceRun = finishSourceRun;
+const prisma_1 = require("../prisma");
+async function startSourceRun(sourceCode) {
+    const source = await prisma_1.prisma.marketSource.findUnique({
+        where: {
+            code: sourceCode,
+        },
+    });
+    if (!source) {
+        throw new Error(`Source not found: ${sourceCode}`);
+    }
+    const run = await prisma_1.prisma.sourceRunLog.create({
+        data: {
+            sourceId: source.id,
+            startedAt: new Date(),
+            status: 'running',
+            itemsSeen: 0,
+            itemsMatched: 0,
+            itemsInserted: 0,
+            itemsUpdated: 0,
+        },
+    });
+    return run.id;
+}
+async function finishSourceRun(params) {
+    await prisma_1.prisma.sourceRunLog.update({
+        where: {
+            id: params.runId,
+        },
+        data: {
+            finishedAt: new Date(),
+            status: params.status,
+            itemsSeen: params.itemsSeen,
+            itemsMatched: params.itemsMatched,
+            itemsInserted: params.itemsInserted,
+            itemsUpdated: params.itemsUpdated,
+            errorMessage: params.errorMessage,
+        },
+    });
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\source-run-logger.ts =====
@@ -26565,9 +27241,42 @@ export function stableListingId(sourceCode: string, externalListingId: string): 
   return `${sourceCode}_${encoded}`;
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\unresolved-match-handler.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.enqueueUnresolvedMatch = enqueueUnresolvedMatch;
+const prisma_1 = require("../prisma");
+async function enqueueUnresolvedMatch(payload) {
+    const existing = await prisma_1.prisma.unresolvedMatchQueue.findFirst({
+        where: { listingId: payload.listingId }
+    });
+    if (existing) {
+        await prisma_1.prisma.unresolvedMatchQueue.update({
+            where: { id: existing.id },
+            data: {
+                titleRaw: payload.titleRaw,
+                updatedAt: new Date(),
+            },
+        });
+    }
+    else {
+        await prisma_1.prisma.unresolvedMatchQueue.create({
+            data: {
+                listingId: payload.listingId,
+                sourceCode: payload.sourceCode,
+                titleRaw: payload.titleRaw,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                status: 'pending'
+            }
+        });
+    }
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\unresolved-match-handler.ts =====
 
-import { prisma } from '../../prisma';
+import { prisma } from '../prisma';
 
 export interface UnresolvedMatchPayload {
   listingId: string;
@@ -26576,23 +27285,48 @@ export interface UnresolvedMatchPayload {
 }
 
 export async function enqueueUnresolvedMatch(payload: UnresolvedMatchPayload): Promise<void> {
-  await prisma.unresolvedListing.upsert({
-    where: { listingId: payload.listingId },
-    update: {
-      titleRaw: payload.titleRaw,
-      lastSeenAt: new Date(),
-      attempts: { increment: 1 }
-    },
-    create: {
-      listingId: payload.listingId,
-      sourceCode: payload.sourceCode,
-      titleRaw: payload.titleRaw,
-      firstSeenAt: new Date(),
-      lastSeenAt: new Date(),
-      attempts: 1,
-      status: 'pending'
-    }
+  const existing = await prisma.unresolvedMatchQueue.findFirst({
+    where: { listingId: payload.listingId }
   });
+
+  if (existing) {
+    await prisma.unresolvedMatchQueue.update({
+      where: { id: existing.id },
+      data: {
+        titleRaw: payload.titleRaw,
+        updatedAt: new Date(),
+      },
+    });
+  } else {
+    await prisma.unresolvedMatchQueue.create({
+      data: {
+        listingId: payload.listingId,
+        sourceCode: payload.sourceCode,
+        titleRaw: payload.titleRaw,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        status: 'pending'
+      }
+    });
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\user-agents.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.modernUserAgents = void 0;
+exports.getRandomUserAgent = getRandomUserAgent;
+exports.modernUserAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
+];
+function getRandomUserAgent() {
+    return exports.modernUserAgents[Math.floor(Math.random() * exports.modernUserAgents.length)];
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\user-agents.ts =====
@@ -26608,6 +27342,87 @@ export const modernUserAgents = [
 
 export function getRandomUserAgent(): string {
   return modernUserAgents[Math.floor(Math.random() * modernUserAgents.length)];
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickeconomy\brickeconomy-parser.js =====
+
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.parseBrickeconomySearchHtml = parseBrickeconomySearchHtml;
+const cheerio = __importStar(require("cheerio"));
+function parsePrice(raw) {
+    const normalized = raw.replace(/\s+/g, ' ').trim();
+    if (!normalized)
+        return null;
+    const digits = normalized.replace(/[^\d.,]/g, '').replace(/\s/g, '').replace(',', '.');
+    const amount = Number(digits);
+    if (Number.isNaN(amount) || amount <= 0)
+        return null;
+    const currency = normalized.includes('в‚¬') ? 'EUR' : normalized.includes('ВЈ') ? 'GBP' : 'USD';
+    return { amount, currency };
+}
+function parseBrickeconomySearchHtml(html) {
+    const $ = cheerio.load(html);
+    const result = [];
+    const seen = new Set();
+    $('.searchlist-item').each((_, element) => {
+        const titleElement = $(element).find('h4 a');
+        const title = titleElement.text().replace(/\s+/g, ' ').trim();
+        const href = titleElement.attr('href')?.trim() ?? '';
+        if (!title || !href)
+            return;
+        const externalListingId = href.split('/').pop() ?? href;
+        const priceText = $(element).find('.val-current').text();
+        const priceParsed = parsePrice(priceText);
+        if (!priceParsed)
+            return;
+        const url = `https://www.brickeconomy.com${href}`;
+        if (seen.has(url))
+            return;
+        seen.add(url);
+        result.push({
+            externalListingId,
+            titleRaw: title,
+            url,
+            imageUrl: null,
+            price: priceParsed.amount,
+            currency: priceParsed.currency,
+        });
+    });
+    return result;
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickeconomy\brickeconomy-parser.ts =====
@@ -26658,6 +27473,106 @@ export function parseBrickeconomySearchHtml(html: string): BrickeconomyParsedLis
   return result;
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickeconomy\brickeconomy-source.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.runBrickEconomySource = runBrickEconomySource;
+const http_client_1 = require("../../common/http-client");
+const item_matcher_1 = require("../../common/item-matcher");
+const listing_id_1 = require("../../common/listing-id");
+const source_error_logger_1 = require("../../common/source-error-logger");
+const source_run_logger_1 = require("../../common/source-run-logger");
+const placeholder_item_1 = require("../../common/placeholder-item");
+const prisma_1 = require("../../prisma");
+const brickeconomy_parser_1 = require("./brickeconomy-parser");
+async function runBrickEconomySource() {
+    const source = await prisma_1.prisma.marketSource.findUnique({ where: { code: 'brickeconomy' } });
+    if (!source || !source.enabled)
+        return;
+    const activeWatchlist = await prisma_1.prisma.watchlistItem.findMany({
+        where: { active: true },
+        select: { item: { select: { setNumber: true } } }
+    });
+    const searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean)));
+    if (searchQueries.length === 0)
+        return;
+    const runId = await (0, source_run_logger_1.startSourceRun)('brickeconomy');
+    let itemsSeen = 0;
+    let itemsMatched = 0;
+    let itemsInserted = 0;
+    let itemsUpdated = 0;
+    try {
+        const upsertOperations = [];
+        const now = new Date();
+        for (const query of searchQueries) {
+            const url = `https://www.brickeconomy.com/search?query=${encodeURIComponent(query)}`;
+            const response = await http_client_1.httpClient.get(url);
+            const marketData = (0, brickeconomy_parser_1.parseBrickeconomySearchHtml)(response.data);
+            for (const data of marketData) {
+                itemsSeen += 1;
+                const resolvedItemId = await (0, item_matcher_1.resolveItemIdFromTitle)(data.titleRaw);
+                const itemId = resolvedItemId ?? (await (0, placeholder_item_1.getOrCreatePlaceholderItemId)());
+                const listingId = (0, listing_id_1.stableListingId)('brickeconomy', data.externalListingId);
+                upsertOperations.push(prisma_1.prisma.marketListing.upsert({
+                    where: { id: listingId },
+                    update: {
+                        sourceCode: source.code,
+                        itemId,
+                        titleRaw: data.titleRaw,
+                        title: data.titleRaw,
+                        url: data.url,
+                        price: data.price,
+                        currency: data.currency ?? 'USD',
+                        condition: 'newSealed',
+                        sealed: true,
+                        status: 'active',
+                        fetchedAt: now,
+                        lastSeenAt: now,
+                    },
+                    create: {
+                        id: listingId,
+                        sourceId: source.id,
+                        sourceCode: source.code,
+                        itemId,
+                        externalListingId: data.externalListingId,
+                        externalId: data.externalListingId,
+                        titleRaw: data.titleRaw,
+                        title: data.titleRaw,
+                        url: data.url,
+                        price: data.price,
+                        currency: data.currency ?? 'USD',
+                        condition: 'newSealed',
+                        sealed: true,
+                        status: 'active',
+                        fetchedAt: now,
+                        firstSeenAt: now,
+                        lastSeenAt: now,
+                    },
+                }));
+                if (resolvedItemId != null) {
+                    itemsMatched += 1;
+                }
+            }
+            await new Promise((res) => setTimeout(res, 3000 + Math.random() * 3000));
+        }
+        if (upsertOperations.length > 0) {
+            const chunkSize = 100;
+            for (let i = 0; i < upsertOperations.length; i += chunkSize) {
+                const chunk = upsertOperations.slice(i, i + chunkSize);
+                await prisma_1.prisma.$transaction(chunk);
+                itemsInserted += chunk.length;
+            }
+        }
+        await (0, source_run_logger_1.finishSourceRun)({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await (0, source_error_logger_1.logSourceError)({ scope: 'scraper', sourceCode: 'brickeconomy', message: 'BrickEconomy source failed', detailsJson: { error: message } });
+        await (0, source_run_logger_1.finishSourceRun)({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });
+    }
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickeconomy\brickeconomy-source.ts =====
 
 import { httpClient } from '../../common/http-client';
@@ -26667,7 +27582,7 @@ import { logSourceError } from '../../common/source-error-logger';
 import { finishSourceRun, startSourceRun } from '../../common/source-run-logger';
 import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
-import { parseBrickEconomySearchHtml } from './brickeconomy-parser';
+import { parseBrickeconomySearchHtml } from './brickeconomy-parser';
 
 export async function runBrickEconomySource(): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'brickeconomy' } });
@@ -26698,7 +27613,7 @@ export async function runBrickEconomySource(): Promise<void> {
     for (const query of searchQueries) {
       const url = `https://www.brickeconomy.com/search?query=${encodeURIComponent(query)}`;
       const response = await httpClient.get<string>(url);
-      const marketData = parseBrickEconomySearchHtml(response.data);
+      const marketData = parseBrickeconomySearchHtml(response.data);
 
       for (const data of marketData) {
         itemsSeen += 1;
@@ -26770,6 +27685,11 @@ export async function runBrickEconomySource(): Promise<void> {
   }
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickeconomy\brickeconomy-types.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickeconomy\brickeconomy-types.ts =====
 
 export type BrickeconomyParsedListing = {
@@ -26780,6 +27700,125 @@ export type BrickeconomyParsedListing = {
   price: number;
   currency: string;
 };
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\bricklink\bricklink-parser.js =====
+
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.parseBrickLinkSearchHtml = parseBrickLinkSearchHtml;
+const cheerio = __importStar(require("cheerio"));
+function parsePrice(raw) {
+    const normalized = raw.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+        return null;
+    }
+    const digits = normalized
+        .replace(/[^\d.,]/g, '')
+        .replace(/\s/g, '')
+        .replace(',', '.');
+    const amount = Number(digits);
+    if (Number.isNaN(amount) || amount <= 0) {
+        return null;
+    }
+    const currency = normalized.includes('$')
+        ? 'USD'
+        : normalized.toLowerCase().includes('eur') || normalized.includes('в‚¬')
+            ? 'EUR'
+            : 'USD';
+    return {
+        amount,
+        currency,
+    };
+}
+function normalizeUrl(rawUrl) {
+    if (rawUrl.startsWith('http')) {
+        return rawUrl;
+    }
+    if (rawUrl.startsWith('/')) {
+        return `https://www.bricklink.com${rawUrl}`;
+    }
+    return `https://www.bricklink.com/${rawUrl}`;
+}
+function parseBrickLinkSearchHtml(html) {
+    const $ = cheerio.load(html);
+    const result = [];
+    const seen = new Set();
+    $('a').each((_, element) => {
+        const title = $(element).text().replace(/\s+/g, ' ').trim();
+        const href = $(element).attr('href')?.trim() ?? '';
+        if (!title || !href) {
+            return;
+        }
+        if (!href.includes('item.page') && !href.includes('store.asp')) {
+            return;
+        }
+        const container = $(element).closest('tr, div, li');
+        const parentText = container.text() || $(element).parent().text();
+        const priceParsed = parsePrice(parentText);
+        if (!priceParsed) {
+            return;
+        }
+        const url = normalizeUrl(href);
+        if (seen.has(url)) {
+            return;
+        }
+        seen.add(url);
+        const imageUrl = container.find('img').first().attr('src') ??
+            container.find('img').first().attr('data-src') ??
+            null;
+        result.push({
+            externalListingId: href,
+            titleRaw: title,
+            url,
+            imageUrl,
+            sellerName: null,
+            sellerRating: null,
+            price: priceParsed.amount,
+            currency: priceParsed.currency,
+            shippingPrice: null,
+            shippingCurrency: null,
+            country: 'EU',
+            condition: 'used',
+            sealed: false,
+            completenessPercent: 100,
+            quantityAvailable: 1,
+        });
+    });
+    return result;
+}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\bricklink\bricklink-parser.ts =====
 
@@ -26888,6 +27927,130 @@ export function parseBrickLinkSearchHtml(
   });
 
   return result;
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\bricklink\bricklink-source.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.runBrickLinkSource = runBrickLinkSource;
+const browser_manager_1 = require("../../common/browser-manager");
+const shipping_estimator_1 = require("../../common/shipping-estimator");
+const item_matcher_1 = require("../../common/item-matcher");
+const listing_id_1 = require("../../common/listing-id");
+const source_error_logger_1 = require("../../common/source-error-logger");
+const source_run_logger_1 = require("../../common/source-run-logger");
+const unresolved_match_handler_1 = require("../../common/unresolved-match-handler");
+const placeholder_item_1 = require("../../common/placeholder-item");
+const prisma_1 = require("../../prisma");
+const bricklink_parser_1 = require("./bricklink-parser");
+async function runBrickLinkSource() {
+    const source = await prisma_1.prisma.marketSource.findUnique({ where: { code: 'bricklink' } });
+    if (!source || !source.enabled)
+        return;
+    const activeWatchlist = await prisma_1.prisma.watchlistItem.findMany({
+        where: { active: true },
+        select: { item: { select: { setNumber: true } } }
+    });
+    const searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean)));
+    if (searchQueries.length === 0)
+        return;
+    const runId = await (0, source_run_logger_1.startSourceRun)('bricklink');
+    let itemsSeen = 0;
+    let itemsMatched = 0;
+    let itemsInserted = 0;
+    let itemsUpdated = 0;
+    try {
+        const upsertOperations = [];
+        const unresolvedOperations = [];
+        const now = new Date();
+        for (const query of searchQueries) {
+            const url = `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(query)}#T=S`;
+            const html = await browser_manager_1.browserManager.fetchHtml(url);
+            const listings = (0, bricklink_parser_1.parseBrickLinkSearchHtml)(html);
+            for (const listing of listings) {
+                itemsSeen += 1;
+                const resolvedItemId = await (0, item_matcher_1.resolveItemIdFromTitle)(listing.titleRaw);
+                const itemId = resolvedItemId ?? (await (0, placeholder_item_1.getOrCreatePlaceholderItemId)());
+                const listingId = (0, listing_id_1.stableListingId)('bricklink', listing.externalListingId);
+                const shippingPrice = listing.shippingPrice ?? (0, shipping_estimator_1.estimateUaShippingBySource)({
+                    sourceCode: 'bricklink',
+                    price: listing.price,
+                    country: listing.country,
+                    sealed: listing.sealed,
+                });
+                upsertOperations.push(prisma_1.prisma.marketListing.upsert({
+                    where: { id: listingId },
+                    update: {
+                        sourceCode: source.code,
+                        itemId,
+                        titleRaw: listing.titleRaw,
+                        title: listing.titleRaw,
+                        url: listing.url,
+                        imageUrl: listing.imageUrl,
+                        price: listing.price,
+                        currency: listing.currency,
+                        shippingPrice,
+                        shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'USD',
+                        condition: listing.condition,
+                        sealed: listing.sealed,
+                        status: 'active',
+                        fetchedAt: now,
+                        lastSeenAt: now,
+                    },
+                    create: {
+                        id: listingId,
+                        sourceId: source.id,
+                        sourceCode: source.code,
+                        itemId,
+                        externalListingId: listing.externalListingId,
+                        externalId: listing.externalListingId,
+                        titleRaw: listing.titleRaw,
+                        title: listing.titleRaw,
+                        url: listing.url,
+                        imageUrl: listing.imageUrl,
+                        price: listing.price,
+                        currency: listing.currency,
+                        shippingPrice,
+                        shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'USD',
+                        condition: listing.condition,
+                        sealed: listing.sealed,
+                        status: 'active',
+                        fetchedAt: now,
+                        firstSeenAt: now,
+                        lastSeenAt: now,
+                    },
+                }));
+                if (resolvedItemId == null) {
+                    unresolvedOperations.push({
+                        listingId,
+                        sourceCode: 'bricklink',
+                        titleRaw: listing.titleRaw,
+                    });
+                }
+                else {
+                    itemsMatched += 1;
+                }
+            }
+        }
+        if (upsertOperations.length > 0) {
+            const chunkSize = 100;
+            for (let i = 0; i < upsertOperations.length; i += chunkSize) {
+                const chunk = upsertOperations.slice(i, i + chunkSize);
+                await prisma_1.prisma.$transaction(chunk);
+                itemsInserted += chunk.length;
+            }
+        }
+        for (const u of unresolvedOperations) {
+            await (0, unresolved_match_handler_1.enqueueUnresolvedMatch)(u);
+        }
+        await (0, source_run_logger_1.finishSourceRun)({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await (0, source_error_logger_1.logSourceError)({ scope: 'scraper', sourceCode: 'bricklink', message: 'BrickLink source failed', detailsJson: { error: message } });
+        await (0, source_run_logger_1.finishSourceRun)({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });
+    }
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\bricklink\bricklink-source.ts =====
@@ -27027,6 +28190,11 @@ export async function runBrickLinkSource(): Promise<void> {
   }
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\bricklink\bricklink-types.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\bricklink\bricklink-types.ts =====
 
 export type BrickLinkParsedListing = {
@@ -27046,6 +28214,98 @@ export type BrickLinkParsedListing = {
   completenessPercent: number | null;
   quantityAvailable: number | null;
 };
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickowl\brickowl-parser.js =====
+
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.parseBrickowlSearchHtml = parseBrickowlSearchHtml;
+const cheerio = __importStar(require("cheerio"));
+function parsePrice(raw) {
+    const normalized = raw.replace(/\s+/g, ' ').trim();
+    if (!normalized)
+        return null;
+    const digits = normalized.replace(/[^\d.,]/g, '').replace(/\s/g, '').replace(',', '.');
+    const amount = Number(digits);
+    if (Number.isNaN(amount) || amount <= 0)
+        return null;
+    const currency = normalized.includes('в‚¬') ? 'EUR' : normalized.includes('ВЈ') ? 'GBP' : 'USD';
+    return { amount, currency };
+}
+function parseBrickowlSearchHtml(html) {
+    const $ = cheerio.load(html);
+    const result = [];
+    const seen = new Set();
+    $('.ws_item').each((_, element) => {
+        const titleElement = $(element).find('.name a');
+        const title = titleElement.text().replace(/\s+/g, ' ').trim();
+        const href = titleElement.attr('href')?.trim() ?? '';
+        if (!title || !href)
+            return;
+        const externalListingId = href.split('/').pop() ?? href;
+        const priceText = $(element).find('.price').text();
+        const priceParsed = parsePrice(priceText);
+        if (!priceParsed)
+            return;
+        const url = `https://www.brickowl.com${href}`;
+        if (seen.has(url))
+            return;
+        seen.add(url);
+        const imageUrl = $(element).find('.image img').attr('src') ?? null;
+        const isNew = title.toLowerCase().includes('new');
+        result.push({
+            externalListingId,
+            titleRaw: title,
+            url,
+            imageUrl,
+            sellerName: null,
+            sellerRating: null,
+            price: priceParsed.amount,
+            currency: priceParsed.currency,
+            shippingPrice: null,
+            shippingCurrency: null,
+            country: 'EU',
+            condition: isNew ? 'new' : 'used',
+            sealed: isNew,
+            completenessPercent: isNew ? 100 : null,
+            quantityAvailable: 1,
+        });
+    });
+    return result;
+}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickowl\brickowl-parser.ts =====
 
@@ -27107,6 +28367,131 @@ export function parseBrickowlSearchHtml(html: string): BrickowlParsedListing[] {
   return result;
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickowl\brickowl-source.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.runBrickOwlSource = runBrickOwlSource;
+const http_client_1 = require("../../common/http-client");
+const shipping_estimator_1 = require("../../common/shipping-estimator");
+const item_matcher_1 = require("../../common/item-matcher");
+const listing_id_1 = require("../../common/listing-id");
+const source_error_logger_1 = require("../../common/source-error-logger");
+const source_run_logger_1 = require("../../common/source-run-logger");
+const unresolved_match_handler_1 = require("../../common/unresolved-match-handler");
+const placeholder_item_1 = require("../../common/placeholder-item");
+const prisma_1 = require("../../prisma");
+const brickowl_parser_1 = require("./brickowl-parser");
+async function runBrickOwlSource() {
+    const source = await prisma_1.prisma.marketSource.findUnique({ where: { code: 'brickowl' } });
+    if (!source || !source.enabled)
+        return;
+    const activeWatchlist = await prisma_1.prisma.watchlistItem.findMany({
+        where: { active: true },
+        select: { item: { select: { setNumber: true } } }
+    });
+    const searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean)));
+    if (searchQueries.length === 0)
+        return;
+    const runId = await (0, source_run_logger_1.startSourceRun)('brickowl');
+    let itemsSeen = 0;
+    let itemsMatched = 0;
+    let itemsInserted = 0;
+    let itemsUpdated = 0;
+    try {
+        const upsertOperations = [];
+        const unresolvedOperations = [];
+        const now = new Date();
+        for (const query of searchQueries) {
+            const url = `https://www.brickowl.com/search/catalog?query=${encodeURIComponent(query)}`;
+            const response = await http_client_1.httpClient.get(url);
+            const listings = (0, brickowl_parser_1.parseBrickowlSearchHtml)(response.data);
+            for (const listing of listings) {
+                itemsSeen += 1;
+                const resolvedItemId = await (0, item_matcher_1.resolveItemIdFromTitle)(listing.titleRaw);
+                const itemId = resolvedItemId ?? (await (0, placeholder_item_1.getOrCreatePlaceholderItemId)());
+                const listingId = (0, listing_id_1.stableListingId)('brickowl', listing.externalListingId);
+                const shippingPrice = listing.shippingPrice ?? (0, shipping_estimator_1.estimateUaShippingBySource)({
+                    sourceCode: 'brickowl',
+                    price: listing.price,
+                    country: listing.country,
+                    sealed: listing.sealed,
+                });
+                upsertOperations.push(prisma_1.prisma.marketListing.upsert({
+                    where: { id: listingId },
+                    update: {
+                        sourceCode: source.code,
+                        itemId,
+                        titleRaw: listing.titleRaw,
+                        title: listing.titleRaw,
+                        url: listing.url,
+                        imageUrl: listing.imageUrl,
+                        price: listing.price,
+                        currency: listing.currency ?? 'USD',
+                        shippingPrice,
+                        shippingCurrency: listing.shippingCurrency ?? 'USD',
+                        condition: listing.condition,
+                        sealed: listing.sealed,
+                        status: 'active',
+                        fetchedAt: now,
+                        lastSeenAt: now,
+                    },
+                    create: {
+                        id: listingId,
+                        sourceId: source.id,
+                        sourceCode: source.code,
+                        itemId,
+                        externalListingId: listing.externalListingId,
+                        externalId: listing.externalListingId,
+                        titleRaw: listing.titleRaw,
+                        title: listing.titleRaw,
+                        url: listing.url,
+                        imageUrl: listing.imageUrl,
+                        price: listing.price,
+                        currency: listing.currency ?? 'USD',
+                        shippingPrice,
+                        shippingCurrency: listing.shippingCurrency ?? 'USD',
+                        condition: listing.condition,
+                        sealed: listing.sealed,
+                        status: 'active',
+                        fetchedAt: now,
+                        firstSeenAt: now,
+                        lastSeenAt: now,
+                    },
+                }));
+                if (resolvedItemId == null) {
+                    unresolvedOperations.push({
+                        listingId,
+                        sourceCode: 'brickowl',
+                        titleRaw: listing.titleRaw,
+                    });
+                }
+                else {
+                    itemsMatched += 1;
+                }
+            }
+            await new Promise((res) => setTimeout(res, 2500 + Math.random() * 3500));
+        }
+        if (upsertOperations.length > 0) {
+            const chunkSize = 100;
+            for (let i = 0; i < upsertOperations.length; i += chunkSize) {
+                const chunk = upsertOperations.slice(i, i + chunkSize);
+                await prisma_1.prisma.$transaction(chunk);
+                itemsInserted += chunk.length;
+            }
+        }
+        for (const u of unresolvedOperations) {
+            await (0, unresolved_match_handler_1.enqueueUnresolvedMatch)(u);
+        }
+        await (0, source_run_logger_1.finishSourceRun)({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await (0, source_error_logger_1.logSourceError)({ scope: 'scraper', sourceCode: 'brickowl', message: 'BrickOwl source failed', detailsJson: { error: message } });
+        await (0, source_run_logger_1.finishSourceRun)({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });
+    }
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickowl\brickowl-source.ts =====
 
 import { httpClient } from '../../common/http-client';
@@ -27118,7 +28503,7 @@ import { finishSourceRun, startSourceRun } from '../../common/source-run-logger'
 import { enqueueUnresolvedMatch } from '../../common/unresolved-match-handler';
 import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
-import { parseBrickOwlSearchHtml } from './brickowl-parser';
+import { parseBrickowlSearchHtml } from './brickowl-parser';
 
 export async function runBrickOwlSource(): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'brickowl' } });
@@ -27150,7 +28535,7 @@ export async function runBrickOwlSource(): Promise<void> {
     for (const query of searchQueries) {
       const url = `https://www.brickowl.com/search/catalog?query=${encodeURIComponent(query)}`;
       const response = await httpClient.get<string>(url);
-      const listings = parseBrickOwlSearchHtml(response.data);
+      const listings = parseBrickowlSearchHtml(response.data);
 
       for (const listing of listings) {
         itemsSeen += 1;
@@ -27245,6 +28630,11 @@ export async function runBrickOwlSource(): Promise<void> {
   }
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickowl\brickowl-types.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickowl\brickowl-types.ts =====
 
 export type BrickowlParsedListing = {
@@ -27264,6 +28654,100 @@ export type BrickowlParsedListing = {
   completenessPercent: number | null;
   quantityAvailable: number | null;
 };
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\ebay\ebay-parser.js =====
+
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.parseEbaySearchHtml = parseEbaySearchHtml;
+const cheerio = __importStar(require("cheerio"));
+function parsePrice(raw) {
+    const normalized = raw.replace(/\s+/g, ' ').trim();
+    if (!normalized)
+        return null;
+    const digits = normalized.replace(/[^\d.,]/g, '').replace(/\s/g, '').replace(',', '.');
+    const amount = Number(digits);
+    if (Number.isNaN(amount) || amount <= 0)
+        return null;
+    const currency = normalized.includes('ВЈ') ? 'GBP' : normalized.includes('в‚¬') ? 'EUR' : 'USD';
+    return { amount, currency };
+}
+function parseEbaySearchHtml(html) {
+    const $ = cheerio.load(html);
+    const result = [];
+    const seen = new Set();
+    $('.s-item').each((_, element) => {
+        const titleElement = $(element).find('.s-item__title');
+        const title = titleElement.text().replace(/\s+/g, ' ').trim();
+        const href = $(element).find('a.s-item__link').attr('href')?.trim() ?? '';
+        if (!title || !href || title.toLowerCase().includes('shop on ebay'))
+            return;
+        const idMatch = href.match(/itm\/(\d+)/);
+        const externalListingId = idMatch ? idMatch[1] : href.split('?')[0];
+        const priceText = $(element).find('.s-item__price').text();
+        const priceParsed = parsePrice(priceText);
+        if (!priceParsed)
+            return;
+        const url = href.split('?')[0];
+        if (seen.has(url))
+            return;
+        seen.add(url);
+        const imageUrl = $(element).find('.s-item__image-img').attr('src') ?? null;
+        const conditionText = $(element).find('.SECONDARY_INFO').text().toLowerCase();
+        const isSealed = conditionText.includes('new') || conditionText.includes('sealed');
+        result.push({
+            externalListingId,
+            titleRaw: title,
+            url,
+            imageUrl,
+            sellerName: null,
+            sellerRating: null,
+            price: priceParsed.amount,
+            currency: priceParsed.currency,
+            shippingPrice: null,
+            shippingCurrency: null,
+            country: 'US',
+            condition: isSealed ? 'new' : 'used',
+            sealed: isSealed,
+            completenessPercent: isSealed ? 100 : null,
+            quantityAvailable: 1,
+        });
+    });
+    return result;
+}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\ebay\ebay-parser.ts =====
 
@@ -27331,6 +28815,130 @@ export function parseEbaySearchHtml(html: string): EbayParsedListing[] {
   });
 
   return result;
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\ebay\ebay-source.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.runEbaySource = runEbaySource;
+const browser_manager_1 = require("../../common/browser-manager");
+const shipping_estimator_1 = require("../../common/shipping-estimator");
+const item_matcher_1 = require("../../common/item-matcher");
+const listing_id_1 = require("../../common/listing-id");
+const source_error_logger_1 = require("../../common/source-error-logger");
+const source_run_logger_1 = require("../../common/source-run-logger");
+const unresolved_match_handler_1 = require("../../common/unresolved-match-handler");
+const placeholder_item_1 = require("../../common/placeholder-item");
+const prisma_1 = require("../../prisma");
+const ebay_parser_1 = require("./ebay-parser");
+async function runEbaySource() {
+    const source = await prisma_1.prisma.marketSource.findUnique({ where: { code: 'ebay' } });
+    if (!source || !source.enabled)
+        return;
+    const activeWatchlist = await prisma_1.prisma.watchlistItem.findMany({
+        where: { active: true },
+        select: { item: { select: { setNumber: true } } }
+    });
+    const searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean)));
+    if (searchQueries.length === 0)
+        return;
+    const runId = await (0, source_run_logger_1.startSourceRun)('ebay');
+    let itemsSeen = 0;
+    let itemsMatched = 0;
+    let itemsInserted = 0;
+    let itemsUpdated = 0;
+    try {
+        const upsertOperations = [];
+        const unresolvedOperations = [];
+        const now = new Date();
+        for (const query of searchQueries) {
+            const url = `https://www.ebay.com/sch/i.html?_nkw=lego+${encodeURIComponent(query)}&_sacat=0`;
+            const html = await browser_manager_1.browserManager.fetchHtml(url);
+            const listings = (0, ebay_parser_1.parseEbaySearchHtml)(html);
+            for (const listing of listings) {
+                itemsSeen += 1;
+                const resolvedItemId = await (0, item_matcher_1.resolveItemIdFromTitle)(listing.titleRaw);
+                const itemId = resolvedItemId ?? (await (0, placeholder_item_1.getOrCreatePlaceholderItemId)());
+                const listingId = (0, listing_id_1.stableListingId)('ebay', listing.externalListingId);
+                const shippingPrice = listing.shippingPrice ?? (0, shipping_estimator_1.estimateUaShippingBySource)({
+                    sourceCode: 'ebay',
+                    price: listing.price,
+                    country: listing.country,
+                    sealed: listing.sealed,
+                });
+                upsertOperations.push(prisma_1.prisma.marketListing.upsert({
+                    where: { id: listingId },
+                    update: {
+                        sourceCode: source.code,
+                        itemId,
+                        titleRaw: listing.titleRaw,
+                        title: listing.titleRaw,
+                        url: listing.url,
+                        imageUrl: listing.imageUrl,
+                        price: listing.price,
+                        currency: listing.currency ?? 'USD',
+                        shippingPrice,
+                        shippingCurrency: listing.shippingCurrency ?? 'USD',
+                        condition: listing.condition,
+                        sealed: listing.sealed,
+                        status: 'active',
+                        fetchedAt: now,
+                        lastSeenAt: now,
+                    },
+                    create: {
+                        id: listingId,
+                        sourceId: source.id,
+                        sourceCode: source.code,
+                        itemId,
+                        externalListingId: listing.externalListingId,
+                        externalId: listing.externalListingId,
+                        titleRaw: listing.titleRaw,
+                        title: listing.titleRaw,
+                        url: listing.url,
+                        imageUrl: listing.imageUrl,
+                        price: listing.price,
+                        currency: listing.currency ?? 'USD',
+                        shippingPrice,
+                        shippingCurrency: listing.shippingCurrency ?? 'USD',
+                        condition: listing.condition,
+                        sealed: listing.sealed,
+                        status: 'active',
+                        fetchedAt: now,
+                        firstSeenAt: now,
+                        lastSeenAt: now,
+                    },
+                }));
+                if (resolvedItemId == null) {
+                    unresolvedOperations.push({
+                        listingId,
+                        sourceCode: 'ebay',
+                        titleRaw: listing.titleRaw,
+                    });
+                }
+                else {
+                    itemsMatched += 1;
+                }
+            }
+        }
+        if (upsertOperations.length > 0) {
+            const chunkSize = 100;
+            for (let i = 0; i < upsertOperations.length; i += chunkSize) {
+                const chunk = upsertOperations.slice(i, i + chunkSize);
+                await prisma_1.prisma.$transaction(chunk);
+                itemsInserted += chunk.length;
+            }
+        }
+        for (const u of unresolvedOperations) {
+            await (0, unresolved_match_handler_1.enqueueUnresolvedMatch)(u);
+        }
+        await (0, source_run_logger_1.finishSourceRun)({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await (0, source_error_logger_1.logSourceError)({ scope: 'scraper', sourceCode: 'ebay', message: 'eBay source failed', detailsJson: { error: message } });
+        await (0, source_run_logger_1.finishSourceRun)({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });
+    }
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\ebay\ebay-source.ts =====
@@ -27470,6 +29078,11 @@ export async function runEbaySource(): Promise<void> {
   }
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\ebay\ebay-types.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\ebay\ebay-types.ts =====
 
 export type EbayParsedListing = {
@@ -27489,6 +29102,125 @@ export type EbayParsedListing = {
   completenessPercent: number | null;
   quantityAvailable: number | null;
 };
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\olx\olx-parser.js =====
+
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.parseOlxSearchHtml = parseOlxSearchHtml;
+const cheerio = __importStar(require("cheerio"));
+function parsePrice(raw) {
+    const normalized = raw.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+        return null;
+    }
+    const digits = normalized
+        .replace(/[^\d.,]/g, '')
+        .replace(/\s/g, '')
+        .replace(',', '.');
+    const amount = Number(digits);
+    if (Number.isNaN(amount) || amount <= 0) {
+        return null;
+    }
+    const currency = normalized.includes('$')
+        ? 'USD'
+        : normalized.toLowerCase().includes('eur') || normalized.includes('в‚¬')
+            ? 'EUR'
+            : 'UAH';
+    return {
+        amount,
+        currency,
+    };
+}
+function normalizeUrl(rawUrl) {
+    if (rawUrl.startsWith('http')) {
+        return rawUrl;
+    }
+    if (rawUrl.startsWith('/')) {
+        return `https://www.olx.ua${rawUrl}`;
+    }
+    return `https://www.olx.ua/${rawUrl}`;
+}
+function parseOlxSearchHtml(html) {
+    const $ = cheerio.load(html);
+    const result = [];
+    const seen = new Set();
+    $('a').each((_, element) => {
+        const title = $(element).text().replace(/\s+/g, ' ').trim();
+        const href = $(element).attr('href')?.trim() ?? '';
+        if (!title || !href) {
+            return;
+        }
+        if (!href.includes('/d/uk/obyavlenie') && !href.includes('/d/obyavlenie')) {
+            return;
+        }
+        const container = $(element).closest('[data-cy], article, div');
+        const containerText = container.text() || $(element).parent().text();
+        const priceParsed = parsePrice(containerText);
+        if (!priceParsed) {
+            return;
+        }
+        const url = normalizeUrl(href);
+        if (seen.has(url)) {
+            return;
+        }
+        seen.add(url);
+        const imageUrl = container.find('img').first().attr('src') ??
+            container.find('img').first().attr('data-src') ??
+            null;
+        result.push({
+            externalListingId: href,
+            titleRaw: title,
+            url,
+            imageUrl,
+            sellerName: null,
+            sellerRating: null,
+            price: priceParsed.amount,
+            currency: priceParsed.currency,
+            shippingPrice: null,
+            shippingCurrency: null,
+            country: 'UA',
+            condition: null,
+            sealed: null,
+            completenessPercent: null,
+            quantityAvailable: 1,
+        });
+    });
+    return result;
+}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\olx\olx-parser.ts =====
 
@@ -27595,6 +29327,123 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
   });
 
   return result;
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\olx\olx-source.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.runOlxSource = runOlxSource;
+const browser_manager_1 = require("../../common/browser-manager");
+const item_matcher_1 = require("../../common/item-matcher");
+const listing_id_1 = require("../../common/listing-id");
+const source_error_logger_1 = require("../../common/source-error-logger");
+const source_run_logger_1 = require("../../common/source-run-logger");
+const unresolved_match_handler_1 = require("../../common/unresolved-match-handler");
+const placeholder_item_1 = require("../../common/placeholder-item");
+const prisma_1 = require("../../prisma");
+const olx_parser_1 = require("./olx-parser");
+async function runOlxSource() {
+    const source = await prisma_1.prisma.marketSource.findUnique({ where: { code: 'olx' } });
+    if (!source || !source.enabled)
+        return;
+    const activeWatchlist = await prisma_1.prisma.watchlistItem.findMany({
+        where: { active: true },
+        select: { item: { select: { setNumber: true } } }
+    });
+    const searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean)));
+    if (searchQueries.length === 0)
+        return;
+    const runId = await (0, source_run_logger_1.startSourceRun)('olx');
+    let itemsSeen = 0;
+    let itemsMatched = 0;
+    let itemsInserted = 0;
+    let itemsUpdated = 0;
+    try {
+        const upsertOperations = [];
+        const unresolvedOperations = [];
+        const now = new Date();
+        for (const query of searchQueries) {
+            const url = `https://www.olx.ua/uk/list/q-lego-${encodeURIComponent(query)}/`;
+            const html = await browser_manager_1.browserManager.fetchHtml(url);
+            const listings = (0, olx_parser_1.parseOlxSearchHtml)(html);
+            for (const listing of listings) {
+                itemsSeen += 1;
+                const resolvedItemId = await (0, item_matcher_1.resolveItemIdFromTitle)(listing.titleRaw);
+                const itemId = resolvedItemId ?? (await (0, placeholder_item_1.getOrCreatePlaceholderItemId)());
+                const listingId = (0, listing_id_1.stableListingId)('olx', listing.externalListingId);
+                upsertOperations.push(prisma_1.prisma.marketListing.upsert({
+                    where: { id: listingId },
+                    update: {
+                        sourceCode: source.code,
+                        itemId,
+                        titleRaw: listing.titleRaw,
+                        title: listing.titleRaw,
+                        url: listing.url,
+                        imageUrl: listing.imageUrl,
+                        price: listing.price,
+                        currency: listing.currency ?? 'UAH',
+                        shippingPrice: listing.shippingPrice ?? 0,
+                        shippingCurrency: listing.shippingCurrency ?? 'UAH',
+                        condition: listing.condition,
+                        sealed: listing.sealed,
+                        status: 'active',
+                        fetchedAt: now,
+                        lastSeenAt: now,
+                    },
+                    create: {
+                        id: listingId,
+                        sourceId: source.id,
+                        sourceCode: source.code,
+                        itemId,
+                        externalListingId: listing.externalListingId,
+                        externalId: listing.externalListingId,
+                        titleRaw: listing.titleRaw,
+                        title: listing.titleRaw,
+                        url: listing.url,
+                        imageUrl: listing.imageUrl,
+                        price: listing.price,
+                        currency: listing.currency ?? 'UAH',
+                        shippingPrice: listing.shippingPrice ?? 0,
+                        shippingCurrency: listing.shippingCurrency ?? 'UAH',
+                        condition: listing.condition,
+                        sealed: listing.sealed,
+                        status: 'active',
+                        fetchedAt: now,
+                        firstSeenAt: now,
+                        lastSeenAt: now,
+                    },
+                }));
+                if (resolvedItemId == null) {
+                    unresolvedOperations.push({
+                        listingId,
+                        sourceCode: 'olx',
+                        titleRaw: listing.titleRaw,
+                    });
+                }
+                else {
+                    itemsMatched += 1;
+                }
+            }
+        }
+        if (upsertOperations.length > 0) {
+            const chunkSize = 100;
+            for (let i = 0; i < upsertOperations.length; i += chunkSize) {
+                const chunk = upsertOperations.slice(i, i + chunkSize);
+                await prisma_1.prisma.$transaction(chunk);
+                itemsInserted += chunk.length;
+            }
+        }
+        for (const u of unresolvedOperations) {
+            await (0, unresolved_match_handler_1.enqueueUnresolvedMatch)(u);
+        }
+        await (0, source_run_logger_1.finishSourceRun)({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await (0, source_error_logger_1.logSourceError)({ scope: 'scraper', sourceCode: 'olx', message: 'OLX source failed', detailsJson: { error: message } });
+        await (0, source_run_logger_1.finishSourceRun)({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });
+    }
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\olx\olx-source.ts =====
@@ -27726,6 +29575,11 @@ export async function runOlxSource(): Promise<void> {
   }
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\olx\olx-types.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\olx\olx-types.ts =====
 
 export type OlxParsedListing = {
@@ -27837,10 +29691,10 @@ CMD ["node", "dist/main.js"]
   },
   "dependencies": {
     "@arcturus/db": "*",
-    "@arcturus/shared": "*",
     "@arcturus/scrapers": "*",
+    "@arcturus/shared": "*",
     "@prisma/client": "^5.22.0",
-    "bullmq": "^5.34.3",
+    "bullmq": "^5.76.4",
     "dotenv": "^16.4.7",
     "ioredis": "^5.4.2"
   },
@@ -27858,16 +29712,9 @@ CMD ["node", "dist/main.js"]
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\tsconfig.json =====
 
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "es2021",
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "strict": true,
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "ignoreDeprecations": "5.0"
+    "outDir": "./dist"
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
@@ -27907,8 +29754,8 @@ async function main(): Promise<void> {
       : jobName === JOB_NAMES.RECOMPUTE_DECISIONS ||
           jobName === JOB_NAMES.DETECT_DEALS
         ? QUEUE_NAMES.DECISIONS
-        : jobName === JOB_NAMES.RUN_SCANNER_JOB
-          ? QUEUE_NAMES.SCRAPER
+        : jobName === JOB_NAMES.RUN_SCANNER
+          ? QUEUE_NAMES.SCRAPERS
           : QUEUE_NAMES.MAINTENANCE;
 
   const queue = new Queue(queueName, {
@@ -28575,7 +30422,7 @@ export async function detectDealsJob(): Promise<{
   let lastId: string | undefined = undefined;
 
   while (hasMore) {
-    const listings = await prisma.marketListing.findMany({
+    const listings: Array<{ id: string; itemId: string; price: any; shippingPrice: any }> = await prisma.marketListing.findMany({
       where: { status: 'active' },
       orderBy: { id: 'asc' },
       take: chunkSize,
@@ -29180,7 +31027,7 @@ export async function recomputeMarketSnapshotsJob(): Promise<{ totalItems: numbe
   let lastId: string | undefined = undefined;
 
   while (hasMore) {
-    const chunk = await prisma.item.findMany({
+    const chunk: Array<{ id: string }> = await prisma.item.findMany({
       select: { id: true },
       take: chunkSize,
       skip: lastId ? 1 : undefined,
@@ -29312,7 +31159,8 @@ import {
   runOlxSource,
   runBrickLinkSource,
   runEbaySource,
-  runBrickowlSource
+  runBrickOwlSource,
+  runBrickEconomySource
 } from '@arcturus/scrapers';
 
 export async function runScannerJob(jobId: string): Promise<{
@@ -29348,7 +31196,10 @@ export async function runScannerJob(jobId: string): Promise<{
         await runEbaySource();
         break;
       case 'brickowl':
-        await runBrickowlSource();
+        await runBrickOwlSource();
+        break;
+      case 'brickeconomy':
+        await runBrickEconomySource();
         break;
       default:
         throw new Error(`Unknown source code: ${job.sourceCode}`);
@@ -29628,8 +31479,8 @@ export async function routeJob(job: Job): Promise<unknown> {
       return cleanupOldSnapshotsJob();
     case JOB_NAMES.SCHEDULED_REFRESH:
       return scheduledRefreshJob();
-    case JOB_NAMES.RUN_SCANNER_JOB:
-      if (!job.data?.jobId) throw new Error('RUN_SCANNER_JOB requires jobId');
+    case JOB_NAMES.RUN_SCANNER:
+      if (!job.data?.jobId) throw new Error('RUN_SCANNER requires jobId');
       return runScannerJob(job.data.jobId);
     case JOB_NAMES.GLOBAL_SYNC_REFRESH:
       return globalSyncRefreshJob(job.data);
@@ -29645,6 +31496,7 @@ export const QUEUE_NAMES = {
   MARKET: 'market',
   DECISIONS: 'decisions',
   MAINTENANCE: 'maintenance',
+  SYNC: 'sync',
 } as const;
 
 export const JOB_NAMES = {
@@ -29654,6 +31506,9 @@ export const JOB_NAMES = {
   DETECT_DEALS: 'detect-deals',
   SCHEDULED_REFRESH: 'scheduled-refresh',
   MARK_STALE_LISTINGS: 'mark-stale-listings',
+  SOURCE_HEALTH_ROLLUP: 'source-health-rollup',
+  CLEANUP_OLD_SNAPSHOTS: 'cleanup-old-snapshots',
+  GLOBAL_SYNC_REFRESH: 'global-sync-refresh',
 } as const;
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\queue\redis-connection.ts =====
@@ -29661,7 +31516,23 @@ export const JOB_NAMES = {
 import Redis from 'ioredis';
 
 export function createRedisConnection(): Redis {
-  return new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  const redisUrl = process.env.REDIS_URL?.trim();
+
+  if (redisUrl) {
+    return new Redis(redisUrl, {
+      maxRetriesPerRequest: null,
+      family: 0,
+      enableReadyCheck: false,
+      retryStrategy(times) {
+        return Math.min(times * 100, 3000);
+      }
+    });
+  }
+
+  return new Redis({
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: Number(process.env.REDIS_PORT || 6379),
+    password: process.env.REDIS_PASSWORD || undefined,
     maxRetriesPerRequest: null,
     family: 0,
     enableReadyCheck: false,
@@ -29751,24 +31622,23 @@ import { createRedisConnection } from './redis-connection';
 import { routeJob } from './job-router';
 
 export function startWorkers() {
-  const handleJob = async (job: Job) => routeJob(job);
   const connection = createRedisConnection();
 
   const concurrencyLevels = {
-    [QUEUE_NAMES.MARKET]: Number(process.env.MARKET_CONCURRENCY) || 4,
-    [QUEUE_NAMES.DECISIONS]: Number(process.env.DECISIONS_CONCURRENCY) || 4,
-    [QUEUE_NAMES.MAINTENANCE]: Number(process.env.MAINTENANCE_CONCURRENCY) || 1,
+    [QUEUE_NAMES.MARKET]: Number(process.env.MARKET_CONCURRENCY) || 5,
+    [QUEUE_NAMES.DECISIONS]: Number(process.env.DECISIONS_CONCURRENCY) || 5,
+    [QUEUE_NAMES.MAINTENANCE]: Number(process.env.MAINTENANCE_CONCURRENCY) || 2,
     [QUEUE_NAMES.SCRAPERS]: Number(process.env.SCRAPERS_CONCURRENCY) || 8,
-    [QUEUE_NAMES.SYNC]: Number(process.env.SYNC_CONCURRENCY) || 2,
+    [QUEUE_NAMES.SYNC]: Number(process.env.SYNC_CONCURRENCY) || 3,
   };
 
   const workers = Object.values(QUEUE_NAMES).map((queueName) => {
-    const worker = new Worker(queueName, handleJob, { 
+    const worker = new Worker(queueName, async (job: Job) => routeJob(job), { 
       connection, 
       concurrency: concurrencyLevels[queueName],
       lockDuration: 1000 * 60 * 5,
       removeOnComplete: { count: 100 },
-      removeOnFail: { count: 1000 },
+      removeOnFail: { count: 500 },
       stalledInterval: 30000,
     });
 
@@ -29879,16 +31749,10 @@ server {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\db\tsconfig.json =====
 
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2021",
-    "module": "CommonJS",
-    "declaration": true,
     "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "skipLibCheck": true,
-    "moduleResolution": "node",
-    "ignoreDeprecations": "5.0",
+    "declaration": true,
     "types": ["node"]
   },
   "include": ["src/**/*"]
@@ -30000,12 +31864,12 @@ model InventoryItem {
   id                      String            @id @default(cuid())
   itemId                  String
   titleSnapshot           String
-  purchasePrice           Decimal           @db.Decimal(10, 2)
-  totalCost               Decimal           @db.Decimal(10, 2)
+  purchasePrice           Float
+  totalCost               Float
   quantity                Int               @default(1)
   condition               String            @default("used")
   sealed                  Boolean           @default(false)
-  expectedSalePriceManual Decimal?          @db.Decimal(10, 2)
+  expectedSalePriceManual Float?
   source                  String?
   purchaseUrl             String?
   storageLocation         String?
@@ -30073,9 +31937,9 @@ model WatchlistItem {
   id              String             @id @default(cuid())
   itemId          String
   titleSnapshot   String
-  desiredBuyPrice Decimal            @db.Decimal(10, 2)
-  maxBuyPrice     Decimal            @db.Decimal(10, 2)
-  targetSellPrice Decimal?           @db.Decimal(10, 2)
+  desiredBuyPrice Float
+  maxBuyPrice     Float
+  targetSellPrice Float?
   active          Boolean            @default(true)
   priority        Int                @default(50)
   notes           String?
@@ -30105,11 +31969,11 @@ model PurchaseOrder {
   supplierName    String?
   sourceUrl       String?
   status          String         @default("planned")
-  plannedPrice    Decimal?       @db.Decimal(10, 2)
-  actualPrice     Decimal?       @db.Decimal(10, 2)
-  shippingPrice   Decimal?       @db.Decimal(10, 2)
-  totalCost       Decimal?       @db.Decimal(10, 2)
-  targetSellPrice Decimal?       @db.Decimal(10, 2)
+  plannedPrice    Float?
+  actualPrice     Float?
+  shippingPrice   Float?
+  totalCost       Float?
+  targetSellPrice Float?
   quantity        Int            @default(1)
   condition       String         @default("used")
   sealed          Boolean        @default(false)
@@ -30155,10 +32019,10 @@ model MarketListing {
   url                 String
   imageUrl            String?
   sellerName          String?
-  sellerRating        Decimal?               @db.Decimal(5, 2)
-  price               Decimal                @db.Decimal(10, 2)
+  sellerRating        Float?
+  price               Float
   currency            String                 @default("UAH")
-  shippingPrice       Decimal?               @db.Decimal(10, 2)
+  shippingPrice       Float?
   shippingCurrency    String?
   country             String?
   condition           String?
@@ -30187,16 +32051,16 @@ model MarketSnapshot {
   itemId                  String
   scope                   String   @default("ua")
   listingsCount           Int      @default(0)
-  lowestPrice             Decimal? @db.Decimal(10, 2)
-  lowestPriceWithShipping Decimal? @db.Decimal(10, 2)
-  avgPrice                Decimal? @db.Decimal(10, 2)
-  medianPrice             Decimal? @db.Decimal(10, 2)
-  avgShipping             Decimal? @db.Decimal(10, 2)
-  minShipping             Decimal? @db.Decimal(10, 2)
-  maxShipping             Decimal? @db.Decimal(10, 2)
-  sealedAvgPrice          Decimal? @db.Decimal(10, 2)
-  usedAvgPrice            Decimal? @db.Decimal(10, 2)
-  confidenceScore         Decimal  @default(0) @db.Decimal(5, 4)
+  lowestPrice             Float?
+  lowestPriceWithShipping Float?
+  avgPrice                Float?
+  medianPrice             Float?
+  avgShipping             Float?
+  minShipping             Float?
+  maxShipping             Float?
+  sealedAvgPrice          Float?
+  usedAvgPrice            Float?
+  confidenceScore         Float    @default(0)
   computedAt              DateTime @default(now())
   item                    Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
@@ -30209,8 +32073,8 @@ model DecisionSnapshot {
   contextType     String
   contextId       String
   action          String
-  score           Decimal   @db.Decimal(5, 2)
-  confidence      Decimal   @db.Decimal(5, 4)
+  score           Float
+  confidence      Float
   reasonPrimary   String
   reasonSecondary String?
   payloadJson     Json?
@@ -30228,7 +32092,7 @@ model DecisionSnapshot {
 model PurchaseFlowItem {
   id              String        @id @default(cuid())
   watchlistItemId String
-  selectedPrice   Decimal?      @db.Decimal(10, 2)
+  selectedPrice   Float?
   status          String        @default("pending")
   reason          String?
   createdAt       DateTime      @default(now())
@@ -30242,8 +32106,8 @@ model PurchaseFlowItem {
 model RepriceFlowItem {
   id              String        @id @default(cuid())
   inventoryItemId String
-  currentPrice    Decimal?      @db.Decimal(10, 2)
-  suggestedPrice  Decimal?      @db.Decimal(10, 2)
+  currentPrice    Float?
+  suggestedPrice  Float?
   status          String        @default("pending")
   reason          String?
   createdAt       DateTime      @default(now())
@@ -30271,12 +32135,12 @@ model Deal {
   id              String        @id @default(cuid())
   listingId       String
   watchlistItemId String
-  buyPrice        Decimal       @db.Decimal(10, 2)
-  targetSellPrice Decimal       @db.Decimal(10, 2)
-  profit          Decimal       @db.Decimal(10, 2)
-  roiPercent      Decimal       @db.Decimal(10, 2)
+  buyPrice        Float
+  targetSellPrice Float
+  profit          Float
+  roiPercent      Float
   action          String
-  score           Decimal       @db.Decimal(5, 2)
+  score           Float
   status          String        @default("open")
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -30293,10 +32157,10 @@ model Sale {
   inventoryItemId String
   itemId          String
   quantity        Int             @default(1)
-  sellPrice       Decimal         @db.Decimal(10, 2)
-  costBasis       Decimal         @db.Decimal(10, 2)
-  profit          Decimal         @db.Decimal(10, 2)
-  roiPercent      Decimal         @db.Decimal(10, 2)
+  sellPrice       Float
+  costBasis       Float
+  profit          Float
+  roiPercent      Float
   channel         String?
   buyerName       String?
   notes           String?
@@ -30323,7 +32187,7 @@ model Order {
   buyerName        String
   contact          String
   status           String          @default("pending")
-  sellPrice        Decimal?        @db.Decimal(10, 2)
+  sellPrice        Float?
   quantity         Int             @default(1)
   channel          String?
   adminNote        String?
@@ -30348,7 +32212,7 @@ model ReturnRequest {
   inventoryItemId String
   status          String        @default("requested")
   reason          String?
-  refundAmount    Decimal?      @db.Decimal(10, 2)
+  refundAmount    Float?
   restock         Boolean       @default(true)
   quantity        Int           @default(1)
   adminNote       String?
@@ -30369,7 +32233,7 @@ model Expense {
   id              String         @id @default(cuid())
   type            String
   category        String
-  amount          Decimal        @db.Decimal(10, 2)
+  amount          Float
   currency        String         @default("UAH")
   description     String?
   inventoryItemId String?
@@ -30544,7 +32408,7 @@ model SoldComp {
   title           String
   normalizedTitle String
   extractedSetNo  String?
-  soldPrice       Decimal  @db.Decimal(10, 2)
+  soldPrice       Float
   currency        String   @default("UAH")
   soldAt          DateTime
   url             String?
@@ -30561,8 +32425,61 @@ model SoldComp {
   @@index([soldAt])
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\db\src\index.js =====
+
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createPrismaClient = void 0;
+const client_1 = require("@prisma/client");
+__exportStar(require("@prisma/client"), exports);
+const softDeleteModels = ['Sale', 'Order', 'ReturnRequest', 'Expense'];
+const createPrismaClient = () => {
+    const prisma = new client_1.PrismaClient({
+        log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    });
+    return prisma.$extends({
+        query: {
+            $allModels: {
+                async $allOperations({ model, operation, args, query }) {
+                    if (softDeleteModels.includes(model)) {
+                        if (['findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy'].includes(operation)) {
+                            args.where = { ...args.where, deletedAt: null };
+                        }
+                        else if (operation === 'findUnique' || operation === 'findUniqueOrThrow') {
+                            const result = await query(args);
+                            if (result && result.deletedAt !== null) {
+                                if (operation === 'findUniqueOrThrow')
+                                    throw new Error(`${model} not found`);
+                                return null;
+                            }
+                            return result;
+                        }
+                    }
+                    return query(args);
+                },
+            },
+        },
+    });
+};
+exports.createPrismaClient = createPrismaClient;
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\db\src\index.ts =====
 
+/// <reference types="node" />
 import { PrismaClient } from '@prisma/client';
 export * from '@prisma/client';
 
@@ -30615,18 +32532,46 @@ export const createPrismaClient = () => {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\shared\tsconfig.json =====
 
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2021",
-    "module": "CommonJS",
-    "declaration": true,
     "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "skipLibCheck": true,
-    "moduleResolution": "node",
-    "ignoreDeprecations": "5.0"
+    "declaration": true
   },
   "include": ["src/**/*"]
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\shared\src\currency.utils.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.fetchLiveExchangeRates = fetchLiveExchangeRates;
+exports.convertCurrency = convertCurrency;
+async function fetchLiveExchangeRates() {
+    const defaultRates = { UAH: 1, USD: 41.5, EUR: 45.2, GBP: 52.5, PLN: 10.5 };
+    try {
+        const response = await fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json');
+        if (!response.ok)
+            return defaultRates;
+        const data = await response.json();
+        const rates = { UAH: 1 };
+        for (const item of data) {
+            if (['USD', 'EUR', 'GBP', 'PLN'].includes(item.cc)) {
+                rates[item.cc] = item.rate;
+            }
+        }
+        return rates['EUR'] ? rates : defaultRates;
+    }
+    catch {
+        return defaultRates;
+    }
+}
+function convertCurrency(amount, from, to, rates) {
+    if (!Number.isFinite(amount) || amount <= 0)
+        return 0;
+    const rateFrom = rates[from.toUpperCase()] || rates['EUR'];
+    const rateTo = rates[to.toUpperCase()] || rates['UAH'];
+    const baseUah = amount * rateFrom;
+    return Number((baseUah / rateTo).toFixed(2));
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\shared\src\currency.utils.ts =====
@@ -30657,11 +32602,83 @@ export function convertCurrency(amount: number, from: string, to: string, rates:
   return Number((baseUah / rateTo).toFixed(2));
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\shared\src\index.js =====
+
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+__exportStar(require("./money.utils"), exports);
+__exportStar(require("./text.utils"), exports);
+__exportStar(require("./currency.utils"), exports);
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\shared\src\index.ts =====
 
 export * from './money.utils';
 export * from './text.utils';
 export * from './currency.utils';
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\shared\src\money.utils.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.toCents = toCents;
+exports.fromCents = fromCents;
+exports.toMoney = toMoney;
+exports.addMoney = addMoney;
+exports.calculateProfit = calculateProfit;
+exports.calculateRoiPercent = calculateRoiPercent;
+exports.calculateMarginPercent = calculateMarginPercent;
+function toCents(value) {
+    if (!Number.isFinite(value))
+        return 0;
+    return Math.round(value * 100);
+}
+function fromCents(cents) {
+    if (!Number.isFinite(cents))
+        return 0;
+    return Math.round(cents) / 100;
+}
+function toMoney(value) {
+    if (!Number.isFinite(value))
+        return 0;
+    return fromCents(toCents(value));
+}
+function addMoney(...values) {
+    const totalCents = values.reduce((sum, val) => sum + toCents(val), 0);
+    return fromCents(totalCents);
+}
+function calculateProfit(params) {
+    const revCents = toCents(params.revenue);
+    const costCents = toCents(params.cost);
+    return fromCents(revCents - costCents);
+}
+function calculateRoiPercent(params) {
+    const costCents = toCents(params.cost);
+    if (costCents <= 0)
+        return 0;
+    const profitCents = toCents(params.profit);
+    return Math.round((profitCents / costCents) * 10000) / 100;
+}
+function calculateMarginPercent(params) {
+    const revenueCents = toCents(params.revenue);
+    if (revenueCents <= 0)
+        return 0;
+    const profitCents = toCents(params.profit);
+    return Math.round((profitCents / revenueCents) * 10000) / 100;
+}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\shared\src\money.utils.ts =====
 
@@ -30703,6 +32720,31 @@ export function calculateMarginPercent(params: { profit: number; revenue: number
   if (revenueCents <= 0) return 0;
   const profitCents = toCents(params.profit);
   return Math.round((profitCents / revenueCents) * 10000) / 100;
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\shared\src\text.utils.js =====
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.normalizeTitle = normalizeTitle;
+exports.extractSetNumber = extractSetNumber;
+exports.slugify = slugify;
+function normalizeTitle(value) {
+    return value
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s-]+/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+function extractSetNumber(value) {
+    const match = value.match(/\b\d{4,7}\b/);
+    return match?.[0] ?? null;
+}
+function slugify(value) {
+    return normalizeTitle(value)
+        .replace(/\s+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 120);
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\shared\src\text.utils.ts =====

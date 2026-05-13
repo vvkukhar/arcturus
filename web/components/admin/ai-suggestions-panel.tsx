@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { useI18n } from '@/components/providers/i18n-provider';
 

@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { CreditCard, Loader2, MessageSquare, Phone, User } from 'lucide-react';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/components/providers/i18n-provider';
 import type { ApiResponse } from '@/lib/types';

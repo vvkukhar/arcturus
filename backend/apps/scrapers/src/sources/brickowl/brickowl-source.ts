@@ -7,7 +7,7 @@ import { finishSourceRun, startSourceRun } from '../../common/source-run-logger'
 import { enqueueUnresolvedMatch } from '../../common/unresolved-match-handler';
 import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
-import { parseBrickOwlSearchHtml } from './brickowl-parser';
+import { parseBrickowlSearchHtml } from './brickowl-parser';
 
 export async function runBrickOwlSource(): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'brickowl' } });
@@ -39,7 +39,7 @@ export async function runBrickOwlSource(): Promise<void> {
     for (const query of searchQueries) {
       const url = `https://www.brickowl.com/search/catalog?query=${encodeURIComponent(query)}`;
       const response = await httpClient.get<string>(url);
-      const listings = parseBrickOwlSearchHtml(response.data);
+      const listings = parseBrickowlSearchHtml(response.data);
 
       for (const listing of listings) {
         itemsSeen += 1;

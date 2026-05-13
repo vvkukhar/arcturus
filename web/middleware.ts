@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
 
   if (token) {
     try {
-      const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'change_me_super_secret');
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
       await jwtVerify(token, secret);
       isAuthenticated = true;
     } catch {
@@ -28,7 +28,8 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isAdminRoute && !isAuthenticated) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const url = new URL('/login', request.url);
+    return NextResponse.redirect(url);
   }
 
   if (isPublicPath && isAuthenticated && (pathname === '/login' || pathname === '/register')) {
@@ -37,16 +38,15 @@ export async function middleware(request: NextRequest) {
 
   const response = NextResponse.next();
 
-  if (process.env.NODE_ENV === 'production') {
-    response.headers.set('Content-Security-Policy', "upgrade-insecure-requests;");
-    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-  }
-
-  response.headers.set('X-Arcturus-Auth-State', isAuthenticated ? 'authenticated' : 'guest');
+  response.headers.set('X-Arcturus-Auth-State', isAuthenticated ? '1' : '0');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
 
   return response;
 }

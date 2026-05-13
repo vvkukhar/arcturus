@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useCart } from '../providers/cart-provider';
+import { useCart } from '@/lib/store/cart';
 import { useI18n } from '../providers/i18n-provider';
 import { X, Plus, Minus, ShoppingBag, ArrowRight, Package } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -45,7 +45,7 @@ export function CartSidebar() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--card)]">
           <h2 className="text-xl font-extrabold text-[var(--foreground)] flex items-center gap-2">
             <ShoppingBag size={20} />
-            {(t('cart.title' as any) as string)}
+            {t('cart.title' as any)}
           </h2>
           <button 
             onClick={() => setIsCartOpen(false)}
@@ -62,14 +62,14 @@ export function CartSidebar() {
                 <ShoppingBag size={40} />
               </div>
               <div>
-                <p className="text-lg font-bold text-[var(--foreground)]">{(t('cart.empty' as any) as string)}</p>
-                <p className="text-sm text-slate-500 mt-1">{(t('cart.addItems' as any) as string)}</p>
+                <p className="text-lg font-bold text-[var(--foreground)]">{t('cart.empty' as any)}</p>
+                <p className="text-sm text-slate-500 mt-1">{t('cart.addItems' as any)}</p>
               </div>
               <button 
                 onClick={() => { setIsCartOpen(false); router.push('/store/catalog'); }}
                 className="mt-4 px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/20"
               >
-                {(t('cart.startBrowsing' as any) as string)}
+                {t('cart.startBrowsing' as any)}
               </button>
             </div>
           ) : (
@@ -118,14 +118,14 @@ export function CartSidebar() {
         {items.length > 0 && (
           <div className="border-t border-[var(--border)] p-6 bg-[var(--card)]">
             <div className="flex justify-between items-center mb-6">
-              <span className="text-slate-500 font-medium text-sm">{(t('cart.subtotal' as any) as string)}</span>
+              <span className="text-slate-500 font-medium text-sm">{t('cart.subtotal' as any)}</span>
               <span className="text-2xl font-black text-[var(--foreground)]">
-                {formatMoney(totalPrice)}
+                {formatMoney(totalPrice())}
               </span>
             </div>
             
             <button onClick={handleCheckout} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-blue-600/20">
-              {(t('cart.checkoutNow' as any) as string)} <ArrowRight size={20} />
+              {t('cart.checkoutNow' as any)} <ArrowRight size={20} />
             </button>
           </div>
         )}

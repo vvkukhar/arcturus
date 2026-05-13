@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AuditService {
@@ -13,8 +14,8 @@ export class AuditService {
         action: dto.action,
         entityType: dto.entityType,
         entityId: dto.entityId ?? null,
-        beforeJson: dto.beforeJson ?? undefined,
-        afterJson: dto.afterJson ?? undefined,
+        beforeJson: dto.beforeJson ? (dto.beforeJson as Prisma.InputJsonValue) : Prisma.JsonNull,
+        afterJson: dto.afterJson ? (dto.afterJson as Prisma.InputJsonValue) : Prisma.JsonNull,
         ipAddress: dto.ipAddress ?? null,
         userAgent: dto.userAgent ?? null,
       },

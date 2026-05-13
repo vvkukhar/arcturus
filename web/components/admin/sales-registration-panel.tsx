@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import useSWR from 'swr';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { Loader2, ReceiptText } from 'lucide-react';
 import { formatMoney } from '@/lib/format';
 import { swrFetcher } from '@/lib/swr-fetcher';

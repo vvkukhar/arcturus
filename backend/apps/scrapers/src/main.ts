@@ -3,8 +3,8 @@ import { prisma } from './prisma';
 import { runBrickLinkSource } from './sources/bricklink/bricklink-source';
 import { runOlxSource } from './sources/olx/olx-source';
 import { runEbaySource } from './sources/ebay/ebay-source';
-import { runBrickowlSource } from './sources/brickowl/brickowl-source';
-import { runBrickeconomySource } from './sources/brickeconomy/brickeconomy-source';
+import { runBrickOwlSource } from './sources/brickowl/brickowl-source';
+import { runBrickEconomySource } from './sources/brickeconomy/brickeconomy-source';
 
 async function main(): Promise<void> {
   const mode = process.argv[2] ?? 'all';
@@ -16,15 +16,15 @@ async function main(): Promise<void> {
   } else if (mode === 'ebay') {
     await runEbaySource();
   } else if (mode === 'brickowl') {
-    await runBrickowlSource();
+    await runBrickOwlSource();
   } else if (mode === 'brickeconomy') {
-    await runBrickeconomySource();
+    await runBrickEconomySource();
   } else {
     await runOlxSource();
     await runBrickLinkSource();
     await runEbaySource();
-    await runBrickowlSource();
-    await runBrickeconomySource();
+    await runBrickOwlSource();
+    await runBrickEconomySource();
   }
 
   await prisma.$disconnect();

@@ -3,7 +3,8 @@ import {
   runOlxSource,
   runBrickLinkSource,
   runEbaySource,
-  runBrickowlSource
+  runBrickOwlSource,
+  runBrickEconomySource
 } from '@arcturus/scrapers';
 
 export async function runScannerJob(jobId: string): Promise<{
@@ -39,7 +40,10 @@ export async function runScannerJob(jobId: string): Promise<{
         await runEbaySource();
         break;
       case 'brickowl':
-        await runBrickowlSource();
+        await runBrickOwlSource();
+        break;
+      case 'brickeconomy':
+        await runBrickEconomySource();
         break;
       default:
         throw new Error(`Unknown source code: ${job.sourceCode}`);

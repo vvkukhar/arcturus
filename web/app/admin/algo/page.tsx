@@ -5,7 +5,7 @@ import { BrainCircuit, ShieldAlert, Zap, Loader2 } from 'lucide-react';
 import { SectionCard } from '@/components/admin/section-card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 
 export default function AlgoControlPage() {
   const [pricingAggressiveness, setPricingAggressiveness] = useState(50);

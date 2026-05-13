@@ -20,4 +20,19 @@ export class ActivityService {
       take: limit,
     });
   }
+
+  async list(params: { q?: string; action?: string; limit?: number }): Promise<any[]> {
+    return this.prisma.activityLog.findMany({
+      where: {
+        ...(params.action ? { action: params.action } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: params.limit ?? 100,
+    });
+  }
+
+  async stats(): Promise<any> {
+    const total = await this.prisma.activityLog.count();
+    return { total };
+  }
 }

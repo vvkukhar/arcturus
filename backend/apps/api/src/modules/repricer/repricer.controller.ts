@@ -15,13 +15,10 @@ export class RepricerController {
     @Body()
     body: {
       inventoryItemId: string;
-      marketFloor?: number | null;
-      marketAverage?: number | null;
-      marketCeiling?: number | null;
       targetRoiPercent?: number | null;
     },
   ): Promise<unknown> {
-    return this.repricerService.analyze(body);
+    return this.repricerService.analyzeItem(body.inventoryItemId, body.targetRoiPercent ?? 40);
   }
 
   @Post('analyze-from-comps')
@@ -32,7 +29,7 @@ export class RepricerController {
       targetRoiPercent?: number | null;
     },
   ): Promise<unknown> {
-    return this.repricerService.analyzeFromComps(body);
+    return this.repricerService.analyzeItem(body.inventoryItemId, body.targetRoiPercent ?? 40);
   }
 
   @Patch('apply')
@@ -43,6 +40,6 @@ export class RepricerController {
       suggestedPrice: number;
     },
   ): Promise<unknown> {
-    return this.repricerService.apply(body);
+    return this.repricerService.applyReprice(body.inventoryItemId, body.suggestedPrice);
   }
 }

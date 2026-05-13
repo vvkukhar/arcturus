@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import type { ScannerJob } from '@/lib/types';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { Loader2, PlaySquare } from 'lucide-react';
 import { swrFetcher } from '@/lib/swr-fetcher';
 

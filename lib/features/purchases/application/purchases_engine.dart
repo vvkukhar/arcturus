@@ -3,7 +3,6 @@ import 'dart:isolate';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_engine.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 
 class PurchasesAnalysis {

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UserPlus, ArrowRight, Loader2, Mail, KeyRound, User, KeySquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 
 export default function RegisterPage() {
   const router = useRouter();

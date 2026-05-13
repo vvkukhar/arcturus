@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/utils/core_utils.dart';
-import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/features/sales/application/sales_engine.dart';
 
 class PosCartItem {

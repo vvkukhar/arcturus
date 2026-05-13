@@ -14,10 +14,10 @@
   },
   "dependencies": {
     "@arcturus/db": "*",
-    "@arcturus/shared": "*",
     "@arcturus/scrapers": "*",
+    "@arcturus/shared": "*",
     "@prisma/client": "^5.22.0",
-    "bullmq": "^5.34.3",
+    "bullmq": "^5.76.4",
     "dotenv": "^16.4.7",
     "ioredis": "^5.4.2"
   },

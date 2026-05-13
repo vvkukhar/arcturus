@@ -26,8 +26,8 @@ export async function routeJob(job: Job): Promise<unknown> {
       return cleanupOldSnapshotsJob();
     case JOB_NAMES.SCHEDULED_REFRESH:
       return scheduledRefreshJob();
-    case JOB_NAMES.RUN_SCANNER_JOB:
-      if (!job.data?.jobId) throw new Error('RUN_SCANNER_JOB requires jobId');
+    case JOB_NAMES.RUN_SCANNER:
+      if (!job.data?.jobId) throw new Error('RUN_SCANNER requires jobId');
       return runScannerJob(job.data.jobId);
     case JOB_NAMES.GLOBAL_SYNC_REFRESH:
       return globalSyncRefreshJob(job.data);

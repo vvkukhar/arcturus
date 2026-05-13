@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { RefreshCw, ServerCrash, DatabaseZap, Loader2, PlaySquare } from 'lucide-react';
 import { MetricCard } from '@/components/admin/metric-card';
 import { StatusPill } from '@/components/admin/status-pill';

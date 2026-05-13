@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCart } from '../providers/cart-provider';
+import { useCart } from '@/lib/store/cart';
 import { useTheme } from '../providers/theme-provider';
 import { useI18n } from '../providers/i18n-provider';
 import { useSidebar } from '../providers/sidebar-provider';

@@ -9,7 +9,7 @@ import { InventoryEditDialog } from '@/components/admin/inventory-edit-dialog';
 import { StatusPill } from '@/components/admin/status-pill';
 import { formatMoney, formatPercent } from '@/lib/format';
 import { InventoryDeleteButton } from '@/components/admin/inventory-delete-button';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import type { InventoryItem, ApiResponse } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 

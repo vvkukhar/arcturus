@@ -5,7 +5,7 @@ import { logSourceError } from '../../common/source-error-logger';
 import { finishSourceRun, startSourceRun } from '../../common/source-run-logger';
 import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
-import { parseBrickEconomySearchHtml } from './brickeconomy-parser';
+import { parseBrickeconomySearchHtml } from './brickeconomy-parser';
 
 export async function runBrickEconomySource(): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'brickeconomy' } });
@@ -36,7 +36,7 @@ export async function runBrickEconomySource(): Promise<void> {
     for (const query of searchQueries) {
       const url = `https://www.brickeconomy.com/search?query=${encodeURIComponent(query)}`;
       const response = await httpClient.get<string>(url);
-      const marketData = parseBrickEconomySearchHtml(response.data);
+      const marketData = parseBrickeconomySearchHtml(response.data);
 
       for (const data of marketData) {
         itemsSeen += 1;

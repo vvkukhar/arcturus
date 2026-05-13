@@ -51,7 +51,7 @@ export class NotificationsController {
       id: string;
     },
   ): Promise<unknown> {
-    return this.notificationsService.markRead(body.id);
+    return this.notificationsService.markAsRead(body.id);
   }
 
   @Roles('admin', 'operator', 'viewer')

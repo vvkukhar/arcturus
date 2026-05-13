@@ -80,7 +80,7 @@ export class ImportExportService {
         source: row.source,
         warehouse: row.location?.warehouse?.name ?? '',
         createdAt: row.createdAt,
-      })),
+      })) as Record<string, unknown>[],
     );
   }
 
@@ -103,7 +103,48 @@ export class ImportExportService {
         channel: row.channel,
         buyerName: row.buyerName,
         createdAt: row.createdAt,
-      })),
+      })) as Record<string, unknown>[],
+    );
+  }
+
+  async exportExpenses(): Promise<string> {
+    const rows = await this.prisma.expense.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return this.toCsv(
+      rows.map((row) => ({
+        id: row.id,
+        type: row.type,
+        category: row.category,
+        amount: row.amount,
+        currency: row.currency,
+        description: row.description ?? '',
+        incurredAt: row.incurredAt,
+        createdAt: row.createdAt,
+      })) as Record<string, unknown>[],
+    );
+  }
+
+  async exportWatchlist(): Promise<string> {
+    const rows = await this.prisma.watchlistItem.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { item: true }
+    });
+
+    return this.toCsv(
+      rows.map((row) => ({
+        id: row.id,
+        itemId: row.itemId,
+        titleSnapshot: row.titleSnapshot,
+        setNumber: row.item?.setNumber ?? '',
+        desiredBuyPrice: row.desiredBuyPrice,
+        maxBuyPrice: row.maxBuyPrice,
+        targetSellPrice: row.targetSellPrice ?? '',
+        active: row.active,
+        priority: row.priority,
+        createdAt: row.createdAt,
+      })) as Record<string, unknown>[],
     );
   }
 
@@ -129,6 +170,33 @@ export class ImportExportService {
 
     if (!dryRun && validData.length > 0) {
       await this.prisma.item.createMany({ data: validData, skipDuplicates: true });
+    }
+
+    return { dryRun, rows: rows.length, successCount: validData.length, errors };
+  }
+
+  async importExpenses(csv: string, dryRun = false): Promise<unknown> {
+    const rows = this.parseCsv(csv);
+    const validData = [];
+    const errors = [];
+
+    for (const row of rows) {
+      const amount = Number(row.amount);
+      if (Number.isNaN(amount) || amount <= 0) {
+        errors.push({ error: 'Invalid amount', row });
+        continue;
+      }
+      validData.push({
+        type: row.type?.trim() || 'general',
+        category: row.category?.trim() || 'other',
+        amount: toMoney(amount),
+        currency: row.currency?.trim() || 'UAH',
+        description: row.description?.trim() || null,
+      });
+    }
+
+    if (!dryRun && validData.length > 0) {
+      await this.prisma.expense.createMany({ data: validData, skipDuplicates: true });
     }
 
     return { dryRun, rows: rows.length, successCount: validData.length, errors };

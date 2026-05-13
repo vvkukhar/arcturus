@@ -47,7 +47,7 @@ class PurchaseModel {
 
   PurchaseModel copyWith({int? soldQuantity}) => PurchaseModel(id: id, itemId: itemId, source: source, sourceUrl: sourceUrl, sellerName: sellerName, sellerContact: sellerContact, note: note, purchasePrice: purchasePrice, shippingCost: shippingCost, additionalCosts: additionalCosts, finalTotal: finalTotal, exchangeRate: exchangeRate, currency: currency, paymentMethod: paymentMethod, purchaseDate: purchaseDate, quantity: quantity, soldQuantity: soldQuantity ?? this.soldQuantity);
 
-  Map<String, dynamic> toJson() => {'id': id, 'itemId': itemId, 'source': source, 'sourceUrl': sourceUrl, 'sellerName': sellerName, 'sellerContact': sellerContact, 'note': note, 'purchasePrice': purchasePrice, 'shippingCost': shippingCost, 'additionalCosts': additionalCosts, 'finalTotal': finalTotal, 'exchangeRate': exchangeRate, 'currency': currency, 'paymentMethod': paymentMethod.name, 'purchaseDate': purchaseDate.toIso8601String(), 'quantity': quantity, 'soldQuantity': soldQuantity};
+  Map<String, dynamic> toJson() => {'id': id, 'itemId': itemId, 'source': source, 'sourceUrl': sourceUrl, 'sellerName': sellerName, 'sellerContact': sellerContact, 'note': note, 'purchasePrice': purchasePrice, 'shippingCost': shippingCost, 'additionalCosts': additionalCosts, 'finalTotal': finalTotal, 'exchangeRate': exchangeRate, currency: currency, 'paymentMethod': paymentMethod.name, 'purchaseDate': purchaseDate.toIso8601String(), 'quantity': quantity, 'soldQuantity': soldQuantity};
 
   factory PurchaseModel.fromJson(Map<String, dynamic> map) => PurchaseModel(id: map['id'], itemId: map['itemId'], source: map['source'], sourceUrl: map['sourceUrl'], sellerName: map['sellerName'], sellerContact: map['sellerContact'], note: map['note'], purchasePrice: (map['purchasePrice'] ?? 0).toDouble(), shippingCost: (map['shippingCost'] ?? 0).toDouble(), additionalCosts: (map['additionalCosts'] ?? 0).toDouble(), finalTotal: (map['finalTotal'] ?? 0).toDouble(), exchangeRate: (map['exchangeRate'] ?? 1).toDouble(), currency: map['currency'] ?? 'UAH', paymentMethod: PurchasePaymentMethod.values.firstWhere((e) => e.name == map['paymentMethod'], orElse: () => PurchasePaymentMethod.card), purchaseDate: DateTime.tryParse(map['purchaseDate'] ?? '') ?? DateTime.now(), quantity: map['quantity'] ?? 1, soldQuantity: map['soldQuantity'] ?? 0);
 }
@@ -98,4 +98,29 @@ class MarketSnapshotModel {
   Map<String, dynamic> toMap() => {'id': id, 'itemRef': itemRef, 'source': source, 'lowPrice': lowPrice, 'averagePrice': averagePrice, 'highPrice': highPrice, 'currency': currency, 'sellerCount': sellerCount, 'availableQty': availableQty, 'url': url, 'capturedAt': capturedAt.toIso8601String()};
 
   factory MarketSnapshotModel.fromMap(Map<String, dynamic> map) => MarketSnapshotModel(id: map['id'], itemRef: map['itemRef'], source: map['source'], lowPrice: (map['lowPrice'] ?? 0).toDouble(), averagePrice: (map['averagePrice'] ?? 0).toDouble(), highPrice: (map['highPrice'] ?? 0).toDouble(), currency: map['currency'] ?? 'UAH', sellerCount: map['sellerCount'], availableQty: map['availableQty'], url: map['url'], capturedAt: DateTime.tryParse(map['capturedAt'] ?? '') ?? DateTime.now());
+}
+
+class PartOutProjectModel {
+  final String id, sourceSetTitle;
+  final PartOutProjectStatus status;
+  final double totalCost;
+
+  const PartOutProjectModel({required this.id, required this.sourceSetTitle, required this.status, required this.totalCost});
+
+  Map<String, dynamic> toMap() => {'id': id, 'sourceSetTitle': sourceSetTitle, 'status': status.name, 'totalCost': totalCost};
+
+  factory PartOutProjectModel.fromMap(Map<String, dynamic> map) => PartOutProjectModel(id: map['id'], sourceSetTitle: map['sourceSetTitle'], status: PartOutProjectStatus.values.firstWhere((e) => e.name == map['status'], orElse: () => PartOutProjectStatus.active), totalCost: (map['totalCost'] ?? 0).toDouble());
+}
+
+class PartOutLineModel {
+  final String id, projectId, title;
+  final int quantity;
+  final double expectedUnitPrice, expectedTotalPrice, actualTotalPrice;
+  final PartOutLineStatus status;
+
+  const PartOutLineModel({required this.id, required this.projectId, required this.title, required this.quantity, required this.expectedUnitPrice, required this.expectedTotalPrice, required this.actualTotalPrice, required this.status});
+
+  Map<String, dynamic> toMap() => {'id': id, 'projectId': projectId, 'title': title, 'quantity': quantity, 'expectedUnitPrice': expectedUnitPrice, 'expectedTotalPrice': expectedTotalPrice, 'actualTotalPrice': actualTotalPrice, 'status': status.name};
+
+  factory PartOutLineModel.fromMap(Map<String, dynamic> map) => PartOutLineModel(id: map['id'], projectId: map['projectId'], title: map['title'], quantity: map['quantity'] ?? 1, expectedUnitPrice: (map['expectedUnitPrice'] ?? 0).toDouble(), expectedTotalPrice: (map['expectedTotalPrice'] ?? 0).toDouble(), actualTotalPrice: (map['actualTotalPrice'] ?? 0).toDouble(), status: PartOutLineStatus.values.firstWhere((e) => e.name == map['status'], orElse: () => PartOutLineStatus.planned));
 }

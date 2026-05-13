@@ -45,9 +45,14 @@ export const useCart = create<CartStore>()(
       addItem: (item) => {
         const currentItems = get().items;
         const existing = currentItems.find((i) => i.id === item.id);
+        
+        if (existing && existing.maxQuantity && existing.quantity >= existing.maxQuantity) {
+            return; 
+        }
+
         const newItems = existing
           ? currentItems.map((i) => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i)
-          : [...currentItems, { ...item, quantity: 1 }];
+          : [...currentItems, { ...item, quantity: 1, maxQuantity: 1 }];
         
         trackEcommerce('add_to_cart', {
           currency: 'UAH',
@@ -110,18 +115,21 @@ export const useCart = create<CartStore>()(
           const availableMap = new Map(res.map(r => [r.id, r.quantity]));
           const validatedItems = currentItems.filter(item => {
             const availableQty = availableMap.get(item.id) || 0;
-            return availableQty >= item.quantity;
-          }).map(item => ({
-            ...item,
-            maxQuantity: availableMap.get(item.id) || item.quantity
-          }));
+            return availableQty > 0; 
+          }).map(item => {
+            const available = availableMap.get(item.id) || 0;
+            return {
+                ...item,
+                quantity: Math.min(item.quantity, available),
+                maxQuantity: available
+            };
+          });
 
           set({ 
             items: validatedItems, 
             totalItems: validatedItems.reduce((sum, i) => sum + i.quantity, 0) 
           });
         } catch (e) {
-          console.error('Failed to validate stock', e);
         }
       }
     }),

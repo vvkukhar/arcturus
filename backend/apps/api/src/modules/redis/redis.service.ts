@@ -6,15 +6,25 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: Redis;
 
   constructor() {
-    this.client = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-      maxRetriesPerRequest: 3,
-      family: 0,
-    });
+    const redisUrl = process.env.REDIS_URL?.trim();
+    
+    if (redisUrl) {
+      this.client = new Redis(redisUrl, {
+        maxRetriesPerRequest: 3,
+        family: 0,
+      });
+    } else {
+      this.client = new Redis({
+        host: process.env.REDIS_HOST || '127.0.0.1',
+        port: Number(process.env.REDIS_PORT || 6379),
+        password: process.env.REDIS_PASSWORD || undefined,
+        maxRetriesPerRequest: 3,
+        family: 0,
+      });
+    }
   }
 
-  async onModuleInit() {
-    this.client.on('error', (err) => console.error('Redis Client Error', err));
-  }
+  async onModuleInit() {}
 
   async onModuleDestroy() {
     await this.client.quit();

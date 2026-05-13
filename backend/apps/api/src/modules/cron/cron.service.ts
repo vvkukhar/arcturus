@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { ModuleRef } from '@nestjs/core';
 import { RepricerService } from '../repricer/repricer.service';
 import { MarketSnapshotService } from '../market/market-snapshot.service';
 import { DealDetectionService } from '../deals/deal-detection.service';
@@ -10,48 +11,36 @@ export class CronService {
   private readonly logger = new Logger(CronService.name);
 
   constructor(
-    private readonly repricer: RepricerService,
-    private readonly snapshot: MarketSnapshotService,
-    private readonly dealDetection: DealDetectionService,
+    private readonly moduleRef: ModuleRef,
     private readonly prisma: PrismaService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
   async handleMarketSnapshots() {
-    this.logger.log('Starting hourly market snapshot recomputation...');
     try {
-      const count = await this.snapshot.recomputeAllActive();
-      this.logger.log(`Successfully recomputed ${count} market snapshots.`);
-    } catch (error) {
-      this.logger.error('Failed to recompute market snapshots', error);
-    }
+      const snapshot = this.moduleRef.get(MarketSnapshotService, { strict: false });
+      await snapshot.recomputeAllActive();
+    } catch (error) {}
   }
 
   @Cron(CronExpression.EVERY_30_MINUTES)
   async handleAutoReprice() {
-    this.logger.log('Starting automated reprice flow processing...');
     try {
-      const count = await this.repricer.processRepriceQueue();
-      this.logger.log(`Automatically repriced ${count} inventory items.`);
-    } catch (error) {
-      this.logger.error('Failed to process reprice queue', error);
-    }
+      const repricer = this.moduleRef.get(RepricerService, { strict: false });
+      await repricer.processRepriceQueue();
+    } catch (error) {}
   }
 
   @Cron(CronExpression.EVERY_10_MINUTES)
   async handleDealPruning() {
-    this.logger.log('Pruning stale and missed arbitrage deals...');
     try {
-      await this.dealDetection.pruneStaleDeals();
-      this.logger.log('Pruning complete.');
-    } catch (error) {
-      this.logger.error('Failed to prune deals', error);
-    }
+      const dealDetection = this.moduleRef.get(DealDetectionService, { strict: false });
+      await dealDetection.pruneStaleDeals();
+    } catch (error) {}
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleSystemCleanup() {
-    this.logger.log('Running daily database cleanup and optimization...');
     try {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -63,10 +52,6 @@ export class CronService {
       await this.prisma.activityLog.deleteMany({
         where: { createdAt: { lt: thirtyDaysAgo } },
       });
-
-      this.logger.log('Daily cleanup successful.');
-    } catch (error) {
-      this.logger.error('Failed daily cleanup', error);
-    }
+    } catch (error) {}
   }
 }

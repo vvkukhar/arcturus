@@ -12,14 +12,17 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   async connectToRedis(): Promise<void> {
+    const url = process.env.REDIS_URL?.trim() || `redis://${process.env.REDIS_HOST || '127.0.0.1'}:${process.env.REDIS_PORT || 6379}`;
+    
     const pubClient = createClient({
-      url: process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`,
+      url,
       password: process.env.REDIS_PASSWORD || undefined,
     });
+    
     const subClient = pubClient.duplicate();
 
-    pubClient.on('error', (err) => console.error('[Redis PubClient Error]', err));
-    subClient.on('error', (err) => console.error('[Redis SubClient Error]', err));
+    pubClient.on('error', () => {});
+    subClient.on('error', () => {});
 
     await Promise.all([pubClient.connect(), subClient.connect()]);
 

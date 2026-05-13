@@ -12,14 +12,17 @@ export class QueueBoardModule implements NestModule {
     const serverAdapter = new ExpressAdapter();
     serverAdapter.setBasePath('/api/admin/queues');
 
-    const redisOptions = {
-      host: process.env.REDIS_HOST ?? 'localhost',
-      port: Number(process.env.REDIS_PORT ?? 6379),
-      password: process.env.REDIS_PASSWORD || undefined,
-    };
+    const redisUrl = process.env.REDIS_URL?.trim();
+    const redisOptions = redisUrl 
+      ? { url: redisUrl } 
+      : {
+          host: process.env.REDIS_HOST || '127.0.0.1',
+          port: Number(process.env.REDIS_PORT || 6379),
+          password: process.env.REDIS_PASSWORD || undefined,
+        };
 
     const queues = Object.values(QUEUE_NAMES).map(
-      (name) => new BullMQAdapter(new Queue(name, { connection: redisOptions }))
+      (name) => new BullMQAdapter(new Queue(name, { connection: redisOptions })) as any
     );
 
     createBullBoard({

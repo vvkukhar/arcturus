@@ -9,7 +9,7 @@ export async function recomputeMarketSnapshotsJob(): Promise<{ totalItems: numbe
   let lastId: string | undefined = undefined;
 
   while (hasMore) {
-    const chunk = await prisma.item.findMany({
+    const chunk: Array<{ id: string }> = await prisma.item.findMany({
       select: { id: true },
       take: chunkSize,
       skip: lastId ? 1 : undefined,

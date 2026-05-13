@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { Loader2, Save } from 'lucide-react';
 import type { WatchlistItem } from '@/lib/types';
 

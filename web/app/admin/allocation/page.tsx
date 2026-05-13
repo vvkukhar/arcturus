@@ -72,7 +72,7 @@ export default function AdminAllocationPage() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', fontWeight: 'bold' }} formatter={(val: number) => [formatMoney(val), 'Value']} />
+                  <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', fontWeight: 'bold' }} formatter={(val: any) => [formatMoney(Number(val)), 'Value']} />
                   <Legend verticalAlign="bottom" height={36} iconType="circle" />
                 </PieChart>
               </ResponsiveContainer>

@@ -25,9 +25,9 @@ function getCircuitState(endpoint: string): CircuitState {
   return circuitStates.get(key)!;
 }
 
-async function fetchWithRetry(url: string, options: RequestInit, retries = 1, backoff = 500): Promise<Response> {
+async function fetchWithRetry(url: string, options: RequestInit, retries = 2, backoff = 250): Promise<Response> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
 
   try {
     const res = await fetch(url, { ...options, signal: controller.signal });
@@ -77,9 +77,11 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
     let token: string | null = null;
     if (isServer) {
       const { cookies } = await import('next/headers');
-      token = (await cookies()).get('arcturus_admin_token')?.value || null;
+      const cookieStore = await cookies();
+      token = cookieStore.get('arcturus_admin_token')?.value || null;
     } else {
-      token = document.cookie.split('; ').find(row => row.startsWith('arcturus_admin_token='))?.split('=')[1] || null;
+      const match = document.cookie.match(/(^| )arcturus_admin_token=([^;]+)/);
+      token = match ? decodeURIComponent(match[2]) : null;
     }
     if (token) headers.set('Authorization', `Bearer ${token}`);
   }
@@ -129,4 +131,3 @@ export const api = {
 };
 
 export const apiFetch = request;
-export const publicApi = api;

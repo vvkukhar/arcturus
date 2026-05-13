@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import useSWR from 'swr';
 import type { User } from '@/lib/types';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { Loader2, Plus, UserCircle } from 'lucide-react';
 import { StatusPill } from '@/components/admin/status-pill';
 import { swrFetcher } from '@/lib/swr-fetcher';

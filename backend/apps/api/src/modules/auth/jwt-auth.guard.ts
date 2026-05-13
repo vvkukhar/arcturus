@@ -23,13 +23,13 @@ export class JwtAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request & { user?: any }>();
-    const token = extractAuthToken(request);
+    const rawToken = extractAuthToken(request);
 
-    if (!token) {
+    if (!rawToken) {
       throw new UnauthorizedException('Missing authentication token');
     }
 
-    const tokenHash = this.hashToken(token);
+    const tokenHash = this.hashToken(rawToken);
     const cacheKey = `session:${tokenHash}`;
     
     let sessionUser = await this.redis.get<any>(cacheKey);
@@ -40,18 +40,20 @@ export class JwtAuthGuard implements CanActivate {
         include: { user: true },
       });
 
-      if (!session || !session.user.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
+      if (!session || !(session as any).user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
         throw new UnauthorizedException('Session expired or invalid');
       }
 
+      const user = (session as any).user;
+
       sessionUser = {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-        role: session.user.role,
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
       };
 
-      await this.redis.set(cacheKey, sessionUser, 300); // Кешуємо на 5 хвилин
+      await this.redis.set(cacheKey, sessionUser, 300);
     }
 
     request.user = sessionUser;

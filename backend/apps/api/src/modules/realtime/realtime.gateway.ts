@@ -27,29 +27,27 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   async handleConnection(client: Socket) {
     try {
-      const token = client.handshake.auth?.token;
+      const rawToken = client.handshake.auth?.token;
       
-      if (!token) {
-        client.disconnect();
+      if (!rawToken) {
+        client.disconnect(true);
         return;
       }
 
-      const tokenHash = this.hashToken(token);
+      const tokenHash = this.hashToken(rawToken);
       const session = await this.prisma.userSession.findUnique({
         where: { tokenHash },
         include: { user: true },
       });
 
-      if (!session || !session.user.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
-        client.disconnect();
+      if (!session || !(session as any).user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
+        client.disconnect(true);
         return;
       }
 
-      // Юзер валідний, підключаємо до кімнати для розсилок
       client.join('admin_broadcast');
-      
     } catch (error) {
-      client.disconnect();
+      client.disconnect(true);
     }
   }
 

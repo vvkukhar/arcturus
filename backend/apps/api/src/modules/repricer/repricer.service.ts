@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
 
 interface RepriceResult {
   inventoryItemId: string;
@@ -75,14 +74,14 @@ export class RepricerService {
     await this.prisma.$transaction(async (tx) => {
       await tx.inventoryItem.update({
         where: { id: inventoryItemId },
-        data: { expectedSalePriceManual: new Prisma.Decimal(suggestedPrice) },
+        data: { expectedSalePriceManual: suggestedPrice },
       });
 
       await tx.repriceFlowItem.updateMany({
         where: { inventoryItemId, status: 'pending' },
         data: { 
           status: 'completed', 
-          suggestedPrice: new Prisma.Decimal(suggestedPrice),
+          suggestedPrice: suggestedPrice,
           updatedAt: new Date()
         },
       });
@@ -111,7 +110,7 @@ export class RepricerService {
           await this.applyReprice(item.inventoryItemId, analysis.suggestedPrice);
           processed++;
         }
-      } catch (error) {
+      } catch (error: any) {
         this.logger.error(`Failed to reprice item ${item.inventoryItemId}: ${error.message}`);
       }
     }

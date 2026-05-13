@@ -6,10 +6,16 @@
     "apps/*"
   ],
   "scripts": {
+    "postinstall": "npm run db:generate",
+    "build:shared": "npm run build --workspace=@arcturus/shared",
+    "build:db": "npm run build --workspace=@arcturus/db",
+    "build:scrapers": "npm run build --workspace=@arcturus/scrapers",
+    "build:api": "npm run build --workspace=@arcturus/api",
+    "build:workers": "npm run build --workspace=@arcturus/workers",
+    "build:all": "npm run build:shared && npm run build:db && npm run build:scrapers && npm run build:api && npm run build:workers",
     "dev:api": "npm run start:dev --workspace=@arcturus/api",
     "dev:workers": "npm run start:dev --workspace=@arcturus/workers",
     "dev:scrapers": "npm run start:dev --workspace=@arcturus/scrapers",
-    "build:all": "npm run build --workspaces",
     "db:generate": "npm run generate --workspace=@arcturus/db",
     "db:push": "npm run push --workspace=@arcturus/db",
     "db:migrate": "npm run migrate --workspace=@arcturus/db",

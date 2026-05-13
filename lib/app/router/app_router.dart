@@ -12,50 +12,79 @@ import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_s
 import 'package:lego_trading_manager/features/settings/presentation/settings_hub_screen.dart';
 import 'package:lego_trading_manager/features/market/presentation/market_screen.dart';
 import 'package:lego_trading_manager/features/pos/presentation/pos_terminal_screen.dart';
+import 'package:lego_trading_manager/features/search/presentation/global_search_screen.dart';
 
 class AppRouter {
-  static const home = '/';
-  static const dashboard = '/dashboard';
-  static const inventory = '/inventory';
-  static const purchases = '/purchases';
-  static const sales = '/sales';
-  static const watchlist = '/watchlist';
-  static const analytics = '/analytics';
-  static const activityLog = '/activity-log';
-  static const dealEvaluator = '/deal-evaluator';
-  static const dealHistory = '/deal-history';
-  static const commandCenter = '/command-center';
-  static const settings = '/settings';
-  static const market = '/market';
-  static const pos = '/pos';
-
-  static final Map<String, WidgetBuilder> _routes = {
-    home: (_) => const DashboardLiveScreen(),
-    dashboard: (_) => const DashboardLiveScreen(),
-    inventory: (_) => const InventoryScreen(),
-    purchases: (_) => const PurchasesScreen(),
-    sales: (_) => const SalesScreen(),
-    watchlist: (_) => const WatchlistScreen(),
-    analytics: (_) => const AnalyticsScreen(),
-    activityLog: (_) => const ActivityLogScreen(),
-    dealEvaluator: (_) => const DealEvaluatorScreen(),
-    dealHistory: (_) => const DealHistoryScreen(),
-    commandCenter: (_) => const CommandCenterScreen(),
-    settings: (_) => const SettingsHubScreen(),
-    market: (_) => const MarketScreen(),
-    pos: (_) => const PosTerminalScreen(),
-  };
+  static const String home = '/';
+  static const String dashboard = '/dashboard';
+  static const String inventory = '/inventory';
+  static const String purchases = '/purchases';
+  static const String sales = '/sales';
+  static const String watchlist = '/watchlist';
+  static const String analytics = '/analytics';
+  static const String activityLog = '/activity-log';
+  static const String dealEvaluator = '/deal-evaluator';
+  static const String dealHistory = '/deal-history';
+  static const String commandCenter = '/command-center';
+  static const String settings = '/settings';
+  static const String market = '/market';
+  static const String pos = '/pos';
+  static const String globalSearch = '/global-search';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
-    final builder = _routes[settings.name];
-    if (builder != null) {
-      return MaterialPageRoute(
-        builder: builder,
-        settings: settings,
-      );
+    Widget page;
+    
+    switch (settings.name) {
+      case '/':
+      case '/dashboard':
+        page = const DashboardLiveScreen();
+        break;
+      case '/inventory':
+        page = const InventoryScreen();
+        break;
+      case '/purchases':
+        page = const PurchasesScreen();
+        break;
+      case '/sales':
+        page = const SalesScreen();
+        break;
+      case '/watchlist':
+        page = const WatchlistScreen();
+        break;
+      case '/analytics':
+        page = const AnalyticsScreen();
+        break;
+      case '/activity-log':
+        page = const ActivityLogScreen();
+        break;
+      case '/deal-evaluator':
+        page = const DealEvaluatorScreen();
+        break;
+      case '/deal-history':
+        page = const DealHistoryScreen();
+        break;
+      case '/command-center':
+        page = const CommandCenterScreen();
+        break;
+      case '/settings':
+        page = const SettingsHubScreen();
+        break;
+      case '/market':
+        page = const MarketScreen();
+        break;
+      case '/pos':
+        page = const PosTerminalScreen();
+        break;
+      case '/global-search':
+        page = const GlobalSearchScreen();
+        break;
+      default:
+        page = const DashboardLiveScreen();
     }
+
     return MaterialPageRoute(
-      builder: (_) => const DashboardLiveScreen(),
+      builder: (_) => page,
+      settings: settings,
     );
   }
 }

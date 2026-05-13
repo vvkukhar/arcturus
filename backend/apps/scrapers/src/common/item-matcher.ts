@@ -1,4 +1,4 @@
-import { prisma } from '../../prisma';
+import { prisma } from '../prisma';
 import * as stringSimilarity from 'string-similarity';
 
 export async function resolveItemIdFromTitle(titleRaw: string): Promise<string | null> {

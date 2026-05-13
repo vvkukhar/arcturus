@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { StatusPill } from '@/components/admin/status-pill';
 import { formatMoney, formatPercent } from '@/lib/format';

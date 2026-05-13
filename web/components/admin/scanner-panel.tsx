@@ -4,7 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import type { ScannerSource } from '@/lib/types';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 
 export function ScannerPanel() {

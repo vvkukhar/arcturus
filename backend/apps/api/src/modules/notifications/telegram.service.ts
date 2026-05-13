@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class TelegramService implements OnModuleInit {
@@ -7,12 +8,20 @@ export class TelegramService implements OnModuleInit {
   private readonly apiUrl = 'https://api.telegram.org/bot';
   private readonly backendUrl = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL;
 
+  constructor(private readonly redis: RedisService) {}
+
   async onModuleInit() {
     if (this.botToken && this.backendUrl) {
       const webhookUrl = `${this.backendUrl}/api/telegram/webhook`;
-      try {
-        await fetch(`${this.apiUrl}${this.botToken}/setWebhook?url=${webhookUrl}`);
-      } catch (e) {}
+      const cacheKey = 'telegram_webhook_set';
+      const isSet = await this.redis.get<string>(cacheKey);
+
+      if (isSet !== webhookUrl) {
+        try {
+          await fetch(`${this.apiUrl}${this.botToken}/setWebhook?url=${webhookUrl}`);
+          await this.redis.set(cacheKey, webhookUrl, 86400 * 7);
+        } catch (e) {}
+      }
     }
   }
 

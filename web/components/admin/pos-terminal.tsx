@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Search, ShoppingCart, CreditCard, Banknote, Bitcoin, Trash2, Loader2, ScanBarcode } from 'lucide-react';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 import { useToast } from '@/components/ui/toast-provider';
 import Image from 'next/image';

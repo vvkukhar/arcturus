@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 import 'package:lego_trading_manager/core/auth/auth_service.dart';
 import 'package:lego_trading_manager/core/config/api_config.dart';
@@ -18,14 +17,6 @@ class AppBootstrapController extends Notifier<AsyncValue<bool>> {
         state = const AsyncValue.data(false);
         return;
       }
-
-      await Future.wait([
-        ref.read(inventoryRepositoryProvider).init(),
-        ref.read(purchasesRepositoryProvider).init(),
-        ref.read(salesRepositoryProvider).init(),
-        ref.read(watchlistRepositoryProvider).init(),
-        ref.read(marketRepositoryProvider).init(),
-      ]);
 
       ref.read(syncEngineProvider);
 

@@ -1,3 +1,10 @@
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void;
+    fbq?: (...args: any[]) => void;
+  }
+}
+
 export const GA_TRACKING_ID = process.env.NEXT_PUBLIC_GA_ID;
 export const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID;
 
@@ -9,6 +16,7 @@ export const pageview = (url: string) => {
       page_path: url,
     });
   }
+  
   if (typeof window.fbq !== 'undefined' && FB_PIXEL_ID) {
     window.fbq('track', 'PageView');
   }
@@ -42,7 +50,7 @@ export const trackEcommerce = (
   }
   
   if (typeof window.fbq !== 'undefined') {
-    const fbEventMap = {
+    const fbEventMap: Record<string, string> = {
       view_item: 'ViewContent',
       add_to_cart: 'AddToCart',
       remove_from_cart: 'RemoveFromCart',

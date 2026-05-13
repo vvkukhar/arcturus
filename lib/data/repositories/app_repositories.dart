@@ -1,18 +1,19 @@
 import 'dart:convert';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 
 class BaseRepository<T> {
   final String storageKey;
+  final SharedPreferences prefs;
   final T Function(Map<String, dynamic>) fromMap;
   final Map<String, dynamic> Function(T) toMap;
   List<T> _cache = [];
 
-  BaseRepository(this.storageKey, this.fromMap, this.toMap);
+  BaseRepository(this.prefs, this.storageKey, this.fromMap, this.toMap) {
+    _initSync();
+  }
 
-  Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
+  void _initSync() {
     final data = prefs.getString(storageKey);
     if (data != null) {
       final list = jsonDecode(data) as List;
@@ -21,7 +22,6 @@ class BaseRepository<T> {
   }
 
   Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
     await prefs.setString(storageKey, jsonEncode(_cache.map(toMap).toList()));
   }
 
@@ -52,41 +52,32 @@ class BaseRepository<T> {
 }
 
 class InventoryRepository extends BaseRepository<ItemModel> {
-  InventoryRepository() : super('repo_inventory', ItemModel.fromMap, (e) => e.toMap());
+  InventoryRepository(SharedPreferences prefs) : super(prefs, 'repo_inventory', ItemModel.fromMap, (e) => e.toMap());
+  ItemModel? getById(String id) => getAll().where((e) => e.id == id).firstOrNull;
   List<ItemModel> getAllItems() => getAll();
-  ItemModel? getById(String id) => getAllItems().where((e) => e.id == id).firstOrNull;
   Future<void> addItem(ItemModel item) => add(item);
   Future<void> updateItem(ItemModel item) => update((e) => e.id == item.id, item);
 }
 
 class PurchasesRepository extends BaseRepository<PurchaseModel> {
-  PurchasesRepository() : super('repo_purchases', PurchaseModel.fromJson, (e) => e.toJson());
+  PurchasesRepository(SharedPreferences prefs) : super(prefs, 'repo_purchases', PurchaseModel.fromJson, (e) => e.toJson());
   List<PurchaseModel> getAllPurchases() => getAll();
-  List<PurchaseModel> getPurchasesByItemId(String itemId) => getAllPurchases().where((e) => e.itemId == itemId).toList();
 }
 
 class SalesRepository extends BaseRepository<SaleModel> {
-  SalesRepository() : super('repo_sales', SaleModel.fromJson, (e) => e.toJson());
+  SalesRepository(SharedPreferences prefs) : super(prefs, 'repo_sales', SaleModel.fromJson, (e) => e.toJson());
   List<SaleModel> getAllSales() => getAll();
-  SaleModel? getByItemId(String itemId) => getAllSales().where((e) => e.itemId == itemId).firstOrNull;
 }
 
 class WatchlistRepository extends BaseRepository<WatchlistItemModel> {
-  WatchlistRepository() : super('repo_watchlist', WatchlistItemModel.fromMap, (e) => e.toMap());
+  WatchlistRepository(SharedPreferences prefs) : super(prefs, 'repo_watchlist', WatchlistItemModel.fromMap, (e) => e.toMap());
 }
 
 class MarketRepository extends BaseRepository<MarketSnapshotModel> {
-  MarketRepository() : super('repo_market', MarketSnapshotModel.fromMap, (e) => e.toMap());
+  MarketRepository(SharedPreferences prefs) : super(prefs, 'repo_market', MarketSnapshotModel.fromMap, (e) => e.toMap());
 }
 
 class PartOutRepository {
   List<dynamic> getAllProjects() => [];
   List<dynamic> getLinesByProjectId(String id) => [];
 }
-
-final inventoryRepositoryProvider = Provider((ref) => InventoryRepository());
-final purchasesRepositoryProvider = Provider((ref) => PurchasesRepository());
-final salesRepositoryProvider = Provider((ref) => SalesRepository());
-final watchlistRepositoryProvider = Provider((ref) => WatchlistRepository());
-final marketRepositoryProvider = Provider((ref) => MarketRepository());
-final partOutRepositoryProvider = Provider((ref) => PartOutRepository());

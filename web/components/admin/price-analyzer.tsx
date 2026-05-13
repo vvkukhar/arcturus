@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { Loader2, Calculator } from 'lucide-react';
 import { formatMoney, formatPercent } from '@/lib/format';
 

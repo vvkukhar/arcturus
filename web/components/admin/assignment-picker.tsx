@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import type { User, InventoryItem } from '@/lib/types';
 import { Loader2, UserPlus } from 'lucide-react';
 

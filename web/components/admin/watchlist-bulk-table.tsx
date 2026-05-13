@@ -9,7 +9,7 @@ import { StatusPill } from '@/components/admin/status-pill';
 import { WatchlistEditDialog } from '@/components/admin/watchlist-edit-dialog';
 import { WatchlistDeleteButton } from '@/components/admin/watchlist-delete-button';
 import { formatMoney, formatPercent } from '@/lib/format';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import type { WatchlistItem, ApiResponse } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';

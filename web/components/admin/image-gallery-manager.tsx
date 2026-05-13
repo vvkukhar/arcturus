@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { Loader2, ArrowUp, ArrowDown, Trash2, Star } from 'lucide-react';
 import type { InventoryImage } from '@/lib/types';
 

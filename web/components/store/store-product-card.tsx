@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { ArrowUpRight, ShoppingCart, Eye, Package } from 'lucide-react';
 import { SpotlightCard } from '@/components/store/spotlight-card';
 import { TiltCard } from '@/components/store/tilt-card';
-import { useCart } from '../providers/cart-provider';
+import { useCart } from '@/lib/store/cart';
 import { useState } from 'react';
 import { ProductModal } from './product-modal';
 

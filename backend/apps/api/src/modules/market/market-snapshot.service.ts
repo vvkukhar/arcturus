@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class MarketSnapshotService {
@@ -30,7 +29,7 @@ export class MarketSnapshotService {
         data: {
           itemId,
           listingsCount: 0,
-          confidenceScore: new Prisma.Decimal(0),
+          confidenceScore: 0,
         },
       });
       return;
@@ -76,16 +75,16 @@ export class MarketSnapshotService {
       data: {
         itemId,
         listingsCount: listings.length,
-        lowestPrice: new Prisma.Decimal(lowestPrice),
-        lowestPriceWithShipping: new Prisma.Decimal(lowestPrice + minShipping),
-        avgPrice: new Prisma.Decimal(avgPrice),
-        medianPrice: new Prisma.Decimal(medianPrice),
-        minShipping: new Prisma.Decimal(minShipping),
-        maxShipping: new Prisma.Decimal(maxShipping),
-        avgShipping: new Prisma.Decimal(avgShipping),
-        sealedAvgPrice: sealedAvg ? new Prisma.Decimal(sealedAvg) : null,
-        usedAvgPrice: usedAvg ? new Prisma.Decimal(usedAvg) : null,
-        confidenceScore: new Prisma.Decimal(confidence),
+        lowestPrice: lowestPrice,
+        lowestPriceWithShipping: lowestPrice + minShipping,
+        avgPrice: avgPrice,
+        medianPrice: medianPrice,
+        minShipping: minShipping,
+        maxShipping: maxShipping,
+        avgShipping: avgShipping,
+        sealedAvgPrice: sealedAvg ? sealedAvg : null,
+        usedAvgPrice: usedAvg ? usedAvg : null,
+        confidenceScore: confidence,
       },
     });
 

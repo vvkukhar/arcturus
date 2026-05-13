@@ -18,8 +18,8 @@ async function main(): Promise<void> {
       : jobName === JOB_NAMES.RECOMPUTE_DECISIONS ||
           jobName === JOB_NAMES.DETECT_DEALS
         ? QUEUE_NAMES.DECISIONS
-        : jobName === JOB_NAMES.RUN_SCANNER_JOB
-          ? QUEUE_NAMES.SCRAPER
+        : jobName === JOB_NAMES.RUN_SCANNER
+          ? QUEUE_NAMES.SCRAPERS
           : QUEUE_NAMES.MAINTENANCE;
 
   const queue = new Queue(queueName, {

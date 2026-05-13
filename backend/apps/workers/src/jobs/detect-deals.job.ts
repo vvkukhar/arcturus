@@ -22,7 +22,7 @@ export async function detectDealsJob(): Promise<{
   let lastId: string | undefined = undefined;
 
   while (hasMore) {
-    const listings = await prisma.marketListing.findMany({
+    const listings: Array<{ id: string; itemId: string; price: any; shippingPrice: any }> = await prisma.marketListing.findMany({
       where: { status: 'active' },
       orderBy: { id: 'asc' },
       take: chunkSize,

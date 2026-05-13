@@ -11,10 +11,10 @@ export const httpClient = axios.create({
 
 axiosRetry(httpClient, {
   retries: 4,
-  retryDelay: (retryCount) => {
+  retryDelay: (retryCount: number) => {
     return axiosRetry.exponentialDelay(retryCount) + Math.random() * 1000;
   },
-  retryCondition: (error) => {
+  retryCondition: (error: any) => {
     const status = error.response?.status;
     return axiosRetry.isNetworkOrIdempotentRequestError(error) || status === 429 || status === 403 || status === 503;
   },
@@ -30,10 +30,18 @@ httpClient.interceptors.request.use((config) => {
   config.headers['Sec-Ch-Ua-Mobile'] = '?0';
   config.headers['Sec-Ch-Ua-Platform'] = '"Windows"';
 
-  const agent = proxyManager.getAgent();
-  if (agent) {
-    config.httpsAgent = agent;
-    config.proxy = false; 
+  const proxyStr = proxyManager.getRawProxy();
+  if (proxyStr) {
+    try {
+      const url = new URL(proxyStr);
+      config.proxy = {
+        protocol: url.protocol.replace(':', ''),
+        host: url.hostname,
+        port: parseInt(url.port),
+        auth: url.username ? { username: url.username, password: url.password } : undefined
+      };
+    } catch {
+    }
   }
 
   return config;

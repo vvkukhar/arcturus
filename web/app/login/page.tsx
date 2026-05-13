@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, ArrowRight, Loader2, ShieldAlert } from 'lucide-react';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();

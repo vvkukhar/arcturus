@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CommandPalette } from '@/components/admin/command-palette';
 import { LogOut, RefreshCcw, Sun, Moon, Globe } from 'lucide-react';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/components/providers/i18n-provider';
 import { useTheme } from '@/components/providers/theme-provider';
 import { useState, useEffect } from 'react';

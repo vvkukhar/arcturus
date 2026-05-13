@@ -4,12 +4,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/app/app.dart';
+import 'package:lego_trading_manager/app/providers/core_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
   await dotenv.load(fileName: '.env');
-  runApp(const ProviderScope(child: LegoTradingApp()));
+  final sharedPreferences = await SharedPreferences.getInstance();
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(sharedPreferences),
+      ],
+      child: const LegoTradingApp(),
+    ),
+  );
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\app\app.dart =====
@@ -37,11 +49,49 @@ class LegoTradingApp extends ConsumerWidget {
   }
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\lib\app\providers\core_providers.dart =====
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lego_trading_manager/data/repositories/app_repositories.dart';
+
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError('sharedPreferencesProvider must be overridden in main.dart');
+});
+
+final inventoryRepositoryProvider = Provider((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return InventoryRepository(prefs);
+});
+
+final purchasesRepositoryProvider = Provider((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return PurchasesRepository(prefs);
+});
+
+final salesRepositoryProvider = Provider((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return SalesRepository(prefs);
+});
+
+final watchlistRepositoryProvider = Provider((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return WatchlistRepository(prefs);
+});
+
+final marketRepositoryProvider = Provider((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return MarketRepository(prefs);
+});
+
+final partOutRepositoryProvider = Provider((ref) => PartOutRepository());
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\app\providers\repositories_providers.dart =====
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/data/repositories/app_repositories.dart';
+import 'package:lego_trading_manager/app/providers/core_providers.dart';
 
 class CacheRepository {
   Future<String?> get(String key) async {
@@ -61,11 +111,11 @@ class CacheRepository {
 }
 
 final cacheRepositoryProvider = Provider((ref) => CacheRepository());
-final inventoryRepositoryProvider = Provider((ref) => InventoryRepository());
-final purchasesRepositoryProvider = Provider((ref) => PurchasesRepository());
-final salesRepositoryProvider = Provider((ref) => SalesRepository());
-final watchlistRepositoryProvider = Provider((ref) => WatchlistRepository());
-final marketRepositoryProvider = Provider((ref) => MarketRepository());
+final inventoryRepositoryProvider = Provider((ref) => InventoryRepository(ref.watch(sharedPreferencesProvider)));
+final purchasesRepositoryProvider = Provider((ref) => PurchasesRepository(ref.watch(sharedPreferencesProvider)));
+final salesRepositoryProvider = Provider((ref) => SalesRepository(ref.watch(sharedPreferencesProvider)));
+final watchlistRepositoryProvider = Provider((ref) => WatchlistRepository(ref.watch(sharedPreferencesProvider)));
+final marketRepositoryProvider = Provider((ref) => MarketRepository(ref.watch(sharedPreferencesProvider)));
 final partOutRepositoryProvider = Provider((ref) => PartOutRepository());
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\app\router\app_router.dart =====
@@ -84,63 +134,82 @@ import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_s
 import 'package:lego_trading_manager/features/settings/presentation/settings_hub_screen.dart';
 import 'package:lego_trading_manager/features/market/presentation/market_screen.dart';
 import 'package:lego_trading_manager/features/pos/presentation/pos_terminal_screen.dart';
+import 'package:lego_trading_manager/features/search/presentation/global_search_screen.dart';
 
 class AppRouter {
-  static const home = '/';
-  static const dashboard = '/dashboard';
-  static const inventory = '/inventory';
-  static const purchases = '/purchases';
-  static const sales = '/sales';
-  static const watchlist = '/watchlist';
-  static const analytics = '/analytics';
-  static const activityLog = '/activity-log';
-  static const dealEvaluator = '/deal-evaluator';
-  static const dealHistory = '/deal-history';
-  static const commandCenter = '/command-center';
-  static const settings = '/settings';
-  static const market = '/market';
-  static const pos = '/pos';
-
-  static final Map<String, WidgetBuilder> _routes = {
-    home: (_) => const DashboardLiveScreen(),
-    dashboard: (_) => const DashboardLiveScreen(),
-    inventory: (_) => const InventoryScreen(),
-    purchases: (_) => const PurchasesScreen(),
-    sales: (_) => const SalesScreen(),
-    watchlist: (_) => const WatchlistScreen(),
-    analytics: (_) => const AnalyticsScreen(),
-    activityLog: (_) => const ActivityLogScreen(),
-    dealEvaluator: (_) => const DealEvaluatorScreen(),
-    dealHistory: (_) => const DealHistoryScreen(),
-    commandCenter: (_) => const CommandCenterScreen(),
-    settings: (_) => const SettingsHubScreen(),
-    market: (_) => const MarketScreen(),
-    pos: (_) => const PosTerminalScreen(),
-  };
+  static const String home = '/';
+  static const String dashboard = '/dashboard';
+  static const String inventory = '/inventory';
+  static const String purchases = '/purchases';
+  static const String sales = '/sales';
+  static const String watchlist = '/watchlist';
+  static const String analytics = '/analytics';
+  static const String activityLog = '/activity-log';
+  static const String dealEvaluator = '/deal-evaluator';
+  static const String dealHistory = '/deal-history';
+  static const String commandCenter = '/command-center';
+  static const String settings = '/settings';
+  static const String market = '/market';
+  static const String pos = '/pos';
+  static const String globalSearch = '/global-search';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
-    final builder = _routes[settings.name];
-    if (builder != null) {
-      return MaterialPageRoute(
-        builder: builder,
-        settings: settings,
-      );
+    Widget page;
+    
+    switch (settings.name) {
+      case '/':
+      case '/dashboard':
+        page = const DashboardLiveScreen();
+        break;
+      case '/inventory':
+        page = const InventoryScreen();
+        break;
+      case '/purchases':
+        page = const PurchasesScreen();
+        break;
+      case '/sales':
+        page = const SalesScreen();
+        break;
+      case '/watchlist':
+        page = const WatchlistScreen();
+        break;
+      case '/analytics':
+        page = const AnalyticsScreen();
+        break;
+      case '/activity-log':
+        page = const ActivityLogScreen();
+        break;
+      case '/deal-evaluator':
+        page = const DealEvaluatorScreen();
+        break;
+      case '/deal-history':
+        page = const DealHistoryScreen();
+        break;
+      case '/command-center':
+        page = const CommandCenterScreen();
+        break;
+      case '/settings':
+        page = const SettingsHubScreen();
+        break;
+      case '/market':
+        page = const MarketScreen();
+        break;
+      case '/pos':
+        page = const PosTerminalScreen();
+        break;
+      case '/global-search':
+        page = const GlobalSearchScreen();
+        break;
+      default:
+        page = const DashboardLiveScreen();
     }
+
     return MaterialPageRoute(
-      builder: (_) => const DashboardLiveScreen(),
+      builder: (_) => page,
+      settings: settings,
     );
   }
 }
-
-===== FILE: C:\Users\Vlad\lego_trading_manager\lib\app\router\app_routes.dart =====
-
-// lib/app/router/app_routes.dart
-import 'package:flutter/material.dart';
-import 'package:lego_trading_manager/features/search/presentation/global_search_screen.dart';
-
-Map<String, WidgetBuilder> appRoutes = {
-  '/global-search': (_) => const GlobalSearchScreen(),
-};
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\app\theme\app_theme.dart =====
 
@@ -297,7 +366,6 @@ class AuthService {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\core\bootstrap\app_bootstrap_controller.dart =====
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 import 'package:lego_trading_manager/core/auth/auth_service.dart';
 import 'package:lego_trading_manager/core/config/api_config.dart';
@@ -316,14 +384,6 @@ class AppBootstrapController extends Notifier<AsyncValue<bool>> {
         state = const AsyncValue.data(false);
         return;
       }
-
-      await Future.wait([
-        ref.read(inventoryRepositoryProvider).init(),
-        ref.read(purchasesRepositoryProvider).init(),
-        ref.read(salesRepositoryProvider).init(),
-        ref.read(watchlistRepositoryProvider).init(),
-        ref.read(marketRepositoryProvider).init(),
-      ]);
 
       ref.read(syncEngineProvider);
 
@@ -2004,7 +2064,7 @@ class PurchaseModel {
 
   PurchaseModel copyWith({int? soldQuantity}) => PurchaseModel(id: id, itemId: itemId, source: source, sourceUrl: sourceUrl, sellerName: sellerName, sellerContact: sellerContact, note: note, purchasePrice: purchasePrice, shippingCost: shippingCost, additionalCosts: additionalCosts, finalTotal: finalTotal, exchangeRate: exchangeRate, currency: currency, paymentMethod: paymentMethod, purchaseDate: purchaseDate, quantity: quantity, soldQuantity: soldQuantity ?? this.soldQuantity);
 
-  Map<String, dynamic> toJson() => {'id': id, 'itemId': itemId, 'source': source, 'sourceUrl': sourceUrl, 'sellerName': sellerName, 'sellerContact': sellerContact, 'note': note, 'purchasePrice': purchasePrice, 'shippingCost': shippingCost, 'additionalCosts': additionalCosts, 'finalTotal': finalTotal, 'exchangeRate': exchangeRate, 'currency': currency, 'paymentMethod': paymentMethod.name, 'purchaseDate': purchaseDate.toIso8601String(), 'quantity': quantity, 'soldQuantity': soldQuantity};
+  Map<String, dynamic> toJson() => {'id': id, 'itemId': itemId, 'source': source, 'sourceUrl': sourceUrl, 'sellerName': sellerName, 'sellerContact': sellerContact, 'note': note, 'purchasePrice': purchasePrice, 'shippingCost': shippingCost, 'additionalCosts': additionalCosts, 'finalTotal': finalTotal, 'exchangeRate': exchangeRate, currency: currency, 'paymentMethod': paymentMethod.name, 'purchaseDate': purchaseDate.toIso8601String(), 'quantity': quantity, 'soldQuantity': soldQuantity};
 
   factory PurchaseModel.fromJson(Map<String, dynamic> map) => PurchaseModel(id: map['id'], itemId: map['itemId'], source: map['source'], sourceUrl: map['sourceUrl'], sellerName: map['sellerName'], sellerContact: map['sellerContact'], note: map['note'], purchasePrice: (map['purchasePrice'] ?? 0).toDouble(), shippingCost: (map['shippingCost'] ?? 0).toDouble(), additionalCosts: (map['additionalCosts'] ?? 0).toDouble(), finalTotal: (map['finalTotal'] ?? 0).toDouble(), exchangeRate: (map['exchangeRate'] ?? 1).toDouble(), currency: map['currency'] ?? 'UAH', paymentMethod: PurchasePaymentMethod.values.firstWhere((e) => e.name == map['paymentMethod'], orElse: () => PurchasePaymentMethod.card), purchaseDate: DateTime.tryParse(map['purchaseDate'] ?? '') ?? DateTime.now(), quantity: map['quantity'] ?? 1, soldQuantity: map['soldQuantity'] ?? 0);
 }
@@ -2057,23 +2117,49 @@ class MarketSnapshotModel {
   factory MarketSnapshotModel.fromMap(Map<String, dynamic> map) => MarketSnapshotModel(id: map['id'], itemRef: map['itemRef'], source: map['source'], lowPrice: (map['lowPrice'] ?? 0).toDouble(), averagePrice: (map['averagePrice'] ?? 0).toDouble(), highPrice: (map['highPrice'] ?? 0).toDouble(), currency: map['currency'] ?? 'UAH', sellerCount: map['sellerCount'], availableQty: map['availableQty'], url: map['url'], capturedAt: DateTime.tryParse(map['capturedAt'] ?? '') ?? DateTime.now());
 }
 
+class PartOutProjectModel {
+  final String id, sourceSetTitle;
+  final PartOutProjectStatus status;
+  final double totalCost;
+
+  const PartOutProjectModel({required this.id, required this.sourceSetTitle, required this.status, required this.totalCost});
+
+  Map<String, dynamic> toMap() => {'id': id, 'sourceSetTitle': sourceSetTitle, 'status': status.name, 'totalCost': totalCost};
+
+  factory PartOutProjectModel.fromMap(Map<String, dynamic> map) => PartOutProjectModel(id: map['id'], sourceSetTitle: map['sourceSetTitle'], status: PartOutProjectStatus.values.firstWhere((e) => e.name == map['status'], orElse: () => PartOutProjectStatus.active), totalCost: (map['totalCost'] ?? 0).toDouble());
+}
+
+class PartOutLineModel {
+  final String id, projectId, title;
+  final int quantity;
+  final double expectedUnitPrice, expectedTotalPrice, actualTotalPrice;
+  final PartOutLineStatus status;
+
+  const PartOutLineModel({required this.id, required this.projectId, required this.title, required this.quantity, required this.expectedUnitPrice, required this.expectedTotalPrice, required this.actualTotalPrice, required this.status});
+
+  Map<String, dynamic> toMap() => {'id': id, 'projectId': projectId, 'title': title, 'quantity': quantity, 'expectedUnitPrice': expectedUnitPrice, 'expectedTotalPrice': expectedTotalPrice, 'actualTotalPrice': actualTotalPrice, 'status': status.name};
+
+  factory PartOutLineModel.fromMap(Map<String, dynamic> map) => PartOutLineModel(id: map['id'], projectId: map['projectId'], title: map['title'], quantity: map['quantity'] ?? 1, expectedUnitPrice: (map['expectedUnitPrice'] ?? 0).toDouble(), expectedTotalPrice: (map['expectedTotalPrice'] ?? 0).toDouble(), actualTotalPrice: (map['actualTotalPrice'] ?? 0).toDouble(), status: PartOutLineStatus.values.firstWhere((e) => e.name == map['status'], orElse: () => PartOutLineStatus.planned));
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\data\repositories\app_repositories.dart =====
 
 import 'dart:convert';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 
 class BaseRepository<T> {
   final String storageKey;
+  final SharedPreferences prefs;
   final T Function(Map<String, dynamic>) fromMap;
   final Map<String, dynamic> Function(T) toMap;
   List<T> _cache = [];
 
-  BaseRepository(this.storageKey, this.fromMap, this.toMap);
+  BaseRepository(this.prefs, this.storageKey, this.fromMap, this.toMap) {
+    _initSync();
+  }
 
-  Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
+  void _initSync() {
     final data = prefs.getString(storageKey);
     if (data != null) {
       final list = jsonDecode(data) as List;
@@ -2082,7 +2168,6 @@ class BaseRepository<T> {
   }
 
   Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
     await prefs.setString(storageKey, jsonEncode(_cache.map(toMap).toList()));
   }
 
@@ -2113,44 +2198,35 @@ class BaseRepository<T> {
 }
 
 class InventoryRepository extends BaseRepository<ItemModel> {
-  InventoryRepository() : super('repo_inventory', ItemModel.fromMap, (e) => e.toMap());
+  InventoryRepository(SharedPreferences prefs) : super(prefs, 'repo_inventory', ItemModel.fromMap, (e) => e.toMap());
+  ItemModel? getById(String id) => getAll().where((e) => e.id == id).firstOrNull;
   List<ItemModel> getAllItems() => getAll();
-  ItemModel? getById(String id) => getAllItems().where((e) => e.id == id).firstOrNull;
   Future<void> addItem(ItemModel item) => add(item);
   Future<void> updateItem(ItemModel item) => update((e) => e.id == item.id, item);
 }
 
 class PurchasesRepository extends BaseRepository<PurchaseModel> {
-  PurchasesRepository() : super('repo_purchases', PurchaseModel.fromJson, (e) => e.toJson());
+  PurchasesRepository(SharedPreferences prefs) : super(prefs, 'repo_purchases', PurchaseModel.fromJson, (e) => e.toJson());
   List<PurchaseModel> getAllPurchases() => getAll();
-  List<PurchaseModel> getPurchasesByItemId(String itemId) => getAllPurchases().where((e) => e.itemId == itemId).toList();
 }
 
 class SalesRepository extends BaseRepository<SaleModel> {
-  SalesRepository() : super('repo_sales', SaleModel.fromJson, (e) => e.toJson());
+  SalesRepository(SharedPreferences prefs) : super(prefs, 'repo_sales', SaleModel.fromJson, (e) => e.toJson());
   List<SaleModel> getAllSales() => getAll();
-  SaleModel? getByItemId(String itemId) => getAllSales().where((e) => e.itemId == itemId).firstOrNull;
 }
 
 class WatchlistRepository extends BaseRepository<WatchlistItemModel> {
-  WatchlistRepository() : super('repo_watchlist', WatchlistItemModel.fromMap, (e) => e.toMap());
+  WatchlistRepository(SharedPreferences prefs) : super(prefs, 'repo_watchlist', WatchlistItemModel.fromMap, (e) => e.toMap());
 }
 
 class MarketRepository extends BaseRepository<MarketSnapshotModel> {
-  MarketRepository() : super('repo_market', MarketSnapshotModel.fromMap, (e) => e.toMap());
+  MarketRepository(SharedPreferences prefs) : super(prefs, 'repo_market', MarketSnapshotModel.fromMap, (e) => e.toMap());
 }
 
 class PartOutRepository {
   List<dynamic> getAllProjects() => [];
   List<dynamic> getLinesByProjectId(String id) => [];
 }
-
-final inventoryRepositoryProvider = Provider((ref) => InventoryRepository());
-final purchasesRepositoryProvider = Provider((ref) => PurchasesRepository());
-final salesRepositoryProvider = Provider((ref) => SalesRepository());
-final watchlistRepositoryProvider = Provider((ref) => WatchlistRepository());
-final marketRepositoryProvider = Provider((ref) => MarketRepository());
-final partOutRepositoryProvider = Provider((ref) => PartOutRepository());
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\activity\application\activity_engine.dart =====
 
@@ -3279,7 +3355,7 @@ class DashboardLiveScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(dashboardEngineProvider);
+    final stateAsync = ref.watch(dashboardEngineProvider);
     final syncState = ref.watch(syncEngineProvider);
 
     return Scaffold(
@@ -3291,28 +3367,32 @@ class DashboardLiveScreen extends ConsumerWidget {
       ),
       drawer: const AppDrawer(),
       floatingActionButton: const GlobalQuickAddFab(),
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  if (!(syncState.value?.isOnline ?? true))
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-                      child: const Row(children: [Icon(Icons.cloud_off, color: Colors.orange), SizedBox(width: 10), Text('Offline Mode')]),
-                    ),
-                  _buildHeroCard(state),
-                  const SizedBox(height: 24),
-                  _buildMetricsGrid(state),
-                ],
+      body: stateAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (state) => CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    if (!(syncState.value?.isOnline ?? true))
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                        child: const Row(children: [Icon(Icons.cloud_off, color: Colors.orange), SizedBox(width: 10), Text('Offline Mode')]),
+                      ),
+                    _buildHeroCard(state),
+                    const SizedBox(height: 24),
+                    _buildMetricsGrid(state),
+                  ],
+                ),
               ),
-            ),
-          )
-        ],
+            )
+          ],
+        ),
       ),
     );
   }
@@ -4714,7 +4794,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/utils/core_utils.dart';
-import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/features/sales/application/sales_engine.dart';
 
 class PosCartItem {
@@ -5008,7 +5087,6 @@ import 'dart:isolate';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_engine.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 
 class PurchasesAnalysis {

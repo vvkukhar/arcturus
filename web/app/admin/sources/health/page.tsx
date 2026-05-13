@@ -4,7 +4,7 @@ import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import { Loader2, PlaySquare, Power, ShieldAlert } from 'lucide-react';
 import { StatusPill } from '@/components/admin/status-pill';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { useState } from 'react';
 
 interface SourceHealth {

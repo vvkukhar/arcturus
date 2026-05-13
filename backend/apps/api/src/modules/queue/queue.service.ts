@@ -13,8 +13,8 @@ function redisConnection(): ConnectionOptions {
   }
 
   return {
-    host: process.env.REDIS_HOST ?? 'localhost',
-    port: Number(process.env.REDIS_PORT ?? 6379),
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: Number(process.env.REDIS_PORT || 6379),
     password: process.env.REDIS_PASSWORD || undefined,
     maxRetriesPerRequest: null,
   };
@@ -41,68 +41,27 @@ export class QueueService {
   });
 
   async enqueueMarketSnapshots(): Promise<unknown> {
-    return this.marketQueue.add(
-      JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS,
-      {},
-      {
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
-    );
+    return this.marketQueue.add(JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS, {}, { removeOnComplete: 100, removeOnFail: 500 });
   }
 
   async enqueueDecisions(): Promise<unknown> {
-    return this.decisionsQueue.add(
-      JOB_NAMES.RECOMPUTE_DECISIONS,
-      {},
-      {
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
-    );
+    return this.decisionsQueue.add(JOB_NAMES.RECOMPUTE_DECISIONS, {}, { removeOnComplete: 100, removeOnFail: 500 });
   }
 
   async enqueueDealDetection(): Promise<unknown> {
-    return this.decisionsQueue.add(
-      JOB_NAMES.DETECT_DEALS,
-      {},
-      {
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
-    );
+    return this.decisionsQueue.add(JOB_NAMES.DETECT_DEALS, {}, { removeOnComplete: 100, removeOnFail: 500 });
   }
 
   async enqueueScheduledRefresh(): Promise<unknown> {
-    return this.maintenanceQueue.add(
-      JOB_NAMES.SCHEDULED_REFRESH,
-      {},
-      {
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
-    );
+    return this.maintenanceQueue.add(JOB_NAMES.SCHEDULED_REFRESH, {}, { removeOnComplete: 100, removeOnFail: 500 });
   }
 
   async enqueueScannerJob(jobId: string): Promise<unknown> {
-    return this.scraperQueue.add(
-      JOB_NAMES.RUN_SCANNER_JOB,
-      { jobId },
-      {
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
-    );
+    return this.scraperQueue.add(JOB_NAMES.RUN_SCANNER_JOB, { jobId }, { removeOnComplete: 100, removeOnFail: 500 });
   }
 
   async stats(): Promise<unknown> {
-    const queues = [
-      this.marketQueue,
-      this.decisionsQueue,
-      this.scraperQueue,
-      this.maintenanceQueue,
-    ];
-
+    const queues = [this.marketQueue, this.decisionsQueue, this.scraperQueue, this.maintenanceQueue];
     const result = [];
 
     for (const queue of queues) {
@@ -114,14 +73,7 @@ export class QueueService {
         queue.getDelayedCount(),
       ]);
 
-      result.push({
-        name: queue.name,
-        waiting,
-        active,
-        completed,
-        failed,
-        delayed,
-      });
+      result.push({ name: queue.name, waiting, active, completed, failed, delayed });
     }
 
     return result;

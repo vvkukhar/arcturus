@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 import { OperatorSpeedDesk } from '@/components/admin/operator-speed-desk';
 import { useI18n } from '@/components/providers/i18n-provider';
 import { Loader2 } from 'lucide-react';

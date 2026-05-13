@@ -15,14 +15,18 @@
     "@arcturus/db": "*",
     "@arcturus/shared": "*",
     "@prisma/client": "^5.22.0",
+    "axios": "^1.7.2",
+    "axios-retry": "^4.3.0",
     "cheerio": "^1.0.0",
     "dotenv": "^16.4.7",
     "playwright": "^1.42.1",
     "playwright-extra": "^4.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "string-similarity": "^4.0.4"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/string-similarity": "^4.0.2",
     "prisma": "^5.22.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"

@@ -95,4 +95,20 @@ export class ProfitAnalyticsService {
       velocityTier: soldPerDay >= 2 ? 'fast' : soldPerDay >= 0.5 ? 'medium' : 'slow',
     };
   }
+
+  async getProfitByTheme(): Promise<unknown[]> {
+    const sales = await this.prisma.sale.findMany({
+      select: { profit: true, item: { select: { theme: true } } },
+    });
+    
+    const map = new Map<string, number>();
+    for (const sale of sales) {
+      const theme = sale.item?.theme ?? 'Unknown';
+      map.set(theme, (map.get(theme) ?? 0) + Number(sale.profit ?? 0));
+    }
+    
+    return Array.from(map.entries())
+      .map(([theme, profit]) => ({ theme, profit: toMoney(profit) }))
+      .sort((a, b) => b.profit - a.profit);
+  }
 }

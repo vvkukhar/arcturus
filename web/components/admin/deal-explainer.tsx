@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch } from '@/lib/api';
 
 interface ExplainResult {
   verdict?: string;

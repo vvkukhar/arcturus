@@ -1,14 +1,8 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2021",
-    "module": "CommonJS",
-    "declaration": true,
     "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "skipLibCheck": true,
-    "moduleResolution": "node",
-    "ignoreDeprecations": "5.0",
+    "declaration": true,
     "types": ["node"]
   },
   "include": ["src/**/*"]

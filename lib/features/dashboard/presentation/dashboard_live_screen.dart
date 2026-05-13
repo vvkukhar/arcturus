@@ -11,7 +11,7 @@ class DashboardLiveScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(dashboardEngineProvider);
+    final stateAsync = ref.watch(dashboardEngineProvider);
     final syncState = ref.watch(syncEngineProvider);
 
     return Scaffold(
@@ -23,28 +23,32 @@ class DashboardLiveScreen extends ConsumerWidget {
       ),
       drawer: const AppDrawer(),
       floatingActionButton: const GlobalQuickAddFab(),
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  if (!(syncState.value?.isOnline ?? true))
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-                      child: const Row(children: [Icon(Icons.cloud_off, color: Colors.orange), SizedBox(width: 10), Text('Offline Mode')]),
-                    ),
-                  _buildHeroCard(state),
-                  const SizedBox(height: 24),
-                  _buildMetricsGrid(state),
-                ],
+      body: stateAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (state) => CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    if (!(syncState.value?.isOnline ?? true))
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                        child: const Row(children: [Icon(Icons.cloud_off, color: Colors.orange), SizedBox(width: 10), Text('Offline Mode')]),
+                      ),
+                    _buildHeroCard(state),
+                    const SizedBox(height: 24),
+                    _buildMetricsGrid(state),
+                  ],
+                ),
               ),
-            ),
-          )
-        ],
+            )
+          ],
+        ),
       ),
     );
   }
