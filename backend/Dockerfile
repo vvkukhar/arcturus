@@ -19,4 +19,4 @@ COPY . .
 
 RUN npm run build:all
 
-CMD ["node", "apps/api/dist/main.js"]
+CMD ["npm", "run", "start:prod", "--workspace=@arcturus/api"]
