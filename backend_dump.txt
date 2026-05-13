@@ -65,7 +65,6 @@ bash scripts/server-bootstrap-ubuntu.sh
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\docker-compose.prod.yml =====
 
-version: '3.9'
 
 x-logging: &default-logging
   driver: "json-file"
@@ -262,9 +261,11 @@ volumes:
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\Dockerfile =====
 
-FROM node:22-alpine AS builder
+FROM node:22-alpine
+
 WORKDIR /backend
-RUN apk add --no-cache openssl
+
+RUN apk add --no-cache openssl curl
 
 COPY package*.json ./
 COPY packages/db/package*.json ./packages/db/
@@ -273,32 +274,15 @@ COPY apps/api/package*.json ./apps/api/
 COPY apps/workers/package*.json ./apps/workers/
 COPY apps/scrapers/package*.json ./apps/scrapers/
 
+COPY packages/db/prisma ./packages/db/prisma
+
 RUN npm ci
 
 COPY . .
 
-RUN npm run db:generate
 RUN npm run build:all
 
-FROM node:22-alpine AS runner
-WORKDIR /backend
-RUN apk add --no-cache openssl curl
-
-ENV NODE_ENV=production
-
-COPY --from=builder /backend/node_modules ./node_modules
-COPY --from=builder /backend/packages/db/node_modules ./packages/db/node_modules
-COPY --from=builder /backend/packages/db/dist ./packages/db/dist
-COPY --from=builder /backend/packages/db/prisma ./prisma
-COPY --from=builder /backend/packages/shared/dist ./packages/shared/dist
-COPY --from=builder /backend/apps/api/dist ./apps/api/dist
-COPY --from=builder /backend/apps/workers/dist ./apps/workers/dist
-COPY --from=builder /backend/apps/scrapers/dist ./apps/scrapers/dist
-COPY --from=builder /backend/package*.json ./
-
-RUN npm prune --production
-
-EXPOSE 4000
+CMD ["sh", "-c", "node $(find . -type f -name main.js -not -path '*/node_modules/*' | grep api | grep dist | head -n 1)"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\Makefile =====
 
@@ -4799,16 +4783,16 @@ export class AuthGuard implements CanActivate {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\auth\auth.module.ts =====
 
-import { Module } from '@nestjs/common';
-import { AuthController } from './auth.controller';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { JwtAuthGuard } from './jwt-auth.guard';
-import { RolesGuard } from './roles.guard';
+import { AuthController } from './auth.controller';
+import { UsersModule } from '../users/users.module';
 
 @Module({
+  imports: [forwardRef(() => UsersModule)],
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard, RolesGuard],
-  exports: [AuthService, JwtAuthGuard, RolesGuard],
+  providers: [AuthService],
+  exports: [AuthService],
 })
 export class AuthModule {}
 
@@ -5647,6 +5631,92 @@ export class CapitalService {
       remainingCapital: remaining,
       projectedProfit: toMoney(selected.reduce((sum, item) => sum + item.profit, 0)),
     };
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\catalog\rebrickable-sync.service.ts =====
+
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import axios from 'axios';
+
+@Injectable()
+export class RebrickableSyncService {
+  private readonly logger = new Logger(RebrickableSyncService.name);
+  private readonly apiKey = process.env.REBRICKABLE_API_KEY;
+  private readonly baseUrl = 'https://rebrickable.com/api/v3/lego';
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async syncMasterCatalog(type: 'sets' | 'minifigs' = 'sets'): Promise<{ inserted: number; updated: number }> {
+    if (!this.apiKey) {
+      throw new Error('REBRICKABLE_API_KEY is not configured');
+    }
+
+    let nextUrl: string | null = `${this.baseUrl}/${type}/?page_size=500`;
+    let inserted = 0;
+    let updated = 0;
+
+    while (nextUrl) {
+      try {
+        const response = await axios.get(nextUrl, {
+          headers: {
+            Authorization: `key ${this.apiKey}`,
+            Accept: 'application/json',
+          },
+        });
+
+        const data = response.data;
+        const items = data.results;
+        const dbOperations = [];
+
+        for (const item of items) {
+          const setNumber = type === 'sets' ? item.set_num : item.set_num;
+          const title = item.name;
+          const imageUrl = item.set_img_url;
+          const year = item.year;
+          const kind = type === 'sets' ? 'set' : 'minifigure';
+
+          dbOperations.push(
+            this.prisma.item.upsert({
+              where: {
+                setNumber_kind: { setNumber, kind } 
+              },
+              update: {
+                title,
+                imageUrl,
+                notes: year ? `Released: ${year}` : null,
+              },
+              create: {
+                title,
+                setNumber,
+                kind,
+                imageUrl,
+                conditionDefault: 'used',
+                notes: year ? `Released: ${year}` : null,
+              },
+            })
+          );
+        }
+
+        if (dbOperations.length > 0) {
+          const results = await this.prisma.$transaction(dbOperations);
+          inserted += results.filter(r => r.createdAt.getTime() === r.updatedAt.getTime()).length;
+          updated += results.length - inserted;
+        }
+
+        nextUrl = data.next;
+        
+        await new Promise((res) => setTimeout(res, 1100));
+
+      } catch (error) {
+        this.logger.error(`Failed to sync ${type} catalog at URL: ${nextUrl}`, error);
+        break;
+      }
+    }
+
+    this.logger.log(`Catalog sync complete for ${type}. Inserted: ${inserted}, Updated: ${updated}`);
+    return { inserted, updated };
   }
 }
 
@@ -7979,6 +8049,8 @@ import { FlipStrategyService } from '../strategy/flip-strategy.service';
 import { LiquidityRankService } from '../strategy/liquidity-rank.service';
 import { RiskManagementService } from '../strategy/risk-management.service';
 
+type EngineScanOptions = { limit: number; autoQueue: boolean; minScore: number };
+
 @Injectable()
 export class OpportunityEngineService {
   constructor(
@@ -7992,14 +8064,14 @@ export class OpportunityEngineService {
     private readonly riskManagementService: RiskManagementService,
   ) {}
 
-  private resolveAction(score: number) {
+  private resolveAction(score: number): 'buy_now' | 'queue' | 'watch' | 'skip' {
     if (score >= 85) return 'buy_now';
     if (score >= 75) return 'queue';
     if (score >= 55) return 'watch';
     return 'skip';
   }
 
-  async scan(options: { limit?: number; autoQueue?: boolean; minScore?: number }) {
+  async scan(options: Partial<EngineScanOptions>) {
     const limit = options.limit ?? 50;
     const autoQueue = options.autoQueue ?? false;
     const minScore = options.minScore ?? 75;
@@ -8007,29 +8079,43 @@ export class OpportunityEngineService {
     const watchlist = await this.prisma.watchlistItem.findMany({
       where: { active: true },
       include: { item: true },
-      take: limit * 2,
+      take: limit * 3,
       orderBy: { priority: 'desc' },
     });
 
     if (watchlist.length === 0) return { count: 0, queued: 0, opportunities: [] };
 
-    const opportunities = [];
-    let queued = 0;
-    const dbOperations = [];
+    const itemIds = watchlist.map((w) => w.itemId);
 
-    for (const watch of watchlist) {
-      const listings = await this.prisma.marketListing.findMany({
-        where: { itemId: watch.itemId, status: 'active' },
+    const [allListings, allSnapshots] = await Promise.all([
+      this.prisma.marketListing.findMany({
+        where: { itemId: { in: itemIds }, status: 'active' },
         include: { source: true },
         orderBy: { price: 'asc' },
-        take: 20,
-      });
-
-      const snapshot = await this.prisma.marketSnapshot.findFirst({
-        where: { itemId: watch.itemId },
+      }),
+      this.prisma.marketSnapshot.findMany({
+        where: { itemId: { in: itemIds } },
         orderBy: { computedAt: 'desc' },
-      });
+        distinct: ['itemId'],
+      }),
+    ]);
 
+    const listingsMap = new Map<string, typeof allListings>();
+    for (const listing of allListings) {
+      const arr = listingsMap.get(listing.itemId) || [];
+      if (arr.length < 10) arr.push(listing);
+      listingsMap.set(listing.itemId, arr);
+    }
+
+    const snapshotsMap = new Map(allSnapshots.map((s) => [s.itemId, s]));
+    const opportunities = [];
+    const createPayloads = [];
+
+    for (const watch of watchlist) {
+      const listings = listingsMap.get(watch.itemId) || [];
+      if (listings.length === 0) continue;
+
+      const snapshot = snapshotsMap.get(watch.itemId);
       const prices = listings.map((l) => Number(l.price));
       const volatility = this.volatilityService.calculate(prices);
       const itemType = this.itemTypeService.detect(watch.titleSnapshot);
@@ -8050,16 +8136,6 @@ export class OpportunityEngineService {
           confidence: Number(snapshot?.confidenceScore ?? 0),
         });
 
-        const flipStrategy = this.flipStrategyService.decide({
-          itemType,
-          buyPrice,
-          targetSellPrice,
-          medianPrice: Number(snapshot?.medianPrice ?? targetSellPrice),
-          soldCount: snapshot?.listingsCount ?? listings.length,
-          volatility,
-          confidenceScore: Number(snapshot?.confidenceScore ?? 0),
-        });
-
         const risk = this.riskManagementService.evaluate({
           buyPrice,
           expectedNetProfit: profit,
@@ -8074,8 +8150,7 @@ export class OpportunityEngineService {
           profit * 0.08 +
           sourceWeight * 12 +
           liquidity.score * 0.2 +
-          (100 - risk.riskScore) * 0.15 +
-          flipStrategy.score * 0.1;
+          (100 - risk.riskScore) * 0.15;
 
         const score = Number(Math.max(0, Math.min(100, rawScore)).toFixed(2));
         const action = this.resolveAction(score);
@@ -8094,33 +8169,25 @@ export class OpportunityEngineService {
           roiPercent,
           score,
           action,
-          reason: action === 'buy_now' ? 'High-score opportunity' : action === 'queue' ? 'Good candidate' : 'Watch',
         });
 
         if (autoQueue && (action === 'buy_now' || action === 'queue')) {
-          dbOperations.push(
-            this.prisma.purchaseFlowItem.upsert({
-              where: { id: `auto_${watch.id}_${listing.id}` },
-              update: {},
-              create: {
-                id: `auto_${watch.id}_${listing.id}`,
-                watchlistItemId: watch.id,
-                selectedPrice: buyPrice,
-                status: 'queued',
-                reason: `Auto-queued from ${listing.source?.code ?? 'market'}`,
-              },
-            })
-          );
-          queued += 1;
+          createPayloads.push({
+            id: `auto_${watch.id}_${listing.id}`,
+            watchlistItemId: watch.id,
+            selectedPrice: buyPrice,
+            status: 'queued',
+            reason: `Auto-queued from ${listing.source?.code ?? 'market'}`,
+          });
         }
       }
     }
 
-    if (dbOperations.length > 0) {
-      const chunkSize = 100;
-      for (let i = 0; i < dbOperations.length; i += chunkSize) {
-        await this.prisma.$transaction(dbOperations.slice(i, i + chunkSize));
-      }
+    if (createPayloads.length > 0) {
+      await this.prisma.purchaseFlowItem.createMany({
+        data: createPayloads,
+        skipDuplicates: true,
+      });
     }
 
     opportunities.sort((a, b) => b.score - a.score);
@@ -8128,9 +8195,9 @@ export class OpportunityEngineService {
 
     this.realtime.emitOpportunityRefresh('engine_scan');
     this.realtime.emitDashboardRefresh('opportunity_engine_scan');
-    if (queued > 0) this.realtime.emitFlowRefresh('purchase');
+    if (createPayloads.length > 0) this.realtime.emitFlowRefresh('purchase');
 
-    return { count: finalOps.length, queued, opportunities: finalOps };
+    return { count: finalOps.length, queued: createPayloads.length, opportunities: finalOps };
   }
 }
 
@@ -15762,6 +15829,7 @@ export class TelegramWebhookService {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\notifications\telegram.service.ts =====
 
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class TelegramService implements OnModuleInit {
@@ -15770,12 +15838,20 @@ export class TelegramService implements OnModuleInit {
   private readonly apiUrl = 'https://api.telegram.org/bot';
   private readonly backendUrl = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL;
 
+  constructor(private readonly redis: RedisService) {}
+
   async onModuleInit() {
     if (this.botToken && this.backendUrl) {
       const webhookUrl = `${this.backendUrl}/api/telegram/webhook`;
-      try {
-        await fetch(`${this.apiUrl}${this.botToken}/setWebhook?url=${webhookUrl}`);
-      } catch (e) {}
+      const cacheKey = 'telegram_webhook_set';
+      const isSet = await this.redis.get<string>(cacheKey);
+
+      if (isSet !== webhookUrl) {
+        try {
+          await fetch(`${this.apiUrl}${this.botToken}/setWebhook?url=${webhookUrl}`);
+          await this.redis.set(cacheKey, webhookUrl, 86400 * 7);
+        } catch (e) {}
+      }
     }
   }
 
@@ -18109,6 +18185,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { ActivityService } from '../activity/activity.service';
 import { calculateProfit, calculateRoiPercent, toMoney } from '@arcturus/shared';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PosService {
@@ -18121,10 +18198,7 @@ export class PosService {
   async findItemByBarcode(barcode: string) {
     const item = await this.prisma.inventoryItem.findFirst({
       where: {
-        OR: [
-          { id: barcode },
-          { item: { setNumber: barcode } }
-        ],
+        OR: [{ id: barcode }, { item: { setNumber: barcode } }],
         quantity: { gt: 0 }
       },
       include: {
@@ -18149,21 +18223,25 @@ export class PosService {
       throw new BadRequestException('Cart is empty');
     }
 
+    const sortedItems = [...params.items].sort((a, b) => 
+      a.inventoryItemId.localeCompare(b.inventoryItemId)
+    );
+
     return this.prisma.$transaction(async (tx) => {
       const sales = [];
       let totalRevenue = 0;
       let totalProfit = 0;
 
-      for (const cartItem of params.items) {
+      for (const cartItem of sortedItems) {
         const inventory = await tx.$queryRaw<Array<any>>`
           SELECT "id", "quantity", "totalCost", "itemId", "titleSnapshot", "warehouseId", "storageLocationId" 
           FROM "InventoryItem" 
           WHERE "id" = ${cartItem.inventoryItemId} 
-          FOR UPDATE
+          FOR UPDATE SKIP LOCKED
         `;
 
         if (!inventory || inventory.length === 0) {
-          throw new NotFoundException(`Item ${cartItem.inventoryItemId} not found`);
+          throw new BadRequestException(`Item ${cartItem.inventoryItemId} is currently locked or unavailable`);
         }
 
         const inv = inventory[0];
@@ -18214,7 +18292,6 @@ export class PosService {
         });
 
         sales.push(sale);
-        
         this.realtime.emitInventoryRefresh({ inventoryItemId: inv.id, reason: 'pos_sale' });
       }
 
@@ -18234,7 +18311,7 @@ export class PosService {
         totalProfit,
         sales
       };
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
   }
 }
 
@@ -24778,14 +24855,14 @@ export class UsersController {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\users\users.module.ts =====
 
-import { Module } from '@nestjs/common';
-import { PrismaModule } from '../prisma/prisma.module';
-import { RealtimeModule } from '../realtime/realtime.module';
-import { UsersController } from './users.controller';
+import { Module, forwardRef } from '@nestjs/common';
 import { UsersService } from './users.service';
+import { UsersController } from './users.controller';
+import { AuthModule } from '../auth/auth.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
-  imports: [PrismaModule, RealtimeModule],
+  imports: [forwardRef(() => AuthModule), RealtimeModule],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],
@@ -26571,8 +26648,9 @@ chromium.use(stealth());
 
 export class BrowserManager {
   private browser: Browser | null = null;
-  private requestCount = 0;
-  private readonly MAX_REQUESTS = 300;
+  private contexts: BrowserContext[] = [];
+  private readonly MAX_CONTEXTS = 5;
+  private contextRoundRobin = 0;
 
   async init(): Promise<void> {
     if (!this.browser) {
@@ -26585,36 +26663,36 @@ export class BrowserManager {
           '--disable-web-security',
           '--disable-features=IsolateOrigins,site-per-process',
           '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--single-process'
+          '--js-flags=--max-old-space-size=1024',
         ],
       });
-      this.requestCount = 0;
+
+      for (let i = 0; i < this.MAX_CONTEXTS; i++) {
+        const proxyStr = proxyManager.getRawProxy();
+        const context = await this.browser.newContext({
+          proxy: proxyStr ? { server: proxyStr } : undefined,
+          viewport: { width: 1920, height: 1080 },
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        });
+        this.contexts.push(context);
+      }
     }
   }
 
+  private getNextContext(): BrowserContext {
+    const ctx = this.contexts[this.contextRoundRobin];
+    this.contextRoundRobin = (this.contextRoundRobin + 1) % this.contexts.length;
+    return ctx;
+  }
+
   async fetchHtml(url: string): Promise<string> {
-    this.requestCount++;
-    if (this.requestCount > this.MAX_REQUESTS) {
-      await this.close();
-    }
-    
     await this.init();
-    
-    const proxyStr = proxyManager.getRawProxy();
-    const proxyConfig = proxyStr ? { server: proxyStr } : undefined;
-
-    const context: BrowserContext = await this.browser!.newContext({
-      proxy: proxyConfig,
-      viewport: { width: 1920, height: 1080 },
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    });
-
+    const context = this.getNextContext();
     const page = await context.newPage();
 
     await page.route('**/*', (route: any) => {
       const type = route.request().resourceType();
-      if (['image', 'media', 'font', 'stylesheet', 'eventsource', 'websocket'].includes(type)) {
+      if (['image', 'media', 'font', 'stylesheet', 'websocket'].includes(type)) {
         route.abort();
       } else {
         route.continue();
@@ -26623,19 +26701,18 @@ export class BrowserManager {
 
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.waitForTimeout(Math.floor(Math.random() * 1500) + 1000);
       return await page.content();
     } finally {
       await page.close();
-      await context.close();
     }
   }
 
   async close(): Promise<void> {
     if (this.browser) {
+      await Promise.all(this.contexts.map(c => c.close()));
       await this.browser.close();
       this.browser = null;
-      this.requestCount = 0;
+      this.contexts = [];
     }
   }
 }
@@ -31771,14 +31848,14 @@ datasource db {
 }
 
 model User {
-  id                     String            @id @default(cuid())
+  id                     String          @id @default(cuid())
   name                   String
-  email                  String?           @unique
+  email                  String?         @unique
   passwordHash           String?
-  role                   String            @default("operator")
-  active                 Boolean           @default(true)
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
+  role                   String          @default("operator")
+  active                 Boolean         @default(true)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
   sessions               UserSession[]
   assignedInventoryItems InventoryItem[]
   assignedWatchlistItems WatchlistItem[]
@@ -31826,6 +31903,7 @@ model Item {
   @@index([kind, theme])
   @@index([theme])
   @@index([setNumber])
+  @@unique([setNumber, kind])
 }
 
 model Warehouse {
@@ -32386,16 +32464,16 @@ model SyncErrorLog {
 }
 
 model ScanJob {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   sourceCode   String
   query        String?
-  status       String   @default("queued")
-  resultCount  Int      @default(0)
+  status       String    @default("queued")
+  resultCount  Int       @default(0)
   errorMessage String?
   startedAt    DateTime?
   finishedAt   DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([status, createdAt])
 }
@@ -32424,6 +32502,937 @@ model SoldComp {
   @@index([extractedSetNo])
   @@index([soldAt])
 }
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\db\prisma\migrations\20260513125532_init\migration.sql =====
+
+-- CreateTable
+CREATE TABLE "User" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT,
+    "passwordHash" TEXT,
+    "role" TEXT NOT NULL DEFAULT 'operator',
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UserSession" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "tokenHash" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "UserSession_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Item" (
+    "id" TEXT NOT NULL,
+    "kind" TEXT NOT NULL DEFAULT 'set',
+    "title" TEXT NOT NULL,
+    "setNumber" TEXT,
+    "theme" TEXT,
+    "conditionDefault" TEXT DEFAULT 'used',
+    "imageUrl" TEXT,
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Item_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Warehouse" (
+    "id" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "address" TEXT,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Warehouse_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StorageLocation" (
+    "id" TEXT NOT NULL,
+    "warehouseId" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "zone" TEXT,
+    "shelf" TEXT,
+    "box" TEXT,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StorageLocation_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "InventoryItem" (
+    "id" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "titleSnapshot" TEXT NOT NULL,
+    "purchasePrice" DOUBLE PRECISION NOT NULL,
+    "totalCost" DOUBLE PRECISION NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "condition" TEXT NOT NULL DEFAULT 'used',
+    "sealed" BOOLEAN NOT NULL DEFAULT false,
+    "expectedSalePriceManual" DOUBLE PRECISION,
+    "source" TEXT,
+    "purchaseUrl" TEXT,
+    "storageLocation" TEXT,
+    "storageLocationId" TEXT,
+    "warehouseId" TEXT,
+    "notes" TEXT,
+    "priority" INTEGER NOT NULL DEFAULT 50,
+    "assignedUserId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "InventoryItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StockMovement" (
+    "id" TEXT NOT NULL,
+    "inventoryItemId" TEXT NOT NULL,
+    "warehouseId" TEXT,
+    "fromStorageLocationId" TEXT,
+    "toStorageLocationId" TEXT,
+    "type" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "reason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "StockMovement_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "InventoryImage" (
+    "id" TEXT NOT NULL,
+    "inventoryItemId" TEXT NOT NULL,
+    "imageUrl" TEXT NOT NULL,
+    "altText" TEXT,
+    "isPrimary" BOOLEAN NOT NULL DEFAULT false,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "InventoryImage_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WatchlistItem" (
+    "id" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "titleSnapshot" TEXT NOT NULL,
+    "desiredBuyPrice" DOUBLE PRECISION NOT NULL,
+    "maxBuyPrice" DOUBLE PRECISION NOT NULL,
+    "targetSellPrice" DOUBLE PRECISION,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "priority" INTEGER NOT NULL DEFAULT 50,
+    "notes" TEXT,
+    "assignedUserId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "WatchlistItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PurchaseOrder" (
+    "id" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "watchlistItemId" TEXT,
+    "inventoryItemId" TEXT,
+    "assignedUserId" TEXT,
+    "titleSnapshot" TEXT NOT NULL,
+    "sourceCode" TEXT,
+    "supplierName" TEXT,
+    "sourceUrl" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'planned',
+    "plannedPrice" DOUBLE PRECISION,
+    "actualPrice" DOUBLE PRECISION,
+    "shippingPrice" DOUBLE PRECISION,
+    "totalCost" DOUBLE PRECISION,
+    "targetSellPrice" DOUBLE PRECISION,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "condition" TEXT NOT NULL DEFAULT 'used',
+    "sealed" BOOLEAN NOT NULL DEFAULT false,
+    "notes" TEXT,
+    "purchasedAt" TIMESTAMP(3),
+    "receivedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PurchaseOrder_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "MarketSource" (
+    "id" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "type" TEXT NOT NULL DEFAULT 'manual',
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "MarketSource_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "MarketListing" (
+    "id" TEXT NOT NULL,
+    "sourceId" TEXT NOT NULL,
+    "sourceCode" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "externalListingId" TEXT NOT NULL,
+    "externalId" TEXT,
+    "titleRaw" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "imageUrl" TEXT,
+    "sellerName" TEXT,
+    "sellerRating" DOUBLE PRECISION,
+    "price" DOUBLE PRECISION NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'UAH',
+    "shippingPrice" DOUBLE PRECISION,
+    "shippingCurrency" TEXT,
+    "country" TEXT,
+    "condition" TEXT,
+    "sealed" BOOLEAN,
+    "completenessPercent" INTEGER,
+    "quantityAvailable" INTEGER,
+    "status" TEXT NOT NULL DEFAULT 'active',
+    "fetchedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "firstSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "MarketListing_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "MarketSnapshot" (
+    "id" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "scope" TEXT NOT NULL DEFAULT 'ua',
+    "listingsCount" INTEGER NOT NULL DEFAULT 0,
+    "lowestPrice" DOUBLE PRECISION,
+    "lowestPriceWithShipping" DOUBLE PRECISION,
+    "avgPrice" DOUBLE PRECISION,
+    "medianPrice" DOUBLE PRECISION,
+    "avgShipping" DOUBLE PRECISION,
+    "minShipping" DOUBLE PRECISION,
+    "maxShipping" DOUBLE PRECISION,
+    "sealedAvgPrice" DOUBLE PRECISION,
+    "usedAvgPrice" DOUBLE PRECISION,
+    "confidenceScore" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "computedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "MarketSnapshot_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "DecisionSnapshot" (
+    "id" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "contextType" TEXT NOT NULL,
+    "contextId" TEXT NOT NULL,
+    "action" TEXT NOT NULL,
+    "score" DOUBLE PRECISION NOT NULL,
+    "confidence" DOUBLE PRECISION NOT NULL,
+    "reasonPrimary" TEXT NOT NULL,
+    "reasonSecondary" TEXT,
+    "payloadJson" JSONB,
+    "executionStatus" TEXT NOT NULL DEFAULT 'pending',
+    "executedAt" TIMESTAMP(3),
+    "ignoredAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "DecisionSnapshot_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PurchaseFlowItem" (
+    "id" TEXT NOT NULL,
+    "watchlistItemId" TEXT NOT NULL,
+    "selectedPrice" DOUBLE PRECISION,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "reason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PurchaseFlowItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RepriceFlowItem" (
+    "id" TEXT NOT NULL,
+    "inventoryItemId" TEXT NOT NULL,
+    "currentPrice" DOUBLE PRECISION,
+    "suggestedPrice" DOUBLE PRECISION,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "reason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RepriceFlowItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ReviewFlowItem" (
+    "id" TEXT NOT NULL,
+    "inventoryItemId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "reason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ReviewFlowItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Deal" (
+    "id" TEXT NOT NULL,
+    "listingId" TEXT NOT NULL,
+    "watchlistItemId" TEXT NOT NULL,
+    "buyPrice" DOUBLE PRECISION NOT NULL,
+    "targetSellPrice" DOUBLE PRECISION NOT NULL,
+    "profit" DOUBLE PRECISION NOT NULL,
+    "roiPercent" DOUBLE PRECISION NOT NULL,
+    "action" TEXT NOT NULL,
+    "score" DOUBLE PRECISION NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'open',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Deal_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Sale" (
+    "id" TEXT NOT NULL,
+    "inventoryItemId" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "sellPrice" DOUBLE PRECISION NOT NULL,
+    "costBasis" DOUBLE PRECISION NOT NULL,
+    "profit" DOUBLE PRECISION NOT NULL,
+    "roiPercent" DOUBLE PRECISION NOT NULL,
+    "channel" TEXT,
+    "buyerName" TEXT,
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
+
+    CONSTRAINT "Sale_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Order" (
+    "id" TEXT NOT NULL,
+    "reserveRequestId" TEXT,
+    "inventoryItemId" TEXT,
+    "saleId" TEXT,
+    "productTitle" TEXT NOT NULL,
+    "buyerName" TEXT NOT NULL,
+    "contact" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "sellPrice" DOUBLE PRECISION,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "channel" TEXT,
+    "adminNote" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
+
+    CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ReturnRequest" (
+    "id" TEXT NOT NULL,
+    "saleId" TEXT NOT NULL,
+    "orderId" TEXT,
+    "inventoryItemId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'requested',
+    "reason" TEXT,
+    "refundAmount" DOUBLE PRECISION,
+    "restock" BOOLEAN NOT NULL DEFAULT true,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "adminNote" TEXT,
+    "resolvedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
+
+    CONSTRAINT "ReturnRequest_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Expense" (
+    "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "category" TEXT NOT NULL,
+    "amount" DOUBLE PRECISION NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'UAH',
+    "description" TEXT,
+    "inventoryItemId" TEXT,
+    "purchaseOrderId" TEXT,
+    "saleId" TEXT,
+    "orderId" TEXT,
+    "assignedUserId" TEXT,
+    "incurredAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
+
+    CONSTRAINT "Expense_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ReportSnapshot" (
+    "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "periodStart" TIMESTAMP(3) NOT NULL,
+    "periodEnd" TIMESTAMP(3) NOT NULL,
+    "payloadJson" JSONB NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ReportSnapshot_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "BackupSnapshot" (
+    "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL DEFAULT 'manual',
+    "status" TEXT NOT NULL DEFAULT 'created',
+    "payloadJson" JSONB NOT NULL,
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "BackupSnapshot_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AuditLog" (
+    "id" TEXT NOT NULL,
+    "actorUserId" TEXT,
+    "action" TEXT NOT NULL,
+    "entityType" TEXT NOT NULL,
+    "entityId" TEXT,
+    "beforeJson" JSONB,
+    "afterJson" JSONB,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ReserveRequest" (
+    "id" TEXT NOT NULL,
+    "inventoryItemId" TEXT,
+    "productTitle" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "contact" TEXT NOT NULL,
+    "message" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "adminNote" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ReserveRequest_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Notification" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "type" TEXT NOT NULL DEFAULT 'info',
+    "read" BOOLEAN NOT NULL DEFAULT false,
+    "targetUserId" TEXT,
+    "payloadJson" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ActivityLog" (
+    "id" TEXT NOT NULL,
+    "action" TEXT NOT NULL,
+    "payloadJson" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ActivityLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UnresolvedMatchQueue" (
+    "id" TEXT NOT NULL,
+    "listingId" TEXT NOT NULL,
+    "sourceCode" TEXT NOT NULL,
+    "titleRaw" TEXT NOT NULL,
+    "normalizedTitle" TEXT,
+    "extractedSetNo" TEXT,
+    "suggestedItemId" TEXT,
+    "resolvedItemId" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "resolutionNote" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "UnresolvedMatchQueue_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SourceRunLog" (
+    "id" TEXT NOT NULL,
+    "sourceId" TEXT NOT NULL,
+    "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "finishedAt" TIMESTAMP(3),
+    "status" TEXT NOT NULL DEFAULT 'running',
+    "itemsSeen" INTEGER NOT NULL DEFAULT 0,
+    "itemsMatched" INTEGER NOT NULL DEFAULT 0,
+    "itemsInserted" INTEGER NOT NULL DEFAULT 0,
+    "itemsUpdated" INTEGER NOT NULL DEFAULT 0,
+    "errorMessage" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SourceRunLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SyncErrorLog" (
+    "id" TEXT NOT NULL,
+    "scope" TEXT NOT NULL,
+    "sourceCode" TEXT,
+    "referenceId" TEXT,
+    "message" TEXT NOT NULL,
+    "detailsJson" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SyncErrorLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ScanJob" (
+    "id" TEXT NOT NULL,
+    "sourceCode" TEXT NOT NULL,
+    "query" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'queued',
+    "resultCount" INTEGER NOT NULL DEFAULT 0,
+    "errorMessage" TEXT,
+    "startedAt" TIMESTAMP(3),
+    "finishedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ScanJob_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SoldComp" (
+    "id" TEXT NOT NULL,
+    "sourceCode" TEXT NOT NULL,
+    "externalId" TEXT NOT NULL,
+    "itemId" TEXT,
+    "title" TEXT NOT NULL,
+    "normalizedTitle" TEXT NOT NULL,
+    "extractedSetNo" TEXT,
+    "soldPrice" DOUBLE PRECISION NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'UAH',
+    "soldAt" TIMESTAMP(3) NOT NULL,
+    "url" TEXT,
+    "imageUrl" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SoldComp_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE INDEX "User_role_active_idx" ON "User"("role", "active");
+
+-- CreateIndex
+CREATE INDEX "User_active_idx" ON "User"("active");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UserSession_tokenHash_key" ON "UserSession"("tokenHash");
+
+-- CreateIndex
+CREATE INDEX "UserSession_userId_expiresAt_idx" ON "UserSession"("userId", "expiresAt");
+
+-- CreateIndex
+CREATE INDEX "UserSession_expiresAt_idx" ON "UserSession"("expiresAt");
+
+-- CreateIndex
+CREATE INDEX "Item_kind_theme_idx" ON "Item"("kind", "theme");
+
+-- CreateIndex
+CREATE INDEX "Item_theme_idx" ON "Item"("theme");
+
+-- CreateIndex
+CREATE INDEX "Item_setNumber_idx" ON "Item"("setNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Item_setNumber_kind_key" ON "Item"("setNumber", "kind");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Warehouse_code_key" ON "Warehouse"("code");
+
+-- CreateIndex
+CREATE INDEX "Warehouse_active_idx" ON "Warehouse"("active");
+
+-- CreateIndex
+CREATE INDEX "StorageLocation_warehouseId_active_idx" ON "StorageLocation"("warehouseId", "active");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StorageLocation_warehouseId_code_key" ON "StorageLocation"("warehouseId", "code");
+
+-- CreateIndex
+CREATE INDEX "InventoryItem_itemId_quantity_idx" ON "InventoryItem"("itemId", "quantity");
+
+-- CreateIndex
+CREATE INDEX "InventoryItem_assignedUserId_quantity_idx" ON "InventoryItem"("assignedUserId", "quantity");
+
+-- CreateIndex
+CREATE INDEX "InventoryItem_warehouseId_storageLocationId_idx" ON "InventoryItem"("warehouseId", "storageLocationId");
+
+-- CreateIndex
+CREATE INDEX "InventoryItem_quantity_expectedSalePriceManual_idx" ON "InventoryItem"("quantity", "expectedSalePriceManual");
+
+-- CreateIndex
+CREATE INDEX "InventoryItem_createdAt_idx" ON "InventoryItem"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "StockMovement_inventoryItemId_type_idx" ON "StockMovement"("inventoryItemId", "type");
+
+-- CreateIndex
+CREATE INDEX "StockMovement_warehouseId_createdAt_idx" ON "StockMovement"("warehouseId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "InventoryImage_inventoryItemId_sortOrder_idx" ON "InventoryImage"("inventoryItemId", "sortOrder");
+
+-- CreateIndex
+CREATE INDEX "InventoryImage_inventoryItemId_isPrimary_idx" ON "InventoryImage"("inventoryItemId", "isPrimary");
+
+-- CreateIndex
+CREATE INDEX "WatchlistItem_itemId_active_idx" ON "WatchlistItem"("itemId", "active");
+
+-- CreateIndex
+CREATE INDEX "WatchlistItem_assignedUserId_active_idx" ON "WatchlistItem"("assignedUserId", "active");
+
+-- CreateIndex
+CREATE INDEX "WatchlistItem_active_priority_idx" ON "WatchlistItem"("active", "priority");
+
+-- CreateIndex
+CREATE INDEX "WatchlistItem_createdAt_idx" ON "WatchlistItem"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "PurchaseOrder_status_createdAt_idx" ON "PurchaseOrder"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "PurchaseOrder_itemId_status_idx" ON "PurchaseOrder"("itemId", "status");
+
+-- CreateIndex
+CREATE INDEX "PurchaseOrder_assignedUserId_status_idx" ON "PurchaseOrder"("assignedUserId", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "MarketSource_code_key" ON "MarketSource"("code");
+
+-- CreateIndex
+CREATE INDEX "MarketSource_enabled_type_idx" ON "MarketSource"("enabled", "type");
+
+-- CreateIndex
+CREATE INDEX "MarketListing_itemId_status_price_idx" ON "MarketListing"("itemId", "status", "price");
+
+-- CreateIndex
+CREATE INDEX "MarketListing_sourceId_status_fetchedAt_idx" ON "MarketListing"("sourceId", "status", "fetchedAt");
+
+-- CreateIndex
+CREATE INDEX "MarketListing_status_fetchedAt_idx" ON "MarketListing"("status", "fetchedAt");
+
+-- CreateIndex
+CREATE INDEX "MarketListing_sourceCode_externalId_idx" ON "MarketListing"("sourceCode", "externalId");
+
+-- CreateIndex
+CREATE INDEX "MarketSnapshot_itemId_computedAt_idx" ON "MarketSnapshot"("itemId", "computedAt");
+
+-- CreateIndex
+CREATE INDEX "DecisionSnapshot_contextType_contextId_createdAt_idx" ON "DecisionSnapshot"("contextType", "contextId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "DecisionSnapshot_executionStatus_action_score_idx" ON "DecisionSnapshot"("executionStatus", "action", "score");
+
+-- CreateIndex
+CREATE INDEX "DecisionSnapshot_itemId_executionStatus_idx" ON "DecisionSnapshot"("itemId", "executionStatus");
+
+-- CreateIndex
+CREATE INDEX "PurchaseFlowItem_status_createdAt_idx" ON "PurchaseFlowItem"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "PurchaseFlowItem_watchlistItemId_status_idx" ON "PurchaseFlowItem"("watchlistItemId", "status");
+
+-- CreateIndex
+CREATE INDEX "RepriceFlowItem_status_createdAt_idx" ON "RepriceFlowItem"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "RepriceFlowItem_inventoryItemId_status_idx" ON "RepriceFlowItem"("inventoryItemId", "status");
+
+-- CreateIndex
+CREATE INDEX "ReviewFlowItem_status_createdAt_idx" ON "ReviewFlowItem"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "ReviewFlowItem_inventoryItemId_status_idx" ON "ReviewFlowItem"("inventoryItemId", "status");
+
+-- CreateIndex
+CREATE INDEX "Deal_status_score_idx" ON "Deal"("status", "score");
+
+-- CreateIndex
+CREATE INDEX "Deal_action_status_idx" ON "Deal"("action", "status");
+
+-- CreateIndex
+CREATE INDEX "Deal_watchlistItemId_listingId_idx" ON "Deal"("watchlistItemId", "listingId");
+
+-- CreateIndex
+CREATE INDEX "Sale_itemId_createdAt_idx" ON "Sale"("itemId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "Sale_createdAt_idx" ON "Sale"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "Sale_deletedAt_idx" ON "Sale"("deletedAt");
+
+-- CreateIndex
+CREATE INDEX "Order_status_createdAt_idx" ON "Order"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "Order_inventoryItemId_idx" ON "Order"("inventoryItemId");
+
+-- CreateIndex
+CREATE INDEX "Order_deletedAt_idx" ON "Order"("deletedAt");
+
+-- CreateIndex
+CREATE INDEX "ReturnRequest_status_createdAt_idx" ON "ReturnRequest"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "ReturnRequest_saleId_idx" ON "ReturnRequest"("saleId");
+
+-- CreateIndex
+CREATE INDEX "ReturnRequest_deletedAt_idx" ON "ReturnRequest"("deletedAt");
+
+-- CreateIndex
+CREATE INDEX "Expense_category_incurredAt_idx" ON "Expense"("category", "incurredAt");
+
+-- CreateIndex
+CREATE INDEX "Expense_type_incurredAt_idx" ON "Expense"("type", "incurredAt");
+
+-- CreateIndex
+CREATE INDEX "Expense_deletedAt_idx" ON "Expense"("deletedAt");
+
+-- CreateIndex
+CREATE INDEX "ReportSnapshot_type_createdAt_idx" ON "ReportSnapshot"("type", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "BackupSnapshot_status_createdAt_idx" ON "BackupSnapshot"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_entityType_entityId_createdAt_idx" ON "AuditLog"("entityType", "entityId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_action_createdAt_idx" ON "AuditLog"("action", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "ReserveRequest_status_createdAt_idx" ON "ReserveRequest"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "Notification_targetUserId_read_createdAt_idx" ON "Notification"("targetUserId", "read", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "ActivityLog_action_createdAt_idx" ON "ActivityLog"("action", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "UnresolvedMatchQueue_status_createdAt_idx" ON "UnresolvedMatchQueue"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "UnresolvedMatchQueue_sourceCode_status_idx" ON "UnresolvedMatchQueue"("sourceCode", "status");
+
+-- CreateIndex
+CREATE INDEX "SourceRunLog_sourceId_startedAt_idx" ON "SourceRunLog"("sourceId", "startedAt");
+
+-- CreateIndex
+CREATE INDEX "SyncErrorLog_scope_createdAt_idx" ON "SyncErrorLog"("scope", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "SyncErrorLog_sourceCode_createdAt_idx" ON "SyncErrorLog"("sourceCode", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "ScanJob_status_createdAt_idx" ON "ScanJob"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "SoldComp_sourceCode_idx" ON "SoldComp"("sourceCode");
+
+-- CreateIndex
+CREATE INDEX "SoldComp_externalId_idx" ON "SoldComp"("externalId");
+
+-- CreateIndex
+CREATE INDEX "SoldComp_itemId_idx" ON "SoldComp"("itemId");
+
+-- CreateIndex
+CREATE INDEX "SoldComp_extractedSetNo_idx" ON "SoldComp"("extractedSetNo");
+
+-- CreateIndex
+CREATE INDEX "SoldComp_soldAt_idx" ON "SoldComp"("soldAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SoldComp_sourceCode_externalId_key" ON "SoldComp"("sourceCode", "externalId");
+
+-- AddForeignKey
+ALTER TABLE "UserSession" ADD CONSTRAINT "UserSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StorageLocation" ADD CONSTRAINT "StorageLocation_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "Warehouse"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InventoryItem" ADD CONSTRAINT "InventoryItem_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InventoryItem" ADD CONSTRAINT "InventoryItem_assignedUserId_fkey" FOREIGN KEY ("assignedUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InventoryItem" ADD CONSTRAINT "InventoryItem_storageLocationId_fkey" FOREIGN KEY ("storageLocationId") REFERENCES "StorageLocation"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StockMovement" ADD CONSTRAINT "StockMovement_inventoryItemId_fkey" FOREIGN KEY ("inventoryItemId") REFERENCES "InventoryItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StockMovement" ADD CONSTRAINT "StockMovement_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "Warehouse"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InventoryImage" ADD CONSTRAINT "InventoryImage_inventoryItemId_fkey" FOREIGN KEY ("inventoryItemId") REFERENCES "InventoryItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "WatchlistItem" ADD CONSTRAINT "WatchlistItem_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "WatchlistItem" ADD CONSTRAINT "WatchlistItem_assignedUserId_fkey" FOREIGN KEY ("assignedUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PurchaseOrder" ADD CONSTRAINT "PurchaseOrder_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PurchaseOrder" ADD CONSTRAINT "PurchaseOrder_watchlistItemId_fkey" FOREIGN KEY ("watchlistItemId") REFERENCES "WatchlistItem"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PurchaseOrder" ADD CONSTRAINT "PurchaseOrder_inventoryItemId_fkey" FOREIGN KEY ("inventoryItemId") REFERENCES "InventoryItem"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PurchaseOrder" ADD CONSTRAINT "PurchaseOrder_assignedUserId_fkey" FOREIGN KEY ("assignedUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "MarketListing" ADD CONSTRAINT "MarketListing_sourceId_fkey" FOREIGN KEY ("sourceId") REFERENCES "MarketSource"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "MarketListing" ADD CONSTRAINT "MarketListing_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "MarketSnapshot" ADD CONSTRAINT "MarketSnapshot_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "DecisionSnapshot" ADD CONSTRAINT "DecisionSnapshot_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PurchaseFlowItem" ADD CONSTRAINT "PurchaseFlowItem_watchlistItemId_fkey" FOREIGN KEY ("watchlistItemId") REFERENCES "WatchlistItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RepriceFlowItem" ADD CONSTRAINT "RepriceFlowItem_inventoryItemId_fkey" FOREIGN KEY ("inventoryItemId") REFERENCES "InventoryItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReviewFlowItem" ADD CONSTRAINT "ReviewFlowItem_inventoryItemId_fkey" FOREIGN KEY ("inventoryItemId") REFERENCES "InventoryItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Deal" ADD CONSTRAINT "Deal_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "MarketListing"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Deal" ADD CONSTRAINT "Deal_watchlistItemId_fkey" FOREIGN KEY ("watchlistItemId") REFERENCES "WatchlistItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Sale" ADD CONSTRAINT "Sale_inventoryItemId_fkey" FOREIGN KEY ("inventoryItemId") REFERENCES "InventoryItem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Sale" ADD CONSTRAINT "Sale_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_reserveRequestId_fkey" FOREIGN KEY ("reserveRequestId") REFERENCES "ReserveRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_inventoryItemId_fkey" FOREIGN KEY ("inventoryItemId") REFERENCES "InventoryItem"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Order" ADD CONSTRAINT "Order_saleId_fkey" FOREIGN KEY ("saleId") REFERENCES "Sale"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReturnRequest" ADD CONSTRAINT "ReturnRequest_saleId_fkey" FOREIGN KEY ("saleId") REFERENCES "Sale"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReturnRequest" ADD CONSTRAINT "ReturnRequest_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReturnRequest" ADD CONSTRAINT "ReturnRequest_inventoryItemId_fkey" FOREIGN KEY ("inventoryItemId") REFERENCES "InventoryItem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Expense" ADD CONSTRAINT "Expense_inventoryItemId_fkey" FOREIGN KEY ("inventoryItemId") REFERENCES "InventoryItem"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Expense" ADD CONSTRAINT "Expense_purchaseOrderId_fkey" FOREIGN KEY ("purchaseOrderId") REFERENCES "PurchaseOrder"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Expense" ADD CONSTRAINT "Expense_saleId_fkey" FOREIGN KEY ("saleId") REFERENCES "Sale"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Expense" ADD CONSTRAINT "Expense_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Expense" ADD CONSTRAINT "Expense_assignedUserId_fkey" FOREIGN KEY ("assignedUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_actorUserId_fkey" FOREIGN KEY ("actorUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ReserveRequest" ADD CONSTRAINT "ReserveRequest_inventoryItemId_fkey" FOREIGN KEY ("inventoryItemId") REFERENCES "InventoryItem"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Notification" ADD CONSTRAINT "Notification_targetUserId_fkey" FOREIGN KEY ("targetUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UnresolvedMatchQueue" ADD CONSTRAINT "UnresolvedMatchQueue_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "MarketListing"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SourceRunLog" ADD CONSTRAINT "SourceRunLog_sourceId_fkey" FOREIGN KEY ("sourceId") REFERENCES "MarketSource"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SoldComp" ADD CONSTRAINT "SoldComp_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\db\src\index.js =====
 

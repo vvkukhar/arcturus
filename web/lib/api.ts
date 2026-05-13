@@ -57,7 +57,14 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
   const { requireAuth = true, tags, revalidate, headers: customHeaders, ...init } = options;
   const headers = new Headers(customHeaders);
   const isServer = typeof window === 'undefined';
-  const targetUrl = path.startsWith('http') ? path : `${appConfig.apiBaseUrl}${path}`;
+  
+  const base = appConfig.apiBaseUrl.replace(/\/$/, '');
+  let cleanPath = path.startsWith('/') ? path : `/${path}`;
+  if (base.endsWith('/api') && cleanPath.startsWith('/api')) {
+    cleanPath = cleanPath.substring(4); 
+  }
+  const targetUrl = path.startsWith('http') ? path : `${base}${cleanPath}`;
+  
   const state = getCircuitState(targetUrl);
 
   if (state.isOpen) {
