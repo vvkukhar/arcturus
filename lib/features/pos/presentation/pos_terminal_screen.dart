@@ -5,6 +5,7 @@ import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/features/pos/application/pos_cart_provider.dart';
+import 'package:lego_trading_manager/features/pos/presentation/pos_scanner_modal.dart';
 
 class PosTerminalScreen extends ConsumerStatefulWidget {
   const PosTerminalScreen({super.key});
@@ -24,7 +25,6 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
     final invRepo = ref.read(inventoryRepositoryProvider);
     final items = invRepo.getAllItems();
     
-    // Шукаємо за ID або Set Number
     final match = items.where((i) => 
       (i.id.toLowerCase() == code.toLowerCase() || 
        (i.setId != null && i.setId!.toLowerCase() == code.toLowerCase())) &&
@@ -40,6 +40,16 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(i18n.t('pos.notFound')), backgroundColor: Colors.redAccent),
       );
+    }
+  }
+
+  Future<void> _openCameraScanner() async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const PosScannerModal()),
+    );
+    if (result != null) {
+      _handleScan(result);
     }
   }
 
@@ -79,7 +89,15 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(i18n.t('pos.title'), style: const TextStyle(fontWeight: FontWeight.w900))),
+      appBar: AppBar(
+        title: Text(i18n.t('pos.title'), style: const TextStyle(fontWeight: FontWeight.w900)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.camera_alt),
+            onPressed: _openCameraScanner,
+          ),
+        ],
+      ),
       drawer: const AppDrawer(),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -93,6 +111,10 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
               decoration: InputDecoration(
                 hintText: i18n.t('pos.search'),
                 prefixIcon: const Icon(Icons.qr_code_scanner),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.camera_alt, color: Colors.blueAccent),
+                  onPressed: _openCameraScanner,
+                ),
                 filled: true,
                 fillColor: const Color(0xFF171A21),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),

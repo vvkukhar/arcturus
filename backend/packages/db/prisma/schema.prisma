@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["metrics"]
 }
 
 datasource db {
@@ -9,14 +10,14 @@ datasource db {
 }
 
 model User {
-  id                     String          @id @default(cuid())
+  id                     String           @id @default(cuid())
   name                   String
-  email                  String?         @unique
+  email                  String?          @unique
   passwordHash           String?
-  role                   String          @default("operator")
-  active                 Boolean         @default(true)
-  createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @updatedAt
+  role                   String           @default("operator")
+  active                 Boolean          @default(true)
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
   sessions               UserSession[]
   assignedInventoryItems InventoryItem[]
   assignedWatchlistItems WatchlistItem[]
@@ -61,10 +62,9 @@ model Item {
   sales             Sale[]
   purchaseOrders    PurchaseOrder[]
 
+  @@unique([setNumber, kind])
   @@index([kind, theme])
   @@index([theme])
-  @@index([setNumber])
-  @@unique([setNumber, kind])
 }
 
 model Warehouse {
@@ -137,7 +137,6 @@ model InventoryItem {
   @@index([assignedUserId, quantity])
   @@index([warehouseId, storageLocationId])
   @@index([quantity, expectedSalePriceManual])
-  @@index([createdAt])
 }
 
 model StockMovement {
@@ -168,8 +167,7 @@ model InventoryImage {
   updatedAt       DateTime      @updatedAt
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
-  @@index([inventoryItemId, sortOrder])
-  @@index([inventoryItemId, isPrimary])
+  @@index([inventoryItemId, isPrimary, sortOrder])
 }
 
 model WatchlistItem {
@@ -192,9 +190,7 @@ model WatchlistItem {
   purchaseOrders  PurchaseOrder[]
 
   @@index([itemId, active])
-  @@index([assignedUserId, active])
   @@index([active, priority])
-  @@index([createdAt])
 }
 
 model PurchaseOrder {
@@ -229,7 +225,6 @@ model PurchaseOrder {
 
   @@index([status, createdAt])
   @@index([itemId, status])
-  @@index([assignedUserId, status])
 }
 
 model MarketSource {
@@ -279,10 +274,9 @@ model MarketListing {
   deals               Deal[]
   unresolvedMatches   UnresolvedMatchQueue[]
 
+  @@unique([sourceCode, externalListingId])
   @@index([itemId, status, price])
-  @@index([sourceId, status, fetchedAt])
   @@index([status, fetchedAt])
-  @@index([sourceCode, externalId])
 }
 
 model MarketSnapshot {
@@ -339,7 +333,6 @@ model PurchaseFlowItem {
   watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
-  @@index([watchlistItemId, status])
 }
 
 model RepriceFlowItem {
@@ -354,7 +347,6 @@ model RepriceFlowItem {
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
-  @@index([inventoryItemId, status])
 }
 
 model ReviewFlowItem {
@@ -367,7 +359,6 @@ model ReviewFlowItem {
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
-  @@index([inventoryItemId, status])
 }
 
 model Deal {
@@ -386,9 +377,9 @@ model Deal {
   listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
+  @@unique([watchlistItemId, listingId])
   @@index([status, score])
   @@index([action, status])
-  @@index([watchlistItemId, listingId])
 }
 
 model Sale {
@@ -413,7 +404,6 @@ model Sale {
   expenses        Expense[]
 
   @@index([itemId, createdAt])
-  @@index([createdAt])
   @@index([deletedAt])
 }
 
@@ -440,7 +430,6 @@ model Order {
   expenses         Expense[]
 
   @@index([status, createdAt])
-  @@index([inventoryItemId])
   @@index([deletedAt])
 }
 
@@ -464,7 +453,6 @@ model ReturnRequest {
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
 
   @@index([status, createdAt])
-  @@index([saleId])
   @@index([deletedAt])
 }
 
@@ -491,7 +479,6 @@ model Expense {
   assignedUser    User?          @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
 
   @@index([category, incurredAt])
-  @@index([type, incurredAt])
   @@index([deletedAt])
 }
 
@@ -531,7 +518,6 @@ model AuditLog {
   actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([entityType, entityId, createdAt])
-  @@index([action, createdAt])
 }
 
 model ReserveRequest {
@@ -591,7 +577,6 @@ model UnresolvedMatchQueue {
   listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
-  @@index([sourceCode, status])
 }
 
 model SourceRunLog {
@@ -621,20 +606,19 @@ model SyncErrorLog {
   createdAt   DateTime @default(now())
 
   @@index([scope, createdAt])
-  @@index([sourceCode, createdAt])
 }
 
 model ScanJob {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   sourceCode   String
   query        String?
-  status       String    @default("queued")
-  resultCount  Int       @default(0)
+  status       String   @default("queued")
+  resultCount  Int      @default(0)
   errorMessage String?
   startedAt    DateTime?
   finishedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([status, createdAt])
 }
@@ -657,9 +641,5 @@ model SoldComp {
   item            Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   @@unique([sourceCode, externalId])
-  @@index([sourceCode])
-  @@index([externalId])
   @@index([itemId])
-  @@index([extractedSetNo])
-  @@index([soldAt])
 }

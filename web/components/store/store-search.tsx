@@ -31,7 +31,7 @@ function StoreSearchContent() {
   };
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row relative">
+    <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row relative transform-gpu">
       <div className="relative flex-1">
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           <Search className="h-5 w-5 text-slate-400" />

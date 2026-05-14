@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:isolate';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
@@ -33,7 +32,7 @@ class SalesEngine extends AsyncNotifier<SalesEngineState> {
     ref.onDispose(() => sub.cancel());
 
     final list = ref.watch(salesRepositoryProvider).getAllSales();
-    return await Isolate.run(() => _computeState(list, '', 'newest', const {}));
+    return _computeState(list, '', 'newest', const {});
   }
 
   static SalesEngineState _computeState(List<SaleModel> all, String q, String sort, Set<String> selected) {
@@ -60,9 +59,9 @@ class SalesEngine extends AsyncNotifier<SalesEngineState> {
     return SalesEngineState(allSales: all, visibleSales: visible, selectedIds: selected, query: q, sortOption: sort, analysis: SalesAnalysis(all.length, net, fees, all.isEmpty ? 0 : net / all.length));
   }
 
-  Future<void> _updateState(String q, String sort, Set<String> selected) async {
+  void _updateState(String q, String sort, Set<String> selected) {
     if (state.value == null) return;
-    state = AsyncValue.data(await Isolate.run(() => _computeState(state.value!.allSales, q, sort, selected)));
+    state = AsyncValue.data(_computeState(state.value!.allSales, q, sort, selected));
   }
 
   void search(String q) => _updateState(q, state.value!.sortOption, state.value!.selectedIds);
@@ -81,7 +80,6 @@ class SalesEngine extends AsyncNotifier<SalesEngineState> {
     final exists = state.value!.allSales.any((e) => e.id == sale.id);
     
     if (exists) {
-      // Backend does not support PATCH /sales, so we just update locally if needed
       await repo.update((e) => e.id == sale.id, sale);
     } else {
       await repo.add(sale);
@@ -94,7 +92,7 @@ class SalesEngine extends AsyncNotifier<SalesEngineState> {
       });
     }
     
-    state = AsyncValue.data(await Isolate.run(() => _computeState(repo.getAllSales(), state.value!.query, state.value!.sortOption, state.value!.selectedIds)));
+    state = AsyncValue.data(_computeState(repo.getAllSales(), state.value!.query, state.value!.sortOption, state.value!.selectedIds));
   }
 
   Future<void> deleteSelected() async {
@@ -106,7 +104,7 @@ class SalesEngine extends AsyncNotifier<SalesEngineState> {
       ref.read(syncEngineProvider.notifier).enqueueMutation('sale_delete', '/sales', 'DELETE', {'id': id});
     }
     
-    state = AsyncValue.data(await Isolate.run(() => _computeState(repo.getAllSales(), state.value!.query, state.value!.sortOption, const {})));
+    state = AsyncValue.data(_computeState(repo.getAllSales(), state.value!.query, state.value!.sortOption, const {}));
   }
 }
 

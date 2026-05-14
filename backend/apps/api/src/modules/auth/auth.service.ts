@@ -5,6 +5,9 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { User } from '@prisma/client';
+
+export type AuthUser = Pick<User, 'id' | 'name' | 'email' | 'role'>;
 
 @Injectable()
 export class AuthService {
@@ -20,25 +23,29 @@ export class AuthService {
   public extractBearerToken(header?: string): string | null {
     if (!header) return null;
     const [type, token] = header.split(' ');
-    if (type !== 'Bearer' || !token) return null;
-    return token;
+    return type === 'Bearer' && token ? token : null;
   }
 
-  async validateToken(tokenRaw: string): Promise<any> {
+  async validateToken(tokenRaw: string): Promise<AuthUser> {
     const tokenHash = this.hashToken(tokenRaw);
     const session = await this.prisma.userSession.findUnique({
       where: { tokenHash },
       include: { user: true }
     });
 
-    if (!session || !(session as any).user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
+    if (!session || !session.user.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
       throw new UnauthorizedException('Session expired or invalid');
     }
     
-    return (session as any).user;
+    return {
+      id: session.user.id,
+      name: session.user.name,
+      email: session.user.email,
+      role: session.user.role,
+    };
   }
 
-  async register(dto: RegisterDto): Promise<{ token: string; user: any }> {
+  async register(dto: RegisterDto): Promise<{ token: string; user: AuthUser }> {
     if (dto.inviteCode !== (process.env.ADMIN_INVITE_CODE || 'arcturus-init')) {
       throw new BadRequestException('Invalid invite code');
     }
@@ -55,15 +62,14 @@ export class AuthService {
 
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = this.hashToken(rawToken);
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     await this.prisma.userSession.create({ data: { userId: user.id, tokenHash, expiresAt } });
 
     return { token: rawToken, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
   }
 
-  async login(dto: LoginDto): Promise<{ token: string; user: any }> {
+  async login(dto: LoginDto): Promise<{ token: string; user: AuthUser }> {
     if (!dto.email || !dto.password) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -80,8 +86,7 @@ export class AuthService {
 
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = this.hashToken(rawToken);
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + (dto.rememberMe ? 30 : 1));
+    const expiresAt = new Date(Date.now() + (dto.rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000);
 
     await this.prisma.userSession.create({ data: { userId: user.id, tokenHash, expiresAt } });
 
@@ -89,7 +94,6 @@ export class AuthService {
   }
 
   async logout(rawToken: string): Promise<void> {
-    if (!rawToken) return;
     const tokenHash = this.hashToken(rawToken);
     await this.prisma.userSession.deleteMany({ where: { tokenHash } });
     await this.redis.del(`session:${tokenHash}`);
@@ -97,9 +101,13 @@ export class AuthService {
 
   async invalidateUserSessions(userId: string): Promise<void> {
     const sessions = await this.prisma.userSession.findMany({ where: { userId } });
+    const pipeline = this.redis.getClient().pipeline();
+    
     for (const session of sessions) {
-      await this.redis.del(`session:${session.tokenHash}`);
+      pipeline.del(`session:${session.tokenHash}`);
     }
+    
+    await pipeline.exec();
     await this.prisma.userSession.deleteMany({ where: { userId } });
   }
 }

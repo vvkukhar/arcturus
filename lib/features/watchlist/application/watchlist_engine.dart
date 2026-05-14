@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:isolate';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
@@ -34,7 +33,7 @@ class WatchlistEngine extends AsyncNotifier<WatchlistEngineState> {
     ref.onDispose(() => sub.cancel());
 
     final list = ref.watch(watchlistRepositoryProvider).getAll();
-    return await Isolate.run(() => _computeState(list, '', 'newest', const {}, false));
+    return _computeState(list, '', 'newest', const {}, false);
   }
 
   static WatchlistEngineState _computeState(List<WatchlistItemModel> all, String q, String sort, Set<String> selected, bool activeOnly) {
@@ -77,9 +76,9 @@ class WatchlistEngine extends AsyncNotifier<WatchlistEngineState> {
     return WatchlistEngineState(allItems: all, visibleItems: visible, selectedIds: selected, query: q, sortOption: sort, activeOnly: activeOnly, analysis: WatchlistAnalysis(active, hits, acceptable, high, spread));
   }
 
-  Future<void> _updateState(String q, String sort, Set<String> selected, bool activeOnly) async {
+  void _updateState(String q, String sort, Set<String> selected, bool activeOnly) {
     if (state.value == null) return;
-    state = AsyncValue.data(await Isolate.run(() => _computeState(state.value!.allItems, q, sort, selected, activeOnly)));
+    state = AsyncValue.data(_computeState(state.value!.allItems, q, sort, selected, activeOnly));
   }
 
   void search(String q) => _updateState(q, state.value!.sortOption, state.value!.selectedIds, state.value!.activeOnly);
@@ -105,7 +104,7 @@ class WatchlistEngine extends AsyncNotifier<WatchlistEngineState> {
     }
     
     ref.read(syncEngineProvider.notifier).enqueueMutation('watchlist', '/watchlist', exists ? 'PATCH' : 'POST', item.toMap());
-    state = AsyncValue.data(await Isolate.run(() => _computeState(repo.getAll(), state.value!.query, state.value!.sortOption, state.value!.selectedIds, state.value!.activeOnly)));
+    state = AsyncValue.data(_computeState(repo.getAll(), state.value!.query, state.value!.sortOption, state.value!.selectedIds, state.value!.activeOnly));
   }
 
   Future<void> deleteSelected() async {
@@ -117,7 +116,7 @@ class WatchlistEngine extends AsyncNotifier<WatchlistEngineState> {
     }
     
     ref.read(syncEngineProvider.notifier).enqueueMutation('watchlist_bulk', '/watchlist/bulk-delete', 'DELETE', {'ids': state.value!.selectedIds.toList()});
-    state = AsyncValue.data(await Isolate.run(() => _computeState(repo.getAll(), state.value!.query, state.value!.sortOption, const {}, state.value!.activeOnly)));
+    state = AsyncValue.data(_computeState(repo.getAll(), state.value!.query, state.value!.sortOption, const {}, state.value!.activeOnly));
   }
 }
 

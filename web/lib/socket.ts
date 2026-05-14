@@ -4,7 +4,7 @@ import { appConfig } from '@/lib/config';
 class SocketManager {
   private static instance: Socket | null = null;
   private static currentToken: string | null = null;
-  private static reconnectTimer: NodeJS.Timeout | null = null;
+  private static isConnecting = false;
 
   private static getCookie(name: string): string | null {
     if (typeof document === 'undefined') return null;
@@ -13,6 +13,10 @@ class SocketManager {
   }
 
   public static getSocket(): Socket {
+    if (typeof window === 'undefined') {
+      return { on: () => {}, off: () => {}, emit: () => {} } as unknown as Socket;
+    }
+
     const token = this.getCookie('arcturus_admin_token');
 
     if (this.instance) {
@@ -23,44 +27,35 @@ class SocketManager {
       }
     }
 
+    if (this.isConnecting) return this.instance as Socket;
+    this.isConnecting = true;
+
     this.currentToken = token;
     const baseUrl = appConfig.apiBaseUrl.replace(/\/api\/?$/, '');
 
     this.instance = io(baseUrl, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 10000,
+      reconnectionDelayMax: 10000,
+      randomizationFactor: 0.5,
+      timeout: 20000,
       auth: token ? { token } : undefined,
     });
 
-    this.instance.on('disconnect', (reason) => {
-      if (reason === 'io server disconnect' || reason === 'io client disconnect') {
-        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-        this.reconnectTimer = setTimeout(() => {
-          if (this.instance && !this.instance.connected) {
-            this.instance.connect();
-          }
-        }, 2000);
-      }
-    });
-
+    this.isConnecting = false;
     return this.instance;
   }
 
   public static disconnect(): void {
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
     if (this.instance) {
       this.instance.removeAllListeners();
       this.instance.disconnect();
       this.instance = null;
       this.currentToken = null;
+      this.isConnecting = false;
     }
   }
 }

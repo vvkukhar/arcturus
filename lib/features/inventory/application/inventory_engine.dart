@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:isolate';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
@@ -39,7 +38,7 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
     ref.onDispose(() => sub.cancel());
 
     final items = ref.watch(inventoryRepositoryProvider).getAllItems();
-    return await Isolate.run(() => _computeState(items, '', null, 'newest', const {}));
+    return _computeState(items, '', null, 'newest', const {});
   }
 
   static InventoryEngineState _computeState(List<ItemModel> all, String q, ItemStatus? status, String sort, Set<String> selected) {
@@ -91,8 +90,11 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
   }
 
   Future<void> saveItem(ItemModel item) async {
+    final currentState = state.valueOrNull;
+    if (currentState == null) return;
+
     final repo = ref.read(inventoryRepositoryProvider);
-    final exists = state.value!.allItems.any((e) => e.id == item.id);
+    final exists = currentState.allItems.any((e) => e.id == item.id);
     if (exists) {
       await repo.updateItem(item);
     } else {
@@ -100,12 +102,14 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
     }
     
     ref.read(syncEngineProvider.notifier).enqueueMutation('inventory', '/inventory', exists ? 'PATCH' : 'POST', item.toMap());
-    state = AsyncValue.data(await Isolate.run(() => _computeState(repo.getAllItems(), state.value!.query, state.value!.filterStatus, state.value!.sortOption, state.value!.selectedIds)));
+    state = AsyncValue.data(_computeState(repo.getAllItems(), currentState.query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
   }
 
-  void search(String query) async {
-    if (state.value == null) return;
-    state = AsyncValue.data(await Isolate.run(() => _computeState(state.value!.allItems, query, state.value!.filterStatus, state.value!.sortOption, state.value!.selectedIds)));
+  void search(String query) {
+    final currentState = state.valueOrNull;
+    if (currentState == null) return;
+    
+    state = AsyncValue.data(_computeState(currentState.allItems, query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
   }
 }
 

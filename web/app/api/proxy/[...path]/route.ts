@@ -5,44 +5,41 @@ import { getAdminToken } from '@/lib/server-auth';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-async function handleRequest(request: NextRequest, props: { params: Promise<{ path: string[] }> }) {
-  const params = await props.params;
+async function handleProxy(req: NextRequest, props: { params: Promise<{ path: string[] }> }) {
+  const { path } = await props.params;
   const token = await getAdminToken();
-  
-  const sanitizedPath = params.path.map(p => p.replace(/[^a-zA-Z0-9\-_\.]/g, '')).join('/');
+  const sanitizedPath = path.map(p => p.replace(/[^a-zA-Z0-9\-_\.]/g, '')).join('/');
   
   if (!token && !sanitizedPath.startsWith('public/')) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const url = new URL(request.url);
+  const url = new URL(req.url);
   const backendUrl = new URL(`${appConfig.apiBaseUrl}/${sanitizedPath}${url.search}`);
-  const headers = new Headers();
+  const headers = new Headers(req.headers);
 
+  headers.delete('host');
+  headers.delete('connection');
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  if (request.headers.has('content-type')) {
-    headers.set('Content-Type', request.headers.get('content-type')!);
-  }
 
-  const options: RequestInit = {
-    method: request.method,
+  const options: RequestInit & { duplex?: 'half' } = {
+    method: req.method,
     headers,
-    cache: 'no-store',
+    redirect: 'manual',
+    body: req.body,
   };
 
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
-    const rawBody = await request.arrayBuffer();
-    if (rawBody.byteLength > 0) {
-      options.body = rawBody;
-    }
-  }
+  if (req.body) options.duplex = 'half';
 
   try {
     const response = await fetch(backendUrl.toString(), options);
     const responseHeaders = new Headers(response.headers);
 
     responseHeaders.delete('content-encoding');
-    responseHeaders.set('Cache-Control', 'no-store, max-age=0');
+    responseHeaders.delete('transfer-encoding');
+    responseHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    responseHeaders.set('Pragma', 'no-cache');
+    responseHeaders.set('Expires', '0');
 
     return new NextResponse(response.body, {
       status: response.status,
@@ -50,12 +47,12 @@ async function handleRequest(request: NextRequest, props: { params: Promise<{ pa
       headers: responseHeaders,
     });
   } catch {
-    return NextResponse.json({ ok: false, error: 'Gateway Timeout' }, { status: 502 });
+    return NextResponse.json({ ok: false, error: 'Gateway Timeout' }, { status: 504 });
   }
 }
 
-export const GET = handleRequest;
-export const POST = handleRequest;
-export const PATCH = handleRequest;
-export const PUT = handleRequest;
-export const DELETE = handleRequest;
+export const GET = handleProxy;
+export const POST = handleProxy;
+export const PATCH = handleProxy;
+export const PUT = handleProxy;
+export const DELETE = handleProxy;

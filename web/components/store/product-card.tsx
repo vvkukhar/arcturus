@@ -1,5 +1,6 @@
 'use client';
 
+import { memo, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingCart, Package } from 'lucide-react';
@@ -18,14 +19,13 @@ interface ProductCardProps {
   };
 }
 
-export function ProductCard({ item }: ProductCardProps) {
+function ProductCardComponent({ item }: ProductCardProps) {
   const addItem = useCart((state) => state.addItem);
-  const cartItems = useCart((state) => state.items);
+  const inCart = useCart((state) => state.items.some((i) => i.id === item.id));
   
-  const inCart = cartItems.some((i) => i.id === item.id);
   const primaryImage = item.images.find((img) => img.isPrimary)?.imageUrl || item.images[0]?.imageUrl;
 
-  const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleAddToCart = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (!inCart) {
@@ -37,12 +37,13 @@ export function ProductCard({ item }: ProductCardProps) {
         theme: item.theme,
       });
     }
-  };
+  }, [inCart, addItem, item, primaryImage]);
 
   return (
     <Link 
       href={`/store/catalog/${item.slug}`} 
-      className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20"
+      prefetch={false}
+      className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20 transform-gpu"
     >
       <div className="relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-900">
         {primaryImage ? (
@@ -50,6 +51,7 @@ export function ProductCard({ item }: ProductCardProps) {
             src={primaryImage}
             alt={item.title}
             fill
+            loading="lazy"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           />
@@ -76,14 +78,14 @@ export function ProductCard({ item }: ProductCardProps) {
         </div>
 
         <div className="mt-6 flex items-center justify-between">
-          <span className="text-2xl font-black text-[var(--foreground)]">
+          <span className="text-2xl font-black text-[var(--foreground)] tracking-tight">
             {formatMoney(item.sellPrice)}
           </span>
           <button
             onClick={handleAddToCart}
             disabled={inCart}
             aria-label={inCart ? "Item in cart" : "Add to cart"}
-            className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-all ${
+            className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-all will-change-transform ${
               inCart 
                 ? 'cursor-not-allowed bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' 
                 : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/20 active:scale-95'
@@ -96,3 +98,5 @@ export function ProductCard({ item }: ProductCardProps) {
     </Link>
   );
 }
+
+export const ProductCard = memo(ProductCardComponent, (prev, next) => prev.item.id === next.item.id);

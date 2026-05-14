@@ -1,7 +1,8 @@
 import 'dart:async';
-import 'dart:isolate';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
+import 'package:lego_trading_manager/app/providers/core_providers.dart';
+import 'package:lego_trading_manager/core/services/currency_converter.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
@@ -22,9 +23,10 @@ class DashboardEngineState {
   final int activeOpportunities;
   final String headline;
   final String subline;
+  final String currency;
   final List<DashboardAction> priorityQueue;
 
-  const DashboardEngineState({required this.totalInvested, required this.inventoryValue, required this.expectedOpenProfit, required this.trackedCount, required this.deadStockCount, required this.activeOpportunities, required this.headline, required this.subline, required this.priorityQueue});
+  const DashboardEngineState({required this.totalInvested, required this.inventoryValue, required this.expectedOpenProfit, required this.trackedCount, required this.deadStockCount, required this.activeOpportunities, required this.headline, required this.subline, required this.currency, required this.priorityQueue});
 }
 
 class DashboardEngine extends AsyncNotifier<DashboardEngineState> {
@@ -41,29 +43,36 @@ class DashboardEngine extends AsyncNotifier<DashboardEngineState> {
 
     final items = ref.watch(inventoryRepositoryProvider).getAllItems();
     final watchlist = ref.watch(watchlistRepositoryProvider).getAll();
-    return await Isolate.run(() => _compute(items, watchlist));
+    final converter = ref.watch(currencyConverterProvider);
+    
+    return _compute(items, watchlist, converter);
   }
 
-  static DashboardEngineState _compute(List<ItemModel> items, List<WatchlistItemModel> watchlist) {
+  static DashboardEngineState _compute(List<ItemModel> items, List<WatchlistItemModel> watchlist, CurrencyConverter converter) {
     double invested = 0, invValue = 0, expProfit = 0;
     int dead = 0, tracked = 0, opps = 0;
     final queue = <DashboardAction>[];
 
     for (final item in items) {
       if (item.ownershipType == OwnershipType.resale && item.isActive) {
-        invested += item.totalCost;
-        invValue += (item.marketAverage ?? 0);
-        expProfit += ((item.expectedSalePrice ?? 0) - item.totalCost);
+        final costConv = converter(item.totalCost);
+        final marketConv = item.marketAverage != null ? converter(item.marketAverage!) : 0.0;
+        final expSaleConv = item.expectedSalePrice != null ? converter(item.expectedSalePrice!) : 0.0;
+
+        invested += costConv;
+        invValue += marketConv;
+        expProfit += (expSaleConv - costConv);
+        
         if (item.isTracked) tracked++;
 
         final days = item.daysInInventory ?? 0;
-        final profit = (item.expectedSalePrice ?? 0) - item.totalCost;
+        final profitConv = expSaleConv - costConv;
 
         if (days >= 30) {
           dead++;
           if (days >= 90) queue.add(DashboardAction('Reprice ${item.title}', 'Dead stock > 90 days', 'danger'));
         }
-        if (profit > 500 && days <= 14) {
+        if (profitConv > converter(500) && days <= 14) {
           queue.add(DashboardAction('Sell ${item.title}', 'High profit fast flip', 'good'));
         }
       }
@@ -79,7 +88,7 @@ class DashboardEngine extends AsyncNotifier<DashboardEngineState> {
     String head = opps > 0 ? 'Buy opportunities available' : dead > 0 ? 'Dead stock pressure' : 'System Stable';
     String sub = 'Tracked: $tracked • Dead: $dead • Opps: $opps';
 
-    return DashboardEngineState(totalInvested: invested, inventoryValue: invValue, expectedOpenProfit: expProfit, trackedCount: tracked, deadStockCount: dead, activeOpportunities: opps, headline: head, subline: sub, priorityQueue: queue.take(8).toList());
+    return DashboardEngineState(totalInvested: invested, inventoryValue: invValue, expectedOpenProfit: expProfit, trackedCount: tracked, deadStockCount: dead, activeOpportunities: opps, headline: head, subline: sub, currency: converter.baseCurrency, priorityQueue: queue.take(8).toList());
   }
 }
 

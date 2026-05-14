@@ -1,61 +1,55 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { getSocket } from '@/lib/socket';
+import { useSocketEvent } from '@/lib/use-socket';
 import { PackageCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/components/providers/i18n-provider';
 
 interface FomoEvent {
+  id: string;
   title: string;
   time: string;
-  id: number;
 }
 
 export function FomoTicker() {
   const { t } = useI18n();
-  const [eventQueue, setEventQueue] = useState<FomoEvent[]>([]);
   const [activeEvent, setActiveEvent] = useState<FomoEvent | null>(null);
   const [visible, setVisible] = useState(false);
+  const queue = useRef<FomoEvent[]>([]);
   const isProcessing = useRef(false);
 
-  useEffect(() => {
-    const socket = getSocket();
+  useSocketEvent<{ id?: string; title?: string; titleSnapshot?: string }>('sale_registered', (payload) => {
+    queue.current.push({
+      id: payload.id || Date.now().toString(),
+      title: payload.title || payload.titleSnapshot || (t('fomo.exclusive' as any) as string),
+      time: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })
+    });
+    processQueue();
+  });
 
-    const onSale = (payload: { title?: string; titleSnapshot?: string }) => {
-      const newEvent = {
-        title: payload?.title || payload?.titleSnapshot || (t('fomo.exclusive' as any) as string),
-        time: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }),
-        id: Date.now()
-      };
-      setEventQueue((prev) => [...prev, newEvent]);
-    };
+  const processQueue = () => {
+    if (isProcessing.current || queue.current.length === 0) return;
+    
+    isProcessing.current = true;
+    const nextEvent = queue.current.shift()!;
+    
+    setActiveEvent(nextEvent);
+    requestAnimationFrame(() => setVisible(true));
 
-    socket.on('sale_registered', onSale);
-    return () => { socket.off('sale_registered', onSale); };
-  }, [t]);
-
-  useEffect(() => {
-    if (eventQueue.length > 0 && !isProcessing.current) {
-      isProcessing.current = true;
-      const nextEvent = eventQueue[0];
-      
-      setActiveEvent(nextEvent);
-      setVisible(true);
-
+    setTimeout(() => {
+      setVisible(false);
       setTimeout(() => {
-        setVisible(false);
-        setTimeout(() => {
-          setEventQueue((prev) => prev.slice(1));
-          isProcessing.current = false;
-        }, 600);
-      }, 4500);
-    }
-  }, [eventQueue]);
+        setActiveEvent(null);
+        isProcessing.current = false;
+        if (queue.current.length > 0) processQueue();
+      }, 600);
+    }, 4500);
+  };
 
   return (
     <div className={cn(
-      "fixed bottom-6 left-6 z-[100] transition-all duration-500 ease-out-expo",
+      "fixed bottom-6 left-6 z-[100] transition-all duration-500 ease-out-expo transform-gpu will-change-transform",
       visible ? "translate-y-0 opacity-100 scale-100" : "translate-y-8 opacity-0 scale-95 pointer-events-none"
     )}>
       <div className="flex items-center gap-4 rounded-[1.5rem] bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200/50 dark:border-slate-800/50 p-3 shadow-2xl shadow-blue-900/10 pr-6">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Search, ShoppingCart, CreditCard, Banknote, Bitcoin, Trash2, Loader2, ScanBarcode } from 'lucide-react';
+import { ShoppingCart, CreditCard, Banknote, Bitcoin, Trash2, Loader2, ScanBarcode } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 import { useToast } from '@/components/ui/toast-provider';

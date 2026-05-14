@@ -35,10 +35,10 @@ export function SmartHeader() {
   return (
     <header
       className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out',
+        'fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out transform-gpu',
         isHidden ? '-translate-y-full' : 'translate-y-0',
         isScrolled 
-          ? 'bg-white/70 dark:bg-black/70 backdrop-blur-2xl border-b border-white/40 dark:border-white/10 shadow-sm py-3' 
+          ? 'bg-white/80 dark:bg-black/80 backdrop-blur-2xl border-b border-white/40 dark:border-white/10 shadow-sm py-3' 
           : 'bg-transparent border-transparent py-5'
       )}
     >
@@ -50,8 +50,12 @@ export function SmartHeader() {
           <span className="text-xl font-black tracking-tight text-[var(--foreground)]">ARCTURUS</span>
         </Link>
         <nav className="flex items-center gap-8 text-sm font-bold">
-          <Link href="/" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('header.home' as any)}</Link>
-          <Link href="/store/catalog" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('nav.catalog' as any)}</Link>
+          <Link href="/" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+            {t('header.home' as any)}
+          </Link>
+          <Link href="/store/catalog" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+            {t('nav.catalog' as any)}
+          </Link>
         </nav>
       </div>
     </header>

@@ -83,7 +83,12 @@ class ActivityLogScreen extends ConsumerWidget {
         children: [
           Text('${state.controlScore.toStringAsFixed(0)} Control Score', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
           const SizedBox(height: 8),
-          Text('Momentum: ${state.momentumLabel} • Discipline: ${state.disciplineLabel}', style: const TextStyle(color: Colors.white70)),
+          Text(
+            'Momentum: ${state.momentumLabel} • Discipline: ${state.disciplineLabel}',
+            style: const TextStyle(color: Colors.white70),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );
@@ -142,7 +147,14 @@ class _MiniCard extends StatelessWidget {
         children: [
           Text(title, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          Flexible(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -161,7 +173,8 @@ class _RowStat extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70)),
+          Flexible(child: Text(label, style: const TextStyle(color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: 8),
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
@@ -189,7 +202,7 @@ class _LogTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CircleAvatar(backgroundColor: Colors.white10, child: Icon(_icon(), color: Colors.white, size: 20)),
       title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(item.subtitle, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+      subtitle: Text(item.subtitle, style: const TextStyle(fontSize: 12, color: Colors.white70), maxLines: 2, overflow: TextOverflow.ellipsis),
       trailing: Text(item.createdAt.toIso8601String().split('T').first, style: const TextStyle(fontSize: 12)),
     );
   }

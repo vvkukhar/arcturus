@@ -30,7 +30,7 @@ function StoreFiltersContent() {
   }, [router, searchParams]);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2 transform-gpu">
       <div className="flex flex-wrap items-center gap-1.5 p-1 bg-[var(--background)] rounded-2xl border border-[var(--border)]">
         {types.map((type) => {
           const isActive = (type.value ?? '') === currentType;

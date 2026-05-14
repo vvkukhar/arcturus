@@ -32,7 +32,8 @@ export function startWorkers() {
   });
 
   const shutdown = async () => {
-    await Promise.all(workers.map(w => w.close()));
+    await Promise.allSettled(workers.map(w => w.close()));
+    connection.quit();
     process.exit(0);
   };
 

@@ -13,9 +13,11 @@ import 'package:lego_trading_manager/features/settings/presentation/settings_hub
 import 'package:lego_trading_manager/features/market/presentation/market_screen.dart';
 import 'package:lego_trading_manager/features/pos/presentation/pos_terminal_screen.dart';
 import 'package:lego_trading_manager/features/search/presentation/global_search_screen.dart';
+import 'package:lego_trading_manager/features/auth/presentation/login_screen.dart';
 
 class AppRouter {
   static const String home = '/';
+  static const String login = '/login';
   static const String dashboard = '/dashboard';
   static const String inventory = '/inventory';
   static const String purchases = '/purchases';
@@ -38,6 +40,9 @@ class AppRouter {
       case '/':
       case '/dashboard':
         page = const DashboardLiveScreen();
+        break;
+      case '/login':
+        page = const LoginScreen();
         break;
       case '/inventory':
         page = const InventoryScreen();

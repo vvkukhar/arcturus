@@ -3,6 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/features/settings/application/system_tools_engine.dart';
+import 'package:lego_trading_manager/app/providers/core_providers.dart';
+import 'package:lego_trading_manager/core/enums/currency_code.dart';
+
+// Глобальний провайдер для збереження та реактивного оновлення базової валюти системи
+final baseCurrencyProvider = StateProvider<String>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getString('settings.base_currency') ?? 'UAH';
+});
 
 class SettingsHubScreen extends ConsumerStatefulWidget {
   const SettingsHubScreen({super.key});
@@ -21,6 +29,7 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
   @override
   Widget build(BuildContext context) {
     final engine = ref.read(systemToolsEngineProvider.notifier);
+    final currentCurrency = ref.watch(baseCurrencyProvider);
 
     ref.listen(systemToolsEngineProvider, (_, next) {
       if (next.value?.lastMessage != null) _showMsg(next.value!.lastMessage!);
@@ -33,6 +42,60 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
+          // CURRENCY SWITCHER SECTION (STAGE 3)
+          Card(
+            color: const Color(0xFF171A21),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.amber.withValues(alpha: 0.3)), // ВИПРАВЛЕНО ТУТ
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.currency_exchange, color: Colors.amberAccent),
+                      SizedBox(width: 8),
+                      Text('Global System Currency', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amberAccent)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Select the primary currency for Arcturus operations. Financial metrics, open profits, and automated valuation models will dynamically convert into this unit.',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: currentCurrency,
+                    decoration: InputDecoration(
+                      labelText: 'Base Operations Currency',
+                      filled: true,
+                      fillColor: Colors.black12,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                    items: CurrencyCode.values.map((c) {
+                      return DropdownMenuItem<String>(
+                        value: c.code,
+                        child: Text('${c.code} - ${c.label}'),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        ref.read(sharedPreferencesProvider).setString('settings.base_currency', val);
+                        ref.read(baseCurrencyProvider.notifier).state = val;
+                        _showMsg('System base currency updated to $val');
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // BACKUP SECTION
           _buildCard(
             'Backup & Export',
             'Export entire system state to clipboard JSON.',
@@ -47,6 +110,8 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
             },
           ),
           const SizedBox(height: 16),
+
+          // RESTORE SECTION
           Card(
             color: const Color(0xFF171A21),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -80,6 +145,8 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
             ),
           ),
           const SizedBox(height: 16),
+
+          // WIPE DATA SECTION
           _buildCard(
             'Danger Zone',
             'Clear all local storages. Irreversible action.',

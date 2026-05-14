@@ -75,7 +75,7 @@ export function PriceAnalyzer() {
       <form onSubmit={handleAnalyze} className="space-y-5">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Entry Price (₴)</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Entry Price (UAH)</label>
             <input
               required
               type="number"
@@ -87,7 +87,7 @@ export function PriceAnalyzer() {
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Target Exit (₴)</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Target Exit (UAH)</label>
             <input
               type="number"
               step="0.01"
@@ -131,7 +131,7 @@ export function PriceAnalyzer() {
           </div>
           <div className="bg-[var(--background)]/50 p-4 rounded-2xl border border-[var(--border)]">
             <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Class</div>
-            <div className="text-sm font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 mt-1">{result.classification ?? '—'}</div>
+            <div className="text-sm font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 mt-1">{result.classification ?? 'вЂ”'}</div>
           </div>
         </div>
       )}

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:isolate';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
@@ -37,7 +36,7 @@ class PurchasesEngine extends AsyncNotifier<PurchasesEngineState> {
     ref.onDispose(() => sub.cancel());
 
     final list = ref.watch(purchasesRepositoryProvider).getAllPurchases();
-    return await Isolate.run(() => _computeState(list, '', 'newest', const {}));
+    return _computeState(list, '', 'newest', const {});
   }
 
   static PurchasesEngineState _computeState(List<PurchaseModel> all, String q, String sort, Set<String> selected) {
@@ -74,9 +73,9 @@ class PurchasesEngine extends AsyncNotifier<PurchasesEngineState> {
     return PurchasesEngineState(allPurchases: all, visiblePurchases: visible, selectedIds: selected, query: q, sortOption: sort, analysis: PurchasesAnalysis(all.length, spend, all.isEmpty ? 0 : spend / all.length, topC, sourceCounts, currencySpend));
   }
 
-  Future<void> _updateState(String q, String sort, Set<String> selected) async {
+  void _updateState(String q, String sort, Set<String> selected) {
     if (state.value == null) return;
-    state = AsyncValue.data(await Isolate.run(() => _computeState(state.value!.allPurchases, q, sort, selected)));
+    state = AsyncValue.data(_computeState(state.value!.allPurchases, q, sort, selected));
   }
 
   void search(String q) => _updateState(q, state.value!.sortOption, state.value!.selectedIds);
@@ -101,7 +100,7 @@ class PurchasesEngine extends AsyncNotifier<PurchasesEngineState> {
     }
     
     ref.read(syncEngineProvider.notifier).enqueueMutation('purchase', '/procurement', exists ? 'PATCH' : 'POST', purchase.toJson());
-    state = AsyncValue.data(await Isolate.run(() => _computeState(repo.getAllPurchases(), state.value!.query, state.value!.sortOption, state.value!.selectedIds)));
+    state = AsyncValue.data(_computeState(repo.getAllPurchases(), state.value!.query, state.value!.sortOption, state.value!.selectedIds));
   }
 
   Future<void> deleteSelected() async {
@@ -113,7 +112,7 @@ class PurchasesEngine extends AsyncNotifier<PurchasesEngineState> {
       ref.read(syncEngineProvider.notifier).enqueueMutation('purchase_delete', '/procurement/status', 'PATCH', {'id': id, 'status': 'cancelled'});
     }
     
-    state = AsyncValue.data(await Isolate.run(() => _computeState(repo.getAllPurchases(), state.value!.query, state.value!.sortOption, const {})));
+    state = AsyncValue.data(_computeState(repo.getAllPurchases(), state.value!.query, state.value!.sortOption, const {}));
   }
 }
 

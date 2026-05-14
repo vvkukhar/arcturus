@@ -36,7 +36,7 @@ export const useCart = create<CartStore>()(
       isCartOpen: false,
       _hasHydrated: false,
       totalItems: 0,
-      totalPrice: () => get().items.reduce((sum, i) => sum + (i.price * i.quantity), 0),
+      totalPrice: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
       setHasHydrated: (state) => {
         set({ _hasHydrated: state });
         if (state) get().validateStock();
@@ -44,43 +44,37 @@ export const useCart = create<CartStore>()(
       setIsCartOpen: (isOpen) => set({ isCartOpen: isOpen }),
       addItem: (item) => {
         const currentItems = get().items;
-        const existing = currentItems.find((i) => i.id === item.id);
+        const existingIndex = currentItems.findIndex((i) => i.id === item.id);
         
-        if (existing && existing.maxQuantity && existing.quantity >= existing.maxQuantity) return;
-
-        const newItems = existing
-          ? currentItems.map((i) => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i)
-          : [...currentItems, { ...item, quantity: 1, maxQuantity: 1 }];
-        
-        trackEcommerce('add_to_cart', {
-          currency: 'UAH',
-          value: item.price,
-          items: [{ item_id: item.id, item_name: item.title, price: item.price, item_category: item.theme, quantity: 1 }]
-        });
-        
-        set({ 
-          items: newItems,
-          isCartOpen: true,
-          totalItems: newItems.reduce((sum, i) => sum + i.quantity, 0)
-        });
+        if (existingIndex > -1) {
+          const existing = currentItems[existingIndex];
+          if (existing.maxQuantity && existing.quantity >= existing.maxQuantity) return;
+          const newItems = [...currentItems];
+          newItems[existingIndex] = { ...existing, quantity: existing.quantity + 1 };
+          set({ items: newItems, isCartOpen: true, totalItems: newItems.reduce((sum, i) => sum + i.quantity, 0) });
+        } else {
+          trackEcommerce('add_to_cart', {
+            currency: 'UAH',
+            value: item.price,
+            items: [{ item_id: item.id, item_name: item.title, price: item.price, item_category: item.theme, quantity: 1 }]
+          });
+          const newItems = [...currentItems, { ...item, quantity: 1, maxQuantity: 1 }];
+          set({ items: newItems, isCartOpen: true, totalItems: newItems.reduce((sum, i) => sum + i.quantity, 0) });
+        }
       },
       removeItem: (id) => {
         const currentItems = get().items;
         const itemToRemove = currentItems.find((i) => i.id === id);
-        const newItems = currentItems.filter((i) => i.id !== id);
-        
-        if (itemToRemove) {
-          trackEcommerce('remove_from_cart', {
-            currency: 'UAH',
-            value: itemToRemove.price * itemToRemove.quantity,
-            items: [{ item_id: id, item_name: itemToRemove.title, price: itemToRemove.price, quantity: itemToRemove.quantity }]
-          });
-        }
+        if (!itemToRemove) return;
 
-        set({ 
-          items: newItems,
-          totalItems: newItems.reduce((sum, i) => sum + i.quantity, 0)
+        const newItems = currentItems.filter((i) => i.id !== id);
+        trackEcommerce('remove_from_cart', {
+          currency: 'UAH',
+          value: itemToRemove.price * itemToRemove.quantity,
+          items: [{ item_id: id, item_name: itemToRemove.title, price: itemToRemove.price, quantity: itemToRemove.quantity }]
         });
+
+        set({ items: newItems, totalItems: newItems.reduce((sum, i) => sum + i.quantity, 0) });
       },
       updateQuantity: (id, quantity) => {
         if (quantity <= 0) {
@@ -89,15 +83,11 @@ export const useCart = create<CartStore>()(
         }
         const newItems = get().items.map((i) => {
           if (i.id === id) {
-            const finalQty = i.maxQuantity ? Math.min(i.maxQuantity, quantity) : quantity;
-            return { ...i, quantity: finalQty };
+            return { ...i, quantity: i.maxQuantity ? Math.min(i.maxQuantity, quantity) : quantity };
           }
           return i;
         });
-        set({ 
-          items: newItems,
-          totalItems: newItems.reduce((sum, i) => sum + i.quantity, 0)
-        });
+        set({ items: newItems, totalItems: newItems.reduce((sum, i) => sum + i.quantity, 0) });
       },
       clearCart: () => set({ items: [], totalItems: 0 }),
       validateStock: async () => {
@@ -107,27 +97,16 @@ export const useCart = create<CartStore>()(
         try {
           const ids = currentItems.map(i => i.id).join(',');
           const res = await api.get<any[]>(`/public/catalog?ids=${ids}`, { requireAuth: false });
-          
           if (!Array.isArray(res)) return;
 
           const availableMap = new Map(res.map(r => [r.id, r.quantity]));
-          const validatedItems = currentItems.filter(item => {
-            const availableQty = availableMap.get(item.id) || 0;
-            return availableQty > 0; 
-          }).map(item => {
+          const validatedItems = currentItems.filter(item => (availableMap.get(item.id) || 0) > 0).map(item => {
             const available = availableMap.get(item.id) || 0;
-            return {
-                ...item,
-                quantity: Math.min(item.quantity, available),
-                maxQuantity: available
-            };
+            return { ...item, quantity: Math.min(item.quantity, available), maxQuantity: available };
           });
 
-          set({ 
-            items: validatedItems, 
-            totalItems: validatedItems.reduce((sum, i) => sum + i.quantity, 0) 
-          });
-        } catch (e) {}
+          set({ items: validatedItems, totalItems: validatedItems.reduce((sum, i) => sum + i.quantity, 0) });
+        } catch {}
       }
     }),
     {

@@ -8,7 +8,10 @@ export function Magnetic({ children }: { children: React.ReactElement }) {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    setIsMobile(window.matchMedia('(max-width: 768px)').matches);
+    const checkMobile = () => setIsMobile(window.matchMedia('(max-width: 768px)').matches);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   const handleMouse = (e: React.MouseEvent) => {
@@ -17,12 +20,16 @@ export function Magnetic({ children }: { children: React.ReactElement }) {
     const { height, width, left, top } = ref.current.getBoundingClientRect();
     const middleX = clientX - (left + width / 2);
     const middleY = clientY - (top + height / 2);
-    setPosition({ x: middleX * 0.15, y: middleY * 0.15 });
+    requestAnimationFrame(() => {
+      setPosition({ x: middleX * 0.15, y: middleY * 0.15 });
+    });
   };
 
   const reset = () => {
     if (isMobile) return;
-    setPosition({ x: 0, y: 0 });
+    requestAnimationFrame(() => {
+      setPosition({ x: 0, y: 0 });
+    });
   };
 
   return (
@@ -33,7 +40,7 @@ export function Magnetic({ children }: { children: React.ReactElement }) {
       className="relative inline-flex will-change-transform transform-gpu"
       style={{
         transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
-        transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        transition: position.x === 0 && position.y === 0 ? 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'none',
       }}
     >
       {children}

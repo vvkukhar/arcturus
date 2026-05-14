@@ -22,26 +22,25 @@ function setupGracefulShutdown() {
 
 async function runAll() {
   const sources = [
-    { name: 'Olx', fn: runOlxSource },
-    { name: 'BrickLink', fn: runBrickLinkSource },
-    { name: 'Ebay', fn: runEbaySource },
-    { name: 'BrickOwl', fn: runBrickOwlSource },
-    { name: 'BrickEconomy', fn: runBrickEconomySource }
+    { name: 'olx', fn: runOlxSource },
+    { name: 'bricklink', fn: runBrickLinkSource },
+    { name: 'ebay', fn: runEbaySource },
+    { name: 'brickowl', fn: runBrickOwlSource },
+    { name: 'brickeconomy', fn: runBrickEconomySource }
   ];
 
-  for (const source of sources) {
-    if (isShuttingDown) break;
-    try {
-      await source.fn();
-    } catch (error) {
-      console.error(`[Scraper Error] Source ${source.name} failed:`, error);
+  const results = await Promise.allSettled(sources.map(s => s.fn()));
+
+  for (let i = 0; i < results.length; i++) {
+    if (results[i].status === 'rejected') {
+      const error = (results[i] as PromiseRejectedResult).reason;
       await prisma.syncErrorLog.create({
         data: {
           scope: 'scraper_loop',
-          sourceCode: source.name.toLowerCase(),
+          sourceCode: sources[i].name,
           message: error instanceof Error ? error.message : String(error),
         }
-      });
+      }).catch(() => {});
     }
   }
 }

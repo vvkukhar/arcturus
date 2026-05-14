@@ -11,10 +11,12 @@ class GlobalQuickAddFab extends StatelessWidget {
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
+          backgroundColor: Colors.transparent, // Важливо для стилізованих bottom sheets
           builder: (_) => const QuickAddSheet(),
         );
       },
-      child: const Icon(Icons.add),
+      backgroundColor: Colors.greenAccent,
+      child: const Icon(Icons.add, color: Colors.black, size: 28),
     );
   }
 }

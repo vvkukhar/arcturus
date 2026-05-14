@@ -10,50 +10,26 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     return this.$extends({
       query: {
-        sale: this.createSoftDeleteExtension(),
-        order: this.createSoftDeleteExtension(),
-        returnRequest: this.createSoftDeleteExtension(),
-        expense: this.createSoftDeleteExtension(),
+        $allModels: {
+          async $allOperations({ model, operation, args, query }) {
+            const softDeleteModels = ['Sale', 'Order', 'ReturnRequest', 'Expense'];
+            if (
+              softDeleteModels.includes(model) && 
+              ['findMany', 'findFirst', 'findFirstOrThrow', 'findUnique', 'findUniqueOrThrow', 'count', 'aggregate', 'groupBy'].includes(operation)
+            ) {
+              if (args.where) {
+                if (args.where.deletedAt === undefined) {
+                  args.where.deletedAt = null;
+                }
+              } else {
+                args.where = { deletedAt: null };
+              }
+            }
+            return query(args);
+          }
+        }
       },
     }) as this;
-  }
-
-  private createSoftDeleteExtension() {
-    return {
-      async findMany({ args, query }: any) {
-        args.where = { ...args.where, deletedAt: null };
-        return query(args);
-      },
-      async findFirst({ args, query }: any) {
-        args.where = { ...args.where, deletedAt: null };
-        return query(args);
-      },
-      async findFirstOrThrow({ args, query }: any) {
-        args.where = { ...args.where, deletedAt: null };
-        return query(args);
-      },
-      async findUnique({ args, query }: any) {
-        const result = await query(args);
-        return result?.deletedAt ? null : result;
-      },
-      async findUniqueOrThrow({ args, query }: any) {
-        const result = await query(args);
-        if (result?.deletedAt) throw new Error('Record not found');
-        return result;
-      },
-      async count({ args, query }: any) {
-        args.where = { ...args.where, deletedAt: null };
-        return query(args);
-      },
-      async aggregate({ args, query }: any) {
-        args.where = { ...args.where, deletedAt: null };
-        return query(args);
-      },
-      async groupBy({ args, query }: any) {
-        args.where = { ...args.where, deletedAt: null };
-        return query(args);
-      }
-    };
   }
 
   async onModuleInit() {

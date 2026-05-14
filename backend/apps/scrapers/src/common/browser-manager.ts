@@ -2,14 +2,15 @@ import { chromium } from 'playwright-extra';
 import { Browser, BrowserContext } from 'playwright';
 import stealth from 'puppeteer-extra-plugin-stealth';
 import { proxyManager } from './proxy-manager';
+import { getRandomUserAgent } from './user-agents';
 
 chromium.use(stealth());
 
 export class BrowserManager {
   private browser: Browser | null = null;
-  private contexts: BrowserContext[] = [];
-  private readonly MAX_CONTEXTS = 5;
-  private contextRoundRobin = 0;
+  private contextPool: BrowserContext[] = [];
+  private readonly MAX_CONTEXTS = parseInt(process.env.SCRAPER_MAX_CONTEXTS ?? '3', 10);
+  private contextIndex = 0;
 
   async init(): Promise<void> {
     if (!this.browser) {
@@ -22,56 +23,67 @@ export class BrowserManager {
           '--disable-web-security',
           '--disable-features=IsolateOrigins,site-per-process',
           '--disable-dev-shm-usage',
-          '--js-flags=--max-old-space-size=1024',
+          '--js-flags=--max-old-space-size=512',
+          '--disable-extensions',
+          '--disable-default-apps',
+          '--mute-audio',
+          '--no-first-run',
         ],
       });
 
       for (let i = 0; i < this.MAX_CONTEXTS; i++) {
-        const proxyStr = proxyManager.getRawProxy();
-        const context = await this.browser.newContext({
-          proxy: proxyStr ? { server: proxyStr } : undefined,
-          viewport: { width: 1920, height: 1080 },
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        });
-        this.contexts.push(context);
+        await this.createContext();
       }
     }
   }
 
-  private getNextContext(): BrowserContext {
-    const ctx = this.contexts[this.contextRoundRobin];
-    this.contextRoundRobin = (this.contextRoundRobin + 1) % this.contexts.length;
+  private async createContext(): Promise<void> {
+    if (!this.browser) return;
+    const proxyStr = proxyManager.getRawProxy();
+    const context = await this.browser.newContext({
+      proxy: proxyStr ? { server: proxyStr } : undefined,
+      viewport: { width: 1920, height: 1080 },
+      userAgent: getRandomUserAgent(),
+      ignoreHTTPSErrors: true,
+    });
+    this.contextPool.push(context);
+  }
+
+  private async getNextContext(): Promise<BrowserContext> {
+    if (this.contextPool.length === 0) await this.init();
+    const ctx = this.contextPool[this.contextIndex];
+    this.contextIndex = (this.contextIndex + 1) % this.contextPool.length;
     return ctx;
   }
 
   async fetchHtml(url: string): Promise<string> {
     await this.init();
-    const context = this.getNextContext();
+    const context = await this.getNextContext();
     const page = await context.newPage();
 
-    await page.route('**/*', (route: any) => {
+    await page.route('**/*', (route) => {
       const type = route.request().resourceType();
-      if (['image', 'media', 'font', 'stylesheet', 'websocket'].includes(type)) {
-        route.abort();
+      if (['image', 'media', 'font', 'stylesheet', 'websocket', 'other'].includes(type)) {
+        route.abort().catch(() => {});
       } else {
-        route.continue();
+        route.continue().catch(() => {});
       }
     });
 
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 35000 });
       return await page.content();
     } finally {
-      await page.close();
+      await page.close().catch(() => {});
     }
   }
 
   async close(): Promise<void> {
     if (this.browser) {
-      await Promise.all(this.contexts.map(c => c.close()));
+      await Promise.allSettled(this.contextPool.map(c => c.close()));
       await this.browser.close();
       this.browser = null;
-      this.contexts = [];
+      this.contextPool = [];
     }
   }
 }

@@ -47,8 +47,8 @@ class CommandCenterScreen extends ConsumerWidget {
                           decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(16)),
                           child: Column(
                             children: section.actions.map((action) => ListTile(
-                              title: Text(action.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: Text(action.subtitle, style: const TextStyle(color: Colors.white70)),
+                              title: Text(action.title, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              subtitle: Text(action.subtitle, style: const TextStyle(color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [

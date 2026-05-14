@@ -99,7 +99,7 @@ class ActivityEngine extends AsyncNotifier<ActivityEngineState> {
 
   Future<void> logAction(String title, String subtitle, String type) async {
     final entry = ActivityLogEntryModel(id: DateTime.now().microsecondsSinceEpoch.toString(), title: title, subtitle: subtitle, createdAt: DateTime.now(), type: type);
-    final next = [entry, ...(state.value?.logs ?? [])];
+    final next = <ActivityLogEntryModel>[entry, ...(state.value?.logs ?? [])];
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key, jsonEncode(next.map((e) => e.toMap()).toList()));
     state = AsyncValue.data(await Isolate.run(() => _computeState(next, state.value?.searchQuery ?? '', state.value?.typeFilter)));

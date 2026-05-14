@@ -47,12 +47,12 @@ class AnalyticsScreen extends ConsumerWidget {
       decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(20)),
       child: Column(
         children: [
-          _StatRow(label: 'Total Net Profit', value: state.totalNetProfit.toStringAsFixed(2), isPositive: state.totalNetProfit >= 0),
+          _StatRow(label: 'Total Net Profit', value: '${state.totalNetProfit.toStringAsFixed(2)} ${state.currency}', isPositive: state.totalNetProfit >= 0),
           const Divider(height: 24, color: Colors.white10),
-          _StatRow(label: 'Total Revenue', value: state.totalSoldRevenue.toStringAsFixed(2)),
-          _StatRow(label: 'Total Invested', value: state.totalInvested.toStringAsFixed(2)),
-          _StatRow(label: 'Inventory Value', value: state.inventoryValue.toStringAsFixed(2)),
-          _StatRow(label: 'Frozen Capital', value: state.frozenCapital.toStringAsFixed(2)),
+          _StatRow(label: 'Total Revenue', value: '${state.totalSoldRevenue.toStringAsFixed(2)} ${state.currency}'),
+          _StatRow(label: 'Total Invested', value: '${state.totalInvested.toStringAsFixed(2)} ${state.currency}'),
+          _StatRow(label: 'Inventory Value', value: '${state.inventoryValue.toStringAsFixed(2)} ${state.currency}'),
+          _StatRow(label: 'Frozen Capital', value: '${state.frozenCapital.toStringAsFixed(2)} ${state.currency}'),
           const Divider(height: 24, color: Colors.white10),
           _StatRow(label: 'Average ROI', value: '${state.averageRoi.toStringAsFixed(1)}%', isPositive: state.averageRoi >= 0),
           _StatRow(label: 'Average Margin', value: '${state.averageMargin.toStringAsFixed(1)}%'),
@@ -76,7 +76,7 @@ class AnalyticsScreen extends ConsumerWidget {
             child: ListTile(
               leading: Icon(Icons.tips_and_updates, color: color),
               title: Text(r.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(r.message),
+              subtitle: Text(r.message, maxLines: 2, overflow: TextOverflow.ellipsis),
             ),
           );
         }),
@@ -110,7 +110,7 @@ class AnalyticsScreen extends ConsumerWidget {
             color: const Color(0xFF171A21),
             margin: const EdgeInsets.only(bottom: 8),
             child: ListTile(
-              title: Text(s.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(s.title, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
               subtitle: Text('Current: ${s.current.toStringAsFixed(0)} → Suggested: ${s.suggested.toStringAsFixed(0)}'),
               trailing: IconButton(
                 icon: Icon(Icons.check_circle, color: color),
@@ -126,16 +126,16 @@ class AnalyticsScreen extends ConsumerWidget {
   Widget _buildDistributions(AnalyticsEngineState state) {
     return Column(
       children: [
-        _buildBreakdownSection('Capital Allocation', state.capitalAllocation),
+        _buildBreakdownSection('Capital Allocation (${state.currency})', state.capitalAllocation),
         const SizedBox(height: 24),
-        _buildBreakdownSection('Velocity (Days Active)', state.velocityBuckets.map((k, v) => MapEntry(k, v.toDouble()))),
+        _buildBreakdownSection('Velocity (Days Active)', state.velocityBuckets.map((k, v) => MapEntry(k, v.toDouble())), false),
         const SizedBox(height: 24),
-        _buildBreakdownSection('Profit Bands (Sold)', state.profitBands.map((k, v) => MapEntry(k, v.toDouble()))),
+        _buildBreakdownSection('Profit Bands (${state.currency})', state.profitBands.map((k, v) => MapEntry(k, v.toDouble())), false),
       ],
     );
   }
 
-  Widget _buildBreakdownSection(String title, Map<String, double> data) {
+  Widget _buildBreakdownSection(String title, Map<String, double> data, [bool formatMoney = true]) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -145,8 +145,8 @@ class AnalyticsScreen extends ConsumerWidget {
           decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(16)),
           child: Column(
             children: data.entries.map((e) => ListTile(
-              title: Text(e.key, style: const TextStyle(fontSize: 14)),
-              trailing: Text(e.value.toStringAsFixed(e.value.truncateToDouble() == e.value ? 0 : 2), style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(e.key, style: const TextStyle(fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+              trailing: Text(formatMoney ? e.value.toStringAsFixed(2) : e.value.toStringAsFixed(0), style: const TextStyle(fontWeight: FontWeight.bold)),
             )).toList(),
           ),
         )
@@ -169,7 +169,8 @@ class _StatRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70)),
+          Flexible(child: Text(label, style: const TextStyle(color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: 8),
           Text(value, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: color)),
         ],
       ),

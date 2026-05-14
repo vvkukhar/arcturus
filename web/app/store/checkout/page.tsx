@@ -78,7 +78,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 animate-in fade-in duration-500 pb-24">
+    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 animate-in fade-in duration-500 pb-24 transform-gpu">
       <h1 className="text-4xl font-black text-[var(--foreground)] tracking-tight mb-10">Оформлення замовлення</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">

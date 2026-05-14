@@ -42,7 +42,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   const themes = Array.from(new Set(items.map(i => i.theme))).sort();
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 animate-in fade-in duration-500">
+    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 animate-in fade-in duration-500 transform-gpu">
       <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
         <div>
           <h1 className="text-4xl font-black tracking-tight text-[var(--foreground)]">Каталог</h1>

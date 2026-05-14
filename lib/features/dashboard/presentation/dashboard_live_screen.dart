@@ -22,7 +22,7 @@ class DashboardLiveScreen extends ConsumerWidget {
         ],
       ),
       drawer: const AppDrawer(),
-      floatingActionButton: const GlobalQuickAddFab(),
+      floatingActionButton: const GlobalQuickAddFab(), // ДОДАНО КНОПКУ
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -77,8 +77,8 @@ class DashboardLiveScreen extends ConsumerWidget {
       crossAxisSpacing: 12,
       childAspectRatio: 1.5,
       children: [
-        _MetricTile('Capital', state.totalInvested.toStringAsFixed(0), Colors.blue),
-        _MetricTile('Profit', state.expectedOpenProfit.toStringAsFixed(0), Colors.green),
+        _MetricTile('Capital', '${state.totalInvested.toStringAsFixed(0)} ${state.currency}', Colors.blue),
+        _MetricTile('Profit', '${state.expectedOpenProfit.toStringAsFixed(0)} ${state.currency}', Colors.green),
       ],
     );
   }
