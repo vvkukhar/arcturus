@@ -13,7 +13,7 @@ COPY apps/scrapers/package*.json ./apps/scrapers/
 
 COPY packages/db/prisma ./packages/db/prisma
 
-RUN npm ci
+RUN npm install
 
 COPY . .
 

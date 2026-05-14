@@ -6,8 +6,8 @@ COPY apps/workers/package.json ./apps/workers/
 COPY apps/scrapers/package.json ./apps/scrapers/
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json package-lock.json* ./
+RUN npm install
 COPY . .
 WORKDIR /app/packages/db
 RUN npx prisma generate
