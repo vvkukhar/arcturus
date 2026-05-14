@@ -17,14 +17,16 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
   let lastId: string | undefined = undefined;
 
   while (hasMore) {
-    const listings = (await prisma.marketListing.findMany({
+    const listingsQuery = await prisma.marketListing.findMany({
       where: { status: 'active' },
       orderBy: { id: 'asc' },
       take: chunkSize,
       skip: lastId ? 1 : undefined,
       cursor: lastId ? { id: lastId } : undefined,
       select: { id: true, itemId: true, price: true, shippingPrice: true }
-    })) as { id: string; itemId: string; price: number; shippingPrice: number | null }[];
+    });
+
+    const listings: Array<{ id: string; itemId: string; price: number; shippingPrice: number | null }> = listingsQuery;
 
     if (listings.length === 0) {
       hasMore = false;
@@ -34,7 +36,7 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
     lastId = listings[listings.length - 1].id;
     scannedListings += listings.length;
 
-    const itemIds: string[] = Array.from(new Set(listings.map((l: { itemId: string }) => String(l.itemId))));
+    const itemIds: string[] = Array.from(new Set<string>(listings.map((l) => String(l.itemId))));
     
     const watchlistItems = await prisma.watchlistItem.findMany({
       where: { itemId: { in: itemIds }, active: true },
