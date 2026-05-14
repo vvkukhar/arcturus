@@ -33,6 +33,12 @@ class SyncEngine extends AsyncNotifier<SyncEngineState> {
     return SyncEngineState(isOnline: isOnline, pendingMutations: rawQueue.length);
   }
 
+  // ДОДАНО: Метод для ручного переходу в офлайн-режим
+  void setOfflineMode() {
+    final currentPending = state.valueOrNull?.pendingMutations ?? 0;
+    state = AsyncValue.data(SyncEngineState(isOnline: false, pendingMutations: currentPending));
+  }
+
   Future<void> enqueueMutation(String type, String endpoint, String method, Map<String, dynamic> payload) async {
     final prefs = await SharedPreferences.getInstance();
     final rawQueue = prefs.getStringList(_queueKey) ?? [];

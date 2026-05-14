@@ -6,7 +6,6 @@ import 'package:lego_trading_manager/features/settings/application/system_tools_
 import 'package:lego_trading_manager/app/providers/core_providers.dart';
 import 'package:lego_trading_manager/core/enums/currency_code.dart';
 
-// Глобальний провайдер для збереження та реактивного оновлення базової валюти системи
 final baseCurrencyProvider = StateProvider<String>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return prefs.getString('settings.base_currency') ?? 'UAH';
@@ -42,12 +41,12 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          // CURRENCY SWITCHER SECTION (STAGE 3)
+          // CURRENCY SWITCHER SECTION
           Card(
             color: const Color(0xFF171A21),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: Colors.amber.withValues(alpha: 0.3)), // ВИПРАВЛЕНО ТУТ
+              side: BorderSide(color: Colors.amber.withOpacity(0.3)), // Використано withOpacity
             ),
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -183,10 +182,10 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
   Widget _buildCard(String title, String sub, IconData icon, Color color, VoidCallback onTap) {
     return Card(
       color: const Color(0xFF171A21),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: color.withValues(alpha: 0.3))),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: color.withOpacity(0.3))),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color)),
+        leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color)),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         subtitle: Text(sub, style: const TextStyle(color: Colors.white70)),
         onTap: onTap,

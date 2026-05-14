@@ -46,34 +46,15 @@ async function bootstrap() {
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
-  // ВИПРАВЛЕНА ЛОГІКА CORS
-  const corsOriginsStr = process.env.CORS_ORIGINS || '';
-  const corsOrigins = corsOriginsStr ? corsOriginsStr.split(',').map(o => o.trim()) : [];
-  
+  // Максимально гнучкий CORS для уникнення проблем з Flutter Web
   app.enableCors({
     origin: (origin, callback) => {
-      // Дозволяємо запити без origin (наприклад, з мобільних додатків або Postman)
-      if (!origin) {
-        return callback(null, true);
-      }
-      
-      // Дозволяємо будь-який локалхост для зручності розробки Flutter Web
-      if (origin.startsWith('http://localhost:')) {
-        return callback(null, true);
-      }
-      
-      // Перевіряємо за списком з .env
-      if (corsOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      
-      // Якщо нічого не підійшло - блокуємо
-      callback(new Error('Not allowed by CORS'));
+      callback(null, true);
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'X-Requested-With', 'Accept'],
-    exposedHeaders: ['X-Total-Count', 'Content-Disposition'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Accept, Authorization, x-api-key, X-Requested-With',
+    exposedHeaders: 'X-Total-Count, Content-Disposition',
     maxAge: 86400,
   });
 

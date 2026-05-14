@@ -53,38 +53,28 @@ class LegoTradingApp extends ConsumerWidget {
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:lego_trading_manager/data/repositories/app_repositories.dart';
+import 'package:lego_trading_manager/core/services/currency_converter.dart';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError('sharedPreferencesProvider must be overridden in main.dart');
+  throw UnimplementedError();
 });
 
-final inventoryRepositoryProvider = Provider((ref) {
+final baseCurrencyProvider = StateProvider<String>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
-  return InventoryRepository(prefs);
+  return prefs.getString('settings.base_currency') ?? 'UAH';
 });
 
-final purchasesRepositoryProvider = Provider((ref) {
+final currencyConverterProvider = Provider<CurrencyConverter>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
-  return PurchasesRepository(prefs);
+  final base = ref.watch(baseCurrencyProvider);
+  return CurrencyConverter(
+    baseCurrency: base,
+    usdRate: prefs.getDouble('settings.usd_to_uah_rate') ?? 41.5,
+    eurRate: prefs.getDouble('settings.eur_to_uah_rate') ?? 45.2,
+    cadRate: prefs.getDouble('settings.cad_to_uah_rate') ?? 30.5,
+    gbpRate: prefs.getDouble('settings.gbp_to_uah_rate') ?? 52.1,
+  );
 });
-
-final salesRepositoryProvider = Provider((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return SalesRepository(prefs);
-});
-
-final watchlistRepositoryProvider = Provider((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return WatchlistRepository(prefs);
-});
-
-final marketRepositoryProvider = Provider((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return MarketRepository(prefs);
-});
-
-final partOutRepositoryProvider = Provider((ref) => PartOutRepository());
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\app\providers\repositories_providers.dart =====
 
@@ -135,9 +125,11 @@ import 'package:lego_trading_manager/features/settings/presentation/settings_hub
 import 'package:lego_trading_manager/features/market/presentation/market_screen.dart';
 import 'package:lego_trading_manager/features/pos/presentation/pos_terminal_screen.dart';
 import 'package:lego_trading_manager/features/search/presentation/global_search_screen.dart';
+import 'package:lego_trading_manager/features/auth/presentation/login_screen.dart';
 
 class AppRouter {
   static const String home = '/';
+  static const String login = '/login';
   static const String dashboard = '/dashboard';
   static const String inventory = '/inventory';
   static const String purchases = '/purchases';
@@ -160,6 +152,9 @@ class AppRouter {
       case '/':
       case '/dashboard':
         page = const DashboardLiveScreen();
+        break;
+      case '/login':
+        page = const LoginScreen();
         break;
       case '/inventory':
         page = const InventoryScreen();
@@ -451,11 +446,9 @@ class _AppBootstrapScreenState extends ConsumerState<AppBootstrapScreen> {
         ),
       ),
       data: (isAuthenticated) {
-        // РЇРєС‰Рѕ РЅРµ Р°РІС‚РѕСЂРёР·РѕРІР°РЅРёР№ - РїРѕРєР°Р·СѓС”РјРѕ РµРєСЂР°РЅ Р»РѕРіС–РЅСѓ
         if (!isAuthenticated) {
           return const LoginScreen();
         }
-        // РЇРєС‰Рѕ РІСЃРµ РѕРє - РїСѓСЃРєР°С”РјРѕ РІ РґР°С€Р±РѕСЂРґ
         return const DashboardLiveScreen();
       },
     );
@@ -1360,9 +1353,13 @@ class NetworkCore {
         }
         
         if (res.statusCode == 401 || res.statusCode == 403) throw Exception('UNAUTHORIZED');
-        throw Exception('API_ERROR_${res.statusCode}');
+        
+        // Р’РёРєРёРґР°С”РјРѕ РїРѕРјРёР»РєСѓ Р· РґРµС‚Р°Р»СЏРјРё РІС–Рґ Р±РµРєРµРЅРґСѓ
+        final errorBody = jsonDecode(res.body);
+        throw Exception(errorBody['message'] ?? 'API_ERROR_${res.statusCode}');
+        
       } catch (e) {
-        if (e.toString().contains('UNAUTHORIZED')) rethrow;
+        if (e.toString().contains('UNAUTHORIZED') || e.toString().contains('API_ERROR')) rethrow;
         if (i == retries) throw Exception('NETWORK_FAILURE');
         await Future.delayed(Duration(milliseconds: 500 * (1 << i)));
       }
@@ -1452,6 +1449,42 @@ class BackupNameBuilder {
   static String fullBackup() {
     final date = DateTime.now().toIso8601String().replaceAll(':', '-');
     return 'full_backup_$date.json';
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\lib\core\services\currency_converter.dart =====
+
+class CurrencyConverter {
+  final String baseCurrency;
+  final double usdRate;
+  final double eurRate;
+  final double cadRate;
+  final double gbpRate;
+
+  const CurrencyConverter({
+    required this.baseCurrency,
+    required this.usdRate,
+    required this.eurRate,
+    required this.cadRate,
+    required this.gbpRate,
+  });
+
+  double call(double amount, {String from = 'UAH'}) {
+    if (from == baseCurrency) return amount;
+    
+    double inUah = amount;
+    if (from == 'USD') inUah = amount * usdRate;
+    else if (from == 'EUR') inUah = amount * eurRate;
+    else if (from == 'CAD') inUah = amount * cadRate;
+    else if (from == 'GBP') inUah = amount * gbpRate;
+
+    if (baseCurrency == 'UAH') return inUah;
+    if (baseCurrency == 'USD') return inUah / usdRate;
+    if (baseCurrency == 'EUR') return inUah / eurRate;
+    if (baseCurrency == 'CAD') return inUah / cadRate;
+    if (baseCurrency == 'GBP') return inUah / gbpRate;
+    
+    return inUah;
   }
 }
 
@@ -1942,10 +1975,12 @@ class GlobalQuickAddFab extends StatelessWidget {
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
+          backgroundColor: Colors.transparent, // Р’Р°Р¶Р»РёРІРѕ РґР»СЏ СЃС‚РёР»С–Р·РѕРІР°РЅРёС… bottom sheets
           builder: (_) => const QuickAddSheet(),
         );
       },
-      child: const Icon(Icons.add),
+      backgroundColor: Colors.greenAccent,
+      child: const Icon(Icons.add, color: Colors.black, size: 28),
     );
   }
 }
@@ -2024,18 +2059,19 @@ class ItemModel {
   final DateTime? purchaseDate, saleDate;
   final bool isTracked;
   final int quantity;
+  final List<String> imagePaths;
 
-  const ItemModel({required this.id, required this.title, required this.type, this.theme, this.setId, this.notes, required this.condition, required this.completeness, required this.ownershipType, required this.purchasePrice, required this.shippingToMe, required this.extraCosts, required this.totalCost, this.marketAverage, this.expectedSalePrice, this.actualSalePrice, required this.status, this.purchaseDate, this.saleDate, required this.isTracked, required this.quantity});
+  const ItemModel({required this.id, required this.title, required this.type, this.theme, this.setId, this.notes, required this.condition, required this.completeness, required this.ownershipType, required this.purchasePrice, required this.shippingToMe, required this.extraCosts, required this.totalCost, this.marketAverage, this.expectedSalePrice, this.actualSalePrice, required this.status, this.purchaseDate, this.saleDate, required this.isTracked, required this.quantity, this.imagePaths = const []});
 
   int? get daysInInventory => purchaseDate != null ? DateTime.now().difference(purchaseDate!).inDays : null;
   bool get isActive => status != ItemStatus.sold && status != ItemStatus.archived;
   bool get isSold => status == ItemStatus.sold;
 
-  ItemModel copyWith({ItemStatus? status, double? expectedSalePrice, int? quantity}) => ItemModel(id: id, title: title, type: type, theme: theme, setId: setId, notes: notes, condition: condition, completeness: completeness, ownershipType: ownershipType, purchasePrice: purchasePrice, shippingToMe: shippingToMe, extraCosts: extraCosts, totalCost: totalCost, marketAverage: marketAverage, expectedSalePrice: expectedSalePrice ?? this.expectedSalePrice, actualSalePrice: actualSalePrice, status: status ?? this.status, purchaseDate: purchaseDate, saleDate: saleDate, isTracked: isTracked, quantity: quantity ?? this.quantity);
+  ItemModel copyWith({ItemStatus? status, double? expectedSalePrice, int? quantity, List<String>? imagePaths}) => ItemModel(id: id, title: title, type: type, theme: theme, setId: setId, notes: notes, condition: condition, completeness: completeness, ownershipType: ownershipType, purchasePrice: purchasePrice, shippingToMe: shippingToMe, extraCosts: extraCosts, totalCost: totalCost, marketAverage: marketAverage, expectedSalePrice: expectedSalePrice ?? this.expectedSalePrice, actualSalePrice: actualSalePrice, status: status ?? this.status, purchaseDate: purchaseDate, saleDate: saleDate, isTracked: isTracked, quantity: quantity ?? this.quantity, imagePaths: imagePaths ?? this.imagePaths);
 
-  Map<String, dynamic> toMap() => {'id': id, 'title': title, 'type': type.name, 'theme': theme, 'setId': setId, 'notes': notes, 'condition': condition.name, 'completeness': completeness.name, 'ownershipType': ownershipType.name, 'purchasePrice': purchasePrice, 'shippingToMe': shippingToMe, 'extraCosts': extraCosts, 'totalCost': totalCost, 'marketAverage': marketAverage, 'expectedSalePrice': expectedSalePrice, 'actualSalePrice': actualSalePrice, 'status': status.name, 'purchaseDate': purchaseDate?.toIso8601String(), 'saleDate': saleDate?.toIso8601String(), 'isTracked': isTracked, 'quantity': quantity};
+  Map<String, dynamic> toMap() => {'id': id, 'title': title, 'type': type.name, 'theme': theme, 'setId': setId, 'notes': notes, 'condition': condition.name, 'completeness': completeness.name, 'ownershipType': ownershipType.name, 'purchasePrice': purchasePrice, 'shippingToMe': shippingToMe, 'extraCosts': extraCosts, 'totalCost': totalCost, 'marketAverage': marketAverage, 'expectedSalePrice': expectedSalePrice, 'actualSalePrice': actualSalePrice, 'status': status.name, 'purchaseDate': purchaseDate?.toIso8601String(), 'saleDate': saleDate?.toIso8601String(), 'isTracked': isTracked, 'quantity': quantity, 'imagePaths': imagePaths};
 
-  factory ItemModel.fromMap(Map<String, dynamic> map) => ItemModel(id: map['id'], title: map['title'], type: ItemType.values.firstWhere((e) => e.name == map['type'], orElse: () => ItemType.set), theme: map['theme'], setId: map['setId'], notes: map['notes'], condition: ItemCondition.values.firstWhere((e) => e.name == map['condition'], orElse: () => ItemCondition.newSealed), completeness: ItemCompleteness.values.firstWhere((e) => e.name == map['completeness'], orElse: () => ItemCompleteness.complete), ownershipType: OwnershipType.values.firstWhere((e) => e.name == map['ownershipType'], orElse: () => OwnershipType.resale), purchasePrice: (map['purchasePrice'] ?? 0).toDouble(), shippingToMe: (map['shippingToMe'] ?? 0).toDouble(), extraCosts: (map['extraCosts'] ?? 0).toDouble(), totalCost: (map['totalCost'] ?? 0).toDouble(), marketAverage: map['marketAverage']?.toDouble(), expectedSalePrice: map['expectedSalePrice']?.toDouble(), actualSalePrice: map['actualSalePrice']?.toDouble(), status: ItemStatus.values.firstWhere((e) => e.name == map['status'], orElse: () => ItemStatus.purchased), purchaseDate: map['purchaseDate'] != null ? DateTime.tryParse(map['purchaseDate']) : null, saleDate: map['saleDate'] != null ? DateTime.tryParse(map['saleDate']) : null, isTracked: map['isTracked'] ?? true, quantity: map['quantity'] ?? 1);
+  factory ItemModel.fromMap(Map<String, dynamic> map) => ItemModel(id: map['id'], title: map['title'], type: ItemType.values.firstWhere((e) => e.name == map['type'], orElse: () => ItemType.set), theme: map['theme'], setId: map['setId'], notes: map['notes'], condition: ItemCondition.values.firstWhere((e) => e.name == map['condition'], orElse: () => ItemCondition.newSealed), completeness: ItemCompleteness.values.firstWhere((e) => e.name == map['completeness'], orElse: () => ItemCompleteness.complete), ownershipType: OwnershipType.values.firstWhere((e) => e.name == map['ownershipType'], orElse: () => OwnershipType.resale), purchasePrice: (map['purchasePrice'] ?? 0).toDouble(), shippingToMe: (map['shippingToMe'] ?? 0).toDouble(), extraCosts: (map['extraCosts'] ?? 0).toDouble(), totalCost: (map['totalCost'] ?? 0).toDouble(), marketAverage: map['marketAverage']?.toDouble(), expectedSalePrice: map['expectedSalePrice']?.toDouble(), actualSalePrice: map['actualSalePrice']?.toDouble(), status: ItemStatus.values.firstWhere((e) => e.name == map['status'], orElse: () => ItemStatus.purchased), purchaseDate: map['purchaseDate'] != null ? DateTime.tryParse(map['purchaseDate']) : null, saleDate: map['saleDate'] != null ? DateTime.tryParse(map['saleDate']) : null, isTracked: map['isTracked'] ?? true, quantity: map['quantity'] ?? 1, imagePaths: List<String>.from(map['imagePaths'] ?? []));
 }
 
 class PurchaseModel {
@@ -2425,7 +2461,6 @@ class ActivityLogScreen extends ConsumerWidget {
         children: [
           Text('${state.controlScore.toStringAsFixed(0)} Control Score', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
           const SizedBox(height: 8),
-          // FIX: Added overflow handling to prevent text cutoff
           Text(
             'Momentum: ${state.momentumLabel} вЂў Discipline: ${state.disciplineLabel}',
             style: const TextStyle(color: Colors.white70),
@@ -2490,7 +2525,6 @@ class _MiniCard extends StatelessWidget {
         children: [
           Text(title, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          // FIX: Wrap text to handle potential overflow in small cards
           Flexible(
             child: Text(
               value,
@@ -2517,7 +2551,6 @@ class _RowStat extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // FIX: Added Flexible to allow label to truncate if value is long
           Flexible(child: Text(label, style: const TextStyle(color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis)),
           const SizedBox(width: 8),
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -2547,7 +2580,6 @@ class _LogTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CircleAvatar(backgroundColor: Colors.white10, child: Icon(_icon(), color: Colors.white, size: 20)),
       title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      // FIX: Ensure subtitle handles overflow properly
       subtitle: Text(item.subtitle, style: const TextStyle(fontSize: 12, color: Colors.white70), maxLines: 2, overflow: TextOverflow.ellipsis),
       trailing: Text(item.createdAt.toIso8601String().split('T').first, style: const TextStyle(fontSize: 12)),
     );
@@ -2666,6 +2698,8 @@ class ActivityTimelineScreen extends ConsumerWidget {
 import 'dart:isolate';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
+import 'package:lego_trading_manager/app/providers/core_providers.dart';
+import 'package:lego_trading_manager/core/services/currency_converter.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_engine.dart';
 
@@ -2687,8 +2721,9 @@ class AnalyticsEngineState {
   final Map<String, int> turnoverBuckets, profitBands, velocityBuckets;
   final List<SmartRecommendation> recommendations;
   final List<RepriceSuggestion> repriceSuggestions;
+  final String currency;
 
-  const AnalyticsEngineState({required this.totalInvested, required this.totalSoldRevenue, required this.totalNetProfit, required this.averageRoi, required this.averageMargin, required this.frozenCapital, required this.inventoryValue, required this.soldCount, required this.activeCount, required this.deadStockCount, required this.capitalAllocation, required this.turnoverBuckets, required this.profitBands, required this.velocityBuckets, required this.recommendations, required this.repriceSuggestions, required this.automationHealthScore});
+  const AnalyticsEngineState({required this.totalInvested, required this.totalSoldRevenue, required this.totalNetProfit, required this.averageRoi, required this.averageMargin, required this.frozenCapital, required this.inventoryValue, required this.soldCount, required this.activeCount, required this.deadStockCount, required this.capitalAllocation, required this.turnoverBuckets, required this.profitBands, required this.velocityBuckets, required this.recommendations, required this.repriceSuggestions, required this.automationHealthScore, required this.currency});
 }
 
 class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
@@ -2697,11 +2732,12 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
     final items = ref.watch(inventoryRepositoryProvider).getAllItems();
     final sales = ref.watch(salesRepositoryProvider).getAllSales();
     final watchlist = ref.watch(watchlistRepositoryProvider).getAll();
+    final converter = ref.watch(currencyConverterProvider);
     
-    return await Isolate.run(() => _computeBackground(items, sales, watchlist));
+    return await Isolate.run(() => _computeBackground(items, sales, watchlist, converter));
   }
 
-  static AnalyticsEngineState _computeBackground(List<ItemModel> items, List<SaleModel> sales, List<WatchlistItemModel> watchlist) {
+  static AnalyticsEngineState _computeBackground(List<ItemModel> items, List<SaleModel> sales, List<WatchlistItemModel> watchlist, CurrencyConverter converter) {
     double invested = 0, soldRev = 0, netProfit = 0, frozen = 0, invValue = 0, totalRoi = 0, totalMargin = 0;
     int sold = 0, active = 0, dead = 0, negativeExpected = 0;
     
@@ -2715,29 +2751,32 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
     final saleMap = {for (var s in sales) s.itemId: s};
 
     for (final item in items) {
-      invested += item.totalCost;
+      final totalCostConv = converter(item.totalCost);
+      invested += totalCostConv;
       final stName = item.status.name;
       
-      if (stName == 'planned') { capital['Planned'] = capital['Planned']! + item.totalCost; }
-      else if (['purchased', 'received', 'inDelivery', 'restoring', 'readyForSale', 'found'].contains(stName)) { capital['Purchased'] = capital['Purchased']! + item.totalCost; }
-      else if (stName == 'listed') { capital['Listed'] = capital['Listed']! + item.totalCost; }
-      else if (stName == 'reserved') { capital['Reserved'] = capital['Reserved']! + item.totalCost; }
-      else if (stName == 'sold') { capital['Sold'] = capital['Sold']! + item.totalCost; }
-      else { capital['Other'] = capital['Other']! + item.totalCost; }
+      if (stName == 'planned') { capital['Planned'] = capital['Planned']! + totalCostConv; }
+      else if (['purchased', 'received', 'inDelivery', 'restoring', 'readyForSale', 'found'].contains(stName)) { capital['Purchased'] = capital['Purchased']! + totalCostConv; }
+      else if (stName == 'listed') { capital['Listed'] = capital['Listed']! + totalCostConv; }
+      else if (stName == 'reserved') { capital['Reserved'] = capital['Reserved']! + totalCostConv; }
+      else if (stName == 'sold') { capital['Sold'] = capital['Sold']! + totalCostConv; }
+      else { capital['Other'] = capital['Other']! + totalCostConv; }
 
       final days = item.daysInInventory ?? 0;
 
       if (item.isActive) {
         active++;
-        frozen += item.totalCost;
-        invValue += (item.marketAverage ?? 0);
+        frozen += totalCostConv;
+        final marketAvgConv = item.marketAverage != null ? converter(item.marketAverage!) : 0.0;
+        invValue += marketAvgConv;
         
         if (days <= 14) { velocity['0-14d'] = velocity['0-14d']! + 1; }
         else if (days <= 45) { velocity['15-45d'] = velocity['15-45d']! + 1; }
         else if (days <= 90) { velocity['46-90d'] = velocity['46-90d']! + 1; }
         else { velocity['90d+'] = velocity['90d+']! + 1; dead++; }
 
-        if (((item.expectedSalePrice ?? 0) - item.totalCost) < 0) { negativeExpected++; }
+        final expSaleConv = item.expectedSalePrice != null ? converter(item.expectedSalePrice!) : 0.0;
+        if ((expSaleConv - totalCostConv) < 0) { negativeExpected++; }
 
         if (item.marketAverage != null && item.expectedSalePrice != null) {
           if ((item.expectedSalePrice! - item.marketAverage!).abs() >= 5) {
@@ -2748,12 +2787,17 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
         sold++;
         final sale = saleMap[item.id];
         if (item.actualSalePrice != null && sale != null) {
-          final actPrice = item.actualSalePrice!;
-          soldRev += actPrice;
-          final net = actPrice - sale.platformFee - sale.shippingPaidByMe - item.totalCost;
+          final actPriceConv = converter(item.actualSalePrice!);
+          soldRev += actPriceConv;
+          
+          final platformFeeConv = converter(sale.platformFee, from: sale.currency);
+          final shipMeConv = converter(sale.shippingPaidByMe, from: sale.currency);
+          
+          final net = actPriceConv - platformFeeConv - shipMeConv - totalCostConv;
           netProfit += net;
-          totalRoi += item.totalCost > 0 ? (net / item.totalCost) * 100 : 0.0;
-          totalMargin += actPrice > 0 ? (net / actPrice) * 100 : 0.0;
+          
+          totalRoi += totalCostConv > 0 ? (net / totalCostConv) * 100 : 0.0;
+          totalMargin += actPriceConv > 0 ? (net / actPriceConv) * 100 : 0.0;
 
           if (net < 0) { pb['Loss'] = pb['Loss']! + 1; }
           else if (net <= 500) { pb['0-500'] = pb['0-500']! + 1; }
@@ -2777,7 +2821,7 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
 
     repriceSuggestions.sort((a, b) => (b.current - b.suggested).abs().compareTo((a.current - a.suggested).abs()));
 
-    return AnalyticsEngineState(totalInvested: invested, totalSoldRevenue: soldRev, totalNetProfit: netProfit, averageRoi: sold > 0 ? totalRoi / sold : 0, averageMargin: sold > 0 ? totalMargin / sold : 0, frozenCapital: frozen, inventoryValue: invValue, soldCount: sold, activeCount: active, deadStockCount: dead, capitalAllocation: capital, turnoverBuckets: turn, profitBands: pb, velocityBuckets: velocity, recommendations: recommendations, repriceSuggestions: repriceSuggestions, automationHealthScore: 85.0);
+    return AnalyticsEngineState(totalInvested: invested, totalSoldRevenue: soldRev, totalNetProfit: netProfit, averageRoi: sold > 0 ? totalRoi / sold : 0, averageMargin: sold > 0 ? totalMargin / sold : 0, frozenCapital: frozen, inventoryValue: invValue, soldCount: sold, activeCount: active, deadStockCount: dead, capitalAllocation: capital, turnoverBuckets: turn, profitBands: pb, velocityBuckets: velocity, recommendations: recommendations, repriceSuggestions: repriceSuggestions, automationHealthScore: 85.0, currency: converter.baseCurrency);
   }
 
   Future<void> applyMarketRepriceToAll() async {
@@ -2859,12 +2903,12 @@ class AnalyticsScreen extends ConsumerWidget {
       decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(20)),
       child: Column(
         children: [
-          _StatRow(label: 'Total Net Profit', value: state.totalNetProfit.toStringAsFixed(2), isPositive: state.totalNetProfit >= 0),
+          _StatRow(label: 'Total Net Profit', value: '${state.totalNetProfit.toStringAsFixed(2)} ${state.currency}', isPositive: state.totalNetProfit >= 0),
           const Divider(height: 24, color: Colors.white10),
-          _StatRow(label: 'Total Revenue', value: state.totalSoldRevenue.toStringAsFixed(2)),
-          _StatRow(label: 'Total Invested', value: state.totalInvested.toStringAsFixed(2)),
-          _StatRow(label: 'Inventory Value', value: state.inventoryValue.toStringAsFixed(2)),
-          _StatRow(label: 'Frozen Capital', value: state.frozenCapital.toStringAsFixed(2)),
+          _StatRow(label: 'Total Revenue', value: '${state.totalSoldRevenue.toStringAsFixed(2)} ${state.currency}'),
+          _StatRow(label: 'Total Invested', value: '${state.totalInvested.toStringAsFixed(2)} ${state.currency}'),
+          _StatRow(label: 'Inventory Value', value: '${state.inventoryValue.toStringAsFixed(2)} ${state.currency}'),
+          _StatRow(label: 'Frozen Capital', value: '${state.frozenCapital.toStringAsFixed(2)} ${state.currency}'),
           const Divider(height: 24, color: Colors.white10),
           _StatRow(label: 'Average ROI', value: '${state.averageRoi.toStringAsFixed(1)}%', isPositive: state.averageRoi >= 0),
           _StatRow(label: 'Average Margin', value: '${state.averageMargin.toStringAsFixed(1)}%'),
@@ -2888,7 +2932,6 @@ class AnalyticsScreen extends ConsumerWidget {
             child: ListTile(
               leading: Icon(Icons.tips_and_updates, color: color),
               title: Text(r.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              // FIX: Handle long recommendation messages
               subtitle: Text(r.message, maxLines: 2, overflow: TextOverflow.ellipsis),
             ),
           );
@@ -2923,7 +2966,6 @@ class AnalyticsScreen extends ConsumerWidget {
             color: const Color(0xFF171A21),
             margin: const EdgeInsets.only(bottom: 8),
             child: ListTile(
-              // FIX: Ensure titles don't overflow
               title: Text(s.title, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
               subtitle: Text('Current: ${s.current.toStringAsFixed(0)} в†’ Suggested: ${s.suggested.toStringAsFixed(0)}'),
               trailing: IconButton(
@@ -2940,16 +2982,16 @@ class AnalyticsScreen extends ConsumerWidget {
   Widget _buildDistributions(AnalyticsEngineState state) {
     return Column(
       children: [
-        _buildBreakdownSection('Capital Allocation', state.capitalAllocation),
+        _buildBreakdownSection('Capital Allocation (${state.currency})', state.capitalAllocation),
         const SizedBox(height: 24),
-        _buildBreakdownSection('Velocity (Days Active)', state.velocityBuckets.map((k, v) => MapEntry(k, v.toDouble()))),
+        _buildBreakdownSection('Velocity (Days Active)', state.velocityBuckets.map((k, v) => MapEntry(k, v.toDouble())), false),
         const SizedBox(height: 24),
-        _buildBreakdownSection('Profit Bands (Sold)', state.profitBands.map((k, v) => MapEntry(k, v.toDouble()))),
+        _buildBreakdownSection('Profit Bands (${state.currency})', state.profitBands.map((k, v) => MapEntry(k, v.toDouble())), false),
       ],
     );
   }
 
-  Widget _buildBreakdownSection(String title, Map<String, double> data) {
+  Widget _buildBreakdownSection(String title, Map<String, double> data, [bool formatMoney = true]) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2959,9 +3001,8 @@ class AnalyticsScreen extends ConsumerWidget {
           decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(16)),
           child: Column(
             children: data.entries.map((e) => ListTile(
-              // FIX: Use Flexible for breakdown labels to handle overflow inside ListTile
               title: Text(e.key, style: const TextStyle(fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-              trailing: Text(e.value.toStringAsFixed(e.value.truncateToDouble() == e.value ? 0 : 2), style: const TextStyle(fontWeight: FontWeight.bold)),
+              trailing: Text(formatMoney ? e.value.toStringAsFixed(2) : e.value.toStringAsFixed(0), style: const TextStyle(fontWeight: FontWeight.bold)),
             )).toList(),
           ),
         )
@@ -2984,7 +3025,6 @@ class _StatRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // FIX: Add Flexible to label in StatRow
           Flexible(child: Text(label, style: const TextStyle(color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis)),
           const SizedBox(width: 8),
           Text(value, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: color)),
@@ -2994,14 +3034,110 @@ class _StatRow extends StatelessWidget {
   }
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\auth\application\auth_engine.dart =====
+
+import 'dart:async';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:lego_trading_manager/core/network/network_core.dart';
+import 'package:lego_trading_manager/core/sync/sync_engine.dart';
+
+class AuthEngineState {
+  final bool isAuthenticated;
+  final bool isOfflineMode;
+  final Map<String, dynamic>? user;
+  const AuthEngineState({this.isAuthenticated = false, this.isOfflineMode = false, this.user});
+}
+
+class AuthEngine extends AsyncNotifier<AuthEngineState> {
+  final _storage = const FlutterSecureStorage();
+
+  @override
+  Future<AuthEngineState> build() async {
+    final token = await _storage.read(key: 'arcturus_jwt');
+    final offline = await _storage.read(key: 'arcturus_offline') == 'true';
+
+    if (offline) return const AuthEngineState(isAuthenticated: true, isOfflineMode: true);
+    
+    if (token != null) {
+      try {
+        final res = await ref.read(networkCoreProvider).request('GET', '/auth/me');
+        return AuthEngineState(isAuthenticated: true, user: res);
+      } catch (e) {
+        await _storage.delete(key: 'arcturus_jwt');
+        return const AuthEngineState();
+      }
+    }
+    return const AuthEngineState();
+  }
+
+  Future<void> login(String email, String password) async {
+    state = const AsyncValue.loading();
+    try {
+      final res = await ref.read(networkCoreProvider).request('POST', '/auth/login', body: {
+        'email': email,
+        'password': password,
+      });
+
+      if (res != null && res['token'] != null) {
+        await _storage.write(key: 'arcturus_jwt', value: res['token']);
+        await ref.read(networkCoreProvider).initSocket();
+        state = AsyncValue.data(AuthEngineState(isAuthenticated: true, user: res['user']));
+      } else {
+        throw Exception('AUTH_FAILED');
+      }
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      throw Exception('AUTH_FAILED');
+    }
+  }
+
+  // Р”РћР”РђРќРћ: РњРµС‚РѕРґ СЂРµС”СЃС‚СЂР°С†С–С—
+  Future<void> register(String name, String email, String password, String inviteCode) async {
+    state = const AsyncValue.loading();
+    try {
+      final res = await ref.read(networkCoreProvider).request('POST', '/auth/register', body: {
+        'name': name,
+        'email': email,
+        'password': password,
+        'inviteCode': inviteCode, // РўРІС–Р№ Р±РµРєРµРЅРґ РІРёРјР°РіР°С” inviteCode
+      });
+
+      if (res != null && res['token'] != null) {
+        await _storage.write(key: 'arcturus_jwt', value: res['token']);
+        await ref.read(networkCoreProvider).initSocket();
+        state = AsyncValue.data(AuthEngineState(isAuthenticated: true, user: res['user']));
+      } else {
+        throw Exception('REGISTRATION_FAILED');
+      }
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      throw Exception(e.toString().replaceAll('Exception: ', '')); // Р©РѕР± РїРѕРєР°Р·СѓРІР°С‚Рё СЂРµР°Р»СЊРЅСѓ РїРѕРјРёР»РєСѓ (РЅР°РїСЂ. "Invalid invite code")
+    }
+  }
+
+  Future<void> enableOfflineMode() async {
+    await _storage.write(key: 'arcturus_offline', value: 'true');
+    ref.read(syncEngineProvider.notifier).setOfflineMode();
+    state = const AsyncValue.data(AuthEngineState(isAuthenticated: true, isOfflineMode: true));
+  }
+
+  Future<void> logout() async {
+    await _storage.delete(key: 'arcturus_jwt');
+    await _storage.delete(key: 'arcturus_offline');
+    ref.read(networkCoreProvider).dispose();
+    state = const AsyncValue.data(AuthEngineState());
+  }
+}
+
+final authEngineProvider = AsyncNotifierProvider<AuthEngine, AuthEngineState>(AuthEngine.new);
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\auth\presentation\login_screen.dart =====
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:lego_trading_manager/core/auth/auth_service.dart';
-import 'package:lego_trading_manager/core/bootstrap/app_bootstrap_controller.dart';
-import 'package:lego_trading_manager/core/config/api_config.dart';
+import 'package:lego_trading_manager/app/router/app_router.dart';
+import 'package:lego_trading_manager/features/auth/application/auth_engine.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -3011,127 +3147,221 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
   bool _isLoading = false;
 
-  Future<void> _handleLogin() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
+  void _login() async {
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(authEngineProvider.notifier).login(_email.text, _password.text);
+      if (mounted) Navigator.pushReplacementNamed(context, AppRouter.dashboard);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e'), backgroundColor: Colors.redAccent));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter email and password'), backgroundColor: Colors.orange),
-      );
+  void _offline() async {
+    await ref.read(authEngineProvider.notifier).enableOfflineMode();
+    if (mounted) Navigator.pushReplacementNamed(context, AppRouter.dashboard);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0F14),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.inventory_2, size: 80, color: Colors.blueAccent),
+                const SizedBox(height: 24),
+                const Text('Arcturus Hub', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white)),
+                const Text('Sign in to your enterprise operations', style: TextStyle(color: Colors.white54)),
+                const SizedBox(height: 48),
+                TextField(
+                  controller: _email,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Email Address',
+                    prefixIcon: const Icon(Icons.email_outlined, color: Colors.white54),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _password,
+                  obscureText: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline, color: Colors.white54),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton(
+                    onPressed: _isLoading ? null : _login,
+                    style: FilledButton.styleFrom(backgroundColor: Colors.blueAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Sign In', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton.icon(
+                    onPressed: _offline,
+                    icon: const Icon(Icons.wifi_off, color: Colors.greenAccent),
+                    label: const Text('Local / Offline Mode', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.greenAccent), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextButton(
+                  onPressed: () => Navigator.pushNamed(context, '/register'),
+                  child: const Text("Don't have an account? Create one", style: TextStyle(color: Colors.white70)),
+                )
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\auth\presentation\register_screen.dart =====
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/router/app_router.dart';
+import 'package:lego_trading_manager/features/auth/application/auth_engine.dart';
+
+class RegisterScreen extends ConsumerStatefulWidget {
+  const RegisterScreen({super.key});
+
+  @override
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  final _inviteCode = TextEditingController();
+  bool _isLoading = false;
+
+  void _register() async {
+    if (_name.text.isEmpty || _email.text.isEmpty || _password.text.isEmpty || _inviteCode.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('All fields are required'), backgroundColor: Colors.orange));
       return;
     }
 
     setState(() => _isLoading = true);
-
     try {
-      final authService = AuthService(baseUrl: ApiConfig.baseUrl);
-      // Р РµР°Р»СЊРЅРёР№ Р·Р°РїРёС‚ РЅР° Р±РµРєРµРЅРґ
-      await authService.login(email, password);
-      
-      if (mounted) {
-        // РЇРєС‰Рѕ Р»РѕРіС–РЅ СѓСЃРїС–С€РЅРёР№, С‚РѕРєРµРЅ Р·Р±РµСЂС–РіСЃСЏ. РџРµСЂРµР·Р°РїСѓСЃРєР°С”РјРѕ Bootstrap
-        ref.read(appBootstrapControllerProvider.notifier).load();
-      }
+      await ref.read(authEngineProvider.notifier).register(_name.text, _email.text, _password.text, _inviteCode.text);
+      if (mounted) Navigator.pushReplacementNamed(context, AppRouter.dashboard);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login failed: ${e.toString().replaceAll('Exception: ', '')}'), backgroundColor: Colors.redAccent),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Registration failed: $e'), backgroundColor: Colors.redAccent));
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  // Р—Р°Р»РёС€РёРјРѕ С†СЋ РєРЅРѕРїРєСѓ РїСЂРѕ РІСЃСЏРє РІРёРїР°РґРѕРє РґР»СЏ С‚РµСЃС‚С–РІ Р±РµР· С–РЅС‚РµСЂРЅРµС‚Сѓ
-  Future<void> _handleOfflineLogin() async {
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 500));
-    const storage = FlutterSecureStorage();
-    await storage.write(key: 'arcturus_jwt', value: 'offline_local_mode_token');
-    
-    if (mounted) {
-      ref.read(appBootstrapControllerProvider.notifier).load();
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+      backgroundColor: const Color(0xFF0D0F14),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.inventory_2_rounded, size: 80, color: Colors.blueAccent),
-                const SizedBox(height: 24),
-                const Text(
-                  'Arcturus Hub',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 1.2),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Sign in to your enterprise operations',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white54, fontSize: 16),
-                ),
+                const Text('Create Account', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white)),
+                const Text('Join Arcturus Hub', style: TextStyle(color: Colors.white54)),
                 const SizedBox(height: 48),
                 TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
+                  controller: _name,
+                  style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Email Address',
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    labelText: 'Full Name',
+                    prefixIcon: const Icon(Icons.person_outline, color: Colors.white54),
                     filled: true,
-                    fillColor: const Color(0xFF171A21),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
-                  controller: _passwordController,
-                  obscureText: true,
+                  controller: _email,
+                  style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: const Icon(Icons.lock_outline),
+                    labelText: 'Email Address',
+                    prefixIcon: const Icon(Icons.email_outlined, color: Colors.white54),
                     filled: true,
-                    fillColor: const Color(0xFF171A21),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _password,
+                  obscureText: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Password (min 6 chars)',
+                    prefixIcon: const Icon(Icons.lock_outline, color: Colors.white54),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _inviteCode,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Invite Code',
+                    prefixIcon: const Icon(Icons.vpn_key_outlined, color: Colors.white54),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
                 ),
                 const SizedBox(height: 32),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    backgroundColor: Colors.blueAccent,
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton(
+                    onPressed: _isLoading ? null : _register,
+                    style: FilledButton.styleFrom(backgroundColor: Colors.blueAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Register', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
-                  onPressed: _isLoading ? null : _handleLogin,
-                  child: _isLoading 
-                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    side: BorderSide(color: Colors.greenAccent.withValues(alpha: 0.5)),
-                  ),
-                  onPressed: _isLoading ? null : _handleOfflineLogin,
-                  icon: const Icon(Icons.wifi_off, color: Colors.greenAccent),
-                  label: const Text('Local / Offline Mode', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -3271,9 +3501,7 @@ class CommandCenterScreen extends ConsumerWidget {
                           decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(16)),
                           child: Column(
                             children: section.actions.map((action) => ListTile(
-                              // FIX: Wrap title in Flexible for Command Center ListTile
                               title: Text(action.title, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                              // FIX: Use Flexible and overflow for subtitle
                               subtitle: Text(action.subtitle, style: const TextStyle(color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -3361,28 +3589,53 @@ class ConflictQueueScreen extends ConsumerWidget {
 
 import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
+import 'package:lego_trading_manager/features/inventory/presentation/item_form_screen.dart';
+import 'package:lego_trading_manager/features/purchases/presentation/purchase_form_screen.dart';
+import 'package:lego_trading_manager/features/sales/presentation/sale_form_screen.dart';
 
 class QuickAddSheet extends StatelessWidget {
   const QuickAddSheet({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Wrap(
-          runSpacing: 8,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: Text('Quick Create', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-            ),
-            _Tile('Add Item', Icons.inventory_2_outlined, AppRouter.inventory, context),
-            _Tile('Add Purchase', Icons.shopping_cart_checkout_outlined, AppRouter.purchases, context),
-            _Tile('Add Sale', Icons.sell_outlined, AppRouter.sales, context),
-            _Tile('Deal Evaluator', Icons.local_fire_department_outlined, AppRouter.dealEvaluator, context),
-            _Tile('Command Center', Icons.hub_outlined, AppRouter.commandCenter, context),
-          ],
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF171A21),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(left: 16, bottom: 20),
+                child: Text('Quick Create', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+              ),
+              _Tile('Add Item', Icons.inventory_2_outlined, () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ItemFormScreen()));
+              }),
+              _Tile('Add Purchase', Icons.shopping_cart_checkout_outlined, () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchaseFormScreen()));
+              }),
+              _Tile('Add Sale', Icons.sell_outlined, () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SaleFormScreen()));
+              }),
+              _Tile('Deal Evaluator', Icons.local_fire_department_outlined, () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, AppRouter.dealEvaluator);
+              }),
+              _Tile('Command Center', Icons.hub_outlined, () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, AppRouter.commandCenter);
+              }),
+            ],
+          ),
         ),
       ),
     );
@@ -3392,20 +3645,17 @@ class QuickAddSheet extends StatelessWidget {
 class _Tile extends StatelessWidget {
   final String title;
   final IconData icon;
-  final String route;
-  final BuildContext context;
-  const _Tile(this.title, this.icon, this.route, this.context);
+  final VoidCallback onTap;
+  
+  const _Tile(this.title, this.icon, this.onTap);
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      trailing: const Icon(Icons.arrow_forward),
-      onTap: () {
-        Navigator.pop(context);
-        Navigator.pushNamed(context, route);
-      },
+      leading: Icon(icon, color: Colors.white70),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+      trailing: const Icon(Icons.arrow_forward, color: Colors.white30),
+      onTap: onTap,
     );
   }
 }
@@ -3415,6 +3665,8 @@ class _Tile extends StatelessWidget {
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
+import 'package:lego_trading_manager/app/providers/core_providers.dart';
+import 'package:lego_trading_manager/core/services/currency_converter.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
@@ -3435,9 +3687,10 @@ class DashboardEngineState {
   final int activeOpportunities;
   final String headline;
   final String subline;
+  final String currency;
   final List<DashboardAction> priorityQueue;
 
-  const DashboardEngineState({required this.totalInvested, required this.inventoryValue, required this.expectedOpenProfit, required this.trackedCount, required this.deadStockCount, required this.activeOpportunities, required this.headline, required this.subline, required this.priorityQueue});
+  const DashboardEngineState({required this.totalInvested, required this.inventoryValue, required this.expectedOpenProfit, required this.trackedCount, required this.deadStockCount, required this.activeOpportunities, required this.headline, required this.subline, required this.currency, required this.priorityQueue});
 }
 
 class DashboardEngine extends AsyncNotifier<DashboardEngineState> {
@@ -3454,29 +3707,36 @@ class DashboardEngine extends AsyncNotifier<DashboardEngineState> {
 
     final items = ref.watch(inventoryRepositoryProvider).getAllItems();
     final watchlist = ref.watch(watchlistRepositoryProvider).getAll();
-    return _compute(items, watchlist);
+    final converter = ref.watch(currencyConverterProvider);
+    
+    return _compute(items, watchlist, converter);
   }
 
-  static DashboardEngineState _compute(List<ItemModel> items, List<WatchlistItemModel> watchlist) {
+  static DashboardEngineState _compute(List<ItemModel> items, List<WatchlistItemModel> watchlist, CurrencyConverter converter) {
     double invested = 0, invValue = 0, expProfit = 0;
     int dead = 0, tracked = 0, opps = 0;
     final queue = <DashboardAction>[];
 
     for (final item in items) {
       if (item.ownershipType == OwnershipType.resale && item.isActive) {
-        invested += item.totalCost;
-        invValue += (item.marketAverage ?? 0);
-        expProfit += ((item.expectedSalePrice ?? 0) - item.totalCost);
+        final costConv = converter(item.totalCost);
+        final marketConv = item.marketAverage != null ? converter(item.marketAverage!) : 0.0;
+        final expSaleConv = item.expectedSalePrice != null ? converter(item.expectedSalePrice!) : 0.0;
+
+        invested += costConv;
+        invValue += marketConv;
+        expProfit += (expSaleConv - costConv);
+        
         if (item.isTracked) tracked++;
 
         final days = item.daysInInventory ?? 0;
-        final profit = (item.expectedSalePrice ?? 0) - item.totalCost;
+        final profitConv = expSaleConv - costConv;
 
         if (days >= 30) {
           dead++;
           if (days >= 90) queue.add(DashboardAction('Reprice ${item.title}', 'Dead stock > 90 days', 'danger'));
         }
-        if (profit > 500 && days <= 14) {
+        if (profitConv > converter(500) && days <= 14) {
           queue.add(DashboardAction('Sell ${item.title}', 'High profit fast flip', 'good'));
         }
       }
@@ -3492,7 +3752,7 @@ class DashboardEngine extends AsyncNotifier<DashboardEngineState> {
     String head = opps > 0 ? 'Buy opportunities available' : dead > 0 ? 'Dead stock pressure' : 'System Stable';
     String sub = 'Tracked: $tracked вЂў Dead: $dead вЂў Opps: $opps';
 
-    return DashboardEngineState(totalInvested: invested, inventoryValue: invValue, expectedOpenProfit: expProfit, trackedCount: tracked, deadStockCount: dead, activeOpportunities: opps, headline: head, subline: sub, priorityQueue: queue.take(8).toList());
+    return DashboardEngineState(totalInvested: invested, inventoryValue: invValue, expectedOpenProfit: expProfit, trackedCount: tracked, deadStockCount: dead, activeOpportunities: opps, headline: head, subline: sub, currency: converter.baseCurrency, priorityQueue: queue.take(8).toList());
   }
 }
 
@@ -3524,7 +3784,7 @@ class DashboardLiveScreen extends ConsumerWidget {
         ],
       ),
       drawer: const AppDrawer(),
-      floatingActionButton: const GlobalQuickAddFab(),
+      floatingActionButton: const GlobalQuickAddFab(), // Р”РћР”РђРќРћ РљРќРћРџРљРЈ
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -3579,8 +3839,8 @@ class DashboardLiveScreen extends ConsumerWidget {
       crossAxisSpacing: 12,
       childAspectRatio: 1.5,
       children: [
-        _MetricTile('Capital', state.totalInvested.toStringAsFixed(0), Colors.blue),
-        _MetricTile('Profit', state.expectedOpenProfit.toStringAsFixed(0), Colors.green),
+        _MetricTile('Capital', '${state.totalInvested.toStringAsFixed(0)} ${state.currency}', Colors.blue),
+        _MetricTile('Profit', '${state.expectedOpenProfit.toStringAsFixed(0)} ${state.currency}', Colors.green),
       ],
     );
   }
@@ -4162,6 +4422,7 @@ class _QuickAction extends StatelessWidget {
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
+import 'package:lego_trading_manager/core/enums/item_condition.dart'; // Р”РћР”РђРќРћ Р†РњРџРћР Рў
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
@@ -4251,21 +4512,60 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
   }
 
   Future<void> saveItem(ItemModel item) async {
+    final currentState = state.valueOrNull;
+    if (currentState == null) return;
+
     final repo = ref.read(inventoryRepositoryProvider);
-    final exists = state.value!.allItems.any((e) => e.id == item.id);
+    final exists = currentState.allItems.any((e) => e.id == item.id);
+    
+    // 1. Р—Р±РµСЂС–РіР°С”РјРѕ Р»РѕРєР°Р»СЊРЅРѕ РґР»СЏ РјРёС‚С‚С”РІРѕРіРѕ РѕРЅРѕРІР»РµРЅРЅСЏ UI (РћРїС‚РёРјС–СЃС‚РёС‡РЅРёР№ UI)
     if (exists) {
       await repo.updateItem(item);
     } else {
       await repo.addItem(item);
     }
     
-    ref.read(syncEngineProvider.notifier).enqueueMutation('inventory', '/inventory', exists ? 'PATCH' : 'POST', item.toMap());
-    state = AsyncValue.data(_computeState(repo.getAllItems(), state.value!.query, state.value!.filterStatus, state.value!.sortOption, state.value!.selectedIds));
+    // РћРЅРѕРІР»СЋС”РјРѕ СЃС‚Р°РЅ, С‰РѕР± UI РїРµСЂРµРјР°Р»СЋРІР°РІСЃСЏ РјРёС‚С‚С”РІРѕ
+    state = AsyncValue.data(_computeState(repo.getAllItems(), currentState.query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
+
+    // 2. Р’С–РґРїСЂР°РІР»СЏС”РјРѕ РЅР° Р±РµРєРµРЅРґ
+    try {
+      final payload = {
+        'itemId': item.id,
+        'titleSnapshot': item.title,
+        'purchasePrice': item.purchasePrice,
+        'totalCost': item.totalCost,
+        'quantity': item.quantity,
+        'condition': item.condition.name,
+        'sealed': item.condition == ItemCondition.newSealed, // РўРµРїРµСЂ enum РґРѕСЃС‚СѓРїРЅРёР№
+        'expectedSalePriceManual': item.expectedSalePrice,
+        'notes': item.notes,
+      };
+
+      if (exists) {
+        await ref.read(networkCoreProvider).request('PATCH', '/inventory', body: { 'id': item.id, ...payload });
+      } else {
+        // РћСЃРєС–Р»СЊРєРё РІ РЅР°СЃ С‰Рµ РЅРµРјР°С” "РљР°С‚Р°Р»РѕРіСѓ", СЃС‚РІРѕСЂСЋС”РјРѕ item РЅР° С…РѕРґСѓ
+        final itemRes = await ref.read(networkCoreProvider).request('POST', '/items', body: {
+          'title': item.title,
+          'setNumber': item.setId,
+          'theme': item.theme,
+          'kind': item.type.name,
+        });
+        
+        payload['itemId'] = itemRes['id'];
+        await ref.read(networkCoreProvider).request('POST', '/inventory', body: payload);
+      }
+    } catch (e) {
+      print('Sync error: $e');
+    }
   }
 
   void search(String query) {
-    if (state.value == null) return;
-    state = AsyncValue.data(_computeState(state.value!.allItems, query, state.value!.filterStatus, state.value!.sortOption, state.value!.selectedIds));
+    final currentState = state.valueOrNull;
+    if (currentState == null) return;
+    
+    state = AsyncValue.data(_computeState(currentState.allItems, query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
   }
 }
 
@@ -4360,7 +4660,9 @@ class InventoryActionCenterScreen extends ConsumerWidget {
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
+import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_engine.dart';
+import 'package:lego_trading_manager/features/item_details/presentation/item_details_screen.dart';
 
 class InventoryScreen extends ConsumerWidget {
   const InventoryScreen({super.key});
@@ -4372,6 +4674,7 @@ class InventoryScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Inventory', style: TextStyle(fontWeight: FontWeight.bold))),
       drawer: const AppDrawer(),
+      floatingActionButton: const GlobalQuickAddFab(), // Р”РћР”РђРќРћ РљРќРћРџРљРЈ
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -4405,6 +4708,7 @@ class InventoryScreen extends ConsumerWidget {
                   title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text('Status: ${item.status.name}', style: const TextStyle(color: Colors.white70)),
                   trailing: const Icon(Icons.chevron_right, color: Colors.white30),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ItemDetailsScreen(item: item))),
                 ),
               );
             },
@@ -4417,14 +4721,17 @@ class InventoryScreen extends ConsumerWidget {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\inventory\presentation\item_form_screen.dart =====
 
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/enums/item_condition.dart';
 import 'package:lego_trading_manager/core/enums/item_completeness.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
-import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_engine.dart';
 
 class ItemFormScreen extends ConsumerStatefulWidget {
@@ -4437,9 +4744,10 @@ class ItemFormScreen extends ConsumerStatefulWidget {
 
 class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _title, _theme, _setId, _purchasePrice, _shipping, _extra, _marketAvg, _expectedPrice, _actualPrice;
+  late final TextEditingController _title, _theme, _setId, _purchasePrice, _shipping, _extra, _marketAvg, _expectedPrice, _actualPrice, _notes;
   late ItemType _type;
   late ItemStatus _status;
+  List<String> _imagePaths = [];
 
   @override
   void initState() {
@@ -4454,11 +4762,53 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     _marketAvg = TextEditingController(text: i?.marketAverage?.toString() ?? '');
     _expectedPrice = TextEditingController(text: i?.expectedSalePrice?.toString() ?? '');
     _actualPrice = TextEditingController(text: i?.actualSalePrice?.toString() ?? '');
+    _notes = TextEditingController(text: i?.notes ?? '');
     _type = i?.type ?? ItemType.set;
     _status = i?.status ?? ItemStatus.purchased;
+    _imagePaths = i?.imagePaths.toList() ?? [];
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _theme.dispose();
+    _setId.dispose();
+    _purchasePrice.dispose();
+    _shipping.dispose();
+    _extra.dispose();
+    _marketAvg.dispose();
+    _expectedPrice.dispose();
+    _actualPrice.dispose();
+    _notes.dispose();
+    super.dispose();
   }
 
   double _parse(String val) => double.tryParse(val.replaceAll(',', '.')) ?? 0;
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: source, imageQuality: 80);
+      
+      if (pickedFile != null && mounted) {
+        setState(() {
+          _imagePaths.add(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking image: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _imagePaths.removeAt(index);
+    });
+  }
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
@@ -4474,6 +4824,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
       type: _type,
       theme: _theme.text.trim().isEmpty ? null : _theme.text.trim(),
       setId: _setId.text.trim().isEmpty ? null : _setId.text.trim(),
+      notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       condition: widget.item?.condition ?? ItemCondition.newSealed,
       completeness: widget.item?.completeness ?? ItemCompleteness.complete,
       ownershipType: widget.item?.ownershipType ?? OwnershipType.resale,
@@ -4489,6 +4840,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
       saleDate: _status == ItemStatus.sold ? (widget.item?.saleDate ?? DateTime.now()) : null,
       isTracked: true,
       quantity: 1,
+      imagePaths: _imagePaths,
     );
 
     ref.read(inventoryEngineProvider.notifier).saveItem(newItem);
@@ -4499,52 +4851,158 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.item == null ? 'Add Item' : 'Edit Item', style: const TextStyle(fontWeight: FontWeight.w900))),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(16),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    const Text('Photos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 100,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          _buildImageActionButton(
+                            icon: Icons.camera_alt,
+                            label: 'Camera',
+                            color: Colors.blueAccent,
+                            onTap: () => _pickImage(ImageSource.camera),
+                          ),
+                          const SizedBox(width: 12),
+                          _buildImageActionButton(
+                            icon: Icons.photo_library,
+                            label: 'Gallery',
+                            color: Colors.greenAccent,
+                            onTap: () => _pickImage(ImageSource.gallery),
+                          ),
+                          const SizedBox(width: 12),
+                          ..._imagePaths.asMap().entries.map((e) {
+                            return Stack(
+                              children: [
+                                Container(
+                                  width: 100,
+                                  margin: const EdgeInsets.only(right: 12),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.white24),
+                                    image: DecorationImage(
+                                      image: kIsWeb 
+                                          ? NetworkImage(e.value) as ImageProvider 
+                                          : FileImage(File(e.value)),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 4,
+                                  right: 16,
+                                  child: GestureDetector(
+                                    onTap: () => _removeImage(e.key),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
+                                      child: const Icon(Icons.close, size: 16, color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    TextFormField(
+                      controller: _title, 
+                      decoration: const InputDecoration(labelText: 'Title *'), 
+                      validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: _buildDropdown<ItemType>('Type', _type, ItemType.values, (v) => setState(() => _type = v!))),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildDropdown<ItemStatus>('Status', _status, ItemStatus.values, (v) => setState(() => _status = v!))),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(child: TextFormField(controller: _theme, decoration: const InputDecoration(labelText: 'Theme'))),
+                        const SizedBox(width: 16),
+                        Expanded(child: TextFormField(controller: _setId, decoration: const InputDecoration(labelText: 'Set ID'))),
+                      ],
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Divider(height: 1, color: Colors.white10),
+                    ),
+                    Row(
+                      children: [
+                        Expanded(child: _buildNumField('Purchase Price', _purchasePrice)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildNumField('Shipping', _shipping)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildNumField('Extra', _extra)),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(child: _buildNumField('Market Avg', _marketAvg)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildNumField('Expected Sale', _expectedPrice)),
+                      ],
+                    ),
+                    if (_status == ItemStatus.sold) _buildNumField('Actual Sale Price', _actualPrice),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _notes, 
+                      maxLines: 4, 
+                      decoration: const InputDecoration(labelText: 'Notes', alignLabelWithHint: true)
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54), 
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+                  ),
+                  onPressed: _save,
+                  child: const Text('Save Item', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageActionButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3), style: BorderStyle.solid),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TextFormField(controller: _title, decoration: const InputDecoration(labelText: 'Title *'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: _buildDropdown<ItemType>('Type', _type, ItemType.values, (v) => setState(() => _type = v!))),
-                const SizedBox(width: 12),
-                Expanded(child: _buildDropdown<ItemStatus>('Status', _status, ItemStatus.values, (v) => setState(() => _status = v!))),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(child: TextFormField(controller: _theme, decoration: const InputDecoration(labelText: 'Theme'))),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _setId, decoration: const InputDecoration(labelText: 'Set ID'))),
-              ],
-            ),
-            const Divider(height: 32, color: Colors.white10),
-            Row(
-              children: [
-                Expanded(child: _buildNumField('Purchase Price', _purchasePrice)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildNumField('Shipping', _shipping)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildNumField('Extra', _extra)),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(child: _buildNumField('Market Avg', _marketAvg)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildNumField('Expected Sale', _expectedPrice)),
-              ],
-            ),
-            if (_status == ItemStatus.sold) _buildNumField('Actual Sale Price', _actualPrice),
-            const SizedBox(height: 24),
-            FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-              onPressed: _save,
-              child: const Text('Save Item', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
+            Text(label, style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -4553,14 +5011,18 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
 
   Widget _buildNumField(String label, TextEditingController c) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(controller: c, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: label)),
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: c, 
+        keyboardType: const TextInputType.numberWithOptions(decimal: true), 
+        decoration: InputDecoration(labelText: label)
+      ),
     );
   }
 
   Widget _buildDropdown<T>(String label, T val, List<T> values, void Function(T?) onChanged) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<T>(
         value: val,
         decoration: InputDecoration(labelText: label),
@@ -4608,7 +5070,6 @@ class ItemDetailsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // FIX: Added overflow handling for long titles in Details
                 Text(item.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900), maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 8),
                 Wrap(
@@ -4684,7 +5145,6 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-      // FIX: Ensure badge text doesn't cause overflow
       child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
@@ -4705,10 +5165,8 @@ class _InsightCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // FIX: Add Flexible and overflow to labels in InsightCard
           Flexible(child: Text(title, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
           const SizedBox(height: 4),
-          // FIX: Handle potential overflow in long values
           Flexible(child: Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis)),
         ],
       ),
@@ -4726,7 +5184,6 @@ class _InfoRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // FIX: Added Flexible for long labels in details InfoRow
         Flexible(child: Text(label, style: const TextStyle(color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis)),
         const SizedBox(width: 8),
         Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -5550,6 +6007,118 @@ class PurchasesScreen extends ConsumerWidget {
   }
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\purchases\presentation\purchase_form_screen.dart =====
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/enums/purchase_payment_method.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/data/models/app_models.dart';
+import 'package:lego_trading_manager/features/purchases/application/purchases_engine.dart';
+
+class PurchaseFormScreen extends ConsumerStatefulWidget {
+  final PurchaseModel? purchase;
+  const PurchaseFormScreen({super.key, this.purchase});
+
+  @override
+  ConsumerState<PurchaseFormScreen> createState() => _PurchaseFormScreenState();
+}
+
+class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _itemId, _source, _price, _shipping, _extra;
+  PurchasePaymentMethod _paymentMethod = PurchasePaymentMethod.card;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.purchase;
+    _itemId = TextEditingController(text: p?.itemId ?? '');
+    _source = TextEditingController(text: p?.source ?? '');
+    _price = TextEditingController(text: p?.purchasePrice.toString() ?? '');
+    _shipping = TextEditingController(text: p?.shippingCost.toString() ?? '0');
+    _extra = TextEditingController(text: p?.additionalCosts.toString() ?? '0');
+    if (p != null) _paymentMethod = p.paymentMethod;
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    
+    final price = double.tryParse(_price.text.replaceAll(',', '.')) ?? 0;
+    final ship = double.tryParse(_shipping.text.replaceAll(',', '.')) ?? 0;
+    final extra = double.tryParse(_extra.text.replaceAll(',', '.')) ?? 0;
+
+    final newPurchase = PurchaseModel(
+      id: widget.purchase?.id ?? AppUtils.generateId(),
+      itemId: _itemId.text.trim(),
+      source: _source.text.trim(),
+      purchasePrice: price,
+      shippingCost: ship,
+      additionalCosts: extra,
+      finalTotal: price + ship + extra,
+      exchangeRate: 1.0,
+      currency: 'UAH',
+      paymentMethod: _paymentMethod,
+      purchaseDate: widget.purchase?.purchaseDate ?? DateTime.now(),
+      quantity: 1,
+      soldQuantity: 0,
+    );
+
+    ref.read(purchasesEngineProvider.notifier).savePurchase(newPurchase);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.purchase == null ? 'Add Purchase' : 'Edit Purchase', style: const TextStyle(fontWeight: FontWeight.w900))),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          physics: const BouncingScrollPhysics(),
+          children: [
+            TextFormField(
+              controller: _source,
+              decoration: const InputDecoration(labelText: 'Source (e.g. OLX, eBay) *'),
+              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _itemId,
+              decoration: const InputDecoration(labelText: 'Item ID / Title *'),
+              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: TextFormField(controller: _price, decoration: const InputDecoration(labelText: 'Price'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(controller: _shipping, decoration: const InputDecoration(labelText: 'Shipping'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextFormField(controller: _extra, decoration: const InputDecoration(labelText: 'Extra Costs'), keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<PurchasePaymentMethod>(
+              value: _paymentMethod,
+              decoration: const InputDecoration(labelText: 'Payment Method'),
+              items: PurchasePaymentMethod.values.map((e) => DropdownMenuItem(value: e, child: Text(e.name.toUpperCase()))).toList(),
+              onChanged: (v) => setState(() => _paymentMethod = v!),
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+              onPressed: _save,
+              child: const Text('Save Purchase', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\sales\application\sales_engine.dart =====
 
 import 'dart:async';
@@ -5719,6 +6288,114 @@ class SalesScreen extends ConsumerWidget {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\sales\presentation\sale_form_screen.dart =====
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/data/models/app_models.dart';
+import 'package:lego_trading_manager/features/sales/application/sales_engine.dart';
+
+class SaleFormScreen extends ConsumerStatefulWidget {
+  final SaleModel? sale;
+  const SaleFormScreen({super.key, this.sale});
+
+  @override
+  ConsumerState<SaleFormScreen> createState() => _SaleFormScreenState();
+}
+
+class _SaleFormScreenState extends ConsumerState<SaleFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _itemId, _platform, _price, _fee, _shippingMe, _shippingBuyer;
+
+  @override
+  void initState() {
+    super.initState();
+    final s = widget.sale;
+    _itemId = TextEditingController(text: s?.itemId ?? '');
+    _platform = TextEditingController(text: s?.platform ?? '');
+    _price = TextEditingController(text: s?.salePrice.toString() ?? '');
+    _fee = TextEditingController(text: s?.platformFee.toString() ?? '0');
+    _shippingMe = TextEditingController(text: s?.shippingPaidByMe.toString() ?? '0');
+    _shippingBuyer = TextEditingController(text: s?.shippingPaidByBuyer.toString() ?? '0');
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    
+    final price = double.tryParse(_price.text.replaceAll(',', '.')) ?? 0;
+    final fee = double.tryParse(_fee.text.replaceAll(',', '.')) ?? 0;
+    final shipMe = double.tryParse(_shippingMe.text.replaceAll(',', '.')) ?? 0;
+    final shipBuyer = double.tryParse(_shippingBuyer.text.replaceAll(',', '.')) ?? 0;
+
+    final newSale = SaleModel(
+      id: widget.sale?.id ?? AppUtils.generateId(),
+      itemId: _itemId.text.trim(),
+      platform: _platform.text.trim(),
+      salePrice: price,
+      platformFee: fee,
+      shippingPaidByMe: shipMe,
+      shippingPaidByBuyer: shipBuyer,
+      finalNet: price - fee - shipMe,
+      currency: 'UAH',
+      saleDate: widget.sale?.saleDate ?? DateTime.now(),
+      quantity: 1,
+    );
+
+    ref.read(salesEngineProvider.notifier).saveSale(newSale);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.sale == null ? 'Add Sale' : 'Edit Sale', style: const TextStyle(fontWeight: FontWeight.w900))),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          physics: const BouncingScrollPhysics(),
+          children: [
+            TextFormField(
+              controller: _platform,
+              decoration: const InputDecoration(labelText: 'Platform (e.g. OLX, eBay) *'),
+              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _itemId,
+              decoration: const InputDecoration(labelText: 'Item ID / Title *'),
+              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: TextFormField(controller: _price, decoration: const InputDecoration(labelText: 'Sale Price'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(controller: _fee, decoration: const InputDecoration(labelText: 'Platform Fee'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: TextFormField(controller: _shippingMe, decoration: const InputDecoration(labelText: 'Shipping (Paid by Me)'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(controller: _shippingBuyer, decoration: const InputDecoration(labelText: 'Shipping (Paid by Buyer)'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+              ],
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+              onPressed: _save,
+              child: const Text('Save Sale', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -6037,6 +6714,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/features/settings/application/system_tools_engine.dart';
+import 'package:lego_trading_manager/app/providers/core_providers.dart';
+import 'package:lego_trading_manager/core/enums/currency_code.dart';
+
+// Р“Р»РѕР±Р°Р»СЊРЅРёР№ РїСЂРѕРІР°Р№РґРµСЂ РґР»СЏ Р·Р±РµСЂРµР¶РµРЅРЅСЏ С‚Р° СЂРµР°РєС‚РёРІРЅРѕРіРѕ РѕРЅРѕРІР»РµРЅРЅСЏ Р±Р°Р·РѕРІРѕС— РІР°Р»СЋС‚Рё СЃРёСЃС‚РµРјРё
+final baseCurrencyProvider = StateProvider<String>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getString('settings.base_currency') ?? 'UAH';
+});
 
 class SettingsHubScreen extends ConsumerStatefulWidget {
   const SettingsHubScreen({super.key});
@@ -6055,6 +6740,7 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
   @override
   Widget build(BuildContext context) {
     final engine = ref.read(systemToolsEngineProvider.notifier);
+    final currentCurrency = ref.watch(baseCurrencyProvider);
 
     ref.listen(systemToolsEngineProvider, (_, next) {
       if (next.value?.lastMessage != null) _showMsg(next.value!.lastMessage!);
@@ -6067,6 +6753,60 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
+          // CURRENCY SWITCHER SECTION (STAGE 3)
+          Card(
+            color: const Color(0xFF171A21),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.amber.withValues(alpha: 0.3)), // Р’РРџР РђР’Р›Р•РќРћ РўРЈРў
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.currency_exchange, color: Colors.amberAccent),
+                      SizedBox(width: 8),
+                      Text('Global System Currency', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amberAccent)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Select the primary currency for Arcturus operations. Financial metrics, open profits, and automated valuation models will dynamically convert into this unit.',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: currentCurrency,
+                    decoration: InputDecoration(
+                      labelText: 'Base Operations Currency',
+                      filled: true,
+                      fillColor: Colors.black12,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                    items: CurrencyCode.values.map((c) {
+                      return DropdownMenuItem<String>(
+                        value: c.code,
+                        child: Text('${c.code} - ${c.label}'),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        ref.read(sharedPreferencesProvider).setString('settings.base_currency', val);
+                        ref.read(baseCurrencyProvider.notifier).state = val;
+                        _showMsg('System base currency updated to $val');
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // BACKUP SECTION
           _buildCard(
             'Backup & Export',
             'Export entire system state to clipboard JSON.',
@@ -6081,6 +6821,8 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
             },
           ),
           const SizedBox(height: 16),
+
+          // RESTORE SECTION
           Card(
             color: const Color(0xFF171A21),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -6114,6 +6856,8 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
             ),
           ),
           const SizedBox(height: 16),
+
+          // WIPE DATA SECTION
           _buildCard(
             'Danger Zone',
             'Clear all local storages. Irreversible action.',

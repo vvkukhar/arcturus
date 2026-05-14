@@ -58,15 +58,39 @@ class NetworkCore {
           return jsonDecode(res.body);
         }
         
-        if (res.statusCode == 401 || res.statusCode == 403) throw Exception('UNAUTHORIZED');
+        if (res.statusCode == 401 || res.statusCode == 403) {
+           throw Exception('API_ERROR: Unauthorized access');
+        }
         
-        // Викидаємо помилку з деталями від бекенду
-        final errorBody = jsonDecode(res.body);
-        throw Exception(errorBody['message'] ?? 'API_ERROR_${res.statusCode}');
+        // Витягуємо точну помилку з бекенду
+        String errorMessage = 'Status ${res.statusCode}';
+        try {
+          final errorBody = jsonDecode(res.body);
+          if (errorBody['message'] is List) {
+             errorMessage = (errorBody['message'] as List).join(', '); // Для помилок валідації DTO
+          } else {
+             errorMessage = errorBody['message'] ?? errorBody['error'] ?? errorMessage;
+          }
+        } catch (_) {
+          errorMessage = res.body; 
+        }
+        
+        // Додаємо маркер API_ERROR, щоб не ретраїти логічні помилки
+        throw Exception('API_ERROR: $errorMessage');
         
       } catch (e) {
-        if (e.toString().contains('UNAUTHORIZED') || e.toString().contains('API_ERROR')) rethrow;
-        if (i == retries) throw Exception('NETWORK_FAILURE');
+        final errStr = e.toString();
+        
+        // Якщо це помилка від бекенду (400, 404, 500) - ми НЕ робимо ретрай, а віддаємо її UI
+        if (errStr.contains('API_ERROR:')) {
+          throw Exception(errStr.split('API_ERROR: ').last);
+        }
+        
+        // Якщо всі спроби вичерпано (справжній збій мережі)
+        if (i == retries) {
+          throw Exception('NETWORK_FAILURE: Check connection or CORS. ($errStr)');
+        }
+        
         await Future.delayed(Duration(milliseconds: 500 * (1 << i)));
       }
     }
