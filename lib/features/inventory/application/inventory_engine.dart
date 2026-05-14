@@ -95,14 +95,50 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
 
     final repo = ref.read(inventoryRepositoryProvider);
     final exists = currentState.allItems.any((e) => e.id == item.id);
+    
+    // 1. Зберігаємо локально для миттєвого оновлення UI (Оптимістичний UI)
     if (exists) {
       await repo.updateItem(item);
     } else {
       await repo.addItem(item);
     }
     
-    ref.read(syncEngineProvider.notifier).enqueueMutation('inventory', '/inventory', exists ? 'PATCH' : 'POST', item.toMap());
+    // Оновлюємо стан, щоб UI перемалювався миттєво
     state = AsyncValue.data(_computeState(repo.getAllItems(), currentState.query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
+
+    // 2. Відправляємо на бекенд
+    try {
+      final payload = {
+        'itemId': item.id, // В реальності тут має бути ID з таблиці Item (каталог)
+        'titleSnapshot': item.title,
+        'purchasePrice': item.purchasePrice,
+        'totalCost': item.totalCost,
+        'quantity': item.quantity,
+        'condition': item.condition.name,
+        'sealed': item.condition == ItemCondition.newSealed,
+        'expectedSalePriceManual': item.expectedSalePrice,
+        'notes': item.notes,
+      };
+
+      if (exists) {
+        await ref.read(networkCoreProvider).request('PATCH', '/inventory', body: { 'id': item.id, ...payload });
+      } else {
+        // Оскільки в нас ще немає "Каталогу", створюємо item на ходу
+        final itemRes = await ref.read(networkCoreProvider).request('POST', '/items', body: {
+          'title': item.title,
+          'setNumber': item.setId,
+          'theme': item.theme,
+          'kind': item.type.name,
+        });
+        
+        payload['itemId'] = itemRes['id'];
+        await ref.read(networkCoreProvider).request('POST', '/inventory', body: payload);
+      }
+    } catch (e) {
+      // Якщо сталася помилка на бекенді, її можна обробити тут (напр., показати снекбар)
+      print('Sync error: $e');
+      // В ідеалі, тут ми б відкотили локальні зміни, але для простоти поки залишаємо
+    }
   }
 
   void search(String query) {

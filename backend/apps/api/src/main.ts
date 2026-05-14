@@ -73,14 +73,16 @@ async function bootstrap() {
   
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
 
-  // ВИПРАВЛЕНО: Передаємо app в адаптер, щоб він міг дістати RedisService
   const redisIoAdapter = new RedisIoAdapter(app);
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);
 
   app.enableShutdownHooks();
 
-  const port = process.env.PORT || 4000;
+  // ВАЖЛИВО: На Render порт передається через process.env.PORT (наприклад, 10000). 
+  // Ми повинні слухати саме його, інакше Health Check фейлиться.
+  const port = process.env.PORT || process.env.RENDER_PORT || 4000;
   await app.listen(port, '0.0.0.0');
+  console.log(`[Arcturus] API successfully started and listening on port ${port}`);
 }
 bootstrap();

@@ -59,9 +59,13 @@ class NetworkCore {
         }
         
         if (res.statusCode == 401 || res.statusCode == 403) throw Exception('UNAUTHORIZED');
-        throw Exception('API_ERROR_${res.statusCode}');
+        
+        // Викидаємо помилку з деталями від бекенду
+        final errorBody = jsonDecode(res.body);
+        throw Exception(errorBody['message'] ?? 'API_ERROR_${res.statusCode}');
+        
       } catch (e) {
-        if (e.toString().contains('UNAUTHORIZED')) rethrow;
+        if (e.toString().contains('UNAUTHORIZED') || e.toString().contains('API_ERROR')) rethrow;
         if (i == retries) throw Exception('NETWORK_FAILURE');
         await Future.delayed(Duration(milliseconds: 500 * (1 << i)));
       }
