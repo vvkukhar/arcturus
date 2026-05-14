@@ -1,44 +1,53 @@
-import { Injectable } from '@nestjs/common';
-import { Queue, type ConnectionOptions } from 'bullmq';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Queue } from 'bullmq';
+import Redis from 'ioredis';
 import { QUEUE_NAMES, JOB_NAMES } from './queue.constants';
 
-function redisConnection(): ConnectionOptions {
+function createSharedRedisClient(): Redis {
   const redisUrl = process.env.REDIS_URL?.trim();
+  const options = { maxRetriesPerRequest: null, enableReadyCheck: false };
 
   if (redisUrl) {
-    return {
-      url: redisUrl,
-      maxRetriesPerRequest: null,
-    };
+    return new Redis(redisUrl, options);
   }
 
-  return {
+  return new Redis({
     host: process.env.REDIS_HOST || '127.0.0.1',
     port: Number(process.env.REDIS_PORT || 6379),
     password: process.env.REDIS_PASSWORD || undefined,
-    maxRetriesPerRequest: null,
-  };
+    ...options,
+  });
 }
 
 @Injectable()
-export class QueueService {
-  private readonly connection = redisConnection();
+export class QueueService implements OnModuleDestroy {
+  private readonly redisClient = createSharedRedisClient();
 
   private readonly marketQueue = new Queue(QUEUE_NAMES.MARKET, {
-    connection: this.connection,
+    connection: this.redisClient,
   });
 
   private readonly decisionsQueue = new Queue(QUEUE_NAMES.DECISIONS, {
-    connection: this.connection,
+    connection: this.redisClient,
   });
 
   private readonly scraperQueue = new Queue(QUEUE_NAMES.SCRAPER, {
-    connection: this.connection,
+    connection: this.redisClient,
   });
 
   private readonly maintenanceQueue = new Queue(QUEUE_NAMES.MAINTENANCE, {
-    connection: this.connection,
+    connection: this.redisClient,
   });
+
+  async onModuleDestroy() {
+    await Promise.all([
+      this.marketQueue.close(),
+      this.decisionsQueue.close(),
+      this.scraperQueue.close(),
+      this.maintenanceQueue.close(),
+    ]);
+    await this.redisClient.quit();
+  }
 
   async enqueueMarketSnapshots(): Promise<unknown> {
     return this.marketQueue.add(JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS, {}, { removeOnComplete: 100, removeOnFail: 500 });

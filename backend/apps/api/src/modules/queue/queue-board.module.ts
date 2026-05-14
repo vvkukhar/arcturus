@@ -3,6 +3,7 @@ import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 import { Queue } from 'bullmq';
+import Redis from 'ioredis';
 import { QUEUE_NAMES } from './queue.constants';
 import { NextFunction, Request, Response } from 'express';
 
@@ -13,17 +14,19 @@ export class QueueBoardModule implements NestModule {
     serverAdapter.setBasePath('/api/admin/queues');
 
     const redisUrl = process.env.REDIS_URL?.trim();
-    const redisOptions = redisUrl 
-      ? { url: redisUrl, maxRetriesPerRequest: null } 
-      : {
+    const options = { maxRetriesPerRequest: null, enableReadyCheck: false };
+    
+    const connection = redisUrl 
+      ? new Redis(redisUrl, options) 
+      : new Redis({
           host: process.env.REDIS_HOST || '127.0.0.1',
           port: Number(process.env.REDIS_PORT || 6379),
           password: process.env.REDIS_PASSWORD || undefined,
-          maxRetriesPerRequest: null
-        };
+          ...options,
+        });
 
     const queues = Object.values(QUEUE_NAMES).map(
-      (name) => new BullMQAdapter(new Queue(name, { connection: redisOptions })) as any
+      (name) => new BullMQAdapter(new Queue(name, { connection })) as any
     );
 
     createBullBoard({

@@ -73,6 +73,7 @@ async function bootstrap() {
   
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
 
+  // ВИПРАВЛЕНО: Передаємо app в адаптер, щоб він міг дістати RedisService
   const redisIoAdapter = new RedisIoAdapter(app);
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);

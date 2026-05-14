@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import Redis from 'ioredis';
 import { AuthModule } from '../auth/auth.module';
 import { DecisionsModule } from '../decisions/decisions.module';
 import { MarketModule } from '../market/market.module';
@@ -23,16 +24,16 @@ import { QUEUE_NAMES } from '../queue/queue.constants';
     BullModule.forRootAsync({
       useFactory: () => {
         const redisUrl = process.env.REDIS_URL?.trim();
-        return {
-          connection: redisUrl
-            ? { url: redisUrl, maxRetriesPerRequest: null }
-            : {
-                host: process.env.REDIS_HOST || '127.0.0.1',
-                port: Number(process.env.REDIS_PORT || 6379),
-                password: process.env.REDIS_PASSWORD || undefined,
-                maxRetriesPerRequest: null,
-              },
-        };
+        const options = { maxRetriesPerRequest: null, enableReadyCheck: false };
+        const connection = redisUrl
+          ? new Redis(redisUrl, options)
+          : new Redis({
+              host: process.env.REDIS_HOST || '127.0.0.1',
+              port: Number(process.env.REDIS_PORT || 6379),
+              password: process.env.REDIS_PASSWORD || undefined,
+              ...options,
+            });
+        return { connection };
       },
     }),
     BullModule.registerQueue({
