@@ -46,14 +46,29 @@ async function bootstrap() {
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
-  const corsOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [];
+  // ВИПРАВЛЕНА ЛОГІКА CORS
+  const corsOriginsStr = process.env.CORS_ORIGINS || '';
+  const corsOrigins = corsOriginsStr ? corsOriginsStr.split(',').map(o => o.trim()) : [];
+  
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || corsOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
+      // Дозволяємо запити без origin (наприклад, з мобільних додатків або Postman)
+      if (!origin) {
+        return callback(null, true);
       }
+      
+      // Дозволяємо будь-який локалхост для зручності розробки Flutter Web
+      if (origin.startsWith('http://localhost:')) {
+        return callback(null, true);
+      }
+      
+      // Перевіряємо за списком з .env
+      if (corsOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // Якщо нічого не підійшло - блокуємо
+      callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
@@ -79,8 +94,6 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  // ВАЖЛИВО: На Render порт передається через process.env.PORT (наприклад, 10000). 
-  // Ми повинні слухати саме його, інакше Health Check фейлиться.
   const port = process.env.PORT || process.env.RENDER_PORT || 4000;
   await app.listen(port, '0.0.0.0');
   console.log(`[Arcturus] API successfully started and listening on port ${port}`);

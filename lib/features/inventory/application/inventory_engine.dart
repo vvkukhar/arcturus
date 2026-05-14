@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
+import 'package:lego_trading_manager/core/enums/item_condition.dart'; // ДОДАНО ІМПОРТ
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
@@ -109,13 +110,13 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
     // 2. Відправляємо на бекенд
     try {
       final payload = {
-        'itemId': item.id, // В реальності тут має бути ID з таблиці Item (каталог)
+        'itemId': item.id,
         'titleSnapshot': item.title,
         'purchasePrice': item.purchasePrice,
         'totalCost': item.totalCost,
         'quantity': item.quantity,
         'condition': item.condition.name,
-        'sealed': item.condition == ItemCondition.newSealed,
+        'sealed': item.condition == ItemCondition.newSealed, // Тепер enum доступний
         'expectedSalePriceManual': item.expectedSalePrice,
         'notes': item.notes,
       };
@@ -135,9 +136,7 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
         await ref.read(networkCoreProvider).request('POST', '/inventory', body: payload);
       }
     } catch (e) {
-      // Якщо сталася помилка на бекенді, її можна обробити тут (напр., показати снекбар)
       print('Sync error: $e');
-      // В ідеалі, тут ми б відкотили локальні зміни, але для простоти поки залишаємо
     }
   }
 
