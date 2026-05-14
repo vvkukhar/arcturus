@@ -3,7 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { AuthModule } from '../auth/auth.module';
 import { DecisionsModule } from '../decisions/decisions.module';
 import { MarketModule } from '../market/market.module';
-import { RealtimeModule } from '../realtime/realtime.gateway';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RedisModule } from '../redis/redis.module';
 import { SyncController } from './sync.controller';

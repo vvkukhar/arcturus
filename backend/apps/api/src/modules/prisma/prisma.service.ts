@@ -11,7 +11,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     return this.$extends({
       query: {
         $allModels: {
-          async $allOperations({ model, operation, args, query }) {
+          async $allOperations({ model, operation, args, query }: any) {
             const softDeleteModels = ['Sale', 'Order', 'ReturnRequest', 'Expense'];
             if (
               softDeleteModels.includes(model) && 

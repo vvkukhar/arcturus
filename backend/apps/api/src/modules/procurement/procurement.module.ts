@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { RealtimeModule } from '../realtime/realtime.gateway';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { MarketModule } from '../market/market.module';
 import { ProcurementController } from './procurement.controller';

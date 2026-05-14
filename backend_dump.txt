@@ -284,6 +284,54 @@ RUN npm run build:all
 
 CMD ["sh", "-c", "node $(find . -type f -name main.js -not -path '*/node_modules/*' | grep api | grep dist | head -n 1)"]
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\ecosystem.config.js =====
+
+module.exports = {
+  apps: [
+    {
+      name: 'arcturus-api',
+      script: './apps/api/dist/src/main.js',
+      instances: 'max',
+      exec_mode: 'cluster',
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 4000,
+      },
+      node_args: '--max-old-space-size=2048',
+      exp_backoff_restart_delay: 100,
+      merge_logs: true,
+    },
+    {
+      name: 'arcturus-workers',
+      script: './apps/workers/dist/main.js',
+      instances: process.env.WORKER_CONCURRENCY || 2,
+      exec_mode: 'cluster',
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+      },
+      merge_logs: true,
+    },
+    {
+      name: 'arcturus-scrapers',
+      script: './apps/scrapers/dist/scraper-loop.js',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '2G',
+      env: {
+        NODE_ENV: 'production',
+      },
+    },
+  ],
+};
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\Makefile =====
 
 up:
@@ -3237,7 +3285,7 @@ export class AppModule {}
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\main.ts =====
 
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 import * as Sentry from '@sentry/nestjs';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import helmet from 'helmet';
@@ -3245,49 +3293,77 @@ import compression from 'compression';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './modules/realtime/redis-io.adapter';
 import { GlobalHttpExceptionFilter } from './common/http-exception.filter';
+import { json, urlencoded } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['error', 'warn', 'log', 'debug'],
+    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn', 'log'] : ['error', 'warn', 'log', 'debug', 'verbose'],
+    bufferLogs: true,
   });
 
   if (process.env.SENTRY_DSN) {
     Sentry.init({
       dsn: process.env.SENTRY_DSN,
       integrations: [nodeProfilingIntegration()],
-      tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
-      profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+      tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
+      profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
+      environment: process.env.NODE_ENV,
     });
   }
+
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
+  });
 
   app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+    dnsPrefetchControl: { allow: false },
+    frameguard: { action: 'deny' },
+    hidePoweredBy: true,
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+    ieNoOpen: true,
+    noSniff: true,
+    xssFilter: true,
   }));
-  app.use(compression());
+  
+  app.use(compression({ level: 6, threshold: 256 }));
+  app.use(json({ limit: '10mb' }));
+  app.use(urlencoded({ extended: true, limit: '10mb' }));
 
   const corsOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [];
-  if (corsOrigins.length > 0) {
-    app.enableCors({
-      origin: corsOrigins,
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
-    });
-  }
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin || corsOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['X-Total-Count', 'Content-Disposition'],
+    maxAge: 86400,
+  });
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ 
     whitelist: true, 
     transform: true, 
     forbidNonWhitelisted: true,
-    transformOptions: { enableImplicitConversion: true }
+    transformOptions: { enableImplicitConversion: true },
+    disableErrorMessages: process.env.NODE_ENV === 'production',
   }));
+  
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
 
   const redisIoAdapter = new RedisIoAdapter(app);
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);
+
+  app.enableShutdownHooks();
 
   const port = process.env.PORT || 4000;
   await app.listen(port, '0.0.0.0');
@@ -3388,39 +3464,37 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import * as Sentry from '@sentry/nestjs';
 
 @Catch()
 export class GlobalHttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(GlobalHttpExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
     const isHttpException = exception instanceof HttpException;
+    const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const status = isHttpException
-      ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+    if (!isHttpException && process.env.NODE_ENV === 'production') {
+      Sentry.captureException(exception);
+      this.logger.error(`[Unhandled Exception] ${request.method} ${request.url}`, (exception as Error).stack);
+    }
 
-    const rawResponse = isHttpException
-      ? exception.getResponse()
-      : null;
+    const rawResponse = isHttpException ? exception.getResponse() : null;
 
-    const message =
-      typeof rawResponse === 'object' &&
-      rawResponse !== null &&
-      'message' in rawResponse
+    const message = typeof rawResponse === 'object' && rawResponse !== null && 'message' in rawResponse
         ? (rawResponse as any).message
         : exception instanceof Error
           ? exception.message
           : 'Internal server error';
 
-    const error =
-      typeof rawResponse === 'object' &&
-      rawResponse !== null &&
-      'error' in rawResponse
+    const error = typeof rawResponse === 'object' && rawResponse !== null && 'error' in rawResponse
         ? (rawResponse as any).error
         : isHttpException
           ? exception.name
@@ -3430,10 +3504,10 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       ok: false,
       statusCode: status,
       error,
-      message,
+      message: process.env.NODE_ENV === 'production' && status === 500 ? 'Internal server error' : message,
       path: request.url,
-      method: request.method,
       timestamp: new Date().toISOString(),
+      traceId: request.headers['x-request-id'] || null,
     });
   }
 }
@@ -31870,15 +31944,23 @@ export function startWorkers() {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\nginx\arcturus.conf =====
 
-limit_req_zone $binary_remote_addr zone=api_limit:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=50r/s;
+limit_req_zone $binary_remote_addr zone=api_burst:10m rate=100r/s;
 limit_conn_zone $binary_remote_addr zone=addr_limit:10m;
 
+upstream arcturus_api {
+    server 127.0.0.1:4000 max_fails=3 fail_timeout=30s;
+    keepalive 32;
+}
+
 server {
-    listen 80;
+    listen 80 backlog=4096;
     server_name api.arcturus.local;
 
     client_max_body_size 50M;
-    client_body_buffer_size 128k;
+    client_body_buffer_size 256k;
+    client_header_buffer_size 1k;
+    large_client_header_buffers 4 8k;
     server_tokens off;
 
     gzip on;
@@ -31886,36 +31968,41 @@ server {
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
     gzip_min_length 256;
     gzip_proxied any;
+    gzip_vary on;
 
     add_header X-Frame-Options "DENY" always;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
 
     location /api/ {
-        limit_req zone=api_limit burst=50 nodelay;
-        limit_conn addr_limit 20;
+        limit_req zone=api_limit burst=100 nodelay;
+        limit_conn addr_limit 50;
         
-        proxy_pass http://127.0.0.1:4000/api/;
+        proxy_pass http://arcturus_api/api/;
         proxy_http_version 1.1;
+        proxy_set_header Connection "";
 
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        proxy_connect_timeout 10s;
+        proxy_connect_timeout 5s;
         proxy_read_timeout 60s;
         proxy_send_timeout 60s;
         
         proxy_buffering on;
-        proxy_buffer_size 8k;
-        proxy_buffers 8 32k;
+        proxy_buffer_size 16k;
+        proxy_buffers 16 32k;
+        proxy_busy_buffers_size 64k;
     }
 
     location /socket.io/ {
-        proxy_pass http://127.0.0.1:4000/socket.io/;
+        limit_req zone=api_burst burst=200 nodelay;
+        
+        proxy_pass http://arcturus_api/socket.io/;
         proxy_http_version 1.1;
 
         proxy_set_header Upgrade $http_upgrade;
@@ -31923,7 +32010,6 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
 
         proxy_read_timeout 86400s;
         proxy_send_timeout 86400s;
