@@ -10,7 +10,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     
     if (redisUrl) {
       this.client = new Redis(redisUrl, {
-        maxRetriesPerRequest: 3,
+        maxRetriesPerRequest: null,
         family: 0,
       });
     } else {
@@ -18,10 +18,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         host: process.env.REDIS_HOST || '127.0.0.1',
         port: Number(process.env.REDIS_PORT || 6379),
         password: process.env.REDIS_PASSWORD || undefined,
-        maxRetriesPerRequest: 3,
+        maxRetriesPerRequest: null,
         family: 0,
       });
     }
+    
+    this.client.on('error', (err) => {
+      console.error('[RedisService] Connection error:', err);
+    });
   }
 
   async onModuleInit() {}

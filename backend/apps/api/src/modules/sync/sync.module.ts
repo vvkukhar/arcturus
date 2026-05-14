@@ -20,6 +20,21 @@ import { QUEUE_NAMES } from '../queue/queue.constants';
     RealtimeModule,
     PrismaModule,
     RedisModule,
+    BullModule.forRootAsync({
+      useFactory: () => {
+        const redisUrl = process.env.REDIS_URL?.trim();
+        return {
+          connection: redisUrl
+            ? { url: redisUrl, maxRetriesPerRequest: null }
+            : {
+                host: process.env.REDIS_HOST || '127.0.0.1',
+                port: Number(process.env.REDIS_PORT || 6379),
+                password: process.env.REDIS_PASSWORD || undefined,
+                maxRetriesPerRequest: null,
+              },
+        };
+      },
+    }),
     BullModule.registerQueue({
       name: QUEUE_NAMES.SYNC,
     }),
