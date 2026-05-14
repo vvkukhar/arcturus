@@ -17,14 +17,14 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
   let lastId: string | undefined = undefined;
 
   while (hasMore) {
-    const listings = await prisma.marketListing.findMany({
+    const listings = (await prisma.marketListing.findMany({
       where: { status: 'active' },
       orderBy: { id: 'asc' },
       take: chunkSize,
       skip: lastId ? 1 : undefined,
       cursor: lastId ? { id: lastId } : undefined,
       select: { id: true, itemId: true, price: true, shippingPrice: true }
-    });
+    })) as { id: string; itemId: string; price: number; shippingPrice: number | null }[];
 
     if (listings.length === 0) {
       hasMore = false;
@@ -34,7 +34,7 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
     lastId = listings[listings.length - 1].id;
     scannedListings += listings.length;
 
-    const itemIds = Array.from(new Set(listings.map((l) => l.itemId)));
+    const itemIds: string[] = Array.from(new Set(listings.map((l: { itemId: string }) => String(l.itemId))));
     
     const watchlistItems = await prisma.watchlistItem.findMany({
       where: { itemId: { in: itemIds }, active: true },
@@ -50,7 +50,6 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
       watchlistMap.set(w.itemId, arr);
     }
 
-    const updates: any[] = [];
     const creates: any[] = [];
 
     for (const listing of listings) {
@@ -79,13 +78,18 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
 
         if (action === 'SKIP') continue;
 
-        const dealData = { buyPrice, targetSellPrice, profit, roiPercent, action, score, status: 'open', updatedAt: new Date() };
-
         creates.push({
           id: `${listing.id}_${watchlistItem.id}`,
           listingId: listing.id,
           watchlistItemId: watchlistItem.id,
-          ...dealData
+          buyPrice,
+          targetSellPrice,
+          profit,
+          roiPercent,
+          action,
+          score,
+          status: 'open',
+          updatedAt: new Date()
         });
         
         createdOrUpdated += 1;
