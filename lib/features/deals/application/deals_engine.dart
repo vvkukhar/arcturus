@@ -33,18 +33,32 @@ class DealsEngine extends AsyncNotifier<List<DealEvaluation>> {
 
   DealEvaluation evaluate({required String title, required double askingPrice, required double marketPrice}) {
     final profit = marketPrice - askingPrice;
-    final margin = askingPrice <= 0 ? 0.0 : (profit / askingPrice) * 100;
+    
+    // ФІКС: Маржа рахується від Market Price (Доходу), а не від Asking Price!
+    final margin = marketPrice <= 0 ? 0.0 : (profit / marketPrice) * 100;
+    
+    // А от для verdict ми використовуємо ROI (відношення до витрат)
+    final roi = askingPrice <= 0 ? 0.0 : (profit / askingPrice) * 100;
     
     String verdict = 'weak';
     if (profit <= 0) {
       verdict = 'avoid';
-    } else if (margin >= 40) {
+    } else if (roi >= 40) { // Оцінюємо по справжньому ROI
       verdict = 'strong buy';
-    } else if (margin >= 20) {
+    } else if (roi >= 20) {
       verdict = 'good';
     }
 
-    return DealEvaluation(id: DateTime.now().microsecondsSinceEpoch.toString(), title: title.trim().isEmpty ? 'Untitled Deal' : title.trim(), askingPrice: askingPrice, marketPrice: marketPrice, expectedProfit: profit, marginPercent: margin, verdict: verdict, createdAt: DateTime.now());
+    return DealEvaluation(
+      id: DateTime.now().microsecondsSinceEpoch.toString(), 
+      title: title.trim().isEmpty ? 'Untitled Deal' : title.trim(), 
+      askingPrice: askingPrice, 
+      marketPrice: marketPrice, 
+      expectedProfit: profit, 
+      marginPercent: margin, // Тепер тут реальна маржа
+      verdict: verdict, 
+      createdAt: DateTime.now()
+    );
   }
 
   Future<void> saveEvaluation(DealEvaluation deal) async {

@@ -101,18 +101,19 @@ class PurchasesEngine extends AsyncNotifier<PurchasesEngineState> {
     final exists = currentState.allPurchases.any((e) => e.id == purchase.id);
     
     try {
-      // ІДЕАЛЬНИЙ ПЕЙЛОАД ДЛЯ PRISMA PurchaseOrder (Без currency)
-      final payload = {
+      // ФІКС: Відправляємо тільки те, що дозволяє NestJS (без totalCost та status)
+      final payload = <String, dynamic>{
         'titleSnapshot': purchase.source, 
-        'sourceCode': purchase.source,
-        'totalCost': purchase.finalTotal,
         'quantity': purchase.quantity,
-        'status': 'planned',
-        'notes': purchase.note,
+        'plannedPrice': purchase.purchasePrice,
+        'shippingPrice': purchase.shippingCost,
       };
+      
+      if (purchase.source.trim().isNotEmpty) payload['sourceCode'] = purchase.source.trim();
+      if (purchase.note != null && purchase.note!.trim().isNotEmpty) payload['notes'] = purchase.note!.trim();
 
-      if (purchase.itemId.isNotEmpty) {
-        payload['itemId'] = purchase.itemId;
+      if (purchase.itemId.trim().isNotEmpty) {
+        payload['itemId'] = purchase.itemId.trim();
       } else {
         final itemRes = await network.request('POST', '/items', body: {
           'title': purchase.source,

@@ -3,6 +3,8 @@ import 'package:lego_trading_manager/app/router/app_router.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/item_form_screen.dart';
 import 'package:lego_trading_manager/features/purchases/presentation/purchase_form_screen.dart';
 import 'package:lego_trading_manager/features/sales/presentation/sale_form_screen.dart';
+// ФІКС: Імпорт форми Watchlist
+import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_item_form_screen.dart';
 
 class QuickAddSheet extends StatelessWidget {
   const QuickAddSheet({super.key});
@@ -36,6 +38,11 @@ class QuickAddSheet extends StatelessWidget {
               _Tile('Add Sale', Icons.sell_outlined, () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const SaleFormScreen()));
+              }),
+              // ФІКС: Кнопка для створення цілі у Watchlist
+              _Tile('Add Watchlist Target', Icons.visibility_outlined, () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const WatchlistItemFormScreen()));
               }),
               _Tile('Deal Evaluator', Icons.local_fire_department_outlined, () {
                 Navigator.pop(context);

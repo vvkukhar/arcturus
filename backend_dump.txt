@@ -533,6 +533,10 @@ start "SCRAPERS" powershell -NoExit -Command "npm run dev:scrapers"
     "js/ts.tsdk.path": "node_modules\\typescript\\lib"
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\api\backend_dump.txt =====
+
+v
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\.dockerignore =====
 
 node_modules
@@ -1086,6 +1090,10 @@ services:
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\start-all.sh =====
 
 #!/bin/sh
+echo "Deploying database schema..."
+cd /app/packages/db && npx prisma db push --accept-data-loss
+
+echo "Starting API and Workers..."
 cd /app/apps/api && node dist/src/main.js &
 cd /app/apps/workers && node dist/main.js &
 wait
@@ -3455,16 +3463,8 @@ export function isOlderThan(date: Date | null | undefined, hours: number): boole
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\common\http-exception.filter.ts =====
 
-import {
-  ArgumentsHost,
-  Catch,
-  ExceptionFilter,
-  HttpException,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
-import * as Sentry from '@sentry/nestjs';
 
 @Catch()
 export class GlobalHttpExceptionFilter implements ExceptionFilter {
@@ -3475,37 +3475,35 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const isHttpException = exception instanceof HttpException;
-    const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    if (!isHttpException && process.env.NODE_ENV === 'production') {
-      Sentry.captureException(exception);
-      this.logger.error(`[Unhandled Exception] ${request.method} ${request.url}`, (exception as Error).stack);
+    let message = 'Internal server error';
+    let error = 'InternalServerError';
+
+    if (exception instanceof HttpException) {
+      const res = exception.getResponse();
+      if (typeof res === 'object' && res !== null) {
+        message = (res as any).message || message;
+        error = (res as any).error || error;
+      } else {
+        message = res as string;
+      }
+    } else if (exception instanceof Error) {
+      message = exception.message;
+      this.logger.error(`[Unhandled Exception] ${request.method} ${request.url}`, exception.stack);
+    } else {
+      message = String(exception);
+      this.logger.error(`[Unhandled Exception] ${request.method} ${request.url}`, String(exception));
     }
 
-    const rawResponse = isHttpException ? exception.getResponse() : null;
-
-    const message = typeof rawResponse === 'object' && rawResponse !== null && 'message' in rawResponse
-        ? (rawResponse as any).message
-        : exception instanceof Error
-          ? exception.message
-          : 'Internal server error';
-
-    const error = typeof rawResponse === 'object' && rawResponse !== null && 'error' in rawResponse
-        ? (rawResponse as any).error
-        : isHttpException
-          ? exception.name
-          : 'InternalServerError';
-
+    // Р—Р°РІР¶РґРё РїРѕРІРµСЂС‚Р°С”РјРѕ С‡С–С‚РєРёР№ JSON
     response.status(status).json({
       ok: false,
       statusCode: status,
       error,
-      // Р¤Р†РљРЎ: Р‘С–Р»СЊС€Рµ РЅРµ С…РѕРІР°С”РјРѕ СЂРµР°Р»СЊРЅСѓ РїРѕРјРёР»РєСѓ РїС–Рґ РЅР°РїРёСЃРѕРј "Internal server error"
-      message: message, 
+      message,
       path: request.url,
       timestamp: new Date().toISOString(),
-      traceId: request.headers['x-request-id'] || null,
     });
   }
 }
@@ -20603,8 +20601,7 @@ import * as crypto from 'crypto';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
-    credentials: true,
+    origin: '*', // Р¤Р†РљРЎ: Р’С–РґРєСЂРёРІР°С”РјРѕ РґР»СЏ РІСЃС–С…, СЏРє С– РІ main.ts
   },
   transports: ['websocket', 'polling'],
 })
@@ -20648,47 +20645,61 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     client.leave('admin_broadcast');
   }
 
+  // Р¤Р†РљРЎ: Р”РѕРґР°РЅРѕ "if (!this.server) return;" СѓСЃСЋРґРё. 
+  // РўРµРїРµСЂ, СЏРєС‰Рѕ СЃРѕРєРµС‚Рё РІС–РґРІР°Р»СЏС‚СЊСЃСЏ, С†Рµ РќР• Р·Р»Р°РјР°С” СЃС‚РІРѕСЂРµРЅРЅСЏ С‚РѕРІР°СЂС–РІ!
+  
   emitCustom(event: string, payload: any) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit(event, payload);
   }
 
   emitDashboardRefresh(reason: string) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('dashboard_refresh', { reason, timestamp: Date.now() });
   }
 
   emitFlowRefresh(flow: string) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('flow_refresh', { flow, timestamp: Date.now() });
   }
 
   emitInventoryRefresh(payload: any) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('inventory_updated', { ...payload, timestamp: Date.now() });
   }
 
   emitInventoryUpdated(payload: any) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('inventory_updated', { ...payload, timestamp: Date.now() });
   }
 
   emitWatchlistUpdated(payload: any) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('watchlist_updated', { ...payload, timestamp: Date.now() });
   }
 
   emitWatchlistRefresh(payload: any) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('watchlist_updated', { ...payload, timestamp: Date.now() });
   }
 
   emitSaleRegistered(payload: any) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('sale_registered', { ...payload, timestamp: Date.now() });
   }
 
   emitOpportunityRefresh(reason: string) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('opportunity_refresh', { reason, timestamp: Date.now() });
   }
 
   emitItemRefresh(itemId: string, reason: string) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('item_refresh', { itemId, reason, timestamp: Date.now() });
   }
 
   emitListingsRefresh(payload: any) {
+    if (!this.server) return;
     this.server.emit('listings_refresh', { ...payload, timestamp: Date.now() });
   }
 }

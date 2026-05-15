@@ -79,26 +79,19 @@ class SalesEngine extends AsyncNotifier<SalesEngineState> {
     final exists = currentState.allSales.any((e) => e.id == sale.id);
     
     try {
-      // ІДЕАЛЬНИЙ ПЕЙЛОАД ДЛЯ PRISMA Sale
-      final payload = {
+      if (sale.itemId.trim().isEmpty) {
+        throw Exception('Inventory Item ID is strictly required to register a sale!');
+      }
+
+      final payload = <String, dynamic>{
+        'inventoryItemId': sale.itemId.trim(),
         'sellPrice': sale.salePrice,
         'quantity': sale.quantity,
-        'channel': sale.platform,
-        'buyerName': sale.buyerName ?? 'Buyer',
-        'costBasis': 0, // Mock
-        'profit': sale.finalNet,
-        'roiPercent': 0,
-        'notes': sale.note,
       };
 
-      if (sale.itemId.isNotEmpty) {
-        payload['inventoryItemId'] = sale.itemId;
-        payload['itemId'] = sale.itemId; 
-      } else {
-        final itemRes = await network.request('POST', '/items', body: {'title': 'Sale Item', 'kind': 'set'});
-        payload['itemId'] = itemRes['id'];
-        payload['inventoryItemId'] = itemRes['id'];
-      }
+      if (sale.platform.isNotEmpty) payload['channel'] = sale.platform;
+      if (sale.buyerName != null && sale.buyerName!.isNotEmpty) payload['buyerName'] = sale.buyerName;
+      if (sale.note != null && sale.note!.isNotEmpty) payload['notes'] = sale.note;
 
       final res = await network.request(exists ? 'PATCH' : 'POST', '/sales', body: exists ? {'id': sale.id, ...payload} : payload);
 
@@ -109,8 +102,7 @@ class SalesEngine extends AsyncNotifier<SalesEngineState> {
       
       state = AsyncValue.data(_computeState(repo.getAllSales(), currentState.query, currentState.sortOption, currentState.selectedIds));
     } catch (e) {
-      print('CRITICAL SYNC ERROR (Sales): $e');
-      throw Exception(e);
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 

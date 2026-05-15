@@ -25,9 +25,11 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
     final invRepo = ref.read(inventoryRepositoryProvider);
     final items = invRepo.getAllItems();
     
+    // ФІКС: Тепер шукає по Inventory ID, Set Number АБО по шматку Назви!
     final match = items.where((i) => 
       (i.id.toLowerCase() == code.toLowerCase() || 
-       (i.setId != null && i.setId!.toLowerCase() == code.toLowerCase())) &&
+       (i.setId != null && i.setId!.toLowerCase() == code.toLowerCase()) ||
+       i.title.toLowerCase().contains(code.toLowerCase())) && 
       i.isActive && i.quantity > 0
     ).firstOrNull;
 
@@ -109,7 +111,7 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
               autofocus: true,
               onSubmitted: _handleScan,
               decoration: InputDecoration(
-                hintText: i18n.t('pos.search'),
+                hintText: 'Search by ID, Set Number or Title...',
                 prefixIcon: const Icon(Icons.qr_code_scanner),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.camera_alt, color: Colors.blueAccent),

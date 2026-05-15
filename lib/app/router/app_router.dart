@@ -11,10 +11,13 @@ import 'package:lego_trading_manager/features/sales/presentation/sales_screen.da
 import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_screen.dart';
 import 'package:lego_trading_manager/features/settings/presentation/settings_hub_screen.dart';
 import 'package:lego_trading_manager/features/market/presentation/market_screen.dart';
+// ФІКС: Імпорт нового екрану
+import 'package:lego_trading_manager/features/market/presentation/market_live_screen.dart';
 import 'package:lego_trading_manager/features/pos/presentation/pos_terminal_screen.dart';
 import 'package:lego_trading_manager/features/search/presentation/global_search_screen.dart';
 import 'package:lego_trading_manager/features/auth/presentation/login_screen.dart';
 import 'package:lego_trading_manager/features/auth/presentation/register_screen.dart';
+import 'package:lego_trading_manager/features/flows/presentation/flows_dashboard_screen.dart';
 
 class AppRouter {
   static const String home = '/';
@@ -32,8 +35,11 @@ class AppRouter {
   static const String commandCenter = '/command-center';
   static const String settings = '/settings';
   static const String market = '/market';
+  // ФІКС: Назва маршруту
+  static const String marketLive = '/market-live';
   static const String pos = '/pos';
   static const String globalSearch = '/global-search';
+  static const String flows = '/flows'; 
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     Widget page;
@@ -82,11 +88,18 @@ class AppRouter {
       case '/market':
         page = const MarketScreen();
         break;
+      // ФІКС: Відкриваємо новий екран
+      case '/market-live':
+        page = const MarketLiveScreen();
+        break;
       case '/pos':
         page = const PosTerminalScreen();
         break;
       case '/global-search':
         page = const GlobalSearchScreen();
+        break;
+      case '/flows':
+        page = const FlowsDashboardScreen();
         break;
       default:
         page = const DashboardLiveScreen();

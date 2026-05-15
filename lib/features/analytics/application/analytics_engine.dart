@@ -1,5 +1,5 @@
 import 'dart:isolate';
-import 'package:flutter/foundation.dart'; // Додано
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/app/providers/core_providers.dart';
@@ -47,7 +47,7 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
 
   static AnalyticsEngineState _computeBackground(List<ItemModel> items, List<SaleModel> sales, List<WatchlistItemModel> watchlist, CurrencyConverter converter) {
     double invested = 0, soldRev = 0, netProfit = 0, frozen = 0, invValue = 0, totalRoi = 0, totalMargin = 0;
-    int sold = 0, active = 0, dead = 0, negativeExpected = 0;
+    int sold = sales.length, active = 0, dead = 0, negativeExpected = 0;
     
     final capital = {'Planned': 0.0, 'Purchased': 0.0, 'Listed': 0.0, 'Reserved': 0.0, 'Sold': 0.0, 'Other': 0.0};
     final turn = {'< 7d': 0, '7-30d': 0, '31-90d': 0, '> 90d': 0};
@@ -56,11 +56,10 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
     
     final recommendations = <SmartRecommendation>[];
     final repriceSuggestions = <RepriceSuggestion>[];
-    final saleMap = {for (var s in sales) s.itemId: s};
 
+    // 1. Аналізуємо Активний Інвентар
     for (final item in items) {
       final totalCostConv = converter(item.totalCost);
-      invested += totalCostConv;
       final stName = item.status.name;
       
       if (stName == 'planned') { capital['Planned'] = capital['Planned']! + totalCostConv; }
@@ -70,14 +69,14 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
       else if (stName == 'sold') { capital['Sold'] = capital['Sold']! + totalCostConv; }
       else { capital['Other'] = capital['Other']! + totalCostConv; }
 
-      final days = item.daysInInventory ?? 0;
-
       if (item.isActive) {
         active++;
+        invested += totalCostConv; 
         frozen += totalCostConv;
         final marketAvgConv = item.marketAverage != null ? converter(item.marketAverage!) : 0.0;
         invValue += marketAvgConv;
         
+        final days = item.daysInInventory ?? 0;
         if (days <= 14) { velocity['0-14d'] = velocity['0-14d']! + 1; }
         else if (days <= 45) { velocity['15-45d'] = velocity['15-45d']! + 1; }
         else if (days <= 90) { velocity['46-90d'] = velocity['46-90d']! + 1; }
@@ -91,33 +90,28 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
             repriceSuggestions.add(RepriceSuggestion(item.id, item.title, item.expectedSalePrice!, item.marketAverage! * 0.98));
           }
         }
-      } else if (item.isSold) {
-        sold++;
-        final sale = saleMap[item.id];
-        if (item.actualSalePrice != null && sale != null) {
-          final actPriceConv = converter(item.actualSalePrice!);
-          soldRev += actPriceConv;
-          
-          final platformFeeConv = converter(sale.platformFee, from: sale.currency);
-          final shipMeConv = converter(sale.shippingPaidByMe, from: sale.currency);
-          
-          final net = actPriceConv - platformFeeConv - shipMeConv - totalCostConv;
-          netProfit += net;
-          
-          totalRoi += totalCostConv > 0 ? (net / totalCostConv) * 100 : 0.0;
-          totalMargin += actPriceConv > 0 ? (net / actPriceConv) * 100 : 0.0;
-
-          if (net < 0) { pb['Loss'] = pb['Loss']! + 1; }
-          else if (net <= 500) { pb['0-500'] = pb['0-500']! + 1; }
-          else if (net <= 2000) { pb['500-2000'] = pb['500-2000']! + 1; }
-          else { pb['> 2000'] = pb['> 2000']! + 1; }
-        }
-
-        if (days < 7) { turn['< 7d'] = turn['< 7d']! + 1; }
-        else if (days <= 30) { turn['7-30d'] = turn['7-30d']! + 1; }
-        else if (days <= 90) { turn['31-90d'] = turn['31-90d']! + 1; }
-        else { turn['> 90d'] = turn['> 90d']! + 1; }
       }
+    }
+
+    // 2. ФІКС: Аналізуємо реальні Продажі (Sales), щоб вивести прибуток
+    for (final sale in sales) {
+      final actPriceConv = converter(sale.salePrice, from: sale.currency);
+      soldRev += actPriceConv;
+      
+      final net = converter(sale.finalNet, from: sale.currency);
+      netProfit += net;
+      
+      // Вираховуємо собівартість (costBasis) з маржі
+      final calcCostBasis = sale.salePrice - sale.platformFee - sale.shippingPaidByMe - sale.finalNet;
+      final calcCostBasisConv = converter(calcCostBasis, from: sale.currency);
+
+      totalRoi += calcCostBasisConv > 0 ? (net / calcCostBasisConv) * 100 : 0.0;
+      totalMargin += actPriceConv > 0 ? (net / actPriceConv) * 100 : 0.0;
+
+      if (net < 0) { pb['Loss'] = pb['Loss']! + 1; }
+      else if (net <= 500) { pb['0-500'] = pb['0-500']! + 1; }
+      else if (net <= 2000) { pb['500-2000'] = pb['500-2000']! + 1; }
+      else { pb['> 2000'] = pb['> 2000']! + 1; }
     }
 
     if (dead > 0) { recommendations.add(SmartRecommendation('Dead stock pressure', '$dead items older than 90 days. Consider repricing.', 'warning')); }

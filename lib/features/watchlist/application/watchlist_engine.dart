@@ -5,6 +5,7 @@ import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_engine.dart'; // ІМПОРТ
 
 class WatchlistAnalysis {
   final int activeCount, targetHits, acceptableBuys, tooHigh;
@@ -74,7 +75,6 @@ class WatchlistEngine extends AsyncNotifier<WatchlistEngineState> {
     final exists = currentState.allItems.any((e) => e.id == item.id);
     
     try {
-      // ІДЕАЛЬНИЙ ПЕЙЛОАД ДЛЯ PRISMA WatchlistItem
       final payload = {
         'titleSnapshot': item.title,
         'desiredBuyPrice': item.desiredBuyPrice,
@@ -95,11 +95,30 @@ class WatchlistEngine extends AsyncNotifier<WatchlistEngineState> {
       if (exists) await repo.update((e) => e.id == item.id, newItem);
       else await repo.add(newItem);
       
+      // ФІКС: Записуємо в Activity Log!
+      ref.read(activityEngineProvider.notifier).logAction(
+        exists ? 'Watchlist Target Updated' : 'Watchlist Target Created', 
+        item.title, 
+        'watchlist'
+      );
+
       state = AsyncValue.data(_computeState(repo.getAll(), currentState.query, currentState.sortOption, currentState.selectedIds, currentState.activeOnly));
     } catch (e) {
-      print('CRITICAL SYNC ERROR (Watchlist): $e');
       throw Exception(e);
     }
+  }
+
+  // ФІКС: Метод для видалення
+  Future<void> deleteItem(String id) async {
+    final currentState = await future;
+    final repo = ref.read(watchlistRepositoryProvider);
+    
+    await repo.delete((e) => e.id == id);
+    
+    ref.read(activityEngineProvider.notifier).logAction('Watchlist Target Deleted', 'ID: $id', 'watchlist');
+    ref.read(syncEngineProvider.notifier).enqueueMutation('watchlist_delete', '/watchlist', 'DELETE', {'id': id});
+
+    state = AsyncValue.data(_computeState(repo.getAll(), currentState.query, currentState.sortOption, currentState.selectedIds, currentState.activeOnly));
   }
 
   void search(String q) async {

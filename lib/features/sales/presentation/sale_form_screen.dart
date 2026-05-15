@@ -73,7 +73,8 @@ class _SaleFormScreenState extends ConsumerState<SaleFormScreen> {
           children: [
             TextFormField(controller: _platform, decoration: const InputDecoration(labelText: 'Platform (e.g. OLX) *'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
             const SizedBox(height: 12),
-            TextFormField(controller: _itemId, decoration: const InputDecoration(labelText: 'Item ID (Optional)')),
+            // ФІКС: Тепер це поле обов'язкове, сюди треба вставити ID товару з інвентарю
+            TextFormField(controller: _itemId, decoration: const InputDecoration(labelText: 'Inventory Item ID *'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
             const SizedBox(height: 12),
             Row(
               children: [

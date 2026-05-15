@@ -14,7 +14,7 @@ class WatchlistItemFormScreen extends ConsumerStatefulWidget {
 
 class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _title, _desired, _maxBuy;
+  late final TextEditingController _title, _setNumber, _desired, _maxBuy;
   bool _isActive = true;
   bool _isSaving = false;
 
@@ -23,6 +23,8 @@ class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScree
     super.initState();
     final i = widget.item;
     _title = TextEditingController(text: i?.title ?? '');
+    // ФІКС: Додали контролер для Set Number
+    _setNumber = TextEditingController(text: i?.refId ?? ''); 
     _desired = TextEditingController(text: i?.desiredBuyPrice.toString() ?? '');
     _maxBuy = TextEditingController(text: i?.maxBuyPrice.toString() ?? '');
     _isActive = i?.isActive ?? true;
@@ -39,6 +41,8 @@ class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScree
         id: widget.item?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
         title: _title.text.trim(),
         type: ItemType.set,
+        // ФІКС: Зберігаємо Set Number (refId)
+        refId: _setNumber.text.trim().isEmpty ? null : _setNumber.text.trim(), 
         desiredBuyPrice: _parse(_desired.text),
         maxBuyPrice: _parse(_maxBuy.text),
         isActive: _isActive,
@@ -63,7 +67,19 @@ class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScree
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            TextFormField(controller: _title, decoration: const InputDecoration(labelText: 'Title *'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
+            TextFormField(
+              controller: _title, 
+              decoration: const InputDecoration(labelText: 'Title *'), 
+              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null
+            ),
+            const SizedBox(height: 12),
+            // ФІКС: Поле для Set Number
+            TextFormField(
+              controller: _setNumber, 
+              decoration: const InputDecoration(labelText: 'Set Number (e.g. 75313) *'), 
+              keyboardType: TextInputType.number,
+              validator: (v) => v == null || v.trim().isEmpty ? 'Set number is required for scrapers' : null
+            ),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -71,6 +87,20 @@ class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScree
                 const SizedBox(width: 12),
                 Expanded(child: TextFormField(controller: _maxBuy, decoration: const InputDecoration(labelText: 'Max Acceptable'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
               ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF171A21),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: SwitchListTile(
+                title: const Text('Active Target', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Turn off to pause monitoring for this item', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                value: _isActive,
+                activeColor: Colors.blueAccent,
+                onChanged: (val) => setState(() => _isActive = val),
+              ),
             ),
             const SizedBox(height: 24),
             FilledButton(

@@ -26,9 +26,13 @@ class CommandCenterEngineState {
         CommandCenterAction('pos', 'POS Terminal', 'Point of Sale & Barcode Scanner', AppRouter.pos),
         CommandCenterAction('inventory', 'Inventory', 'Items, filters, bulk actions', AppRouter.inventory, invCount),
         CommandCenterAction('watchlist', 'Watchlist', 'Targets and opportunities', AppRouter.watchlist, watchCount),
-        CommandCenterAction('market', 'Market', 'Snapshots and trends', AppRouter.market),
+        // ФІКС: Оновлено назву та опис для переходу на екран ринку
+        CommandCenterAction('market', 'Market Sources', 'Manage scrapers and run updates', AppRouter.market),
+        // ФІКС: Додано перехід на Live Market Data
+        CommandCenterAction('market_live', 'Live Market Data', 'View all raw listings from scrapers', '/market-live'),
       ]),
       CommandCenterSection('Trading Operations', [
+        CommandCenterAction('flows', 'Execution Flows', 'Pending purchases, reprices, reviews', AppRouter.flows),
         CommandCenterAction('purchases', 'Purchases', 'Buy records and source costs', AppRouter.purchases, purCount),
         CommandCenterAction('sales', 'Sales', 'Sales, fees and net', AppRouter.sales, saleCount),
         CommandCenterAction('deal_eval', 'Deal Evaluator', 'Check new deals quickly', AppRouter.dealEvaluator),

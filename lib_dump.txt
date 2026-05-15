@@ -124,10 +124,13 @@ import 'package:lego_trading_manager/features/sales/presentation/sales_screen.da
 import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_screen.dart';
 import 'package:lego_trading_manager/features/settings/presentation/settings_hub_screen.dart';
 import 'package:lego_trading_manager/features/market/presentation/market_screen.dart';
+// Р¤Р†РљРЎ: Р†РјРїРѕСЂС‚ РЅРѕРІРѕРіРѕ РµРєСЂР°РЅСѓ
+import 'package:lego_trading_manager/features/market/presentation/market_live_screen.dart';
 import 'package:lego_trading_manager/features/pos/presentation/pos_terminal_screen.dart';
 import 'package:lego_trading_manager/features/search/presentation/global_search_screen.dart';
 import 'package:lego_trading_manager/features/auth/presentation/login_screen.dart';
 import 'package:lego_trading_manager/features/auth/presentation/register_screen.dart';
+import 'package:lego_trading_manager/features/flows/presentation/flows_dashboard_screen.dart';
 
 class AppRouter {
   static const String home = '/';
@@ -145,8 +148,11 @@ class AppRouter {
   static const String commandCenter = '/command-center';
   static const String settings = '/settings';
   static const String market = '/market';
+  // Р¤Р†РљРЎ: РќР°Р·РІР° РјР°СЂС€СЂСѓС‚Сѓ
+  static const String marketLive = '/market-live';
   static const String pos = '/pos';
   static const String globalSearch = '/global-search';
+  static const String flows = '/flows'; 
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     Widget page;
@@ -195,11 +201,18 @@ class AppRouter {
       case '/market':
         page = const MarketScreen();
         break;
+      // Р¤Р†РљРЎ: Р’С–РґРєСЂРёРІР°С”РјРѕ РЅРѕРІРёР№ РµРєСЂР°РЅ
+      case '/market-live':
+        page = const MarketLiveScreen();
+        break;
       case '/pos':
         page = const PosTerminalScreen();
         break;
       case '/global-search':
         page = const GlobalSearchScreen();
+        break;
+      case '/flows':
+        page = const FlowsDashboardScreen();
         break;
       default:
         page = const DashboardLiveScreen();
@@ -366,7 +379,10 @@ class AuthService {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\core\bootstrap\app_bootstrap_controller.dart =====
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 import 'package:lego_trading_manager/core/auth/auth_service.dart';
 import 'package:lego_trading_manager/core/config/api_config.dart';
@@ -375,9 +391,35 @@ class AppBootstrapController extends Notifier<AsyncValue<bool>> {
   @override
   AsyncValue<bool> build() => const AsyncValue.loading();
 
+  // Р¤Р†РљРЎ: РўСЏРіРЅРµРјРѕ СЂРµР°Р»СЊРЅС– РєСѓСЂСЃРё РќР‘РЈ РїСЂРё РєРѕР¶РЅРѕРјСѓ Р·Р°РїСѓСЃРєСѓ РґРѕРґР°С‚РєР°
+  Future<void> _syncNbuRates() async {
+    try {
+      final res = await http.get(Uri.parse('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json'));
+      if (res.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(res.body);
+        final prefs = await SharedPreferences.getInstance();
+        
+        for (var item in data) {
+          final rate = (item['rate'] as num).toDouble();
+          if (item['cc'] == 'USD') await prefs.setDouble('settings.usd_to_uah_rate', rate);
+          if (item['cc'] == 'EUR') await prefs.setDouble('settings.eur_to_uah_rate', rate);
+          if (item['cc'] == 'GBP') await prefs.setDouble('settings.gbp_to_uah_rate', rate);
+          if (item['cc'] == 'CAD') await prefs.setDouble('settings.cad_to_uah_rate', rate);
+          if (item['cc'] == 'PLN') await prefs.setDouble('settings.pln_to_uah_rate', rate);
+        }
+      }
+    } catch (_) {
+      // РЇРєС‰Рѕ РЅРµРјР°С” С–РЅС‚РµСЂРЅРµС‚Сѓ, СЃРёСЃС‚РµРјР° РїСЂРѕСЃС‚Рѕ РІРёРєРѕСЂРёСЃС‚Р°С” РѕСЃС‚Р°РЅРЅС– Р·Р±РµСЂРµР¶РµРЅС– РєСѓСЂСЃРё
+    }
+  }
+
   Future<void> load() async {
     state = const AsyncValue.loading();
     try {
+      // 1. РћРЅРѕРІР»СЋС”РјРѕ РєСѓСЂСЃРё РІР°Р»СЋС‚ Р· РќР‘РЈ
+      await _syncNbuRates();
+
+      // 2. РџРµСЂРµРІС–СЂСЏС”РјРѕ Р°РІС‚РѕСЂРёР·Р°С†С–СЋ
       final auth = AuthService(baseUrl: ApiConfig.baseUrl);
       final isAuth = await auth.isAuthenticated();
 
@@ -386,6 +428,7 @@ class AppBootstrapController extends Notifier<AsyncValue<bool>> {
         return;
       }
 
+      // 3. Р—Р°РїСѓСЃРєР°С”РјРѕ РґРІРёРіСѓРЅ СЃРёРЅС…СЂРѕРЅС–Р·Р°С†С–С—
       ref.read(syncEngineProvider);
 
       state = const AsyncValue.data(true);
@@ -1299,6 +1342,7 @@ final i18nProvider = NotifierProvider<I18nNotifier, String>(I18nNotifier.new);
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\core\network\network_core.dart =====
 
 import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1313,10 +1357,11 @@ class NetworkCore {
   NetworkCore({required this.baseUrl}) {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 60), // Р”Р°С”РјРѕ Render С‡Р°СЃ РїСЂРѕРєРёРЅСѓС‚РёСЃСЊ
-      receiveTimeout: const Duration(seconds: 60),
+      connectTimeout: const Duration(seconds: 45),
+      receiveTimeout: const Duration(seconds: 45),
       contentType: 'application/json',
-      responseType: ResponseType.json,
+      // Р¤Р†РљРЎ: Р§РёС‚Р°С”РјРѕ СЏРє С‚РµРєСЃС‚, С‰РѕР± РЅРµ РіСѓР±РёС‚Рё РїРѕРјРёР»РєРё, СЏРєС‰Рѕ СЃРµСЂРІРµСЂ РїРѕРІРµСЂРЅСѓРІ РЅРµ JSON
+      responseType: ResponseType.plain, 
     ));
 
     _dio.interceptors.add(InterceptorsWrapper(
@@ -1347,40 +1392,56 @@ class NetworkCore {
   Future<dynamic> request(String method, String path, {Map<String, dynamic>? body, int retries = 3}) async {
     for (int i = 0; i <= retries; i++) {
       try {
-        final options = Options(method: method.toUpperCase());
+        final options = Options(
+          method: method.toUpperCase(),
+          validateStatus: (status) => true, // Р—Р°РІР¶РґРё РѕР±СЂРѕР±Р»СЏС”РјРѕ СЃР°РјС–
+        );
+
         final response = await _dio.request(path, data: body, options: options);
-        return response.data;
 
-      } on DioException catch (e) {
-        // РЇРєС‰Рѕ СЃРµСЂРІРµСЂ РїРѕРІРµСЂРЅСѓРІ РїРѕРјРёР»РєСѓ Р· С‚РµРєСЃС‚РѕРј (РЅР°РїСЂРёРєР»Р°Рґ 400, 401, 500)
-        if (e.response != null) {
-          if (e.response!.statusCode == 401 || e.response!.statusCode == 403) {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.remove('arcturus_jwt');
-            throw Exception('Unauthorized access. Please login again.');
-          }
-
-          // Р’РёС‚СЏРіСѓС”РјРѕ С‡РёСЃС‚Рµ РїРѕРІС–РґРѕРјР»РµРЅРЅСЏ РІС–Рґ NestJS
-          final data = e.response!.data;
-          if (data is Map && data['message'] != null) {
-            final msg = data['message'];
-            throw Exception(msg is List ? msg.join(', ') : msg.toString());
-          }
-          throw Exception('Server Error: ${e.response!.statusCode}');
+        // РџР°СЂСЃРёРјРѕ JSON РІСЂСѓС‡РЅСѓ
+        var responseData;
+        try {
+          responseData = response.data != null && response.data.toString().isNotEmpty 
+              ? jsonDecode(response.data.toString()) 
+              : null;
+        } catch (_) {
+          responseData = response.data.toString();
         }
 
-        // РЇРєС‰Рѕ Р·'С”РґРЅР°РЅРЅСЏ РѕР±С–СЂРІР°Р»РѕСЃСЊ (РЅР°РїСЂРёРєР»Р°Рґ, СЃРµСЂРІРµСЂ С‰Рµ СЃРїРёС‚СЊ)
-        if (i == retries) {
-          if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
-            throw Exception('Server is waking up. Try again.');
-          }
-          throw Exception('Network Error: Please check your connection.');
+        if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+          return responseData;
         }
-
-        // Р§РµРєР°С”РјРѕ РїРµСЂРµРґ РЅР°СЃС‚СѓРїРЅРѕСЋ СЃРїСЂРѕР±РѕСЋ
-        await Future.delayed(Duration(milliseconds: 1500 * (i + 1)));
+        
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('arcturus_jwt');
+          throw Exception('Unauthorized access. Please login again.');
+        }
+        
+        // Р’РёС‚СЏРіСѓС”РјРѕ СЂРµР°Р»СЊРЅСѓ РїРѕРјРёР»РєСѓ
+        String errorMessage = 'Status ${response.statusCode}';
+        if (responseData is Map && responseData['message'] != null) {
+          final msg = responseData['message'];
+          errorMessage = msg is List ? msg.join(', ') : msg.toString();
+        } else if (responseData != null) {
+          errorMessage = responseData.toString();
+        }
+        
+        throw Exception(errorMessage);
+        
       } catch (e) {
-        throw Exception(e.toString());
+        final errStr = e.toString().replaceAll('Exception: ', '');
+        
+        if (errStr.contains('Unauthorized access')) {
+          throw Exception(errStr);
+        }
+        
+        if (i == retries) {
+          throw Exception(errStr);
+        }
+        
+        await Future.delayed(Duration(milliseconds: 1000 * (i + 1)));
       }
     }
   }
@@ -3016,7 +3077,7 @@ class ActivityTimelineScreen extends ConsumerWidget {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_engine.dart =====
 
 import 'dart:isolate';
-import 'package:flutter/foundation.dart'; // Р”РѕРґР°РЅРѕ
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/app/providers/core_providers.dart';
@@ -3064,7 +3125,7 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
 
   static AnalyticsEngineState _computeBackground(List<ItemModel> items, List<SaleModel> sales, List<WatchlistItemModel> watchlist, CurrencyConverter converter) {
     double invested = 0, soldRev = 0, netProfit = 0, frozen = 0, invValue = 0, totalRoi = 0, totalMargin = 0;
-    int sold = 0, active = 0, dead = 0, negativeExpected = 0;
+    int sold = sales.length, active = 0, dead = 0, negativeExpected = 0;
     
     final capital = {'Planned': 0.0, 'Purchased': 0.0, 'Listed': 0.0, 'Reserved': 0.0, 'Sold': 0.0, 'Other': 0.0};
     final turn = {'< 7d': 0, '7-30d': 0, '31-90d': 0, '> 90d': 0};
@@ -3073,11 +3134,10 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
     
     final recommendations = <SmartRecommendation>[];
     final repriceSuggestions = <RepriceSuggestion>[];
-    final saleMap = {for (var s in sales) s.itemId: s};
 
+    // 1. РђРЅР°Р»С–Р·СѓС”РјРѕ РђРєС‚РёРІРЅРёР№ Р†РЅРІРµРЅС‚Р°СЂ
     for (final item in items) {
       final totalCostConv = converter(item.totalCost);
-      invested += totalCostConv;
       final stName = item.status.name;
       
       if (stName == 'planned') { capital['Planned'] = capital['Planned']! + totalCostConv; }
@@ -3087,14 +3147,14 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
       else if (stName == 'sold') { capital['Sold'] = capital['Sold']! + totalCostConv; }
       else { capital['Other'] = capital['Other']! + totalCostConv; }
 
-      final days = item.daysInInventory ?? 0;
-
       if (item.isActive) {
         active++;
+        invested += totalCostConv; 
         frozen += totalCostConv;
         final marketAvgConv = item.marketAverage != null ? converter(item.marketAverage!) : 0.0;
         invValue += marketAvgConv;
         
+        final days = item.daysInInventory ?? 0;
         if (days <= 14) { velocity['0-14d'] = velocity['0-14d']! + 1; }
         else if (days <= 45) { velocity['15-45d'] = velocity['15-45d']! + 1; }
         else if (days <= 90) { velocity['46-90d'] = velocity['46-90d']! + 1; }
@@ -3108,33 +3168,28 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
             repriceSuggestions.add(RepriceSuggestion(item.id, item.title, item.expectedSalePrice!, item.marketAverage! * 0.98));
           }
         }
-      } else if (item.isSold) {
-        sold++;
-        final sale = saleMap[item.id];
-        if (item.actualSalePrice != null && sale != null) {
-          final actPriceConv = converter(item.actualSalePrice!);
-          soldRev += actPriceConv;
-          
-          final platformFeeConv = converter(sale.platformFee, from: sale.currency);
-          final shipMeConv = converter(sale.shippingPaidByMe, from: sale.currency);
-          
-          final net = actPriceConv - platformFeeConv - shipMeConv - totalCostConv;
-          netProfit += net;
-          
-          totalRoi += totalCostConv > 0 ? (net / totalCostConv) * 100 : 0.0;
-          totalMargin += actPriceConv > 0 ? (net / actPriceConv) * 100 : 0.0;
-
-          if (net < 0) { pb['Loss'] = pb['Loss']! + 1; }
-          else if (net <= 500) { pb['0-500'] = pb['0-500']! + 1; }
-          else if (net <= 2000) { pb['500-2000'] = pb['500-2000']! + 1; }
-          else { pb['> 2000'] = pb['> 2000']! + 1; }
-        }
-
-        if (days < 7) { turn['< 7d'] = turn['< 7d']! + 1; }
-        else if (days <= 30) { turn['7-30d'] = turn['7-30d']! + 1; }
-        else if (days <= 90) { turn['31-90d'] = turn['31-90d']! + 1; }
-        else { turn['> 90d'] = turn['> 90d']! + 1; }
       }
+    }
+
+    // 2. Р¤Р†РљРЎ: РђРЅР°Р»С–Р·СѓС”РјРѕ СЂРµР°Р»СЊРЅС– РџСЂРѕРґР°Р¶С– (Sales), С‰РѕР± РІРёРІРµСЃС‚Рё РїСЂРёР±СѓС‚РѕРє
+    for (final sale in sales) {
+      final actPriceConv = converter(sale.salePrice, from: sale.currency);
+      soldRev += actPriceConv;
+      
+      final net = converter(sale.finalNet, from: sale.currency);
+      netProfit += net;
+      
+      // Р’РёСЂР°С…РѕРІСѓС”РјРѕ СЃРѕР±С–РІР°СЂС‚С–СЃС‚СЊ (costBasis) Р· РјР°СЂР¶С–
+      final calcCostBasis = sale.salePrice - sale.platformFee - sale.shippingPaidByMe - sale.finalNet;
+      final calcCostBasisConv = converter(calcCostBasis, from: sale.currency);
+
+      totalRoi += calcCostBasisConv > 0 ? (net / calcCostBasisConv) * 100 : 0.0;
+      totalMargin += actPriceConv > 0 ? (net / actPriceConv) * 100 : 0.0;
+
+      if (net < 0) { pb['Loss'] = pb['Loss']! + 1; }
+      else if (net <= 500) { pb['0-500'] = pb['0-500']! + 1; }
+      else if (net <= 2000) { pb['500-2000'] = pb['500-2000']! + 1; }
+      else { pb['> 2000'] = pb['> 2000']! + 1; }
     }
 
     if (dead > 0) { recommendations.add(SmartRecommendation('Dead stock pressure', '$dead items older than 90 days. Consider repricing.', 'warning')); }
@@ -3756,9 +3811,13 @@ class CommandCenterEngineState {
         CommandCenterAction('pos', 'POS Terminal', 'Point of Sale & Barcode Scanner', AppRouter.pos),
         CommandCenterAction('inventory', 'Inventory', 'Items, filters, bulk actions', AppRouter.inventory, invCount),
         CommandCenterAction('watchlist', 'Watchlist', 'Targets and opportunities', AppRouter.watchlist, watchCount),
-        CommandCenterAction('market', 'Market', 'Snapshots and trends', AppRouter.market),
+        // Р¤Р†РљРЎ: РћРЅРѕРІР»РµРЅРѕ РЅР°Р·РІСѓ С‚Р° РѕРїРёСЃ РґР»СЏ РїРµСЂРµС…РѕРґСѓ РЅР° РµРєСЂР°РЅ СЂРёРЅРєСѓ
+        CommandCenterAction('market', 'Market Sources', 'Manage scrapers and run updates', AppRouter.market),
+        // Р¤Р†РљРЎ: Р”РѕРґР°РЅРѕ РїРµСЂРµС…С–Рґ РЅР° Live Market Data
+        CommandCenterAction('market_live', 'Live Market Data', 'View all raw listings from scrapers', '/market-live'),
       ]),
       CommandCenterSection('Trading Operations', [
+        CommandCenterAction('flows', 'Execution Flows', 'Pending purchases, reprices, reviews', AppRouter.flows),
         CommandCenterAction('purchases', 'Purchases', 'Buy records and source costs', AppRouter.purchases, purCount),
         CommandCenterAction('sales', 'Sales', 'Sales, fees and net', AppRouter.sales, saleCount),
         CommandCenterAction('deal_eval', 'Deal Evaluator', 'Check new deals quickly', AppRouter.dealEvaluator),
@@ -3946,6 +4005,8 @@ import 'package:lego_trading_manager/app/router/app_router.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/item_form_screen.dart';
 import 'package:lego_trading_manager/features/purchases/presentation/purchase_form_screen.dart';
 import 'package:lego_trading_manager/features/sales/presentation/sale_form_screen.dart';
+// Р¤Р†РљРЎ: Р†РјРїРѕСЂС‚ С„РѕСЂРјРё Watchlist
+import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_item_form_screen.dart';
 
 class QuickAddSheet extends StatelessWidget {
   const QuickAddSheet({super.key});
@@ -3979,6 +4040,11 @@ class QuickAddSheet extends StatelessWidget {
               _Tile('Add Sale', Icons.sell_outlined, () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const SaleFormScreen()));
+              }),
+              // Р¤Р†РљРЎ: РљРЅРѕРїРєР° РґР»СЏ СЃС‚РІРѕСЂРµРЅРЅСЏ С†С–Р»С– Сѓ Watchlist
+              _Tile('Add Watchlist Target', Icons.visibility_outlined, () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const WatchlistItemFormScreen()));
               }),
               _Tile('Deal Evaluator', Icons.local_fire_department_outlined, () {
                 Navigator.pop(context);
@@ -4143,11 +4209,12 @@ class DashboardLiveScreen extends ConsumerWidget {
         ],
       ),
       drawer: const AppDrawer(),
-      floatingActionButton: const GlobalQuickAddFab(), // Р”РћР”РђРќРћ РљРќРћРџРљРЈ
+      floatingActionButton: const GlobalQuickAddFab(),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (state) => CustomScrollView(
+          physics: const BouncingScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
@@ -4164,6 +4231,12 @@ class DashboardLiveScreen extends ConsumerWidget {
                     _buildHeroCard(state),
                     const SizedBox(height: 24),
                     _buildMetricsGrid(state),
+                    
+                    // Р¤Р†РљРЎ: РўРµРїРµСЂ РјРё Р’РР’РћР”РРњРћ С†С– РґС–С— РЅР° РµРєСЂР°РЅ!
+                    if (state.priorityQueue.isNotEmpty) ...[
+                      const SizedBox(height: 32),
+                      _buildPriorityQueue(state.priorityQueue, context),
+                    ],
                   ],
                 ),
               ),
@@ -4180,10 +4253,12 @@ class DashboardLiveScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [Colors.blueAccent.withValues(alpha: 0.15), Colors.greenAccent.withValues(alpha: 0.15)]),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         children: [
-          Text(state.headline, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(state.headline, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          const SizedBox(height: 4),
           Text(state.subline, style: const TextStyle(color: Colors.white70)),
         ],
       ),
@@ -4194,12 +4269,56 @@ class DashboardLiveScreen extends ConsumerWidget {
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
       childAspectRatio: 1.5,
       children: [
         _MetricTile('Capital', '${state.totalInvested.toStringAsFixed(0)} ${state.currency}', Colors.blue),
         _MetricTile('Profit', '${state.expectedOpenProfit.toStringAsFixed(0)} ${state.currency}', Colors.green),
+      ],
+    );
+  }
+
+  // Р¤Р†РљРЎ: Р‘Р»РѕРє РґР»СЏ РІС–РґРѕР±СЂР°Р¶РµРЅРЅСЏ Р·РЅР°Р№РґРµРЅРёС… СѓРіРѕРґ С‚Р° РїСЂРѕР±Р»РµРј
+  Widget _buildPriorityQueue(List<DashboardAction> queue, BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text('Priority Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 12),
+        ...queue.map((action) {
+          final isGood = action.type == 'good';
+          final color = isGood ? Colors.greenAccent : Colors.redAccent;
+          final icon = isGood ? Icons.local_fire_department : Icons.warning_amber_rounded;
+          
+          return Card(
+            color: const Color(0xFF171A21),
+            margin: const EdgeInsets.only(bottom: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: color.withValues(alpha: 0.3)),
+            ),
+            child: ListTile(
+              leading: Icon(icon, color: color),
+              title: Text(action.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(action.subtitle, style: const TextStyle(color: Colors.white70)),
+              trailing: const Icon(Icons.chevron_right, color: Colors.white30),
+              onTap: () {
+                if (isGood) {
+                  // РЇРєС‰Рѕ С†Рµ РєСЂСѓС‚Р° СѓРіРѕРґР° (Buy...) - РєРёРґР°С”РјРѕ РІ Deal Evaluator
+                  Navigator.pushNamed(context, AppRouter.dealEvaluator);
+                } else {
+                  // РЇРєС‰Рѕ С†Рµ РїСЂРѕР±Р»РµРјР° Р· С–РЅРІРµРЅС‚Р°СЂРµРј - РєРёРґР°С”РјРѕ РІ Р†РЅРІРµРЅС‚Р°СЂ
+                  Navigator.pushNamed(context, AppRouter.inventory);
+                }
+              },
+            ),
+          );
+        }),
       ],
     );
   }
@@ -4212,8 +4331,15 @@ class _MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
-    child: Column(children: [Text(title, style: TextStyle(color: color)), Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))]),
+    decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withValues(alpha: 0.2))),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold)), 
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis)
+      ]
+    ),
   );
 }
 
@@ -4281,18 +4407,32 @@ class DealsEngine extends AsyncNotifier<List<DealEvaluation>> {
 
   DealEvaluation evaluate({required String title, required double askingPrice, required double marketPrice}) {
     final profit = marketPrice - askingPrice;
-    final margin = askingPrice <= 0 ? 0.0 : (profit / askingPrice) * 100;
+    
+    // Р¤Р†РљРЎ: РњР°СЂР¶Р° СЂР°С…СѓС”С‚СЊСЃСЏ РІС–Рґ Market Price (Р”РѕС…РѕРґСѓ), Р° РЅРµ РІС–Рґ Asking Price!
+    final margin = marketPrice <= 0 ? 0.0 : (profit / marketPrice) * 100;
+    
+    // Рђ РѕС‚ РґР»СЏ verdict РјРё РІРёРєРѕСЂРёСЃС‚РѕРІСѓС”РјРѕ ROI (РІС–РґРЅРѕС€РµРЅРЅСЏ РґРѕ РІРёС‚СЂР°С‚)
+    final roi = askingPrice <= 0 ? 0.0 : (profit / askingPrice) * 100;
     
     String verdict = 'weak';
     if (profit <= 0) {
       verdict = 'avoid';
-    } else if (margin >= 40) {
+    } else if (roi >= 40) { // РћС†С–РЅСЋС”РјРѕ РїРѕ СЃРїСЂР°РІР¶РЅСЊРѕРјСѓ ROI
       verdict = 'strong buy';
-    } else if (margin >= 20) {
+    } else if (roi >= 20) {
       verdict = 'good';
     }
 
-    return DealEvaluation(id: DateTime.now().microsecondsSinceEpoch.toString(), title: title.trim().isEmpty ? 'Untitled Deal' : title.trim(), askingPrice: askingPrice, marketPrice: marketPrice, expectedProfit: profit, marginPercent: margin, verdict: verdict, createdAt: DateTime.now());
+    return DealEvaluation(
+      id: DateTime.now().microsecondsSinceEpoch.toString(), 
+      title: title.trim().isEmpty ? 'Untitled Deal' : title.trim(), 
+      askingPrice: askingPrice, 
+      marketPrice: marketPrice, 
+      expectedProfit: profit, 
+      marginPercent: margin, // РўРµРїРµСЂ С‚СѓС‚ СЂРµР°Р»СЊРЅР° РјР°СЂР¶Р°
+      verdict: verdict, 
+      createdAt: DateTime.now()
+    );
   }
 
   Future<void> saveEvaluation(DealEvaluation deal) async {
@@ -5396,25 +5536,360 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\market\application\market_engine.dart =====
+
+import 'dart:async';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/sync/sync_engine.dart';
+import 'package:lego_trading_manager/data/models/app_models.dart';
+
+class MarketEngineState {
+  final List<MarketSnapshotModel> snapshots;
+  final List<Map<String, dynamic>> sources;
+  final bool isLoading;
+
+  const MarketEngineState({
+    required this.snapshots,
+    required this.sources,
+    this.isLoading = false,
+  });
+}
+
+class MarketEngine extends AsyncNotifier<MarketEngineState> {
+  @override
+  Future<MarketEngineState> build() async {
+    return _fetchData();
+  }
+
+  Future<MarketEngineState> _fetchData() async {
+    final network = ref.read(networkCoreProvider);
+    
+    if (!await network.isOnline()) {
+      return const MarketEngineState(snapshots: [], sources: []);
+    }
+
+    try {
+      // 1. РўСЏРіРЅРµРјРѕ Р·РІРµРґРµРЅСѓ С–РЅС„РѕСЂРјР°С†С–СЋ РїСЂРѕ РґР¶РµСЂРµР»Р° (СЃРєСЂР°РїРµСЂРё)
+      final sourcesRes = await network.request('GET', '/scanner/sources');
+      final sources = (sourcesRes as List).map((e) => Map<String, dynamic>.from(e)).toList();
+
+      // РћСЃРєС–Р»СЊРєРё Сѓ РЅР°СЃ РїРѕРєРё РЅРµРјР°С” РїСЂСЏРјРѕРіРѕ СЂРѕСѓС‚Сѓ РґР»СЏ СЃРїРёСЃРєСѓ Р’РЎР†РҐ СЃРЅР°РїС€РѕС‚С–РІ,
+      // РјРё РјРѕР¶РµРјРѕ СЃРёРјСѓР»СЋРІР°С‚Рё С—С…, РІРёС‚СЏРіСѓСЋС‡Рё Р·С– Р·Р±РµСЂРµР¶РµРЅРёС… РЅР° Р±РµРєРµРЅРґС– (С‡РµСЂРµР· РґР°С€Р±РѕСЂРґ Р°Р±Рѕ С–РЅРІРµРЅС‚Р°СЂ)
+      // РђР»Рµ РґР»СЏ С‡РёСЃС‚РѕС‚Рё, РґР°РІР°Р№ РїСЂРѕСЃС‚Рѕ РїРѕРєР°Р¶РµРјРѕ СЃС‚Р°С‚СѓСЃ СЃРєСЂР°РїРµСЂС–РІ, Р±Рѕ С†Рµ РЅР°Р№РІР°Р¶Р»РёРІС–С€Рµ РґР»СЏ СЃС‚Р°СЂС‚Сѓ.
+      
+      return MarketEngineState(
+        snapshots: [], // РџРѕРєРё РїСѓСЃС‚Рѕ, РґРѕРґР°РјРѕ РґРµС‚Р°Р»С– РїС–Р·РЅС–С€Рµ
+        sources: sources,
+      );
+    } catch (e) {
+      print('Market fetch error: $e');
+      return const MarketEngineState(snapshots: [], sources: []);
+    }
+  }
+
+  Future<void> triggerScraper(String sourceCode) async {
+    final network = ref.read(networkCoreProvider);
+    try {
+      // Р—Р°РїСѓСЃРєР°С”РјРѕ РґР¶РѕР±Сѓ СЃРєСЂР°РїРµСЂР° РЅР° Р±РµРєРµРЅРґС–
+      await network.request('POST', '/scanner/jobs', body: {
+        'sourceCode': sourceCode,
+        'query': '', // РџРѕСЂРѕР¶РЅС–Р№ Р·Р°РїРёС‚ РѕР·РЅР°С‡Р°С”, С‰Рѕ РІС–РЅ РїСЂРѕР№РґРµС‚СЊСЃСЏ РїРѕ РІСЃСЊРѕРјСѓ Watchlist (С‚Р°Рє РїСЂР°С†СЋСЋС‚СЊ РЅР°С€С– СЃРєСЂР°РїРµСЂРё)
+      });
+      // РћРЅРѕРІР»СЋС”РјРѕ СЃС‚Р°РЅ, С‰РѕР± РїРѕРєР°Р·Р°С‚Рё, С‰Рѕ С‰РѕСЃСЊ РїС–С€Р»Рѕ
+      ref.invalidateSelf();
+    } catch (e) {
+      throw Exception('Failed to trigger scraper: $e');
+    }
+  }
+}
+
+final marketEngineProvider = AsyncNotifierProvider<MarketEngine, MarketEngineState>(MarketEngine.new);
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\market\presentation\market_live_screen.dart =====
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/sync/sync_engine.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+// РЎС‚РІРѕСЂСЋС”РјРѕ С‚РёРјС‡Р°СЃРѕРІРёР№ РїСЂРѕРІР°Р№РґРµСЂ, СЏРєРёР№ Р±СѓРґРµ СЂРѕР±РёС‚Рё Р·Р°РїРёС‚ РЅР° Р±РµРєРµРЅРґ 
+// С– РѕС‚СЂРёРјСѓРІР°С‚Рё СЃРёСЂРёР№ СЃРїРёСЃРѕРє Р»С–СЃС‚РёРЅРіС–РІ.
+final liveListingsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+  final network = ref.read(networkCoreProvider);
+  
+  if (!await network.isOnline()) {
+    throw Exception('Offline. Cannot fetch live market data.');
+  }
+
+  try {
+    // РўСЏРіРЅРµРјРѕ Р· Р±РµРєРµРЅРґСѓ РѕСЃС‚Р°РЅРЅС– 100 Р·РЅР°Р№РґРµРЅРёС… РѕРіРѕР»РѕС€РµРЅСЊ
+    final res = await network.request('GET', '/scanner/listings?limit=100');
+    if (res is List) {
+      return res;
+    }
+    return [];
+  } catch (e) {
+    throw Exception('Failed to load listings: $e');
+  }
+});
+
+class MarketLiveScreen extends ConsumerWidget {
+  const MarketLiveScreen({super.key});
+
+  Future<void> _launchUrl(String urlString) async {
+    final url = Uri.parse(urlString);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final listingsAsync = ref.watch(liveListingsProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Live Market Data', style: TextStyle(fontWeight: FontWeight.w900)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.invalidate(liveListingsProvider),
+          )
+        ],
+      ),
+      body: listingsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (listings) {
+          if (listings.isEmpty) {
+            return const Center(
+              child: Text(
+                'No raw market data found.\nRun a scraper first.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white54, fontSize: 16),
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            physics: const BouncingScrollPhysics(),
+            itemCount: listings.length,
+            itemBuilder: (context, index) {
+              final listing = listings[index];
+              final price = listing['price']?.toString() ?? '0';
+              final currency = listing['currency'] ?? 'UAH';
+              final sourceCode = listing['sourceCode']?.toString().toUpperCase() ?? 'UNKNOWN';
+              final condition = listing['condition'] ?? 'unknown';
+              final isSealed = listing['sealed'] == true;
+              final isStale = listing['status'] == 'stale';
+
+              return Card(
+                color: isStale ? const Color(0xFF171A21).withOpacity(0.5) : const Color(0xFF171A21),
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: isStale ? Colors.transparent : Colors.blueAccent.withOpacity(0.1)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              listing['titleRaw'] ?? 'No Title',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: isStale ? Colors.white54 : Colors.white,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.purpleAccent.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              sourceCode,
+                              style: const TextStyle(color: Colors.purpleAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$price $currency',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  color: isStale ? Colors.white30 : Colors.greenAccent,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  if (isSealed)
+                                    Container(
+                                      margin: const EdgeInsets.only(right: 8),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
+                                      child: const Text('SEALED', style: TextStyle(fontSize: 10, color: Colors.blueAccent)),
+                                    ),
+                                  Text(
+                                    'Condition: $condition',
+                                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                                  ),
+                                ],
+                              )
+                            ],
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.open_in_new, color: Colors.blueAccent),
+                            onPressed: () {
+                              if (listing['url'] != null) {
+                                _launchUrl(listing['url']);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\market\presentation\market_screen.dart =====
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
+import 'package:lego_trading_manager/features/market/application/market_engine.dart';
 
 class MarketScreen extends ConsumerWidget {
   const MarketScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final stateAsync = ref.watch(marketEngineProvider);
+    final engine = ref.read(marketEngineProvider.notifier);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Market Intelligence', style: TextStyle(fontWeight: FontWeight.w900))),
+      appBar: AppBar(
+        title: const Text('Market Intelligence', style: TextStyle(fontWeight: FontWeight.w900)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.invalidate(marketEngineProvider),
+          )
+        ],
+      ),
       drawer: const AppDrawer(),
-      body: const Center(
-        child: Text(
-          'Market data is synchronized from the web platform.',
-          style: TextStyle(color: Colors.white54, fontSize: 16),
-        ),
+      body: stateAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (state) {
+          if (state.sources.isEmpty) {
+            return const Center(
+              child: Text(
+                'No market sources configured on backend.',
+                style: TextStyle(color: Colors.white54, fontSize: 16),
+              ),
+            );
+          }
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            physics: const BouncingScrollPhysics(),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.purpleAccent.withValues(alpha: 0.15), Colors.blueAccent.withValues(alpha: 0.15)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Scraper Engines', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text('${state.sources.where((s) => s['enabled'] == true).length} active sources monitoring the market', style: const TextStyle(color: Colors.white70)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text('Data Sources', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              ...state.sources.map((source) {
+                final isEnabled = source['enabled'] == true;
+                return Card(
+                  color: const Color(0xFF171A21),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: isEnabled ? Colors.blueAccent.withValues(alpha: 0.3) : Colors.transparent),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16),
+                    leading: CircleAvatar(
+                      backgroundColor: isEnabled ? Colors.blueAccent.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
+                      child: Icon(Icons.travel_explore, color: isEnabled ? Colors.blueAccent : Colors.grey),
+                    ),
+                    title: Text(source['name'] ?? source['code'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('Type: ${source['type']}', style: const TextStyle(color: Colors.white54)),
+                    trailing: isEnabled
+                      ? FilledButton.tonalIcon(
+                          icon: const Icon(Icons.play_arrow, size: 16),
+                          label: const Text('Run'),
+                          onPressed: () async {
+                            try {
+                              await engine.triggerScraper(source['code']);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Scraper ${source['code']} queued successfully!'), backgroundColor: Colors.green),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.toString()), backgroundColor: Colors.redAccent),
+                                );
+                              }
+                            }
+                          },
+                        )
+                      : Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                          child: const Text('DISABLED', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                  ),
+                );
+              }),
+            ],
+          );
+        },
       ),
     );
   }
@@ -5851,9 +6326,11 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
     final invRepo = ref.read(inventoryRepositoryProvider);
     final items = invRepo.getAllItems();
     
+    // Р¤Р†РљРЎ: РўРµРїРµСЂ С€СѓРєР°С” РїРѕ Inventory ID, Set Number РђР‘Рћ РїРѕ С€РјР°С‚РєСѓ РќР°Р·РІРё!
     final match = items.where((i) => 
       (i.id.toLowerCase() == code.toLowerCase() || 
-       (i.setId != null && i.setId!.toLowerCase() == code.toLowerCase())) &&
+       (i.setId != null && i.setId!.toLowerCase() == code.toLowerCase()) ||
+       i.title.toLowerCase().contains(code.toLowerCase())) && 
       i.isActive && i.quantity > 0
     ).firstOrNull;
 
@@ -5935,7 +6412,7 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
               autofocus: true,
               onSubmitted: _handleScan,
               decoration: InputDecoration(
-                hintText: i18n.t('pos.search'),
+                hintText: 'Search by ID, Set Number or Title...',
                 prefixIcon: const Icon(Icons.qr_code_scanner),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.camera_alt, color: Colors.blueAccent),
@@ -6144,18 +6621,19 @@ class PurchasesEngine extends AsyncNotifier<PurchasesEngineState> {
     final exists = currentState.allPurchases.any((e) => e.id == purchase.id);
     
     try {
-      // Р†Р”Р•РђР›Р¬РќРР™ РџР•Р™Р›РћРђР” Р”Р›РЇ PRISMA PurchaseOrder (Р‘РµР· currency)
-      final payload = {
+      // Р¤Р†РљРЎ: Р’С–РґРїСЂР°РІР»СЏС”РјРѕ С‚С–Р»СЊРєРё С‚Рµ, С‰Рѕ РґРѕР·РІРѕР»СЏС” NestJS (Р±РµР· totalCost С‚Р° status)
+      final payload = <String, dynamic>{
         'titleSnapshot': purchase.source, 
-        'sourceCode': purchase.source,
-        'totalCost': purchase.finalTotal,
         'quantity': purchase.quantity,
-        'status': 'planned',
-        'notes': purchase.note,
+        'plannedPrice': purchase.purchasePrice,
+        'shippingPrice': purchase.shippingCost,
       };
+      
+      if (purchase.source.trim().isNotEmpty) payload['sourceCode'] = purchase.source.trim();
+      if (purchase.note != null && purchase.note!.trim().isNotEmpty) payload['notes'] = purchase.note!.trim();
 
-      if (purchase.itemId.isNotEmpty) {
-        payload['itemId'] = purchase.itemId;
+      if (purchase.itemId.trim().isNotEmpty) {
+        payload['itemId'] = purchase.itemId.trim();
       } else {
         final itemRes = await network.request('POST', '/items', body: {
           'title': purchase.source,
@@ -6438,26 +6916,19 @@ class SalesEngine extends AsyncNotifier<SalesEngineState> {
     final exists = currentState.allSales.any((e) => e.id == sale.id);
     
     try {
-      // Р†Р”Р•РђР›Р¬РќРР™ РџР•Р™Р›РћРђР” Р”Р›РЇ PRISMA Sale
-      final payload = {
+      if (sale.itemId.trim().isEmpty) {
+        throw Exception('Inventory Item ID is strictly required to register a sale!');
+      }
+
+      final payload = <String, dynamic>{
+        'inventoryItemId': sale.itemId.trim(),
         'sellPrice': sale.salePrice,
         'quantity': sale.quantity,
-        'channel': sale.platform,
-        'buyerName': sale.buyerName ?? 'Buyer',
-        'costBasis': 0, // Mock
-        'profit': sale.finalNet,
-        'roiPercent': 0,
-        'notes': sale.note,
       };
 
-      if (sale.itemId.isNotEmpty) {
-        payload['inventoryItemId'] = sale.itemId;
-        payload['itemId'] = sale.itemId; 
-      } else {
-        final itemRes = await network.request('POST', '/items', body: {'title': 'Sale Item', 'kind': 'set'});
-        payload['itemId'] = itemRes['id'];
-        payload['inventoryItemId'] = itemRes['id'];
-      }
+      if (sale.platform.isNotEmpty) payload['channel'] = sale.platform;
+      if (sale.buyerName != null && sale.buyerName!.isNotEmpty) payload['buyerName'] = sale.buyerName;
+      if (sale.note != null && sale.note!.isNotEmpty) payload['notes'] = sale.note;
 
       final res = await network.request(exists ? 'PATCH' : 'POST', '/sales', body: exists ? {'id': sale.id, ...payload} : payload);
 
@@ -6468,8 +6939,7 @@ class SalesEngine extends AsyncNotifier<SalesEngineState> {
       
       state = AsyncValue.data(_computeState(repo.getAllSales(), currentState.query, currentState.sortOption, currentState.selectedIds));
     } catch (e) {
-      print('CRITICAL SYNC ERROR (Sales): $e');
-      throw Exception(e);
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
@@ -6618,7 +7088,8 @@ class _SaleFormScreenState extends ConsumerState<SaleFormScreen> {
           children: [
             TextFormField(controller: _platform, decoration: const InputDecoration(labelText: 'Platform (e.g. OLX) *'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
             const SizedBox(height: 12),
-            TextFormField(controller: _itemId, decoration: const InputDecoration(labelText: 'Item ID (Optional)')),
+            // Р¤Р†РљРЎ: РўРµРїРµСЂ С†Рµ РїРѕР»Рµ РѕР±РѕРІ'СЏР·РєРѕРІРµ, СЃСЋРґРё С‚СЂРµР±Р° РІСЃС‚Р°РІРёС‚Рё ID С‚РѕРІР°СЂСѓ Р· С–РЅРІРµРЅС‚Р°СЂСЋ
+            TextFormField(controller: _itemId, decoration: const InputDecoration(labelText: 'Inventory Item ID *'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -7178,6 +7649,7 @@ import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
+import 'package:lego_trading_manager/features/activity/application/activity_engine.dart'; // Р†РњРџРћР Рў
 
 class WatchlistAnalysis {
   final int activeCount, targetHits, acceptableBuys, tooHigh;
@@ -7247,7 +7719,6 @@ class WatchlistEngine extends AsyncNotifier<WatchlistEngineState> {
     final exists = currentState.allItems.any((e) => e.id == item.id);
     
     try {
-      // Р†Р”Р•РђР›Р¬РќРР™ РџР•Р™Р›РћРђР” Р”Р›РЇ PRISMA WatchlistItem
       final payload = {
         'titleSnapshot': item.title,
         'desiredBuyPrice': item.desiredBuyPrice,
@@ -7268,11 +7739,30 @@ class WatchlistEngine extends AsyncNotifier<WatchlistEngineState> {
       if (exists) await repo.update((e) => e.id == item.id, newItem);
       else await repo.add(newItem);
       
+      // Р¤Р†РљРЎ: Р—Р°РїРёСЃСѓС”РјРѕ РІ Activity Log!
+      ref.read(activityEngineProvider.notifier).logAction(
+        exists ? 'Watchlist Target Updated' : 'Watchlist Target Created', 
+        item.title, 
+        'watchlist'
+      );
+
       state = AsyncValue.data(_computeState(repo.getAll(), currentState.query, currentState.sortOption, currentState.selectedIds, currentState.activeOnly));
     } catch (e) {
-      print('CRITICAL SYNC ERROR (Watchlist): $e');
       throw Exception(e);
     }
+  }
+
+  // Р¤Р†РљРЎ: РњРµС‚РѕРґ РґР»СЏ РІРёРґР°Р»РµРЅРЅСЏ
+  Future<void> deleteItem(String id) async {
+    final currentState = await future;
+    final repo = ref.read(watchlistRepositoryProvider);
+    
+    await repo.delete((e) => e.id == id);
+    
+    ref.read(activityEngineProvider.notifier).logAction('Watchlist Target Deleted', 'ID: $id', 'watchlist');
+    ref.read(syncEngineProvider.notifier).enqueueMutation('watchlist_delete', '/watchlist', 'DELETE', {'id': id});
+
+    state = AsyncValue.data(_computeState(repo.getAll(), currentState.query, currentState.sortOption, currentState.selectedIds, currentState.activeOnly));
   }
 
   void search(String q) async {
@@ -7301,7 +7791,7 @@ class WatchlistItemFormScreen extends ConsumerStatefulWidget {
 
 class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _title, _desired, _maxBuy;
+  late final TextEditingController _title, _setNumber, _desired, _maxBuy;
   bool _isActive = true;
   bool _isSaving = false;
 
@@ -7310,6 +7800,8 @@ class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScree
     super.initState();
     final i = widget.item;
     _title = TextEditingController(text: i?.title ?? '');
+    // Р¤Р†РљРЎ: Р”РѕРґР°Р»Рё РєРѕРЅС‚СЂРѕР»РµСЂ РґР»СЏ Set Number
+    _setNumber = TextEditingController(text: i?.refId ?? ''); 
     _desired = TextEditingController(text: i?.desiredBuyPrice.toString() ?? '');
     _maxBuy = TextEditingController(text: i?.maxBuyPrice.toString() ?? '');
     _isActive = i?.isActive ?? true;
@@ -7326,6 +7818,8 @@ class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScree
         id: widget.item?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
         title: _title.text.trim(),
         type: ItemType.set,
+        // Р¤Р†РљРЎ: Р—Р±РµСЂС–РіР°С”РјРѕ Set Number (refId)
+        refId: _setNumber.text.trim().isEmpty ? null : _setNumber.text.trim(), 
         desiredBuyPrice: _parse(_desired.text),
         maxBuyPrice: _parse(_maxBuy.text),
         isActive: _isActive,
@@ -7350,7 +7844,19 @@ class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScree
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            TextFormField(controller: _title, decoration: const InputDecoration(labelText: 'Title *'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
+            TextFormField(
+              controller: _title, 
+              decoration: const InputDecoration(labelText: 'Title *'), 
+              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null
+            ),
+            const SizedBox(height: 12),
+            // Р¤Р†РљРЎ: РџРѕР»Рµ РґР»СЏ Set Number
+            TextFormField(
+              controller: _setNumber, 
+              decoration: const InputDecoration(labelText: 'Set Number (e.g. 75313) *'), 
+              keyboardType: TextInputType.number,
+              validator: (v) => v == null || v.trim().isEmpty ? 'Set number is required for scrapers' : null
+            ),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -7358,6 +7864,20 @@ class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScree
                 const SizedBox(width: 12),
                 Expanded(child: TextFormField(controller: _maxBuy, decoration: const InputDecoration(labelText: 'Max Acceptable'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
               ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF171A21),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: SwitchListTile(
+                title: const Text('Active Target', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Turn off to pause monitoring for this item', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                value: _isActive,
+                activeColor: Colors.blueAccent,
+                onChanged: (val) => setState(() => _isActive = val),
+              ),
             ),
             const SizedBox(height: 24),
             FilledButton(
@@ -7377,7 +7897,9 @@ class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScree
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
+import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
 import 'package:lego_trading_manager/features/watchlist/application/watchlist_engine.dart';
+import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_item_form_screen.dart';
 
 class WatchlistScreen extends ConsumerWidget {
   const WatchlistScreen({super.key});
@@ -7385,10 +7907,12 @@ class WatchlistScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stateAsync = ref.watch(watchlistEngineProvider);
+    final engine = ref.read(watchlistEngineProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Watchlist', style: TextStyle(fontWeight: FontWeight.w900))),
       drawer: const AppDrawer(),
+      floatingActionButton: const GlobalQuickAddFab(), 
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -7421,13 +7945,29 @@ class WatchlistScreen extends ConsumerWidget {
                 child: ListTile(
                   title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text('Target: ${item.desiredBuyPrice}', style: const TextStyle(color: Colors.white70)),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: item.isActive ? Colors.blueAccent.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8)
-                    ),
-                    child: Text(item.isActive ? 'ACTIVE' : 'PAUSED', style: TextStyle(color: item.isActive ? Colors.blueAccent : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: item.isActive ? Colors.blueAccent.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8)
+                        ),
+                        child: Text(item.isActive ? 'ACTIVE' : 'PAUSED', style: TextStyle(color: item.isActive ? Colors.blueAccent : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 8),
+                      // Р¤Р†РљРЎ: РљРЅРѕРїРєР° РІРёРґР°Р»РµРЅРЅСЏ
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.redAccent),
+                        onPressed: () => engine.deleteItem(item.id),
+                      ),
+                    ],
+                  ),
+                  // Р¤Р†РљРЎ: РџРµСЂРµС…С–Рґ РЅР° С„РѕСЂРјСѓ СЂРµРґР°РіСѓРІР°РЅРЅСЏ
+                  onTap: () => Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (_) => WatchlistItemFormScreen(item: item))
                   ),
                 ),
               );
