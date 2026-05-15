@@ -10,8 +10,7 @@ import * as crypto from 'crypto';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
-    credentials: true,
+    origin: '*', // ФІКС: Відкриваємо для всіх, як і в main.ts
   },
   transports: ['websocket', 'polling'],
 })
@@ -55,47 +54,61 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     client.leave('admin_broadcast');
   }
 
+  // ФІКС: Додано "if (!this.server) return;" усюди. 
+  // Тепер, якщо сокети відваляться, це НЕ зламає створення товарів!
+  
   emitCustom(event: string, payload: any) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit(event, payload);
   }
 
   emitDashboardRefresh(reason: string) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('dashboard_refresh', { reason, timestamp: Date.now() });
   }
 
   emitFlowRefresh(flow: string) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('flow_refresh', { flow, timestamp: Date.now() });
   }
 
   emitInventoryRefresh(payload: any) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('inventory_updated', { ...payload, timestamp: Date.now() });
   }
 
   emitInventoryUpdated(payload: any) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('inventory_updated', { ...payload, timestamp: Date.now() });
   }
 
   emitWatchlistUpdated(payload: any) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('watchlist_updated', { ...payload, timestamp: Date.now() });
   }
 
   emitWatchlistRefresh(payload: any) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('watchlist_updated', { ...payload, timestamp: Date.now() });
   }
 
   emitSaleRegistered(payload: any) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('sale_registered', { ...payload, timestamp: Date.now() });
   }
 
   emitOpportunityRefresh(reason: string) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('opportunity_refresh', { reason, timestamp: Date.now() });
   }
 
   emitItemRefresh(itemId: string, reason: string) {
+    if (!this.server) return;
     this.server.to('admin_broadcast').emit('item_refresh', { itemId, reason, timestamp: Date.now() });
   }
 
   emitListingsRefresh(payload: any) {
+    if (!this.server) return;
     this.server.emit('listings_refresh', { ...payload, timestamp: Date.now() });
   }
 }
