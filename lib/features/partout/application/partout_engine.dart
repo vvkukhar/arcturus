@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:isolate';
+import 'package:flutter/foundation.dart'; // Додано
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
@@ -35,7 +36,11 @@ class PartOutEngine extends AsyncNotifier<PartOutEngineState> {
     final pList = pRaw != null ? (jsonDecode(pRaw) as List).map((e) => PartOutProjectModel.fromMap(e)).toList() : <PartOutProjectModel>[];
     final lList = lRaw != null ? (jsonDecode(lRaw) as List).map((e) => PartOutLineModel.fromMap(e)).toList() : <PartOutLineModel>[];
 
-    return await Isolate.run(() => _computeState(pList, lList, ''));
+    if (kIsWeb) {
+      return _computeState(pList, lList, '');
+    } else {
+      return await Isolate.run(() => _computeState(pList, lList, ''));
+    }
   }
 
   static PartOutEngineState _computeState(List<PartOutProjectModel> projList, List<PartOutLineModel> linesList, String query) {
@@ -95,7 +100,12 @@ class PartOutEngine extends AsyncNotifier<PartOutEngineState> {
   void search(String query) async {
     if (state.value == null) return;
     final curr = state.value!;
-    state = AsyncValue.data(await Isolate.run(() => _computeState(curr.projects.map((e) => e.project).toList(), curr.projects.expand((e) => e.lines).toList(), query)));
+    
+    if (kIsWeb) {
+      state = AsyncValue.data(_computeState(curr.projects.map((e) => e.project).toList(), curr.projects.expand((e) => e.lines).toList(), query));
+    } else {
+      state = AsyncValue.data(await Isolate.run(() => _computeState(curr.projects.map((e) => e.project).toList(), curr.projects.expand((e) => e.lines).toList(), query)));
+    }
   }
 }
 

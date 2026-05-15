@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:isolate';
+import 'package:flutter/foundation.dart'; // Додано для kIsWeb
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -32,7 +33,13 @@ class ActivityEngine extends AsyncNotifier<ActivityEngineState> {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key);
     final items = raw != null && raw.isNotEmpty ? (jsonDecode(raw) as List).map((e) => ActivityLogEntryModel.fromMap(Map<String, dynamic>.from(e))).toList() : <ActivityLogEntryModel>[];
-    return await Isolate.run(() => _computeState(items, '', null));
+    
+    // РОЗУМНЕ РОЗДІЛЕННЯ: Веб працює синхронно, мобілка — в ізоляті
+    if (kIsWeb) {
+      return _computeState(items, '', null);
+    } else {
+      return await Isolate.run(() => _computeState(items, '', null));
+    }
   }
 
   static ActivityEngineState _computeState(List<ActivityLogEntryModel> items, String query, String? type) {
@@ -102,18 +109,33 @@ class ActivityEngine extends AsyncNotifier<ActivityEngineState> {
     final next = <ActivityLogEntryModel>[entry, ...(state.value?.logs ?? [])];
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key, jsonEncode(next.map((e) => e.toMap()).toList()));
-    state = AsyncValue.data(await Isolate.run(() => _computeState(next, state.value?.searchQuery ?? '', state.value?.typeFilter)));
+    
+    if (kIsWeb) {
+      state = AsyncValue.data(_computeState(next, state.value?.searchQuery ?? '', state.value?.typeFilter));
+    } else {
+      state = AsyncValue.data(await Isolate.run(() => _computeState(next, state.value?.searchQuery ?? '', state.value?.typeFilter)));
+    }
   }
 
   void filter(String query, String? type) async {
     if (state.value == null) return;
-    state = AsyncValue.data(await Isolate.run(() => _computeState(state.value!.logs, query, type)));
+    
+    if (kIsWeb) {
+      state = AsyncValue.data(_computeState(state.value!.logs, query, type));
+    } else {
+      state = AsyncValue.data(await Isolate.run(() => _computeState(state.value!.logs, query, type)));
+    }
   }
 
   Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
-    state = AsyncValue.data(await Isolate.run(() => _computeState(const [], '', null)));
+    
+    if (kIsWeb) {
+      state = AsyncValue.data(_computeState(const [], '', null));
+    } else {
+      state = AsyncValue.data(await Isolate.run(() => _computeState(const [], '', null)));
+    }
   }
 }
 

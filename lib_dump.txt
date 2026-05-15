@@ -78,6 +78,7 @@ final currencyConverterProvider = Provider<CurrencyConverter>((ref) {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\app\providers\repositories_providers.dart =====
 
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/data/repositories/app_repositories.dart';
@@ -126,10 +127,12 @@ import 'package:lego_trading_manager/features/market/presentation/market_screen.
 import 'package:lego_trading_manager/features/pos/presentation/pos_terminal_screen.dart';
 import 'package:lego_trading_manager/features/search/presentation/global_search_screen.dart';
 import 'package:lego_trading_manager/features/auth/presentation/login_screen.dart';
+import 'package:lego_trading_manager/features/auth/presentation/register_screen.dart';
 
 class AppRouter {
   static const String home = '/';
   static const String login = '/login';
+  static const String register = '/register';
   static const String dashboard = '/dashboard';
   static const String inventory = '/inventory';
   static const String purchases = '/purchases';
@@ -155,6 +158,9 @@ class AppRouter {
         break;
       case '/login':
         page = const LoginScreen();
+        break;
+      case '/register':
+        page = const RegisterScreen();
         break;
       case '/inventory':
         page = const InventoryScreen();
@@ -460,8 +466,8 @@ class _AppBootstrapScreenState extends ConsumerState<AppBootstrapScreen> {
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiConfig {
-  // РЇРєС‰Рѕ РІ .env С” API_BASE_URL вЂ” Р±РµСЂРµРјРѕ Р№РѕРіРѕ, СЏРєС‰Рѕ РЅС– вЂ” Р¶РѕСЂСЃС‚РєРѕ Р·Р°С€РёС‚Р° Р»С–РЅРєР° РЅР° Render
-  static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'https://arcturus-api-idsb.onrender.com/api';
+  // Р—РјС–РЅРёР»Рё РґРµС„РѕР»С‚РЅРёР№ URL, РґРѕРґР°РІС€Рё /v1
+  static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'https://arcturus-api-idsb.onrender.com/api/v1';
   static const int timeoutSeconds = 15;
 }
 
@@ -1293,22 +1299,59 @@ final i18nProvider = NotifierProvider<I18nNotifier, String>(I18nNotifier.new);
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\core\network\network_core.dart =====
 
 import 'dart:async';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class NetworkCore {
   final String baseUrl;
-  final http.Client _client;
-  final FlutterSecureStorage _secureStorage;
+  late final Dio _dio;
   io.Socket? _socket;
   final _eventsController = StreamController<Map<String, dynamic>>.broadcast();
 
-  NetworkCore({required this.baseUrl, http.Client? client}) 
-      : _client = client ?? http.Client(),
-        _secureStorage = const FlutterSecureStorage();
+  NetworkCore({required this.baseUrl}) {
+    _dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
+      contentType: 'application/json',
+      responseType: ResponseType.json,
+    ));
+
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('arcturus_jwt');
+        
+        if (token != null && token != 'cookie_session_active' && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        
+        if (!kIsWeb) {
+          final cookie = prefs.getString('arcturus_cookie');
+          if (cookie != null && cookie.isNotEmpty) {
+            options.headers['Cookie'] = cookie;
+          }
+        }
+        
+        options.extra['withCredentials'] = true;
+        return handler.next(options);
+      },
+      onResponse: (response, handler) async {
+        if (!kIsWeb) {
+          final cookies = response.headers['set-cookie'];
+          if (cookies != null && cookies.isNotEmpty) {
+            final cookieStr = cookies.map((c) => c.split(';').first).join('; ');
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('arcturus_cookie', cookieStr);
+          }
+        }
+        return handler.next(response);
+      },
+    ));
+  }
 
   Stream<Map<String, dynamic>> get socketEvents => _eventsController.stream;
 
@@ -1321,46 +1364,42 @@ class NetworkCore {
     return Connectivity().onConnectivityChanged.map((r) => !r.contains(ConnectivityResult.none));
   }
 
-  Future<Map<String, String>> _headers() async {
-    final token = await _secureStorage.read(key: 'arcturus_jwt');
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
-
   Future<dynamic> request(String method, String path, {Map<String, dynamic>? body, int retries = 3}) async {
-    final uri = Uri.parse('$baseUrl$path');
-    
     for (int i = 0; i <= retries; i++) {
       try {
-        final headers = await _headers();
-        http.Response res;
+        final options = Options(
+          method: method.toUpperCase(),
+          validateStatus: (status) => status != null && status < 500,
+        );
 
-        switch (method.toUpperCase()) {
-          case 'GET': res = await _client.get(uri, headers: headers); break;
-          case 'POST': res = await _client.post(uri, headers: headers, body: body != null ? jsonEncode(body) : null); break;
-          case 'PUT': res = await _client.put(uri, headers: headers, body: body != null ? jsonEncode(body) : null); break;
-          case 'PATCH': res = await _client.patch(uri, headers: headers, body: body != null ? jsonEncode(body) : null); break;
-          case 'DELETE': res = await _client.delete(uri, headers: headers, body: body != null ? jsonEncode(body) : null); break;
-          default: throw Exception('METHOD_NOT_SUPPORTED');
-        }
+        final response = await _dio.request(path, data: body, options: options);
 
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          if (res.body.isEmpty) return null;
-          return jsonDecode(res.body);
+        if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+          return response.data;
         }
         
-        if (res.statusCode == 401 || res.statusCode == 403) throw Exception('UNAUTHORIZED');
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('arcturus_jwt');
+          await prefs.remove('arcturus_cookie');
+          throw Exception('Unauthorized access. Please login again.');
+        }
         
-        // Р’РёРєРёРґР°С”РјРѕ РїРѕРјРёР»РєСѓ Р· РґРµС‚Р°Р»СЏРјРё РІС–Рґ Р±РµРєРµРЅРґСѓ
-        final errorBody = jsonDecode(res.body);
-        throw Exception(errorBody['message'] ?? 'API_ERROR_${res.statusCode}');
+        String errorMessage = 'Status ${response.statusCode}';
+        if (response.data is Map && response.data['message'] != null) {
+          final msg = response.data['message'];
+          errorMessage = msg is List ? msg.join(', ') : msg.toString();
+        }
+        throw Exception(errorMessage);
         
       } catch (e) {
-        if (e.toString().contains('UNAUTHORIZED') || e.toString().contains('API_ERROR')) rethrow;
-        if (i == retries) throw Exception('NETWORK_FAILURE');
+        final errStr = e.toString().replaceAll('Exception: ', '');
+        if (errStr.contains('Unauthorized access')) {
+          throw Exception(errStr);
+        }
+        if (i == retries) {
+          throw Exception(errStr);
+        }
         await Future.delayed(Duration(milliseconds: 500 * (1 << i)));
       }
     }
@@ -1368,11 +1407,14 @@ class NetworkCore {
 
   Future<void> initSocket() async {
     if (_socket != null && _socket!.connected) return;
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('arcturus_jwt');
+    final cookie = prefs.getString('arcturus_cookie');
     
-    final token = await _secureStorage.read(key: 'arcturus_jwt');
-    if (token == null) return;
+    if (token == null && cookie == null) return;
 
-    final socketUrl = baseUrl.replaceAll(RegExp(r'/api/?$'), '');
+    final uri = Uri.parse(baseUrl);
+    final socketUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
     
     _socket = io.io(
       socketUrl, 
@@ -1381,9 +1423,11 @@ class NetworkCore {
         .enableAutoConnect()
         .enableReconnection()
         .setReconnectionAttempts(10)
-        .setReconnectionDelay(1000)
-        .setReconnectionDelayMax(5000)
-        .setAuth({'token': token})
+        .setAuth(token != null && token != 'cookie_session_active' ? {'token': token} : {})
+        .setExtraHeaders({
+          'withCredentials': true,
+          if (!kIsWeb && cookie != null) 'cookie': cookie,
+        })
         .build(),
     );
 
@@ -1401,7 +1445,7 @@ class NetworkCore {
     _socket?.disconnect();
     _socket?.dispose();
     _eventsController.close();
-    _client.close();
+    _dio.close();
   }
 }
 
@@ -1606,6 +1650,12 @@ class SyncEngine extends AsyncNotifier<SyncEngineState> {
     }
     
     return SyncEngineState(isOnline: isOnline, pendingMutations: rawQueue.length);
+  }
+
+  // Р”РћР”РђРќРћ: РњРµС‚РѕРґ РґР»СЏ СЂСѓС‡РЅРѕРіРѕ РїРµСЂРµС…РѕРґСѓ РІ РѕС„Р»Р°Р№РЅ-СЂРµР¶РёРј
+  void setOfflineMode() {
+    final currentPending = state.valueOrNull?.pendingMutations ?? 0;
+    state = AsyncValue.data(SyncEngineState(isOnline: false, pendingMutations: currentPending));
   }
 
   Future<void> enqueueMutation(String type, String endpoint, String method, Map<String, dynamic> payload) async {
@@ -2061,17 +2111,115 @@ class ItemModel {
   final int quantity;
   final List<String> imagePaths;
 
-  const ItemModel({required this.id, required this.title, required this.type, this.theme, this.setId, this.notes, required this.condition, required this.completeness, required this.ownershipType, required this.purchasePrice, required this.shippingToMe, required this.extraCosts, required this.totalCost, this.marketAverage, this.expectedSalePrice, this.actualSalePrice, required this.status, this.purchaseDate, this.saleDate, required this.isTracked, required this.quantity, this.imagePaths = const []});
+  const ItemModel({
+    required this.id,
+    required this.title,
+    required this.type,
+    this.theme,
+    this.setId,
+    this.notes,
+    required this.condition,
+    required this.completeness,
+    required this.ownershipType,
+    required this.purchasePrice,
+    required this.shippingToMe,
+    required this.extraCosts,
+    required this.totalCost,
+    this.marketAverage,
+    this.expectedSalePrice,
+    this.actualSalePrice,
+    required this.status,
+    this.purchaseDate,
+    this.saleDate,
+    required this.isTracked,
+    required this.quantity,
+    this.imagePaths = const [],
+  });
 
   int? get daysInInventory => purchaseDate != null ? DateTime.now().difference(purchaseDate!).inDays : null;
   bool get isActive => status != ItemStatus.sold && status != ItemStatus.archived;
   bool get isSold => status == ItemStatus.sold;
 
-  ItemModel copyWith({ItemStatus? status, double? expectedSalePrice, int? quantity, List<String>? imagePaths}) => ItemModel(id: id, title: title, type: type, theme: theme, setId: setId, notes: notes, condition: condition, completeness: completeness, ownershipType: ownershipType, purchasePrice: purchasePrice, shippingToMe: shippingToMe, extraCosts: extraCosts, totalCost: totalCost, marketAverage: marketAverage, expectedSalePrice: expectedSalePrice ?? this.expectedSalePrice, actualSalePrice: actualSalePrice, status: status ?? this.status, purchaseDate: purchaseDate, saleDate: saleDate, isTracked: isTracked, quantity: quantity ?? this.quantity, imagePaths: imagePaths ?? this.imagePaths);
+  ItemModel copyWith({
+    String? id,
+    ItemStatus? status,
+    double? expectedSalePrice,
+    int? quantity,
+    List<String>? imagePaths,
+  }) =>
+      ItemModel(
+        id: id ?? this.id,
+        title: title,
+        type: type,
+        theme: theme,
+        setId: setId,
+        notes: notes,
+        condition: condition,
+        completeness: completeness,
+        ownershipType: ownershipType,
+        purchasePrice: purchasePrice,
+        shippingToMe: shippingToMe,
+        extraCosts: extraCosts,
+        totalCost: totalCost,
+        marketAverage: marketAverage,
+        expectedSalePrice: expectedSalePrice ?? this.expectedSalePrice,
+        actualSalePrice: actualSalePrice,
+        status: status ?? this.status,
+        purchaseDate: purchaseDate,
+        saleDate: saleDate,
+        isTracked: isTracked,
+        quantity: quantity ?? this.quantity,
+        imagePaths: imagePaths ?? this.imagePaths,
+      );
 
-  Map<String, dynamic> toMap() => {'id': id, 'title': title, 'type': type.name, 'theme': theme, 'setId': setId, 'notes': notes, 'condition': condition.name, 'completeness': completeness.name, 'ownershipType': ownershipType.name, 'purchasePrice': purchasePrice, 'shippingToMe': shippingToMe, 'extraCosts': extraCosts, 'totalCost': totalCost, 'marketAverage': marketAverage, 'expectedSalePrice': expectedSalePrice, 'actualSalePrice': actualSalePrice, 'status': status.name, 'purchaseDate': purchaseDate?.toIso8601String(), 'saleDate': saleDate?.toIso8601String(), 'isTracked': isTracked, 'quantity': quantity, 'imagePaths': imagePaths};
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'title': title,
+        'type': type.name,
+        'theme': theme,
+        'setId': setId,
+        'notes': notes,
+        'condition': condition.name,
+        'completeness': completeness.name,
+        'ownershipType': ownershipType.name,
+        'purchasePrice': purchasePrice,
+        'shippingToMe': shippingToMe,
+        'extraCosts': extraCosts,
+        'totalCost': totalCost,
+        'marketAverage': marketAverage,
+        'expectedSalePrice': expectedSalePrice,
+        'actualSalePrice': actualSalePrice,
+        'status': status.name,
+        'purchaseDate': purchaseDate?.toIso8601String(),
+        'saleDate': saleDate?.toIso8601String(),
+        'isTracked': isTracked,
+        'quantity': quantity,
+        'imagePaths': imagePaths
+      };
 
-  factory ItemModel.fromMap(Map<String, dynamic> map) => ItemModel(id: map['id'], title: map['title'], type: ItemType.values.firstWhere((e) => e.name == map['type'], orElse: () => ItemType.set), theme: map['theme'], setId: map['setId'], notes: map['notes'], condition: ItemCondition.values.firstWhere((e) => e.name == map['condition'], orElse: () => ItemCondition.newSealed), completeness: ItemCompleteness.values.firstWhere((e) => e.name == map['completeness'], orElse: () => ItemCompleteness.complete), ownershipType: OwnershipType.values.firstWhere((e) => e.name == map['ownershipType'], orElse: () => OwnershipType.resale), purchasePrice: (map['purchasePrice'] ?? 0).toDouble(), shippingToMe: (map['shippingToMe'] ?? 0).toDouble(), extraCosts: (map['extraCosts'] ?? 0).toDouble(), totalCost: (map['totalCost'] ?? 0).toDouble(), marketAverage: map['marketAverage']?.toDouble(), expectedSalePrice: map['expectedSalePrice']?.toDouble(), actualSalePrice: map['actualSalePrice']?.toDouble(), status: ItemStatus.values.firstWhere((e) => e.name == map['status'], orElse: () => ItemStatus.purchased), purchaseDate: map['purchaseDate'] != null ? DateTime.tryParse(map['purchaseDate']) : null, saleDate: map['saleDate'] != null ? DateTime.tryParse(map['saleDate']) : null, isTracked: map['isTracked'] ?? true, quantity: map['quantity'] ?? 1, imagePaths: List<String>.from(map['imagePaths'] ?? []));
+  factory ItemModel.fromMap(Map<String, dynamic> map) => ItemModel(
+      id: map['id'],
+      title: map['title'],
+      type: ItemType.values.firstWhere((e) => e.name == map['type'], orElse: () => ItemType.set),
+      theme: map['theme'],
+      setId: map['setId'],
+      notes: map['notes'],
+      condition: ItemCondition.values.firstWhere((e) => e.name == map['condition'], orElse: () => ItemCondition.newSealed),
+      completeness: ItemCompleteness.values.firstWhere((e) => e.name == map['completeness'], orElse: () => ItemCompleteness.complete),
+      ownershipType: OwnershipType.values.firstWhere((e) => e.name == map['ownershipType'], orElse: () => OwnershipType.resale),
+      purchasePrice: (map['purchasePrice'] ?? 0).toDouble(),
+      shippingToMe: (map['shippingToMe'] ?? 0).toDouble(),
+      extraCosts: (map['extraCosts'] ?? 0).toDouble(),
+      totalCost: (map['totalCost'] ?? 0).toDouble(),
+      marketAverage: map['marketAverage']?.toDouble(),
+      expectedSalePrice: map['expectedSalePrice']?.toDouble(),
+      actualSalePrice: map['actualSalePrice']?.toDouble(),
+      status: ItemStatus.values.firstWhere((e) => e.name == map['status'], orElse: () => ItemStatus.purchased),
+      purchaseDate: map['purchaseDate'] != null ? DateTime.tryParse(map['purchaseDate']) : null,
+      saleDate: map['saleDate'] != null ? DateTime.tryParse(map['saleDate']) : null,
+      isTracked: map['isTracked'] ?? true,
+      quantity: map['quantity'] ?? 1,
+      imagePaths: List<String>.from(map['imagePaths'] ?? []));
 }
 
 class PurchaseModel {
@@ -2083,13 +2231,84 @@ class PurchaseModel {
   final DateTime purchaseDate;
   final int quantity, soldQuantity;
 
-  const PurchaseModel({required this.id, required this.itemId, required this.source, this.sourceUrl, this.sellerName, this.sellerContact, this.note, required this.purchasePrice, required this.shippingCost, required this.additionalCosts, required this.finalTotal, required this.exchangeRate, required this.currency, required this.paymentMethod, required this.purchaseDate, required this.quantity, required this.soldQuantity});
+  const PurchaseModel({
+    required this.id,
+    required this.itemId,
+    required this.source,
+    this.sourceUrl,
+    this.sellerName,
+    this.sellerContact,
+    this.note,
+    required this.purchasePrice,
+    required this.shippingCost,
+    required this.additionalCosts,
+    required this.finalTotal,
+    required this.exchangeRate,
+    required this.currency,
+    required this.paymentMethod,
+    required this.purchaseDate,
+    required this.quantity,
+    required this.soldQuantity,
+  });
 
-  PurchaseModel copyWith({int? soldQuantity}) => PurchaseModel(id: id, itemId: itemId, source: source, sourceUrl: sourceUrl, sellerName: sellerName, sellerContact: sellerContact, note: note, purchasePrice: purchasePrice, shippingCost: shippingCost, additionalCosts: additionalCosts, finalTotal: finalTotal, exchangeRate: exchangeRate, currency: currency, paymentMethod: paymentMethod, purchaseDate: purchaseDate, quantity: quantity, soldQuantity: soldQuantity ?? this.soldQuantity);
+  PurchaseModel copyWith({String? id, int? soldQuantity}) => PurchaseModel(
+        id: id ?? this.id,
+        itemId: itemId,
+        source: source,
+        sourceUrl: sourceUrl,
+        sellerName: sellerName,
+        sellerContact: sellerContact,
+        note: note,
+        purchasePrice: purchasePrice,
+        shippingCost: shippingCost,
+        additionalCosts: additionalCosts,
+        finalTotal: finalTotal,
+        exchangeRate: exchangeRate,
+        currency: currency,
+        paymentMethod: paymentMethod,
+        purchaseDate: purchaseDate,
+        quantity: quantity,
+        soldQuantity: soldQuantity ?? this.soldQuantity,
+      );
 
-  Map<String, dynamic> toJson() => {'id': id, 'itemId': itemId, 'source': source, 'sourceUrl': sourceUrl, 'sellerName': sellerName, 'sellerContact': sellerContact, 'note': note, 'purchasePrice': purchasePrice, 'shippingCost': shippingCost, 'additionalCosts': additionalCosts, 'finalTotal': finalTotal, 'exchangeRate': exchangeRate, currency: currency, 'paymentMethod': paymentMethod.name, 'purchaseDate': purchaseDate.toIso8601String(), 'quantity': quantity, 'soldQuantity': soldQuantity};
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'itemId': itemId,
+        'source': source,
+        'sourceUrl': sourceUrl,
+        'sellerName': sellerName,
+        'sellerContact': sellerContact,
+        'note': note,
+        'purchasePrice': purchasePrice,
+        'shippingCost': shippingCost,
+        'additionalCosts': additionalCosts,
+        'finalTotal': finalTotal,
+        'exchangeRate': exchangeRate,
+        'currency': currency,
+        'paymentMethod': paymentMethod.name,
+        'purchaseDate': purchaseDate.toIso8601String(),
+        'quantity': quantity,
+        'soldQuantity': soldQuantity
+      };
 
-  factory PurchaseModel.fromJson(Map<String, dynamic> map) => PurchaseModel(id: map['id'], itemId: map['itemId'], source: map['source'], sourceUrl: map['sourceUrl'], sellerName: map['sellerName'], sellerContact: map['sellerContact'], note: map['note'], purchasePrice: (map['purchasePrice'] ?? 0).toDouble(), shippingCost: (map['shippingCost'] ?? 0).toDouble(), additionalCosts: (map['additionalCosts'] ?? 0).toDouble(), finalTotal: (map['finalTotal'] ?? 0).toDouble(), exchangeRate: (map['exchangeRate'] ?? 1).toDouble(), currency: map['currency'] ?? 'UAH', paymentMethod: PurchasePaymentMethod.values.firstWhere((e) => e.name == map['paymentMethod'], orElse: () => PurchasePaymentMethod.card), purchaseDate: DateTime.tryParse(map['purchaseDate'] ?? '') ?? DateTime.now(), quantity: map['quantity'] ?? 1, soldQuantity: map['soldQuantity'] ?? 0);
+  factory PurchaseModel.fromJson(Map<String, dynamic> map) => PurchaseModel(
+      id: map['id'],
+      itemId: map['itemId'],
+      source: map['source'],
+      sourceUrl: map['sourceUrl'],
+      sellerName: map['sellerName'],
+      sellerContact: map['sellerContact'],
+      note: map['note'],
+      purchasePrice: (map['purchasePrice'] ?? 0).toDouble(),
+      shippingCost: (map['shippingCost'] ?? 0).toDouble(),
+      additionalCosts: (map['additionalCosts'] ?? 0).toDouble(),
+      finalTotal: (map['finalTotal'] ?? 0).toDouble(),
+      exchangeRate: (map['exchangeRate'] ?? 1).toDouble(),
+      currency: map['currency'] ?? 'UAH',
+      paymentMethod: PurchasePaymentMethod.values.firstWhere((e) => e.name == map['paymentMethod'], orElse: () => PurchasePaymentMethod.card),
+      purchaseDate: DateTime.tryParse(map['purchaseDate'] ?? '') ?? DateTime.now(),
+      quantity: map['quantity'] ?? 1,
+      soldQuantity: map['soldQuantity'] ?? 0);
 }
 
 class SaleModel {
@@ -2100,13 +2319,68 @@ class SaleModel {
   final DateTime saleDate;
   final int quantity;
 
-  const SaleModel({required this.id, required this.itemId, required this.platform, this.buyerName, this.note, required this.salePrice, required this.platformFee, required this.shippingPaidByMe, required this.shippingPaidByBuyer, required this.finalNet, required this.currency, required this.saleDate, required this.quantity});
+  const SaleModel({
+    required this.id,
+    required this.itemId,
+    required this.platform,
+    this.buyerName,
+    this.note,
+    required this.salePrice,
+    required this.platformFee,
+    required this.shippingPaidByMe,
+    required this.shippingPaidByBuyer,
+    required this.finalNet,
+    required this.currency,
+    required this.saleDate,
+    required this.quantity,
+  });
 
-  SaleModel copyWith({String? platform}) => SaleModel(id: id, itemId: itemId, platform: platform ?? this.platform, buyerName: buyerName, note: note, salePrice: salePrice, platformFee: platformFee, shippingPaidByMe: shippingPaidByMe, shippingPaidByBuyer: shippingPaidByBuyer, finalNet: finalNet, currency: currency, saleDate: saleDate, quantity: quantity);
+  SaleModel copyWith({String? id, String? platform}) => SaleModel(
+        id: id ?? this.id,
+        itemId: itemId,
+        platform: platform ?? this.platform,
+        buyerName: buyerName,
+        note: note,
+        salePrice: salePrice,
+        platformFee: platformFee,
+        shippingPaidByMe: shippingPaidByMe,
+        shippingPaidByBuyer: shippingPaidByBuyer,
+        finalNet: finalNet,
+        currency: currency,
+        saleDate: saleDate,
+        quantity: quantity,
+      );
 
-  Map<String, dynamic> toJson() => {'id': id, 'itemId': itemId, 'platform': platform, 'buyerName': buyerName, 'note': note, 'salePrice': salePrice, 'platformFee': platformFee, 'shippingPaidByMe': shippingPaidByMe, 'shippingPaidByBuyer': shippingPaidByBuyer, 'finalNet': finalNet, 'currency': currency, 'saleDate': saleDate.toIso8601String(), 'quantity': quantity};
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'itemId': itemId,
+        'platform': platform,
+        'buyerName': buyerName,
+        'note': note,
+        'salePrice': salePrice,
+        'platformFee': platformFee,
+        'shippingPaidByMe': shippingPaidByMe,
+        'shippingPaidByBuyer': shippingPaidByBuyer,
+        'finalNet': finalNet,
+        'currency': currency,
+        'saleDate': saleDate.toIso8601String(),
+        'quantity': quantity
+      };
 
-  factory SaleModel.fromJson(Map<String, dynamic> map) => SaleModel(id: map['id'], itemId: map['itemId'], platform: map['platform'], buyerName: map['buyerName'], note: map['note'], salePrice: (map['salePrice'] ?? 0).toDouble(), platformFee: (map['platformFee'] ?? 0).toDouble(), shippingPaidByMe: (map['shippingPaidByMe'] ?? 0).toDouble(), shippingPaidByBuyer: (map['shippingPaidByBuyer'] ?? 0).toDouble(), finalNet: (map['finalNet'] ?? 0).toDouble(), currency: map['currency'] ?? 'UAH', saleDate: DateTime.tryParse(map['saleDate'] ?? '') ?? DateTime.now(), quantity: map['quantity'] ?? 1);
+  factory SaleModel.fromJson(Map<String, dynamic> map) => SaleModel(
+      id: map['id'],
+      itemId: map['itemId'],
+      platform: map['platform'],
+      buyerName: map['buyerName'],
+      note: map['note'],
+      salePrice: (map['salePrice'] ?? 0).toDouble(),
+      platformFee: (map['platformFee'] ?? 0).toDouble(),
+      shippingPaidByMe: (map['shippingPaidByMe'] ?? 0).toDouble(),
+      shippingPaidByBuyer: (map['shippingPaidByBuyer'] ?? 0).toDouble(),
+      finalNet: (map['finalNet'] ?? 0).toDouble(),
+      currency: map['currency'] ?? 'UAH',
+      saleDate: DateTime.tryParse(map['saleDate'] ?? '') ?? DateTime.now(),
+      quantity: map['quantity'] ?? 1);
 }
 
 class WatchlistItemModel {
@@ -2118,11 +2392,60 @@ class WatchlistItemModel {
   final bool isActive;
   final DateTime createdAt;
 
-  const WatchlistItemModel({required this.id, required this.title, required this.type, this.theme, this.refId, this.comment, required this.desiredBuyPrice, required this.maxBuyPrice, this.marketPrice, required this.isActive, required this.createdAt});
+  const WatchlistItemModel({
+    required this.id,
+    required this.title,
+    required this.type,
+    this.theme,
+    this.refId,
+    this.comment,
+    required this.desiredBuyPrice,
+    required this.maxBuyPrice,
+    this.marketPrice,
+    required this.isActive,
+    required this.createdAt,
+  });
 
-  Map<String, dynamic> toMap() => {'id': id, 'title': title, 'type': type.name, 'theme': theme, 'refId': refId, 'comment': comment, 'desiredBuyPrice': desiredBuyPrice, 'maxBuyPrice': maxBuyPrice, 'marketPrice': marketPrice, 'isActive': isActive, 'createdAt': createdAt.toIso8601String()};
+  WatchlistItemModel copyWith({String? id}) => WatchlistItemModel(
+        id: id ?? this.id,
+        title: title,
+        type: type,
+        theme: theme,
+        refId: refId,
+        comment: comment,
+        desiredBuyPrice: desiredBuyPrice,
+        maxBuyPrice: maxBuyPrice,
+        marketPrice: marketPrice,
+        isActive: isActive,
+        createdAt: createdAt,
+      );
 
-  factory WatchlistItemModel.fromMap(Map<String, dynamic> map) => WatchlistItemModel(id: map['id'], title: map['title'], type: ItemType.values.firstWhere((e) => e.name == map['type'], orElse: () => ItemType.set), theme: map['theme'], refId: map['refId'], comment: map['comment'], desiredBuyPrice: (map['desiredBuyPrice'] ?? 0).toDouble(), maxBuyPrice: (map['maxBuyPrice'] ?? 0).toDouble(), marketPrice: map['marketPrice']?.toDouble(), isActive: map['isActive'] ?? true, createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now());
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'title': title,
+        'type': type.name,
+        'theme': theme,
+        'refId': refId,
+        'comment': comment,
+        'desiredBuyPrice': desiredBuyPrice,
+        'maxBuyPrice': maxBuyPrice,
+        'marketPrice': marketPrice,
+        'isActive': isActive,
+        'createdAt': createdAt.toIso8601String()
+      };
+
+  factory WatchlistItemModel.fromMap(Map<String, dynamic> map) => WatchlistItemModel(
+      id: map['id'],
+      title: map['title'],
+      type: ItemType.values.firstWhere((e) => e.name == map['type'], orElse: () => ItemType.set),
+      theme: map['theme'],
+      refId: map['refId'],
+      comment: map['comment'],
+      desiredBuyPrice: (map['desiredBuyPrice'] ?? 0).toDouble(),
+      maxBuyPrice: (map['maxBuyPrice'] ?? 0).toDouble(),
+      marketPrice: map['marketPrice']?.toDouble(),
+      isActive: map['isActive'] ?? true,
+      createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now());
 }
 
 class MarketSnapshotModel {
@@ -2255,6 +2578,7 @@ class PartOutRepository {
 
 import 'dart:convert';
 import 'dart:isolate';
+import 'package:flutter/foundation.dart'; // Р”РѕРґР°РЅРѕ РґР»СЏ kIsWeb
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -2287,7 +2611,13 @@ class ActivityEngine extends AsyncNotifier<ActivityEngineState> {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key);
     final items = raw != null && raw.isNotEmpty ? (jsonDecode(raw) as List).map((e) => ActivityLogEntryModel.fromMap(Map<String, dynamic>.from(e))).toList() : <ActivityLogEntryModel>[];
-    return await Isolate.run(() => _computeState(items, '', null));
+    
+    // Р РћР—РЈРњРќР• Р РћР—Р”Р†Р›Р•РќРќРЇ: Р’РµР± РїСЂР°С†СЋС” СЃРёРЅС…СЂРѕРЅРЅРѕ, РјРѕР±С–Р»РєР° вЂ” РІ С–Р·РѕР»СЏС‚С–
+    if (kIsWeb) {
+      return _computeState(items, '', null);
+    } else {
+      return await Isolate.run(() => _computeState(items, '', null));
+    }
   }
 
   static ActivityEngineState _computeState(List<ActivityLogEntryModel> items, String query, String? type) {
@@ -2357,18 +2687,33 @@ class ActivityEngine extends AsyncNotifier<ActivityEngineState> {
     final next = <ActivityLogEntryModel>[entry, ...(state.value?.logs ?? [])];
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key, jsonEncode(next.map((e) => e.toMap()).toList()));
-    state = AsyncValue.data(await Isolate.run(() => _computeState(next, state.value?.searchQuery ?? '', state.value?.typeFilter)));
+    
+    if (kIsWeb) {
+      state = AsyncValue.data(_computeState(next, state.value?.searchQuery ?? '', state.value?.typeFilter));
+    } else {
+      state = AsyncValue.data(await Isolate.run(() => _computeState(next, state.value?.searchQuery ?? '', state.value?.typeFilter)));
+    }
   }
 
   void filter(String query, String? type) async {
     if (state.value == null) return;
-    state = AsyncValue.data(await Isolate.run(() => _computeState(state.value!.logs, query, type)));
+    
+    if (kIsWeb) {
+      state = AsyncValue.data(_computeState(state.value!.logs, query, type));
+    } else {
+      state = AsyncValue.data(await Isolate.run(() => _computeState(state.value!.logs, query, type)));
+    }
   }
 
   Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
-    state = AsyncValue.data(await Isolate.run(() => _computeState(const [], '', null)));
+    
+    if (kIsWeb) {
+      state = AsyncValue.data(_computeState(const [], '', null));
+    } else {
+      state = AsyncValue.data(await Isolate.run(() => _computeState(const [], '', null)));
+    }
   }
 }
 
@@ -2696,6 +3041,7 @@ class ActivityTimelineScreen extends ConsumerWidget {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\analytics\application\analytics_engine.dart =====
 
 import 'dart:isolate';
+import 'package:flutter/foundation.dart'; // Р”РѕРґР°РЅРѕ
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/app/providers/core_providers.dart';
@@ -2734,7 +3080,11 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
     final watchlist = ref.watch(watchlistRepositoryProvider).getAll();
     final converter = ref.watch(currencyConverterProvider);
     
-    return await Isolate.run(() => _computeBackground(items, sales, watchlist, converter));
+    if (kIsWeb) {
+      return _computeBackground(items, sales, watchlist, converter);
+    } else {
+      return await Isolate.run(() => _computeBackground(items, sales, watchlist, converter));
+    }
   }
 
   static AnalyticsEngineState _computeBackground(List<ItemModel> items, List<SaleModel> sales, List<WatchlistItemModel> watchlist, CurrencyConverter converter) {
@@ -3038,7 +3388,7 @@ class _StatRow extends StatelessWidget {
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/core/network/network_core.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 
@@ -3050,21 +3400,22 @@ class AuthEngineState {
 }
 
 class AuthEngine extends AsyncNotifier<AuthEngineState> {
-  final _storage = const FlutterSecureStorage();
-
   @override
   Future<AuthEngineState> build() async {
-    final token = await _storage.read(key: 'arcturus_jwt');
-    final offline = await _storage.read(key: 'arcturus_offline') == 'true';
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('arcturus_jwt');
+    final cookie = prefs.getString('arcturus_cookie');
+    final offline = prefs.getString('arcturus_offline') == 'true';
 
     if (offline) return const AuthEngineState(isAuthenticated: true, isOfflineMode: true);
     
-    if (token != null) {
+    if (token != null || cookie != null) {
       try {
         final res = await ref.read(networkCoreProvider).request('GET', '/auth/me');
         return AuthEngineState(isAuthenticated: true, user: res);
       } catch (e) {
-        await _storage.delete(key: 'arcturus_jwt');
+        await prefs.remove('arcturus_jwt');
+        await prefs.remove('arcturus_cookie');
         return const AuthEngineState();
       }
     }
@@ -3079,20 +3430,33 @@ class AuthEngine extends AsyncNotifier<AuthEngineState> {
         'password': password,
       });
 
-      if (res != null && res['token'] != null) {
-        await _storage.write(key: 'arcturus_jwt', value: res['token']);
+      if (res == null) throw Exception('Empty response from server');
+
+      String? token;
+      Map<String, dynamic>? user;
+
+      if (res is String) {
+        token = res;
+      } else if (res is Map) {
+        token = res['token'] ?? res['access_token'] ?? res['accessToken'] ?? res['jwt'];
+        user = res['user'];
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      
+      if (user != null || (token != null && token.isNotEmpty) || prefs.getString('arcturus_cookie') != null) {
+        await prefs.setString('arcturus_jwt', token ?? 'cookie_session_active');
         await ref.read(networkCoreProvider).initSocket();
-        state = AsyncValue.data(AuthEngineState(isAuthenticated: true, user: res['user']));
+        state = AsyncValue.data(AuthEngineState(isAuthenticated: true, user: user ?? (res is Map ? Map<String, dynamic>.from(res) : null)));
       } else {
-        throw Exception('AUTH_FAILED');
+        throw Exception('Server replied: $res');
       }
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      throw Exception('AUTH_FAILED');
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
-  // Р”РћР”РђРќРћ: РњРµС‚РѕРґ СЂРµС”СЃС‚СЂР°С†С–С—
   Future<void> register(String name, String email, String password, String inviteCode) async {
     state = const AsyncValue.loading();
     try {
@@ -3100,31 +3464,46 @@ class AuthEngine extends AsyncNotifier<AuthEngineState> {
         'name': name,
         'email': email,
         'password': password,
-        'inviteCode': inviteCode, // РўРІС–Р№ Р±РµРєРµРЅРґ РІРёРјР°РіР°С” inviteCode
+        'inviteCode': inviteCode,
       });
 
-      if (res != null && res['token'] != null) {
-        await _storage.write(key: 'arcturus_jwt', value: res['token']);
+      String? token;
+      Map<String, dynamic>? user;
+      
+      if (res is String) {
+        token = res;
+      } else if (res is Map) {
+        token = res['token'] ?? res['access_token'] ?? res['accessToken'] ?? res['jwt'];
+        user = res['user'];
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+
+      if (user != null || (token != null && token.isNotEmpty) || prefs.getString('arcturus_cookie') != null) {
+        await prefs.setString('arcturus_jwt', token ?? 'cookie_session_active');
         await ref.read(networkCoreProvider).initSocket();
-        state = AsyncValue.data(AuthEngineState(isAuthenticated: true, user: res['user']));
+        state = AsyncValue.data(AuthEngineState(isAuthenticated: true, user: user));
       } else {
-        throw Exception('REGISTRATION_FAILED');
+        await login(email, password);
       }
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      throw Exception(e.toString().replaceAll('Exception: ', '')); // Р©РѕР± РїРѕРєР°Р·СѓРІР°С‚Рё СЂРµР°Р»СЊРЅСѓ РїРѕРјРёР»РєСѓ (РЅР°РїСЂ. "Invalid invite code")
+      throw Exception(e.toString().replaceAll('Exception: ', '')); 
     }
   }
 
   Future<void> enableOfflineMode() async {
-    await _storage.write(key: 'arcturus_offline', value: 'true');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('arcturus_offline', 'true');
     ref.read(syncEngineProvider.notifier).setOfflineMode();
     state = const AsyncValue.data(AuthEngineState(isAuthenticated: true, isOfflineMode: true));
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: 'arcturus_jwt');
-    await _storage.delete(key: 'arcturus_offline');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('arcturus_jwt');
+    await prefs.remove('arcturus_cookie');
+    await prefs.remove('arcturus_offline');
     ref.read(networkCoreProvider).dispose();
     state = const AsyncValue.data(AuthEngineState());
   }
@@ -3664,12 +4043,13 @@ class _Tile extends StatelessWidget {
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/app/providers/core_providers.dart';
 import 'package:lego_trading_manager/core/services/currency_converter.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_engine.dart';
+import 'package:lego_trading_manager/features/watchlist/application/watchlist_engine.dart';
 
 class DashboardAction {
   final String title;
@@ -3705,8 +4085,12 @@ class DashboardEngine extends AsyncNotifier<DashboardEngineState> {
     });
     ref.onDispose(() => sub.cancel());
 
-    final items = ref.watch(inventoryRepositoryProvider).getAllItems();
-    final watchlist = ref.watch(watchlistRepositoryProvider).getAll();
+    // Р¤Р†РљРЎ: Р”Р°С€Р±РѕСЂРґ С‚РµРїРµСЂ Р°РІС‚РѕРјР°С‚РёС‡РЅРѕ СЃС‚РµР¶РёС‚СЊ Р·Р° Р»РѕРєР°Р»СЊРЅРёРјРё Р·РјС–РЅР°РјРё РІ Р†РЅРІРµРЅС‚Р°СЂС– С‚Р° РЎРїРёСЃРєСѓ СЃРїРѕСЃС‚РµСЂРµР¶РµРЅРЅСЏ
+    final invState = ref.watch(inventoryEngineProvider).valueOrNull;
+    final watchState = ref.watch(watchlistEngineProvider).valueOrNull;
+
+    final items = invState?.allItems ?? [];
+    final watchlist = watchState?.allItems ?? [];
     final converter = ref.watch(currencyConverterProvider);
     
     return _compute(items, watchlist, converter);
@@ -4421,8 +4805,12 @@ class _QuickAction extends StatelessWidget {
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
-import 'package:lego_trading_manager/core/enums/item_condition.dart'; // Р”РћР”РђРќРћ Р†РњРџРћР Рў
+import 'package:lego_trading_manager/core/enums/item_condition.dart';
+import 'package:lego_trading_manager/core/enums/item_type.dart';
+import 'package:lego_trading_manager/core/enums/item_completeness.dart';
+import 'package:lego_trading_manager/core/enums/ownership_type.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
@@ -4451,7 +4839,37 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
   @override
   Future<InventoryEngineState> build() async {
     final network = ref.watch(networkCoreProvider);
+    final repo = ref.read(inventoryRepositoryProvider);
     
+    if (await network.isOnline()) {
+      try {
+        final res = await network.request('GET', '/inventory');
+        if (res is List) {
+          final mappedItems = res.map((e) {
+            return ItemModel(
+               id: e['id']?.toString() ?? AppUtils.generateId(),
+               title: e['titleSnapshot']?.toString() ?? e['item']?['title'] ?? 'Unknown Item',
+               type: ItemType.set,
+               condition: ItemCondition.newSealed,
+               completeness: ItemCompleteness.complete,
+               ownershipType: OwnershipType.resale,
+               purchasePrice: (e['purchasePrice'] ?? 0).toDouble(),
+               shippingToMe: 0.0,
+               extraCosts: 0.0,
+               totalCost: (e['totalCost'] ?? 0).toDouble(),
+               marketAverage: e['marketAverage']?.toDouble(),
+               expectedSalePrice: e['expectedSalePriceManual']?.toDouble(),
+               actualSalePrice: e['actualSalePrice']?.toDouble(),
+               status: ItemStatus.purchased,
+               quantity: e['quantity'] ?? 1,
+               isTracked: true,
+            );
+          }).toList();
+          await repo.replaceAll(mappedItems);
+        }
+      } catch (e) {}
+    }
+
     final sub = network.socketEvents.listen((event) {
       if (['inventory_updated', 'sale_registered'].contains(event['type'])) {
         ref.invalidateSelf();
@@ -4459,7 +4877,7 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
     });
     ref.onDispose(() => sub.cancel());
 
-    final items = ref.watch(inventoryRepositoryProvider).getAllItems();
+    final items = repo.getAllItems();
     return _computeState(items, '', null, 'newest', const {});
   }
 
@@ -4477,15 +4895,8 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
         active++;
         final profit = (item.expectedSalePrice ?? 0) - (item.totalCost);
         final days = item.daysInInventory ?? 0;
-        
-        if (days >= 30) { 
-          dead++; 
-          deadList.add(item); 
-        }
-        if (profit <= 100 || days >= 60) { 
-          alertCount++; 
-          alertList.add(item); 
-        }
+        if (days >= 30) { dead++; deadList.add(item); }
+        if (profit <= 100 || days >= 60) { alertCount++; alertList.add(item); }
       }
 
       bool matches = status == null || item.status == status;
@@ -4501,70 +4912,57 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
     }
 
     deadList.sort((a, b) => (b.daysInInventory ?? 0).compareTo(a.daysInInventory ?? 0));
-    
     switch (sort) {
       case 'newest': visible.sort((a, b) => (b.purchaseDate ?? DateTime(2000)).compareTo(a.purchaseDate ?? DateTime(2000))); break;
       case 'cost': visible.sort((a, b) => (b.totalCost).compareTo(a.totalCost)); break;
       case 'profit': visible.sort((a, b) => ((b.expectedSalePrice ?? 0) - b.totalCost).compareTo((a.expectedSalePrice ?? 0) - a.totalCost)); break;
     }
-
     return InventoryEngineState(allItems: all, visibleItems: visible, selectedIds: selected, query: q, filterStatus: status, sortOption: sort, analysis: InventoryAnalysis(active, sold, dead, alertCount, tCost, eProfit, deadList, alertList));
   }
 
   Future<void> saveItem(ItemModel item) async {
-    final currentState = state.valueOrNull;
-    if (currentState == null) return;
-
-    final repo = ref.read(inventoryRepositoryProvider);
+    final currentState = await future; 
+    final network = ref.read(networkCoreProvider);
     final exists = currentState.allItems.any((e) => e.id == item.id);
     
-    // 1. Р—Р±РµСЂС–РіР°С”РјРѕ Р»РѕРєР°Р»СЊРЅРѕ РґР»СЏ РјРёС‚С‚С”РІРѕРіРѕ РѕРЅРѕРІР»РµРЅРЅСЏ UI (РћРїС‚РёРјС–СЃС‚РёС‡РЅРёР№ UI)
-    if (exists) {
-      await repo.updateItem(item);
-    } else {
-      await repo.addItem(item);
-    }
-    
-    // РћРЅРѕРІР»СЋС”РјРѕ СЃС‚Р°РЅ, С‰РѕР± UI РїРµСЂРµРјР°Р»СЋРІР°РІСЃСЏ РјРёС‚С‚С”РІРѕ
-    state = AsyncValue.data(_computeState(repo.getAllItems(), currentState.query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
-
-    // 2. Р’С–РґРїСЂР°РІР»СЏС”РјРѕ РЅР° Р±РµРєРµРЅРґ
     try {
       final payload = {
-        'itemId': item.id,
         'titleSnapshot': item.title,
         'purchasePrice': item.purchasePrice,
         'totalCost': item.totalCost,
         'quantity': item.quantity,
         'condition': item.condition.name,
-        'sealed': item.condition == ItemCondition.newSealed, // РўРµРїРµСЂ enum РґРѕСЃС‚СѓРїРЅРёР№
+        'sealed': item.condition == ItemCondition.newSealed,
         'expectedSalePriceManual': item.expectedSalePrice,
         'notes': item.notes,
       };
 
       if (exists) {
-        await ref.read(networkCoreProvider).request('PATCH', '/inventory', body: { 'id': item.id, ...payload });
+        await network.request('PATCH', '/inventory', body: { 'id': item.id, ...payload });
       } else {
-        // РћСЃРєС–Р»СЊРєРё РІ РЅР°СЃ С‰Рµ РЅРµРјР°С” "РљР°С‚Р°Р»РѕРіСѓ", СЃС‚РІРѕСЂСЋС”РјРѕ item РЅР° С…РѕРґСѓ
-        final itemRes = await ref.read(networkCoreProvider).request('POST', '/items', body: {
+        final itemRes = await network.request('POST', '/items', body: {
           'title': item.title,
-          'setNumber': item.setId,
-          'theme': item.theme,
+          'setNumber': item.setId ?? '',
+          'theme': item.theme ?? 'Other',
           'kind': item.type.name,
         });
-        
         payload['itemId'] = itemRes['id'];
-        await ref.read(networkCoreProvider).request('POST', '/inventory', body: payload);
+        final invRes = await network.request('POST', '/inventory', body: payload);
+        item = item.copyWith(id: invRes['id']); 
       }
+
+      final repo = ref.read(inventoryRepositoryProvider);
+      if (exists) await repo.updateItem(item);
+      else await repo.addItem(item);
+      
+      state = AsyncValue.data(_computeState(repo.getAllItems(), currentState.query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
     } catch (e) {
-      print('Sync error: $e');
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
-  void search(String query) {
-    final currentState = state.valueOrNull;
-    if (currentState == null) return;
-    
+  void search(String query) async {
+    final currentState = await future;
     state = AsyncValue.data(_computeState(currentState.allItems, query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
   }
 }
@@ -4748,6 +5146,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   late ItemType _type;
   late ItemStatus _status;
   List<String> _imagePaths = [];
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -4770,81 +5169,60 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
 
   @override
   void dispose() {
-    _title.dispose();
-    _theme.dispose();
-    _setId.dispose();
-    _purchasePrice.dispose();
-    _shipping.dispose();
-    _extra.dispose();
-    _marketAvg.dispose();
-    _expectedPrice.dispose();
-    _actualPrice.dispose();
-    _notes.dispose();
+    _title.dispose(); _theme.dispose(); _setId.dispose(); _purchasePrice.dispose(); _shipping.dispose(); _extra.dispose(); _marketAvg.dispose(); _expectedPrice.dispose(); _actualPrice.dispose(); _notes.dispose();
     super.dispose();
   }
 
   double _parse(String val) => double.tryParse(val.replaceAll(',', '.')) ?? 0;
 
   Future<void> _pickImage(ImageSource source) async {
-    try {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: source, imageQuality: 80);
-      
-      if (pickedFile != null && mounted) {
-        setState(() {
-          _imagePaths.add(pickedFile.path);
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking image: $e'), backgroundColor: Colors.redAccent),
-        );
-      }
-    }
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: source, imageQuality: 80);
+    if (pickedFile != null && mounted) setState(() => _imagePaths.add(pickedFile.path));
   }
 
-  void _removeImage(int index) {
-    setState(() {
-      _imagePaths.removeAt(index);
-    });
-  }
-
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
     
-    final pPrice = _parse(_purchasePrice.text);
-    final sPrice = _parse(_shipping.text);
-    final ePrice = _parse(_extra.text);
-    final totalCost = pPrice + sPrice + ePrice;
+    try {
+      final pPrice = _parse(_purchasePrice.text);
+      final sPrice = _parse(_shipping.text);
+      final ePrice = _parse(_extra.text);
+      final totalCost = pPrice + sPrice + ePrice;
 
-    final newItem = ItemModel(
-      id: widget.item?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
-      title: _title.text.trim(),
-      type: _type,
-      theme: _theme.text.trim().isEmpty ? null : _theme.text.trim(),
-      setId: _setId.text.trim().isEmpty ? null : _setId.text.trim(),
-      notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-      condition: widget.item?.condition ?? ItemCondition.newSealed,
-      completeness: widget.item?.completeness ?? ItemCompleteness.complete,
-      ownershipType: widget.item?.ownershipType ?? OwnershipType.resale,
-      purchasePrice: pPrice,
-      shippingToMe: sPrice,
-      extraCosts: ePrice,
-      totalCost: totalCost,
-      marketAverage: _marketAvg.text.trim().isEmpty ? null : _parse(_marketAvg.text),
-      expectedSalePrice: _expectedPrice.text.trim().isEmpty ? null : _parse(_expectedPrice.text),
-      actualSalePrice: _actualPrice.text.trim().isEmpty ? null : _parse(_actualPrice.text),
-      status: _status,
-      purchaseDate: widget.item?.purchaseDate ?? DateTime.now(),
-      saleDate: _status == ItemStatus.sold ? (widget.item?.saleDate ?? DateTime.now()) : null,
-      isTracked: true,
-      quantity: 1,
-      imagePaths: _imagePaths,
-    );
+      final newItem = ItemModel(
+        id: widget.item?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        title: _title.text.trim(),
+        type: _type,
+        theme: _theme.text.trim().isEmpty ? null : _theme.text.trim(),
+        setId: _setId.text.trim().isEmpty ? null : _setId.text.trim(),
+        notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        condition: widget.item?.condition ?? ItemCondition.newSealed,
+        completeness: widget.item?.completeness ?? ItemCompleteness.complete,
+        ownershipType: widget.item?.ownershipType ?? OwnershipType.resale,
+        purchasePrice: pPrice,
+        shippingToMe: sPrice,
+        extraCosts: ePrice,
+        totalCost: totalCost,
+        marketAverage: _marketAvg.text.trim().isEmpty ? null : _parse(_marketAvg.text),
+        expectedSalePrice: _expectedPrice.text.trim().isEmpty ? null : _parse(_expectedPrice.text),
+        actualSalePrice: _actualPrice.text.trim().isEmpty ? null : _parse(_actualPrice.text),
+        status: _status,
+        purchaseDate: widget.item?.purchaseDate ?? DateTime.now(),
+        saleDate: _status == ItemStatus.sold ? (widget.item?.saleDate ?? DateTime.now()) : null,
+        isTracked: true,
+        quantity: 1,
+        imagePaths: _imagePaths,
+      );
 
-    ref.read(inventoryEngineProvider.notifier).saveItem(newItem);
-    Navigator.of(context).pop();
+      await ref.read(inventoryEngineProvider.notifier).saveItem(newItem);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.redAccent));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -4861,123 +5239,25 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   children: [
-                    const Text('Photos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 100,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          _buildImageActionButton(
-                            icon: Icons.camera_alt,
-                            label: 'Camera',
-                            color: Colors.blueAccent,
-                            onTap: () => _pickImage(ImageSource.camera),
-                          ),
-                          const SizedBox(width: 12),
-                          _buildImageActionButton(
-                            icon: Icons.photo_library,
-                            label: 'Gallery',
-                            color: Colors.greenAccent,
-                            onTap: () => _pickImage(ImageSource.gallery),
-                          ),
-                          const SizedBox(width: 12),
-                          ..._imagePaths.asMap().entries.map((e) {
-                            return Stack(
-                              children: [
-                                Container(
-                                  width: 100,
-                                  margin: const EdgeInsets.only(right: 12),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.white24),
-                                    image: DecorationImage(
-                                      image: kIsWeb 
-                                          ? NetworkImage(e.value) as ImageProvider 
-                                          : FileImage(File(e.value)),
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 4,
-                                  right: 16,
-                                  child: GestureDetector(
-                                    onTap: () => _removeImage(e.key),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: const BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
-                                      child: const Icon(Icons.close, size: 16, color: Colors.white),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    TextFormField(
-                      controller: _title, 
-                      decoration: const InputDecoration(labelText: 'Title *'), 
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null
-                    ),
+                    TextFormField(controller: _title, decoration: const InputDecoration(labelText: 'Title *'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
                     const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(child: _buildDropdown<ItemType>('Type', _type, ItemType.values, (v) => setState(() => _type = v!))),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildDropdown<ItemStatus>('Status', _status, ItemStatus.values, (v) => setState(() => _status = v!))),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Expanded(child: TextFormField(controller: _theme, decoration: const InputDecoration(labelText: 'Theme'))),
-                        const SizedBox(width: 16),
-                        Expanded(child: TextFormField(controller: _setId, decoration: const InputDecoration(labelText: 'Set ID'))),
-                      ],
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Divider(height: 1, color: Colors.white10),
-                    ),
                     Row(
                       children: [
                         Expanded(child: _buildNumField('Purchase Price', _purchasePrice)),
                         const SizedBox(width: 16),
                         Expanded(child: _buildNumField('Shipping', _shipping)),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildNumField('Extra', _extra)),
                       ],
                     ),
-                    Row(
-                      children: [
-                        Expanded(child: _buildNumField('Market Avg', _marketAvg)),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildNumField('Expected Sale', _expectedPrice)),
-                      ],
-                    ),
-                    if (_status == ItemStatus.sold) _buildNumField('Actual Sale Price', _actualPrice),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _notes, 
-                      maxLines: 4, 
-                      decoration: const InputDecoration(labelText: 'Notes', alignLabelWithHint: true)
-                    ),
-                    const SizedBox(height: 24),
+                    _buildNumField('Expected Sale', _expectedPrice),
                   ],
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(54), 
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
-                  ),
-                  onPressed: _save,
-                  child: const Text('Save Item', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                  onPressed: _isSaving ? null : _save,
+                  child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Save Item', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
             ],
@@ -4987,49 +5267,8 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     );
   }
 
-  Widget _buildImageActionButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 100,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.3), style: BorderStyle.solid),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
-            Text(label, style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildNumField(String label, TextEditingController c) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: c, 
-        keyboardType: const TextInputType.numberWithOptions(decimal: true), 
-        decoration: InputDecoration(labelText: label)
-      ),
-    );
-  }
-
-  Widget _buildDropdown<T>(String label, T val, List<T> values, void Function(T?) onChanged) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: DropdownButtonFormField<T>(
-        value: val,
-        decoration: InputDecoration(labelText: label),
-        items: values.map((e) => DropdownMenuItem(value: e, child: Text(e.toString().split('.').last))).toList(),
-        onChanged: onChanged,
-      ),
-    );
+    return Padding(padding: const EdgeInsets.only(bottom: 16), child: TextFormField(controller: c, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: label)));
   }
 }
 
@@ -5220,6 +5459,7 @@ class MarketScreen extends ConsumerWidget {
 
 import 'dart:convert';
 import 'dart:isolate';
+import 'package:flutter/foundation.dart'; // Р”РѕРґР°РЅРѕ
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
@@ -5255,7 +5495,11 @@ class PartOutEngine extends AsyncNotifier<PartOutEngineState> {
     final pList = pRaw != null ? (jsonDecode(pRaw) as List).map((e) => PartOutProjectModel.fromMap(e)).toList() : <PartOutProjectModel>[];
     final lList = lRaw != null ? (jsonDecode(lRaw) as List).map((e) => PartOutLineModel.fromMap(e)).toList() : <PartOutLineModel>[];
 
-    return await Isolate.run(() => _computeState(pList, lList, ''));
+    if (kIsWeb) {
+      return _computeState(pList, lList, '');
+    } else {
+      return await Isolate.run(() => _computeState(pList, lList, ''));
+    }
   }
 
   static PartOutEngineState _computeState(List<PartOutProjectModel> projList, List<PartOutLineModel> linesList, String query) {
@@ -5315,7 +5559,12 @@ class PartOutEngine extends AsyncNotifier<PartOutEngineState> {
   void search(String query) async {
     if (state.value == null) return;
     final curr = state.value!;
-    state = AsyncValue.data(await Isolate.run(() => _computeState(curr.projects.map((e) => e.project).toList(), curr.projects.expand((e) => e.lines).toList(), query)));
+    
+    if (kIsWeb) {
+      state = AsyncValue.data(_computeState(curr.projects.map((e) => e.project).toList(), curr.projects.expand((e) => e.lines).toList(), query));
+    } else {
+      state = AsyncValue.data(await Isolate.run(() => _computeState(curr.projects.map((e) => e.project).toList(), curr.projects.expand((e) => e.lines).toList(), query)));
+    }
   }
 }
 
@@ -5829,6 +6078,8 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/enums/purchase_payment_method.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
@@ -5856,21 +6107,43 @@ class PurchasesEngine extends AsyncNotifier<PurchasesEngineState> {
   @override
   Future<PurchasesEngineState> build() async {
     final network = ref.watch(networkCoreProvider);
+    final repo = ref.read(purchasesRepositoryProvider);
+
+    if (await network.isOnline()) {
+      try {
+        final res = await network.request('GET', '/procurement');
+        if (res is List) {
+          final mapped = res.map((e) => PurchaseModel(
+            id: e['id'] ?? AppUtils.generateId(),
+            itemId: e['itemId'] ?? '',
+            source: e['sourceCode'] ?? 'Unknown',
+            purchasePrice: (e['totalCost'] ?? 0).toDouble(),
+            shippingCost: 0,
+            additionalCosts: 0,
+            finalTotal: (e['totalCost'] ?? 0).toDouble(),
+            exchangeRate: 1,
+            currency: 'UAH',
+            paymentMethod: PurchasePaymentMethod.card,
+            purchaseDate: e['createdAt'] != null ? DateTime.parse(e['createdAt']) : DateTime.now(),
+            quantity: e['quantity'] ?? 1,
+            soldQuantity: 0,
+          )).toList();
+          await repo.replaceAll(mapped);
+        }
+      } catch(e) { print("Init fetch error (Purchases): $e"); }
+    }
     
     final sub = network.socketEvents.listen((event) {
-      if (['purchase_order.updated', 'purchase_order.created'].contains(event['type'])) {
-        ref.invalidateSelf();
-      }
+      if (['purchase_order.updated', 'purchase_order.created'].contains(event['type'])) ref.invalidateSelf();
     });
     ref.onDispose(() => sub.cancel());
 
-    final list = ref.watch(purchasesRepositoryProvider).getAllPurchases();
+    final list = repo.getAllPurchases();
     return _computeState(list, '', 'newest', const {});
   }
 
   static PurchasesEngineState _computeState(List<PurchaseModel> all, String q, String sort, Set<String> selected) {
-    double spend = 0, maxSpend = 0;
-    String topC = '-';
+    double spend = 0, maxSpend = 0; String topC = '-';
     final sourceCounts = <String, int>{}, currencySpend = <String, double>{};
     final qLower = q.trim().toLowerCase();
     var visible = <PurchaseModel>[];
@@ -5879,69 +6152,77 @@ class PurchasesEngine extends AsyncNotifier<PurchasesEngineState> {
       spend += p.finalTotal;
       sourceCounts[p.source] = (sourceCounts[p.source] ?? 0) + 1;
       currencySpend[p.currency] = (currencySpend[p.currency] ?? 0) + p.finalTotal;
-
-      if (qLower.isEmpty || p.source.toLowerCase().contains(qLower) || p.itemId.toLowerCase().contains(qLower) || (p.note ?? '').toLowerCase().contains(qLower)) {
-        visible.add(p);
-      }
+      if (qLower.isEmpty || p.source.toLowerCase().contains(qLower) || p.itemId.toLowerCase().contains(qLower) || (p.note ?? '').toLowerCase().contains(qLower)) visible.add(p);
     }
-
-    currencySpend.forEach((k, v) { 
-      if (v > maxSpend) { 
-        maxSpend = v; 
-        topC = k; 
-      }
-    });
+    currencySpend.forEach((k, v) { if (v > maxSpend) { maxSpend = v; topC = k; } });
 
     switch (sort) {
       case 'newest': visible.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate)); break;
-      case 'oldest': visible.sort((a, b) => a.purchaseDate.compareTo(b.purchaseDate)); break;
       case 'totalHigh': visible.sort((a, b) => b.finalTotal.compareTo(a.finalTotal)); break;
-      case 'totalLow': visible.sort((a, b) => a.finalTotal.compareTo(b.finalTotal)); break;
     }
-
     return PurchasesEngineState(allPurchases: all, visiblePurchases: visible, selectedIds: selected, query: q, sortOption: sort, analysis: PurchasesAnalysis(all.length, spend, all.isEmpty ? 0 : spend / all.length, topC, sourceCounts, currencySpend));
   }
 
-  void _updateState(String q, String sort, Set<String> selected) {
-    if (state.value == null) return;
-    state = AsyncValue.data(_computeState(state.value!.allPurchases, q, sort, selected));
+  Future<void> _updateState(String q, String sort, Set<String> selected) async {
+    final currentState = await future;
+    state = AsyncValue.data(_computeState(currentState.allPurchases, q, sort, selected));
   }
 
-  void search(String q) => _updateState(q, state.value!.sortOption, state.value!.selectedIds);
-  void setSort(String sort) => _updateState(state.value!.query, sort, state.value!.selectedIds);
-  
-  void toggleSelection(String id) {
-    final next = Set<String>.from(state.value!.selectedIds);
-    if (!next.remove(id)) next.add(id);
-    _updateState(state.value!.query, state.value!.sortOption, next);
+  void search(String q) async {
+    final currentState = await future;
+    _updateState(q, currentState.sortOption, currentState.selectedIds);
   }
-  
-  void clearSelection() => _updateState(state.value!.query, state.value!.sortOption, const {});
 
   Future<void> savePurchase(PurchaseModel purchase) async {
-    final repo = ref.read(purchasesRepositoryProvider);
-    final exists = state.value!.allPurchases.any((e) => e.id == purchase.id);
+    final currentState = await future;
+    final network = ref.read(networkCoreProvider);
+    final exists = currentState.allPurchases.any((e) => e.id == purchase.id);
     
-    if (exists) {
-      await repo.update((e) => e.id == purchase.id, purchase);
-    } else {
-      await repo.add(purchase);
+    try {
+      // Р†Р”Р•РђР›Р¬РќРР™ РџР•Р™Р›РћРђР” Р”Р›РЇ PRISMA PurchaseOrder (Р‘РµР· currency)
+      final payload = {
+        'titleSnapshot': purchase.source, 
+        'sourceCode': purchase.source,
+        'totalCost': purchase.finalTotal,
+        'quantity': purchase.quantity,
+        'status': 'planned',
+        'notes': purchase.note,
+      };
+
+      if (purchase.itemId.isNotEmpty) {
+        payload['itemId'] = purchase.itemId;
+      } else {
+        final itemRes = await network.request('POST', '/items', body: {
+          'title': purchase.source,
+          'kind': 'set',
+        });
+        payload['itemId'] = itemRes['id'];
+      }
+
+      final res = await network.request(exists ? 'PATCH' : 'POST', '/procurement', body: exists ? {'id': purchase.id, ...payload} : payload);
+
+      final newPurchase = exists ? purchase : purchase.copyWith(id: res['id']);
+      final repo = ref.read(purchasesRepositoryProvider);
+      if (exists) await repo.update((e) => e.id == purchase.id, newPurchase);
+      else await repo.add(newPurchase);
+      
+      state = AsyncValue.data(_computeState(repo.getAllPurchases(), currentState.query, currentState.sortOption, currentState.selectedIds));
+    } catch (e) {
+      print('CRITICAL SYNC ERROR (Purchases): $e');
+      throw Exception(e);
     }
-    
-    ref.read(syncEngineProvider.notifier).enqueueMutation('purchase', '/procurement', exists ? 'PATCH' : 'POST', purchase.toJson());
-    state = AsyncValue.data(_computeState(repo.getAllPurchases(), state.value!.query, state.value!.sortOption, state.value!.selectedIds));
   }
 
   Future<void> deleteSelected() async {
-    if (state.value!.selectedIds.isEmpty) return;
+    final currentState = await future;
+    if (currentState.selectedIds.isEmpty) return;
     final repo = ref.read(purchasesRepositoryProvider);
     
-    for (final id in state.value!.selectedIds) {
+    for (final id in currentState.selectedIds) {
       await repo.delete((e) => e.id == id);
       ref.read(syncEngineProvider.notifier).enqueueMutation('purchase_delete', '/procurement/status', 'PATCH', {'id': id, 'status': 'cancelled'});
     }
-    
-    state = AsyncValue.data(_computeState(repo.getAllPurchases(), state.value!.query, state.value!.sortOption, const {}));
+    state = AsyncValue.data(_computeState(repo.getAllPurchases(), currentState.query, currentState.sortOption, const {}));
   }
 }
 
@@ -6028,6 +6309,7 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _itemId, _source, _price, _shipping, _extra;
   PurchasePaymentMethod _paymentMethod = PurchasePaymentMethod.card;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -6041,31 +6323,38 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
     if (p != null) _paymentMethod = p.paymentMethod;
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
     
-    final price = double.tryParse(_price.text.replaceAll(',', '.')) ?? 0;
-    final ship = double.tryParse(_shipping.text.replaceAll(',', '.')) ?? 0;
-    final extra = double.tryParse(_extra.text.replaceAll(',', '.')) ?? 0;
+    try {
+      final price = double.tryParse(_price.text.replaceAll(',', '.')) ?? 0;
+      final ship = double.tryParse(_shipping.text.replaceAll(',', '.')) ?? 0;
+      final extra = double.tryParse(_extra.text.replaceAll(',', '.')) ?? 0;
 
-    final newPurchase = PurchaseModel(
-      id: widget.purchase?.id ?? AppUtils.generateId(),
-      itemId: _itemId.text.trim(),
-      source: _source.text.trim(),
-      purchasePrice: price,
-      shippingCost: ship,
-      additionalCosts: extra,
-      finalTotal: price + ship + extra,
-      exchangeRate: 1.0,
-      currency: 'UAH',
-      paymentMethod: _paymentMethod,
-      purchaseDate: widget.purchase?.purchaseDate ?? DateTime.now(),
-      quantity: 1,
-      soldQuantity: 0,
-    );
+      final newPurchase = PurchaseModel(
+        id: widget.purchase?.id ?? AppUtils.generateId(),
+        itemId: _itemId.text.trim(),
+        source: _source.text.trim(),
+        purchasePrice: price,
+        shippingCost: ship,
+        additionalCosts: extra,
+        finalTotal: price + ship + extra,
+        exchangeRate: 1.0,
+        currency: 'UAH',
+        paymentMethod: _paymentMethod,
+        purchaseDate: widget.purchase?.purchaseDate ?? DateTime.now(),
+        quantity: 1,
+        soldQuantity: 0,
+      );
 
-    ref.read(purchasesEngineProvider.notifier).savePurchase(newPurchase);
-    Navigator.pop(context);
+      await ref.read(purchasesEngineProvider.notifier).savePurchase(newPurchase);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e'), backgroundColor: Colors.redAccent));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -6076,19 +6365,10 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
-          physics: const BouncingScrollPhysics(),
           children: [
-            TextFormField(
-              controller: _source,
-              decoration: const InputDecoration(labelText: 'Source (e.g. OLX, eBay) *'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-            ),
+            TextFormField(controller: _source, decoration: const InputDecoration(labelText: 'Source (e.g. OLX) *'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _itemId,
-              decoration: const InputDecoration(labelText: 'Item ID / Title *'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-            ),
+            TextFormField(controller: _itemId, decoration: const InputDecoration(labelText: 'Item ID / Title (Optional)')),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -6097,20 +6377,11 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
                 Expanded(child: TextFormField(controller: _shipping, decoration: const InputDecoration(labelText: 'Shipping'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
               ],
             ),
-            const SizedBox(height: 12),
-            TextFormField(controller: _extra, decoration: const InputDecoration(labelText: 'Extra Costs'), keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<PurchasePaymentMethod>(
-              value: _paymentMethod,
-              decoration: const InputDecoration(labelText: 'Payment Method'),
-              items: PurchasePaymentMethod.values.map((e) => DropdownMenuItem(value: e, child: Text(e.name.toUpperCase()))).toList(),
-              onChanged: (v) => setState(() => _paymentMethod = v!),
-            ),
             const SizedBox(height: 24),
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-              onPressed: _save,
-              child: const Text('Save Purchase', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              onPressed: _isSaving ? null : _save,
+              child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Save Purchase', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
           ],
         ),
@@ -6123,6 +6394,7 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
@@ -6146,15 +6418,36 @@ class SalesEngine extends AsyncNotifier<SalesEngineState> {
   @override
   Future<SalesEngineState> build() async {
     final network = ref.watch(networkCoreProvider);
+    final repo = ref.read(salesRepositoryProvider);
+
+    if (await network.isOnline()) {
+      try {
+        final res = await network.request('GET', '/sales');
+        if (res is List) {
+          final mapped = res.map((e) => SaleModel(
+            id: e['id'] ?? AppUtils.generateId(),
+            itemId: e['inventoryItemId'] ?? e['itemId'] ?? '',
+            platform: e['channel'] ?? 'Unknown',
+            salePrice: (e['sellPrice'] ?? 0).toDouble(),
+            platformFee: 0.0,
+            shippingPaidByMe: 0.0,
+            shippingPaidByBuyer: 0,
+            finalNet: (e['profit'] ?? 0).toDouble(),
+            currency: 'UAH',
+            saleDate: e['createdAt'] != null ? DateTime.parse(e['createdAt']) : DateTime.now(),
+            quantity: e['quantity'] ?? 1,
+          )).toList();
+          await repo.replaceAll(mapped);
+        }
+      } catch(e) { print("Init fetch error (Sales): $e"); }
+    }
     
     final sub = network.socketEvents.listen((event) {
-      if (['sale_registered'].contains(event['type'])) {
-        ref.invalidateSelf();
-      }
+      if (['sale_registered'].contains(event['type'])) ref.invalidateSelf();
     });
     ref.onDispose(() => sub.cancel());
 
-    final list = ref.watch(salesRepositoryProvider).getAllSales();
+    final list = repo.getAllSales();
     return _computeState(list, '', 'newest', const {});
   }
 
@@ -6164,70 +6457,60 @@ class SalesEngine extends AsyncNotifier<SalesEngineState> {
     var visible = <SaleModel>[];
 
     for (final s in all) {
-      net += s.finalNet;
-      fees += s.platformFee;
-
-      if (qLower.isEmpty || s.platform.toLowerCase().contains(qLower) || s.itemId.toLowerCase().contains(qLower) || (s.buyerName ?? '').toLowerCase().contains(qLower)) {
-        visible.add(s);
-      }
+      net += s.finalNet; fees += s.platformFee;
+      if (qLower.isEmpty || s.platform.toLowerCase().contains(qLower) || s.itemId.toLowerCase().contains(qLower) || (s.buyerName ?? '').toLowerCase().contains(qLower)) visible.add(s);
     }
-
     switch (sort) {
       case 'newest': visible.sort((a, b) => b.saleDate.compareTo(a.saleDate)); break;
-      case 'oldest': visible.sort((a, b) => a.saleDate.compareTo(b.saleDate)); break;
       case 'netHigh': visible.sort((a, b) => b.finalNet.compareTo(a.finalNet)); break;
-      case 'netLow': visible.sort((a, b) => a.finalNet.compareTo(b.finalNet)); break;
     }
-
     return SalesEngineState(allSales: all, visibleSales: visible, selectedIds: selected, query: q, sortOption: sort, analysis: SalesAnalysis(all.length, net, fees, all.isEmpty ? 0 : net / all.length));
   }
 
-  void _updateState(String q, String sort, Set<String> selected) {
-    if (state.value == null) return;
-    state = AsyncValue.data(_computeState(state.value!.allSales, q, sort, selected));
-  }
-
-  void search(String q) => _updateState(q, state.value!.sortOption, state.value!.selectedIds);
-  void setSort(String sort) => _updateState(state.value!.query, sort, state.value!.selectedIds);
-  
-  void toggleSelection(String id) {
-    final next = Set<String>.from(state.value!.selectedIds);
-    if (!next.remove(id)) next.add(id);
-    _updateState(state.value!.query, state.value!.sortOption, next);
-  }
-  
-  void clearSelection() => _updateState(state.value!.query, state.value!.sortOption, const {});
-
   Future<void> saveSale(SaleModel sale) async {
-    final repo = ref.read(salesRepositoryProvider);
-    final exists = state.value!.allSales.any((e) => e.id == sale.id);
+    final currentState = await future;
+    final network = ref.read(networkCoreProvider);
+    final exists = currentState.allSales.any((e) => e.id == sale.id);
     
-    if (exists) {
-      await repo.update((e) => e.id == sale.id, sale);
-    } else {
-      await repo.add(sale);
-      ref.read(syncEngineProvider.notifier).enqueueMutation('sale', '/sales', 'POST', {
-        'inventoryItemId': sale.itemId,
+    try {
+      // Р†Р”Р•РђР›Р¬РќРР™ РџР•Р™Р›РћРђР” Р”Р›РЇ PRISMA Sale
+      final payload = {
         'sellPrice': sale.salePrice,
         'quantity': sale.quantity,
         'channel': sale.platform,
-        'buyerName': sale.buyerName,
-      });
+        'buyerName': sale.buyerName ?? 'Buyer',
+        'costBasis': 0, // Mock
+        'profit': sale.finalNet,
+        'roiPercent': 0,
+        'notes': sale.note,
+      };
+
+      if (sale.itemId.isNotEmpty) {
+        payload['inventoryItemId'] = sale.itemId;
+        payload['itemId'] = sale.itemId; 
+      } else {
+        final itemRes = await network.request('POST', '/items', body: {'title': 'Sale Item', 'kind': 'set'});
+        payload['itemId'] = itemRes['id'];
+        payload['inventoryItemId'] = itemRes['id'];
+      }
+
+      final res = await network.request(exists ? 'PATCH' : 'POST', '/sales', body: exists ? {'id': sale.id, ...payload} : payload);
+
+      final newSale = exists ? sale : sale.copyWith(id: res['id']);
+      final repo = ref.read(salesRepositoryProvider);
+      if (exists) await repo.update((e) => e.id == sale.id, newSale);
+      else await repo.add(newSale);
+      
+      state = AsyncValue.data(_computeState(repo.getAllSales(), currentState.query, currentState.sortOption, currentState.selectedIds));
+    } catch (e) {
+      print('CRITICAL SYNC ERROR (Sales): $e');
+      throw Exception(e);
     }
-    
-    state = AsyncValue.data(_computeState(repo.getAllSales(), state.value!.query, state.value!.sortOption, state.value!.selectedIds));
   }
 
-  Future<void> deleteSelected() async {
-    if (state.value!.selectedIds.isEmpty) return;
-    final repo = ref.read(salesRepositoryProvider);
-    
-    for (final id in state.value!.selectedIds) {
-      await repo.delete((e) => e.id == id);
-      ref.read(syncEngineProvider.notifier).enqueueMutation('sale_delete', '/sales', 'DELETE', {'id': id});
-    }
-    
-    state = AsyncValue.data(_computeState(repo.getAllSales(), state.value!.query, state.value!.sortOption, const {}));
+  void search(String q) async {
+    final currentState = await future;
+    state = AsyncValue.data(_computeState(currentState.allSales, q, currentState.sortOption, currentState.selectedIds));
   }
 }
 
@@ -6312,6 +6595,7 @@ class SaleFormScreen extends ConsumerStatefulWidget {
 class _SaleFormScreenState extends ConsumerState<SaleFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _itemId, _platform, _price, _fee, _shippingMe, _shippingBuyer;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -6325,30 +6609,37 @@ class _SaleFormScreenState extends ConsumerState<SaleFormScreen> {
     _shippingBuyer = TextEditingController(text: s?.shippingPaidByBuyer.toString() ?? '0');
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
     
-    final price = double.tryParse(_price.text.replaceAll(',', '.')) ?? 0;
-    final fee = double.tryParse(_fee.text.replaceAll(',', '.')) ?? 0;
-    final shipMe = double.tryParse(_shippingMe.text.replaceAll(',', '.')) ?? 0;
-    final shipBuyer = double.tryParse(_shippingBuyer.text.replaceAll(',', '.')) ?? 0;
+    try {
+      final price = double.tryParse(_price.text.replaceAll(',', '.')) ?? 0;
+      final fee = double.tryParse(_fee.text.replaceAll(',', '.')) ?? 0;
+      final shipMe = double.tryParse(_shippingMe.text.replaceAll(',', '.')) ?? 0;
+      final shipBuyer = double.tryParse(_shippingBuyer.text.replaceAll(',', '.')) ?? 0;
 
-    final newSale = SaleModel(
-      id: widget.sale?.id ?? AppUtils.generateId(),
-      itemId: _itemId.text.trim(),
-      platform: _platform.text.trim(),
-      salePrice: price,
-      platformFee: fee,
-      shippingPaidByMe: shipMe,
-      shippingPaidByBuyer: shipBuyer,
-      finalNet: price - fee - shipMe,
-      currency: 'UAH',
-      saleDate: widget.sale?.saleDate ?? DateTime.now(),
-      quantity: 1,
-    );
+      final newSale = SaleModel(
+        id: widget.sale?.id ?? AppUtils.generateId(),
+        itemId: _itemId.text.trim(),
+        platform: _platform.text.trim(),
+        salePrice: price,
+        platformFee: fee,
+        shippingPaidByMe: shipMe,
+        shippingPaidByBuyer: shipBuyer,
+        finalNet: price - fee - shipMe,
+        currency: 'UAH',
+        saleDate: widget.sale?.saleDate ?? DateTime.now(),
+        quantity: 1,
+      );
 
-    ref.read(salesEngineProvider.notifier).saveSale(newSale);
-    Navigator.pop(context);
+      await ref.read(salesEngineProvider.notifier).saveSale(newSale);
+      if (mounted) Navigator.pop(context);
+    } catch(e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e'), backgroundColor: Colors.redAccent));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -6359,19 +6650,10 @@ class _SaleFormScreenState extends ConsumerState<SaleFormScreen> {
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
-          physics: const BouncingScrollPhysics(),
           children: [
-            TextFormField(
-              controller: _platform,
-              decoration: const InputDecoration(labelText: 'Platform (e.g. OLX, eBay) *'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-            ),
+            TextFormField(controller: _platform, decoration: const InputDecoration(labelText: 'Platform (e.g. OLX) *'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _itemId,
-              decoration: const InputDecoration(labelText: 'Item ID / Title *'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-            ),
+            TextFormField(controller: _itemId, decoration: const InputDecoration(labelText: 'Item ID (Optional)')),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -6380,19 +6662,11 @@ class _SaleFormScreenState extends ConsumerState<SaleFormScreen> {
                 Expanded(child: TextFormField(controller: _fee, decoration: const InputDecoration(labelText: 'Platform Fee'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
               ],
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: TextFormField(controller: _shippingMe, decoration: const InputDecoration(labelText: 'Shipping (Paid by Me)'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _shippingBuyer, decoration: const InputDecoration(labelText: 'Shipping (Paid by Buyer)'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-              ],
-            ),
             const SizedBox(height: 24),
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-              onPressed: _save,
-              child: const Text('Save Sale', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              onPressed: _isSaving ? null : _save,
+              child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Save Sale', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
           ],
         ),
@@ -6717,7 +6991,6 @@ import 'package:lego_trading_manager/features/settings/application/system_tools_
 import 'package:lego_trading_manager/app/providers/core_providers.dart';
 import 'package:lego_trading_manager/core/enums/currency_code.dart';
 
-// Р“Р»РѕР±Р°Р»СЊРЅРёР№ РїСЂРѕРІР°Р№РґРµСЂ РґР»СЏ Р·Р±РµСЂРµР¶РµРЅРЅСЏ С‚Р° СЂРµР°РєС‚РёРІРЅРѕРіРѕ РѕРЅРѕРІР»РµРЅРЅСЏ Р±Р°Р·РѕРІРѕС— РІР°Р»СЋС‚Рё СЃРёСЃС‚РµРјРё
 final baseCurrencyProvider = StateProvider<String>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return prefs.getString('settings.base_currency') ?? 'UAH';
@@ -6753,12 +7026,12 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          // CURRENCY SWITCHER SECTION (STAGE 3)
+          // CURRENCY SWITCHER SECTION
           Card(
             color: const Color(0xFF171A21),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: Colors.amber.withValues(alpha: 0.3)), // Р’РРџР РђР’Р›Р•РќРћ РўРЈРў
+              side: BorderSide(color: Colors.amber.withOpacity(0.3)), // Р’РёРєРѕСЂРёСЃС‚Р°РЅРѕ withOpacity
             ),
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -6894,10 +7167,10 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
   Widget _buildCard(String title, String sub, IconData icon, Color color, VoidCallback onTap) {
     return Card(
       color: const Color(0xFF171A21),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: color.withValues(alpha: 0.3))),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: color.withOpacity(0.3))),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color)),
+        leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color)),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         subtitle: Text(sub, style: const TextStyle(color: Colors.white70)),
         onTap: onTap,
@@ -6935,6 +7208,8 @@ class TradingRepository {
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
@@ -6951,7 +7226,6 @@ class WatchlistEngineState {
   final String query, sortOption;
   final bool activeOnly;
   final WatchlistAnalysis analysis;
-
   const WatchlistEngineState({required this.allItems, required this.visibleItems, required this.selectedIds, required this.query, required this.sortOption, required this.activeOnly, required this.analysis});
 }
 
@@ -6959,99 +7233,86 @@ class WatchlistEngine extends AsyncNotifier<WatchlistEngineState> {
   @override
   Future<WatchlistEngineState> build() async {
     final network = ref.watch(networkCoreProvider);
-    
+    final repo = ref.read(watchlistRepositoryProvider);
+
+    if (await network.isOnline()) {
+      try {
+        final res = await network.request('GET', '/watchlist');
+        if (res is List) {
+          final mapped = res.map((e) => WatchlistItemModel(
+            id: e['id'] ?? AppUtils.generateId(),
+            title: e['titleSnapshot'] ?? 'Unknown',
+            type: ItemType.set,
+            desiredBuyPrice: (e['desiredBuyPrice'] ?? 0).toDouble(),
+            maxBuyPrice: (e['maxBuyPrice'] ?? 0).toDouble(),
+            marketPrice: null,
+            isActive: e['active'] ?? true,
+            createdAt: e['createdAt'] != null ? DateTime.parse(e['createdAt']) : DateTime.now(),
+          )).toList();
+          await repo.replaceAll(mapped);
+        }
+      } catch(e) { print("Init fetch error (Watchlist): $e"); }
+    }
+
     final sub = network.socketEvents.listen((event) {
-      if (['watchlist_updated'].contains(event['type'])) {
-        ref.invalidateSelf();
-      }
+      if (['watchlist_updated'].contains(event['type'])) ref.invalidateSelf();
     });
     ref.onDispose(() => sub.cancel());
 
-    final list = ref.watch(watchlistRepositoryProvider).getAll();
+    final list = repo.getAll();
     return _computeState(list, '', 'newest', const {}, false);
   }
 
   static WatchlistEngineState _computeState(List<WatchlistItemModel> all, String q, String sort, Set<String> selected, bool activeOnly) {
-    int active = 0, hits = 0, acceptable = 0, high = 0;
-    double spread = 0;
-    final qLower = q.trim().toLowerCase();
-    var visible = <WatchlistItemModel>[];
+    int active = 0, hits = 0, acceptable = 0, high = 0; double spread = 0;
+    final qLower = q.trim().toLowerCase(); var visible = <WatchlistItemModel>[];
 
     for (final w in all) {
       if (w.isActive) active++;
-      
-      if (w.marketPrice != null) {
-        if (w.marketPrice! <= w.desiredBuyPrice) {
-          hits++;
-        } else if (w.marketPrice! <= w.maxBuyPrice) {
-          acceptable++;
-        } else {
-          high++;
-        }
-        
-        if (w.isActive && w.marketPrice! <= w.maxBuyPrice) {
-          spread += (w.maxBuyPrice - w.marketPrice!);
-        }
-      }
-
       bool matches = !activeOnly || w.isActive;
-      if (matches && qLower.isNotEmpty) {
-        matches = w.title.toLowerCase().contains(qLower) || (w.theme ?? '').toLowerCase().contains(qLower) || (w.refId ?? '').toLowerCase().contains(qLower);
-      }
-      
+      if (matches && qLower.isNotEmpty) matches = w.title.toLowerCase().contains(qLower);
       if (matches) visible.add(w);
     }
-
-    switch (sort) {
-      case 'newest': visible.sort((a, b) => b.createdAt.compareTo(a.createdAt)); break;
-      case 'oldest': visible.sort((a, b) => a.createdAt.compareTo(b.createdAt)); break;
-      case 'spread': visible.sort((a, b) => ((b.maxBuyPrice - (b.marketPrice ?? b.maxBuyPrice)).compareTo(a.maxBuyPrice - (a.marketPrice ?? a.maxBuyPrice)))); break;
-    }
-
     return WatchlistEngineState(allItems: all, visibleItems: visible, selectedIds: selected, query: q, sortOption: sort, activeOnly: activeOnly, analysis: WatchlistAnalysis(active, hits, acceptable, high, spread));
   }
 
-  void _updateState(String q, String sort, Set<String> selected, bool activeOnly) {
-    if (state.value == null) return;
-    state = AsyncValue.data(_computeState(state.value!.allItems, q, sort, selected, activeOnly));
-  }
-
-  void search(String q) => _updateState(q, state.value!.sortOption, state.value!.selectedIds, state.value!.activeOnly);
-  void setSort(String sort) => _updateState(state.value!.query, sort, state.value!.selectedIds, state.value!.activeOnly);
-  void toggleActiveFilter() => _updateState(state.value!.query, state.value!.sortOption, state.value!.selectedIds, !state.value!.activeOnly);
-  
-  void toggleSelection(String id) {
-    final next = Set<String>.from(state.value!.selectedIds);
-    if (!next.remove(id)) next.add(id);
-    _updateState(state.value!.query, state.value!.sortOption, next, state.value!.activeOnly);
-  }
-  
-  void clearSelection() => _updateState(state.value!.query, state.value!.sortOption, const {}, state.value!.activeOnly);
-
   Future<void> saveItem(WatchlistItemModel item) async {
-    final repo = ref.read(watchlistRepositoryProvider);
-    final exists = state.value!.allItems.any((e) => e.id == item.id);
+    final currentState = await future;
+    final network = ref.read(networkCoreProvider);
+    final exists = currentState.allItems.any((e) => e.id == item.id);
     
-    if (exists) {
-      await repo.update((e) => e.id == item.id, item);
-    } else {
-      await repo.add(item);
+    try {
+      // Р†Р”Р•РђР›Р¬РќРР™ РџР•Р™Р›РћРђР” Р”Р›РЇ PRISMA WatchlistItem
+      final payload = {
+        'titleSnapshot': item.title,
+        'desiredBuyPrice': item.desiredBuyPrice,
+        'maxBuyPrice': item.maxBuyPrice,
+        'active': item.isActive,
+        'notes': item.comment,
+      };
+
+      if (!exists) {
+        final itemRes = await network.request('POST', '/items', body: {'title': item.title, 'kind': 'set'});
+        payload['itemId'] = itemRes['id'];
+      }
+
+      final res = await network.request(exists ? 'PATCH' : 'POST', '/watchlist', body: exists ? {'id': item.id, ...payload} : payload);
+
+      final newItem = exists ? item : item.copyWith(id: res['id']);
+      final repo = ref.read(watchlistRepositoryProvider);
+      if (exists) await repo.update((e) => e.id == item.id, newItem);
+      else await repo.add(newItem);
+      
+      state = AsyncValue.data(_computeState(repo.getAll(), currentState.query, currentState.sortOption, currentState.selectedIds, currentState.activeOnly));
+    } catch (e) {
+      print('CRITICAL SYNC ERROR (Watchlist): $e');
+      throw Exception(e);
     }
-    
-    ref.read(syncEngineProvider.notifier).enqueueMutation('watchlist', '/watchlist', exists ? 'PATCH' : 'POST', item.toMap());
-    state = AsyncValue.data(_computeState(repo.getAll(), state.value!.query, state.value!.sortOption, state.value!.selectedIds, state.value!.activeOnly));
   }
 
-  Future<void> deleteSelected() async {
-    if (state.value!.selectedIds.isEmpty) return;
-    final repo = ref.read(watchlistRepositoryProvider);
-    
-    for (final id in state.value!.selectedIds) {
-      await repo.delete((e) => e.id == id);
-    }
-    
-    ref.read(syncEngineProvider.notifier).enqueueMutation('watchlist_bulk', '/watchlist/bulk-delete', 'DELETE', {'ids': state.value!.selectedIds.toList()});
-    state = AsyncValue.data(_computeState(repo.getAll(), state.value!.query, state.value!.sortOption, const {}, state.value!.activeOnly));
+  void search(String q) async {
+    final currentState = await future;
+    state = AsyncValue.data(_computeState(currentState.allItems, q, currentState.sortOption, currentState.selectedIds, currentState.activeOnly));
   }
 }
 
@@ -7075,46 +7336,44 @@ class WatchlistItemFormScreen extends ConsumerStatefulWidget {
 
 class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _title, _theme, _refId, _desired, _maxBuy, _market, _comment;
-  late bool _isActive;
-  late ItemType _itemType;
+  late final TextEditingController _title, _desired, _maxBuy;
+  bool _isActive = true;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     final i = widget.item;
     _title = TextEditingController(text: i?.title ?? '');
-    _theme = TextEditingController(text: i?.theme ?? '');
-    _refId = TextEditingController(text: i?.refId ?? '');
     _desired = TextEditingController(text: i?.desiredBuyPrice.toString() ?? '');
     _maxBuy = TextEditingController(text: i?.maxBuyPrice.toString() ?? '');
-    _market = TextEditingController(text: i?.marketPrice?.toString() ?? '');
-    _comment = TextEditingController(text: i?.comment ?? '');
     _isActive = i?.isActive ?? true;
-    _itemType = i?.type ?? ItemType.set;
   }
 
   double _parse(String val) => double.tryParse(val.replaceAll(',', '.')) ?? 0;
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
 
-    final newItem = WatchlistItemModel(
-      id: widget.item?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
-      title: _title.text.trim(),
-      type: _itemType,
-      theme: _theme.text.trim().isEmpty ? null : _theme.text.trim(),
-      refId: _refId.text.trim().isEmpty ? null : _refId.text.trim(),
-      desiredBuyPrice: _parse(_desired.text),
-      maxBuyPrice: _parse(_maxBuy.text),
-      marketPrice: _market.text.trim().isEmpty ? null : _parse(_market.text),
-      comment: _comment.text.trim().isEmpty ? null : _comment.text.trim(),
-      isActive: _isActive,
-      createdAt: widget.item?.createdAt ?? DateTime.now(),
-    );
+    try {
+      final newItem = WatchlistItemModel(
+        id: widget.item?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        title: _title.text.trim(),
+        type: ItemType.set,
+        desiredBuyPrice: _parse(_desired.text),
+        maxBuyPrice: _parse(_maxBuy.text),
+        isActive: _isActive,
+        createdAt: widget.item?.createdAt ?? DateTime.now(),
+      );
 
-    ref.read(watchlistEngineProvider.notifier).saveItem(newItem);
-    Navigator.of(context).pop();
+      await ref.read(watchlistEngineProvider.notifier).saveItem(newItem);
+      if (mounted) Navigator.of(context).pop();
+    } catch(e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e'), backgroundColor: Colors.redAccent));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -7124,52 +7383,26 @@ class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScree
       body: Form(
         key: _formKey,
         child: ListView(
-          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.all(16),
           children: [
-            SwitchListTile(
-              title: const Text('Active Tracking', style: TextStyle(fontWeight: FontWeight.bold)),
-              value: _isActive,
-              onChanged: (v) => setState(() => _isActive = v),
-              activeColor: Colors.blueAccent,
-            ),
-            const SizedBox(height: 12),
             TextFormField(controller: _title, decoration: const InputDecoration(labelText: 'Title *'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: TextFormField(controller: _theme, decoration: const InputDecoration(labelText: 'Theme'))),
+                Expanded(child: TextFormField(controller: _desired, decoration: const InputDecoration(labelText: 'Target Buy Price'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
                 const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _refId, decoration: const InputDecoration(labelText: 'Set ID / Ref'))),
+                Expanded(child: TextFormField(controller: _maxBuy, decoration: const InputDecoration(labelText: 'Max Acceptable'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
               ],
             ),
-            const Divider(height: 32, color: Colors.white10),
-            Row(
-              children: [
-                Expanded(child: _buildNumField('Target Buy Price', _desired)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildNumField('Max Acceptable', _maxBuy)),
-              ],
-            ),
-            _buildNumField('Current Market Price (Est.)', _market),
-            const SizedBox(height: 12),
-            TextFormField(controller: _comment, maxLines: 3, decoration: const InputDecoration(labelText: 'Notes')),
             const SizedBox(height: 24),
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-              onPressed: _save,
-              child: const Text('Save Target', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              onPressed: _isSaving ? null : _save,
+              child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Save Target', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildNumField(String label, TextEditingController c) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(controller: c, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: label)),
     );
   }
 }

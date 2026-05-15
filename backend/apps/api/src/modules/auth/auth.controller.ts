@@ -17,12 +17,13 @@ export class AuthController {
     res.cookie('arcturus_admin_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/',
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({ ok: true, user });
+    // ФІКС: Віддаємо токен у JSON, щоб Flutter Web міг використовувати Bearer Auth
+    return res.json({ ok: true, user, token }); 
   }
 
   @Post('login')
@@ -33,12 +34,13 @@ export class AuthController {
     res.cookie('arcturus_admin_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/',
       maxAge: (dto.rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({ ok: true, user });
+    // ФІКС: Віддаємо токен у JSON
+    return res.json({ ok: true, user, token }); 
   }
 
   @Post('logout')

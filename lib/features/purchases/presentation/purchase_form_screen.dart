@@ -17,6 +17,7 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _itemId, _source, _price, _shipping, _extra;
   PurchasePaymentMethod _paymentMethod = PurchasePaymentMethod.card;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -30,31 +31,38 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
     if (p != null) _paymentMethod = p.paymentMethod;
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
     
-    final price = double.tryParse(_price.text.replaceAll(',', '.')) ?? 0;
-    final ship = double.tryParse(_shipping.text.replaceAll(',', '.')) ?? 0;
-    final extra = double.tryParse(_extra.text.replaceAll(',', '.')) ?? 0;
+    try {
+      final price = double.tryParse(_price.text.replaceAll(',', '.')) ?? 0;
+      final ship = double.tryParse(_shipping.text.replaceAll(',', '.')) ?? 0;
+      final extra = double.tryParse(_extra.text.replaceAll(',', '.')) ?? 0;
 
-    final newPurchase = PurchaseModel(
-      id: widget.purchase?.id ?? AppUtils.generateId(),
-      itemId: _itemId.text.trim(),
-      source: _source.text.trim(),
-      purchasePrice: price,
-      shippingCost: ship,
-      additionalCosts: extra,
-      finalTotal: price + ship + extra,
-      exchangeRate: 1.0,
-      currency: 'UAH',
-      paymentMethod: _paymentMethod,
-      purchaseDate: widget.purchase?.purchaseDate ?? DateTime.now(),
-      quantity: 1,
-      soldQuantity: 0,
-    );
+      final newPurchase = PurchaseModel(
+        id: widget.purchase?.id ?? AppUtils.generateId(),
+        itemId: _itemId.text.trim(),
+        source: _source.text.trim(),
+        purchasePrice: price,
+        shippingCost: ship,
+        additionalCosts: extra,
+        finalTotal: price + ship + extra,
+        exchangeRate: 1.0,
+        currency: 'UAH',
+        paymentMethod: _paymentMethod,
+        purchaseDate: widget.purchase?.purchaseDate ?? DateTime.now(),
+        quantity: 1,
+        soldQuantity: 0,
+      );
 
-    ref.read(purchasesEngineProvider.notifier).savePurchase(newPurchase);
-    Navigator.pop(context);
+      await ref.read(purchasesEngineProvider.notifier).savePurchase(newPurchase);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e'), backgroundColor: Colors.redAccent));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -65,19 +73,10 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
-          physics: const BouncingScrollPhysics(),
           children: [
-            TextFormField(
-              controller: _source,
-              decoration: const InputDecoration(labelText: 'Source (e.g. OLX, eBay) *'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-            ),
+            TextFormField(controller: _source, decoration: const InputDecoration(labelText: 'Source (e.g. OLX) *'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _itemId,
-              decoration: const InputDecoration(labelText: 'Item ID / Title *'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-            ),
+            TextFormField(controller: _itemId, decoration: const InputDecoration(labelText: 'Item ID / Title (Optional)')),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -86,20 +85,11 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
                 Expanded(child: TextFormField(controller: _shipping, decoration: const InputDecoration(labelText: 'Shipping'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
               ],
             ),
-            const SizedBox(height: 12),
-            TextFormField(controller: _extra, decoration: const InputDecoration(labelText: 'Extra Costs'), keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<PurchasePaymentMethod>(
-              value: _paymentMethod,
-              decoration: const InputDecoration(labelText: 'Payment Method'),
-              items: PurchasePaymentMethod.values.map((e) => DropdownMenuItem(value: e, child: Text(e.name.toUpperCase()))).toList(),
-              onChanged: (v) => setState(() => _paymentMethod = v!),
-            ),
             const SizedBox(height: 24),
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-              onPressed: _save,
-              child: const Text('Save Purchase', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              onPressed: _isSaving ? null : _save,
+              child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Save Purchase', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
           ],
         ),

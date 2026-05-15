@@ -1,20 +1,62 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class NetworkCore {
   final String baseUrl;
-  final http.Client _client;
-  final FlutterSecureStorage _secureStorage;
+  late final Dio _dio;
   io.Socket? _socket;
   final _eventsController = StreamController<Map<String, dynamic>>.broadcast();
 
-  NetworkCore({required this.baseUrl, http.Client? client}) 
-      : _client = client ?? http.Client(),
-        _secureStorage = const FlutterSecureStorage();
+  NetworkCore({required this.baseUrl}) {
+    _dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
+      contentType: 'application/json',
+      responseType: ResponseType.json,
+    ));
+
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('arcturus_jwt');
+        
+        // 1. Додаємо JWT токен (якщо він є і не є фейковим 'cookie_session_active')
+        if (token != null && token != 'cookie_session_active' && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        
+        // 2. Якщо це НЕ веб (iOS/Android) — вручну підставляємо збережені Cookie
+        if (!kIsWeb) {
+          final cookie = prefs.getString('arcturus_cookie');
+          if (cookie != null && cookie.isNotEmpty) {
+            options.headers['Cookie'] = cookie;
+          }
+        }
+        
+        // 3. Життєво важливо для Flutter Web: змушує браузер відправляти збережені Cookie
+        options.extra['withCredentials'] = true;
+        
+        return handler.next(options);
+      },
+      onResponse: (response, handler) async {
+        // Якщо це НЕ веб (iOS/Android) — вручну зберігаємо Cookie з відповіді бекенду
+        if (!kIsWeb) {
+          final cookies = response.headers['set-cookie'];
+          if (cookies != null && cookies.isNotEmpty) {
+            final cookieStr = cookies.map((c) => c.split(';').first).join('; ');
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('arcturus_cookie', cookieStr);
+          }
+        }
+        return handler.next(response);
+      },
+    ));
+  }
 
   Stream<Map<String, dynamic>> get socketEvents => _eventsController.stream;
 
@@ -27,70 +69,42 @@ class NetworkCore {
     return Connectivity().onConnectivityChanged.map((r) => !r.contains(ConnectivityResult.none));
   }
 
-  Future<Map<String, String>> _headers() async {
-    final token = await _secureStorage.read(key: 'arcturus_jwt');
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
-
   Future<dynamic> request(String method, String path, {Map<String, dynamic>? body, int retries = 3}) async {
-    final uri = Uri.parse('$baseUrl$path');
-    
     for (int i = 0; i <= retries; i++) {
       try {
-        final headers = await _headers();
-        http.Response res;
+        final options = Options(
+          method: method.toUpperCase(),
+          validateStatus: (status) => status != null && status < 500,
+        );
 
-        switch (method.toUpperCase()) {
-          case 'GET': res = await _client.get(uri, headers: headers); break;
-          case 'POST': res = await _client.post(uri, headers: headers, body: body != null ? jsonEncode(body) : null); break;
-          case 'PUT': res = await _client.put(uri, headers: headers, body: body != null ? jsonEncode(body) : null); break;
-          case 'PATCH': res = await _client.patch(uri, headers: headers, body: body != null ? jsonEncode(body) : null); break;
-          case 'DELETE': res = await _client.delete(uri, headers: headers, body: body != null ? jsonEncode(body) : null); break;
-          default: throw Exception('METHOD_NOT_SUPPORTED');
-        }
+        final response = await _dio.request(path, data: body, options: options);
 
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          if (res.body.isEmpty) return null;
-          return jsonDecode(res.body);
+        if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+          return response.data;
         }
         
-        if (res.statusCode == 401 || res.statusCode == 403) {
-           throw Exception('API_ERROR: Unauthorized access');
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('arcturus_jwt');
+          await prefs.remove('arcturus_cookie');
+          throw Exception('Unauthorized access. Please login again.');
         }
         
-        // Витягуємо точну помилку з бекенду
-        String errorMessage = 'Status ${res.statusCode}';
-        try {
-          final errorBody = jsonDecode(res.body);
-          if (errorBody['message'] is List) {
-             errorMessage = (errorBody['message'] as List).join(', '); // Для помилок валідації DTO
-          } else {
-             errorMessage = errorBody['message'] ?? errorBody['error'] ?? errorMessage;
-          }
-        } catch (_) {
-          errorMessage = res.body; 
+        String errorMessage = 'Status ${response.statusCode}';
+        if (response.data is Map && response.data['message'] != null) {
+          final msg = response.data['message'];
+          errorMessage = msg is List ? msg.join(', ') : msg.toString();
         }
-        
-        // Додаємо маркер API_ERROR, щоб не ретраїти логічні помилки
-        throw Exception('API_ERROR: $errorMessage');
+        throw Exception(errorMessage);
         
       } catch (e) {
-        final errStr = e.toString();
-        
-        // Якщо це помилка від бекенду (400, 404, 500) - ми НЕ робимо ретрай, а віддаємо її UI
-        if (errStr.contains('API_ERROR:')) {
-          throw Exception(errStr.split('API_ERROR: ').last);
+        final errStr = e.toString().replaceAll('Exception: ', '');
+        if (errStr.contains('Unauthorized access')) {
+          throw Exception(errStr);
         }
-        
-        // Якщо всі спроби вичерпано (справжній збій мережі)
         if (i == retries) {
-          throw Exception('NETWORK_FAILURE: Check connection or CORS. ($errStr)');
+          throw Exception(errStr);
         }
-        
         await Future.delayed(Duration(milliseconds: 500 * (1 << i)));
       }
     }
@@ -99,10 +113,14 @@ class NetworkCore {
   Future<void> initSocket() async {
     if (_socket != null && _socket!.connected) return;
     
-    final token = await _secureStorage.read(key: 'arcturus_jwt');
-    if (token == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('arcturus_jwt');
+    final cookie = prefs.getString('arcturus_cookie');
+    
+    if (token == null && cookie == null) return;
 
-    final socketUrl = baseUrl.replaceAll(RegExp(r'/api/?$'), '');
+    final uri = Uri.parse(baseUrl);
+    final socketUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
     
     _socket = io.io(
       socketUrl, 
@@ -111,9 +129,11 @@ class NetworkCore {
         .enableAutoConnect()
         .enableReconnection()
         .setReconnectionAttempts(10)
-        .setReconnectionDelay(1000)
-        .setReconnectionDelayMax(5000)
-        .setAuth({'token': token})
+        .setAuth(token != null && token != 'cookie_session_active' ? {'token': token} : {})
+        .setExtraHeaders({
+          'withCredentials': true,
+          if (!kIsWeb && cookie != null) 'cookie': cookie,
+        })
         .build(),
     );
 
@@ -131,6 +151,6 @@ class NetworkCore {
     _socket?.disconnect();
     _socket?.dispose();
     _eventsController.close();
-    _client.close();
+    _dio.close();
   }
 }

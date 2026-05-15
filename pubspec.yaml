@@ -31,6 +31,7 @@ dependencies:
   url_launcher: ^6.3.2
   mobile_scanner: ^7.2.0
   image_picker: ^1.2.1
+  dio: ^5.9.2
 
 dev_dependencies:
   flutter_test:

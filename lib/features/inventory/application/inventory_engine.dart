@@ -1,7 +1,11 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
-import 'package:lego_trading_manager/core/enums/item_condition.dart'; // ДОДАНО ІМПОРТ
+import 'package:lego_trading_manager/core/enums/item_condition.dart';
+import 'package:lego_trading_manager/core/enums/item_type.dart';
+import 'package:lego_trading_manager/core/enums/item_completeness.dart';
+import 'package:lego_trading_manager/core/enums/ownership_type.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
@@ -30,7 +34,37 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
   @override
   Future<InventoryEngineState> build() async {
     final network = ref.watch(networkCoreProvider);
+    final repo = ref.read(inventoryRepositoryProvider);
     
+    if (await network.isOnline()) {
+      try {
+        final res = await network.request('GET', '/inventory');
+        if (res is List) {
+          final mappedItems = res.map((e) {
+            return ItemModel(
+               id: e['id']?.toString() ?? AppUtils.generateId(),
+               title: e['titleSnapshot']?.toString() ?? e['item']?['title'] ?? 'Unknown Item',
+               type: ItemType.set,
+               condition: ItemCondition.newSealed,
+               completeness: ItemCompleteness.complete,
+               ownershipType: OwnershipType.resale,
+               purchasePrice: (e['purchasePrice'] ?? 0).toDouble(),
+               shippingToMe: 0.0,
+               extraCosts: 0.0,
+               totalCost: (e['totalCost'] ?? 0).toDouble(),
+               marketAverage: e['marketAverage']?.toDouble(),
+               expectedSalePrice: e['expectedSalePriceManual']?.toDouble(),
+               actualSalePrice: e['actualSalePrice']?.toDouble(),
+               status: ItemStatus.purchased,
+               quantity: e['quantity'] ?? 1,
+               isTracked: true,
+            );
+          }).toList();
+          await repo.replaceAll(mappedItems);
+        }
+      } catch (e) {}
+    }
+
     final sub = network.socketEvents.listen((event) {
       if (['inventory_updated', 'sale_registered'].contains(event['type'])) {
         ref.invalidateSelf();
@@ -38,7 +72,7 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
     });
     ref.onDispose(() => sub.cancel());
 
-    final items = ref.watch(inventoryRepositoryProvider).getAllItems();
+    final items = repo.getAllItems();
     return _computeState(items, '', null, 'newest', const {});
   }
 
@@ -56,15 +90,8 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
         active++;
         final profit = (item.expectedSalePrice ?? 0) - (item.totalCost);
         final days = item.daysInInventory ?? 0;
-        
-        if (days >= 30) { 
-          dead++; 
-          deadList.add(item); 
-        }
-        if (profit <= 100 || days >= 60) { 
-          alertCount++; 
-          alertList.add(item); 
-        }
+        if (days >= 30) { dead++; deadList.add(item); }
+        if (profit <= 100 || days >= 60) { alertCount++; alertList.add(item); }
       }
 
       bool matches = status == null || item.status == status;
@@ -80,70 +107,57 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
     }
 
     deadList.sort((a, b) => (b.daysInInventory ?? 0).compareTo(a.daysInInventory ?? 0));
-    
     switch (sort) {
       case 'newest': visible.sort((a, b) => (b.purchaseDate ?? DateTime(2000)).compareTo(a.purchaseDate ?? DateTime(2000))); break;
       case 'cost': visible.sort((a, b) => (b.totalCost).compareTo(a.totalCost)); break;
       case 'profit': visible.sort((a, b) => ((b.expectedSalePrice ?? 0) - b.totalCost).compareTo((a.expectedSalePrice ?? 0) - a.totalCost)); break;
     }
-
     return InventoryEngineState(allItems: all, visibleItems: visible, selectedIds: selected, query: q, filterStatus: status, sortOption: sort, analysis: InventoryAnalysis(active, sold, dead, alertCount, tCost, eProfit, deadList, alertList));
   }
 
   Future<void> saveItem(ItemModel item) async {
-    final currentState = state.valueOrNull;
-    if (currentState == null) return;
-
-    final repo = ref.read(inventoryRepositoryProvider);
+    final currentState = await future; 
+    final network = ref.read(networkCoreProvider);
     final exists = currentState.allItems.any((e) => e.id == item.id);
     
-    // 1. Зберігаємо локально для миттєвого оновлення UI (Оптимістичний UI)
-    if (exists) {
-      await repo.updateItem(item);
-    } else {
-      await repo.addItem(item);
-    }
-    
-    // Оновлюємо стан, щоб UI перемалювався миттєво
-    state = AsyncValue.data(_computeState(repo.getAllItems(), currentState.query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
-
-    // 2. Відправляємо на бекенд
     try {
       final payload = {
-        'itemId': item.id,
         'titleSnapshot': item.title,
         'purchasePrice': item.purchasePrice,
         'totalCost': item.totalCost,
         'quantity': item.quantity,
         'condition': item.condition.name,
-        'sealed': item.condition == ItemCondition.newSealed, // Тепер enum доступний
+        'sealed': item.condition == ItemCondition.newSealed,
         'expectedSalePriceManual': item.expectedSalePrice,
         'notes': item.notes,
       };
 
       if (exists) {
-        await ref.read(networkCoreProvider).request('PATCH', '/inventory', body: { 'id': item.id, ...payload });
+        await network.request('PATCH', '/inventory', body: { 'id': item.id, ...payload });
       } else {
-        // Оскільки в нас ще немає "Каталогу", створюємо item на ходу
-        final itemRes = await ref.read(networkCoreProvider).request('POST', '/items', body: {
+        final itemRes = await network.request('POST', '/items', body: {
           'title': item.title,
-          'setNumber': item.setId,
-          'theme': item.theme,
+          'setNumber': item.setId ?? '',
+          'theme': item.theme ?? 'Other',
           'kind': item.type.name,
         });
-        
         payload['itemId'] = itemRes['id'];
-        await ref.read(networkCoreProvider).request('POST', '/inventory', body: payload);
+        final invRes = await network.request('POST', '/inventory', body: payload);
+        item = item.copyWith(id: invRes['id']); 
       }
+
+      final repo = ref.read(inventoryRepositoryProvider);
+      if (exists) await repo.updateItem(item);
+      else await repo.addItem(item);
+      
+      state = AsyncValue.data(_computeState(repo.getAllItems(), currentState.query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
     } catch (e) {
-      print('Sync error: $e');
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
-  void search(String query) {
-    final currentState = state.valueOrNull;
-    if (currentState == null) return;
-    
+  void search(String query) async {
+    final currentState = await future;
     state = AsyncValue.data(_computeState(currentState.allItems, query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
   }
 }

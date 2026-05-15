@@ -276,7 +276,7 @@ COPY apps/scrapers/package*.json ./apps/scrapers/
 
 COPY packages/db/prisma ./packages/db/prisma
 
-RUN npm ci
+RUN npm install
 
 COPY . .
 
@@ -385,6 +385,10 @@ bash scripts/ops-healthcheck.sh
     "db:push": "npm run push --workspace=@arcturus/db",
     "db:migrate": "npm run migrate --workspace=@arcturus/db",
     "db:studio": "npm run studio --workspace=@arcturus/db"
+  },
+  "dependencies": {
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1"
   },
   "devDependencies": {
     "typescript": "^5.7.2"
@@ -723,8 +727,8 @@ COPY apps/workers/package.json ./apps/workers/
 COPY apps/scrapers/package.json ./apps/scrapers/
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json package-lock.json* ./
+RUN npm install
 COPY . .
 WORKDIR /app/packages/db
 RUN npx prisma generate
@@ -3332,19 +3336,15 @@ async function bootstrap() {
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
-  const corsOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [];
+  // РњР°РєСЃРёРјР°Р»СЊРЅРѕ РіРЅСѓС‡РєРёР№ CORS РґР»СЏ СѓРЅРёРєРЅРµРЅРЅСЏ РїСЂРѕР±Р»РµРј Р· Flutter Web
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || corsOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+      callback(null, true);
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'X-Requested-With', 'Accept'],
-    exposedHeaders: ['X-Total-Count', 'Content-Disposition'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Accept, Authorization, x-api-key, X-Requested-With',
+    exposedHeaders: 'X-Total-Count, Content-Disposition',
     maxAge: 86400,
   });
 
@@ -3365,8 +3365,9 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  const port = process.env.PORT || 4000;
+  const port = process.env.PORT || process.env.RENDER_PORT || 4000;
   await app.listen(port, '0.0.0.0');
+  console.log(`[Arcturus] API successfully started and listening on port ${port}`);
 }
 bootstrap();
 
@@ -11566,18 +11567,21 @@ export class ReviewFlowService {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\health\health.controller.ts =====
 
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Version, VERSION_NEUTRAL } from '@nestjs/common';
 import { HealthService } from './health.service';
 
 @Controller('health')
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
+  // VERSION_NEUTRAL РіР°СЂР°РЅС‚СѓС”, С‰Рѕ СЂРѕСѓС‚ Р±СѓРґРµ /api/health, Р° РЅРµ /api/v1/health
+  @Version(VERSION_NEUTRAL)
   @Get()
   health(): Promise<unknown> {
     return this.healthService.getHealth();
   }
 
+  @Version(VERSION_NEUTRAL)
   @Get('ready')
   ready(): Promise<unknown> {
     return this.healthService.getReadiness();
@@ -11607,48 +11611,13 @@ export class HealthService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getHealth(): Promise<unknown> {
-    const startedAt = Date.now();
-
-    await this.prisma.$queryRaw`SELECT 1`;
-
-    const [
-      items,
-      inventory,
-      watchlist,
-      listings,
-      sales,
-      notifications,
-      syncErrors,
-    ] = await Promise.all([
-      this.prisma.item.count(),
-      this.prisma.inventoryItem.count(),
-      this.prisma.watchlistItem.count(),
-      this.prisma.marketListing.count(),
-      this.prisma.sale.count(),
-      this.prisma.notification.count({
-        where: {
-          read: false,
-        },
-      }),
-      this.prisma.syncErrorLog.count(),
-    ]);
-
+    // Р’РђР–Р›РР’Рћ: Render РґСѓР¶Рµ С‡Р°СЃС‚Рѕ РїС–РЅРіСѓС” С†РµР№ СЂРѕСѓС‚. РњРё СЂРѕР±РёРјРѕ Р№РѕРіРѕ РјР°РєСЃРёРјР°Р»СЊРЅРѕ Р»РµРіРєРёРј, 
+    // С‰РѕР± РЅРµ РЅР°РІР°РЅС‚Р°Р¶СѓРІР°С‚Рё Р±Р°Р·Сѓ С– РЅРµ РІС–РґРІР°Р»СЋРІР°С‚РёСЃСЏ РїРѕ С‚Р°Р№Рј-Р°СѓС‚Сѓ РїС–Рґ С‡Р°СЃ РґРµРїР»РѕСЋ.
     return {
-      ok: true,
+      status: 'ok',
       service: 'arcturus-api',
       uptimeSec: Math.round(process.uptime()),
-      latencyMs: Date.now() - startedAt,
       env: process.env.NODE_ENV ?? 'development',
-      database: 'ok',
-      counters: {
-        items,
-        inventory,
-        watchlist,
-        listings,
-        sales,
-        unreadNotifications: notifications,
-        syncErrors,
-      },
       time: new Date().toISOString(),
     };
   }
@@ -11656,15 +11625,14 @@ export class HealthService {
   async getReadiness(): Promise<unknown> {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
-
       return {
         ready: true,
-        database: true,
+        database: 'connected',
       };
     } catch (error) {
       return {
         ready: false,
-        database: false,
+        database: 'disconnected',
         error: error instanceof Error ? error.message : String(error),
       };
     }
@@ -17576,7 +17544,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../auth/auth.module';
 import { OrdersModule } from '../orders/orders.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { RealtimeModule } from '../realtime/realtime.gateway';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RedisModule } from '../redis/redis.module';
 import { PaymentsController } from './payments.controller';
@@ -18605,7 +18573,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     return this.$extends({
       query: {
         $allModels: {
-          async $allOperations({ model, operation, args, query }) {
+          async $allOperations({ model, operation, args, query }: any) {
             const softDeleteModels = ['Sale', 'Order', 'ReturnRequest', 'Expense'];
             if (
               softDeleteModels.includes(model) && 
@@ -18782,7 +18750,7 @@ import { Module } from '@nestjs/common';
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { RealtimeModule } from '../realtime/realtime.gateway';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { MarketModule } from '../market/market.module';
 import { ProcurementController } from './procurement.controller';
@@ -20316,6 +20284,7 @@ import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 import { Queue } from 'bullmq';
+import Redis from 'ioredis';
 import { QUEUE_NAMES } from './queue.constants';
 import { NextFunction, Request, Response } from 'express';
 
@@ -20326,16 +20295,19 @@ export class QueueBoardModule implements NestModule {
     serverAdapter.setBasePath('/api/admin/queues');
 
     const redisUrl = process.env.REDIS_URL?.trim();
-    const redisOptions = redisUrl 
-      ? { url: redisUrl } 
-      : {
+    const options = { maxRetriesPerRequest: null, enableReadyCheck: false };
+    
+    const connection = redisUrl 
+      ? new Redis(redisUrl, options) 
+      : new Redis({
           host: process.env.REDIS_HOST || '127.0.0.1',
           port: Number(process.env.REDIS_PORT || 6379),
           password: process.env.REDIS_PASSWORD || undefined,
-        };
+          ...options,
+        });
 
     const queues = Object.values(QUEUE_NAMES).map(
-      (name) => new BullMQAdapter(new Queue(name, { connection: redisOptions })) as any
+      (name) => new BullMQAdapter(new Queue(name, { connection })) as any
     );
 
     createBullBoard({
@@ -20442,47 +20414,56 @@ export class QueueModule {}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\queue\queue.service.ts =====
 
-import { Injectable } from '@nestjs/common';
-import { Queue, type ConnectionOptions } from 'bullmq';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Queue } from 'bullmq';
+import Redis from 'ioredis';
 import { QUEUE_NAMES, JOB_NAMES } from './queue.constants';
 
-function redisConnection(): ConnectionOptions {
+function createSharedRedisClient(): Redis {
   const redisUrl = process.env.REDIS_URL?.trim();
+  const options = { maxRetriesPerRequest: null, enableReadyCheck: false };
 
   if (redisUrl) {
-    return {
-      url: redisUrl,
-      maxRetriesPerRequest: null,
-    };
+    return new Redis(redisUrl, options);
   }
 
-  return {
+  return new Redis({
     host: process.env.REDIS_HOST || '127.0.0.1',
     port: Number(process.env.REDIS_PORT || 6379),
     password: process.env.REDIS_PASSWORD || undefined,
-    maxRetriesPerRequest: null,
-  };
+    ...options,
+  });
 }
 
 @Injectable()
-export class QueueService {
-  private readonly connection = redisConnection();
+export class QueueService implements OnModuleDestroy {
+  private readonly redisClient = createSharedRedisClient();
 
   private readonly marketQueue = new Queue(QUEUE_NAMES.MARKET, {
-    connection: this.connection,
+    connection: this.redisClient,
   });
 
   private readonly decisionsQueue = new Queue(QUEUE_NAMES.DECISIONS, {
-    connection: this.connection,
+    connection: this.redisClient,
   });
 
   private readonly scraperQueue = new Queue(QUEUE_NAMES.SCRAPER, {
-    connection: this.connection,
+    connection: this.redisClient,
   });
 
   private readonly maintenanceQueue = new Queue(QUEUE_NAMES.MAINTENANCE, {
-    connection: this.connection,
+    connection: this.redisClient,
   });
+
+  async onModuleDestroy() {
+    await Promise.all([
+      this.marketQueue.close(),
+      this.decisionsQueue.close(),
+      this.scraperQueue.close(),
+      this.maintenanceQueue.close(),
+    ]);
+    await this.redisClient.quit();
+  }
 
   async enqueueMarketSnapshots(): Promise<unknown> {
     return this.marketQueue.add(JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS, {}, { removeOnComplete: 100, removeOnFail: 500 });
@@ -20731,32 +20712,38 @@ export class RealtimeModule {}
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ServerOptions } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
-import { createClient } from 'redis';
-import { INestApplicationContext } from '@nestjs/common';
+import { INestApplicationContext, Logger } from '@nestjs/common';
+import { RedisService } from '../redis/redis.service';
 
 export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor: any;
+  private readonly logger = new Logger(RedisIoAdapter.name);
 
-  constructor(app: INestApplicationContext) {
+  constructor(private app: INestApplicationContext) {
     super(app);
   }
 
   async connectToRedis(): Promise<void> {
-    const url = process.env.REDIS_URL?.trim() || `redis://${process.env.REDIS_HOST || '127.0.0.1'}:${process.env.REDIS_PORT || 6379}`;
-    
-    const pubClient = createClient({
-      url,
-      password: process.env.REDIS_PASSWORD || undefined,
-    });
-    
-    const subClient = pubClient.duplicate();
+    try {
+      // РћС‚СЂРёРјСѓС”РјРѕ С–СЃРЅСѓСЋС‡РёР№ РµРєР·РµРјРїР»СЏСЂ RedisService, С‰РѕР± РЅРµ РїР»РѕРґРёС‚Рё РЅРѕРІС– Р·'С”РґРЅР°РЅРЅСЏ
+      const redisService = this.app.get(RedisService);
+      const pubClient = redisService.getClient();
+      
+      // РЎС‚РІРѕСЂСЋС”РјРѕ РґСѓР±Р»С–РєР°С‚ РґР»СЏ РїС–РґРїРёСЃРѕРє (РІРёРјРѕРіР° socket.io-redis)
+      const subClient = pubClient.duplicate();
 
-    pubClient.on('error', () => {});
-    subClient.on('error', () => {});
+      // Р§РµРєР°С”РјРѕ, РїРѕРєРё СЃР°Р±-РєР»С–С”РЅС‚ РЅРµ РїС–РґРєР»СЋС‡РёС‚СЊСЃСЏ (РїР°Р±-РєР»С–С”РЅС‚ РІР¶Рµ РїС–РґРєР»СЋС‡РµРЅРёР№ С‡РµСЂРµР· OnModuleInit)
+      // РћСЃРєС–Р»СЊРєРё РјРё РІРёРєРѕСЂРёСЃС‚РѕРІСѓС”РјРѕ ioredis, duplicate() РЅРµ РїРѕС‚СЂРµР±СѓС” СЏРІРЅРѕРіРѕ connect(), 
+      // Р°Р»Рµ РјРё СЂРѕР±РёРјРѕ РїРµСЂРµРІС–СЂРєСѓ СЃС‚Р°С‚СѓСЃСѓ
+      if (subClient.status === 'wait') {
+        await subClient.connect();
+      }
 
-    await Promise.all([pubClient.connect(), subClient.connect()]);
-
-    this.adapterConstructor = createAdapter(pubClient, subClient);
+      this.adapterConstructor = createAdapter(pubClient, subClient);
+      this.logger.log('Successfully connected WebSockets to Redis');
+    } catch (err: any) {
+      this.logger.error(`Failed to connect WebSockets to Redis. Falling back to in-memory adapter. Error: ${err.message}`);
+    }
   }
 
   createIOServer(port: number, options?: ServerOptions): any {
@@ -20767,7 +20754,11 @@ export class RedisIoAdapter extends IoAdapter {
         credentials: true,
       },
     });
-    server.adapter(this.adapterConstructor);
+    
+    if (this.adapterConstructor) {
+      server.adapter(this.adapterConstructor);
+    }
+    
     return server;
   }
 }
@@ -20798,7 +20789,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     
     if (redisUrl) {
       this.client = new Redis(redisUrl, {
-        maxRetriesPerRequest: 3,
+        maxRetriesPerRequest: null,
         family: 0,
       });
     } else {
@@ -20806,10 +20797,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         host: process.env.REDIS_HOST || '127.0.0.1',
         port: Number(process.env.REDIS_PORT || 6379),
         password: process.env.REDIS_PASSWORD || undefined,
-        maxRetriesPerRequest: 3,
+        maxRetriesPerRequest: null,
         family: 0,
       });
     }
+    
+    this.client.on('error', (err) => {
+      console.error('[RedisService] Connection error:', err);
+    });
   }
 
   async onModuleInit() {}
@@ -24833,10 +24828,11 @@ export class SyncController {
 
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import Redis from 'ioredis';
 import { AuthModule } from '../auth/auth.module';
 import { DecisionsModule } from '../decisions/decisions.module';
 import { MarketModule } from '../market/market.module';
-import { RealtimeModule } from '../realtime/realtime.gateway';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RedisModule } from '../redis/redis.module';
 import { SyncController } from './sync.controller';
@@ -24853,6 +24849,21 @@ import { QUEUE_NAMES } from '../queue/queue.constants';
     RealtimeModule,
     PrismaModule,
     RedisModule,
+    BullModule.forRootAsync({
+      useFactory: () => {
+        const redisUrl = process.env.REDIS_URL?.trim();
+        const options = { maxRetriesPerRequest: null, enableReadyCheck: false };
+        const connection = redisUrl
+          ? new Redis(redisUrl, options)
+          : new Redis({
+              host: process.env.REDIS_HOST || '127.0.0.1',
+              port: Number(process.env.REDIS_PORT || 6379),
+              password: process.env.REDIS_PASSWORD || undefined,
+              ...options,
+            });
+        return { connection };
+      },
+    }),
     BullModule.registerQueue({
       name: QUEUE_NAMES.SYNC,
     }),
@@ -30704,7 +30715,7 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
   let lastId: string | undefined = undefined;
 
   while (hasMore) {
-    const listings = await prisma.marketListing.findMany({
+    const listingsQuery = await prisma.marketListing.findMany({
       where: { status: 'active' },
       orderBy: { id: 'asc' },
       take: chunkSize,
@@ -30712,6 +30723,8 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
       cursor: lastId ? { id: lastId } : undefined,
       select: { id: true, itemId: true, price: true, shippingPrice: true }
     });
+
+    const listings: Array<{ id: string; itemId: string; price: number; shippingPrice: number | null }> = listingsQuery;
 
     if (listings.length === 0) {
       hasMore = false;
@@ -30721,7 +30734,7 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
     lastId = listings[listings.length - 1].id;
     scannedListings += listings.length;
 
-    const itemIds = Array.from(new Set(listings.map((l) => l.itemId)));
+    const itemIds: string[] = Array.from(new Set<string>(listings.map((l) => String(l.itemId))));
     
     const watchlistItems = await prisma.watchlistItem.findMany({
       where: { itemId: { in: itemIds }, active: true },
@@ -30737,7 +30750,6 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
       watchlistMap.set(w.itemId, arr);
     }
 
-    const updates: any[] = [];
     const creates: any[] = [];
 
     for (const listing of listings) {
@@ -30766,13 +30778,18 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
 
         if (action === 'SKIP') continue;
 
-        const dealData = { buyPrice, targetSellPrice, profit, roiPercent, action, score, status: 'open', updatedAt: new Date() };
-
         creates.push({
           id: `${listing.id}_${watchlistItem.id}`,
           listingId: listing.id,
           watchlistItemId: watchlistItem.id,
-          ...dealData
+          buyPrice,
+          targetSellPrice,
+          profit,
+          roiPercent,
+          action,
+          score,
+          status: 'open',
+          updatedAt: new Date()
         });
         
         createdOrUpdated += 1;
@@ -31801,28 +31818,33 @@ import Redis from 'ioredis';
 export function createRedisConnection(): Redis {
   const redisUrl = process.env.REDIS_URL?.trim();
 
-  if (redisUrl) {
-    return new Redis(redisUrl, {
-      maxRetriesPerRequest: null,
-      family: 0,
-      enableReadyCheck: false,
-      retryStrategy(times) {
-        return Math.min(times * 100, 3000);
-      }
-    });
-  }
-
-  return new Redis({
-    host: process.env.REDIS_HOST || '127.0.0.1',
-    port: Number(process.env.REDIS_PORT || 6379),
-    password: process.env.REDIS_PASSWORD || undefined,
+  const options = {
     maxRetriesPerRequest: null,
     family: 0,
     enableReadyCheck: false,
-    retryStrategy(times) {
+    retryStrategy(times: number) {
       return Math.min(times * 100, 3000);
+    },
+    reconnectOnError() {
+      return true;
     }
+  };
+
+  if (redisUrl) {
+    const client = new Redis(redisUrl, options);
+    client.on('error', (err) => console.error('[Worker Redis Error]', err.message));
+    return client;
+  }
+
+  const client = new Redis({
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: Number(process.env.REDIS_PORT || 6379),
+    password: process.env.REDIS_PASSWORD || undefined,
+    ...options
   });
+
+  client.on('error', (err) => console.error('[Worker Redis Error]', err.message));
+  return client;
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\queue\scheduler.ts =====

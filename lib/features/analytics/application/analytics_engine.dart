@@ -1,4 +1,5 @@
 import 'dart:isolate';
+import 'package:flutter/foundation.dart'; // Додано
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/app/providers/core_providers.dart';
@@ -37,7 +38,11 @@ class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
     final watchlist = ref.watch(watchlistRepositoryProvider).getAll();
     final converter = ref.watch(currencyConverterProvider);
     
-    return await Isolate.run(() => _computeBackground(items, sales, watchlist, converter));
+    if (kIsWeb) {
+      return _computeBackground(items, sales, watchlist, converter);
+    } else {
+      return await Isolate.run(() => _computeBackground(items, sales, watchlist, converter));
+    }
   }
 
   static AnalyticsEngineState _computeBackground(List<ItemModel> items, List<SaleModel> sales, List<WatchlistItemModel> watchlist, CurrencyConverter converter) {

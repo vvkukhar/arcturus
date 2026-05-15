@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/core/network/network_core.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 
@@ -12,21 +12,22 @@ class AuthEngineState {
 }
 
 class AuthEngine extends AsyncNotifier<AuthEngineState> {
-  final _storage = const FlutterSecureStorage();
-
   @override
   Future<AuthEngineState> build() async {
-    final token = await _storage.read(key: 'arcturus_jwt');
-    final offline = await _storage.read(key: 'arcturus_offline') == 'true';
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('arcturus_jwt');
+    final cookie = prefs.getString('arcturus_cookie');
+    final offline = prefs.getString('arcturus_offline') == 'true';
 
     if (offline) return const AuthEngineState(isAuthenticated: true, isOfflineMode: true);
     
-    if (token != null) {
+    if (token != null || cookie != null) {
       try {
         final res = await ref.read(networkCoreProvider).request('GET', '/auth/me');
         return AuthEngineState(isAuthenticated: true, user: res);
       } catch (e) {
-        await _storage.delete(key: 'arcturus_jwt');
+        await prefs.remove('arcturus_jwt');
+        await prefs.remove('arcturus_cookie');
         return const AuthEngineState();
       }
     }
@@ -41,16 +42,29 @@ class AuthEngine extends AsyncNotifier<AuthEngineState> {
         'password': password,
       });
 
-      if (res != null && res['token'] != null) {
-        await _storage.write(key: 'arcturus_jwt', value: res['token']);
+      if (res == null) throw Exception('Empty response from server');
+
+      String? token;
+      Map<String, dynamic>? user;
+
+      if (res is String) {
+        token = res;
+      } else if (res is Map) {
+        token = res['token'] ?? res['access_token'] ?? res['accessToken'] ?? res['jwt'];
+        user = res['user'];
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      
+      if (user != null || (token != null && token.isNotEmpty) || prefs.getString('arcturus_cookie') != null) {
+        await prefs.setString('arcturus_jwt', token ?? 'cookie_session_active');
         await ref.read(networkCoreProvider).initSocket();
-        state = AsyncValue.data(AuthEngineState(isAuthenticated: true, user: res['user']));
+        state = AsyncValue.data(AuthEngineState(isAuthenticated: true, user: user ?? (res is Map ? Map<String, dynamic>.from(res) : null)));
       } else {
-        throw Exception('Invalid response from server');
+        throw Exception('Server replied: $res');
       }
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
-      // ВАЖЛИВО: Передаємо реальну помилку, а не глушимо її
       throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
@@ -62,15 +76,27 @@ class AuthEngine extends AsyncNotifier<AuthEngineState> {
         'name': name,
         'email': email,
         'password': password,
-        'inviteCode': inviteCode, 
+        'inviteCode': inviteCode,
       });
 
-      if (res != null && res['token'] != null) {
-        await _storage.write(key: 'arcturus_jwt', value: res['token']);
+      String? token;
+      Map<String, dynamic>? user;
+      
+      if (res is String) {
+        token = res;
+      } else if (res is Map) {
+        token = res['token'] ?? res['access_token'] ?? res['accessToken'] ?? res['jwt'];
+        user = res['user'];
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+
+      if (user != null || (token != null && token.isNotEmpty) || prefs.getString('arcturus_cookie') != null) {
+        await prefs.setString('arcturus_jwt', token ?? 'cookie_session_active');
         await ref.read(networkCoreProvider).initSocket();
-        state = AsyncValue.data(AuthEngineState(isAuthenticated: true, user: res['user']));
+        state = AsyncValue.data(AuthEngineState(isAuthenticated: true, user: user));
       } else {
-        throw Exception('Invalid response from server');
+        await login(email, password);
       }
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
@@ -79,14 +105,17 @@ class AuthEngine extends AsyncNotifier<AuthEngineState> {
   }
 
   Future<void> enableOfflineMode() async {
-    await _storage.write(key: 'arcturus_offline', value: 'true');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('arcturus_offline', 'true');
     ref.read(syncEngineProvider.notifier).setOfflineMode();
     state = const AsyncValue.data(AuthEngineState(isAuthenticated: true, isOfflineMode: true));
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: 'arcturus_jwt');
-    await _storage.delete(key: 'arcturus_offline');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('arcturus_jwt');
+    await prefs.remove('arcturus_cookie');
+    await prefs.remove('arcturus_offline');
     ref.read(networkCoreProvider).dispose();
     state = const AsyncValue.data(AuthEngineState());
   }

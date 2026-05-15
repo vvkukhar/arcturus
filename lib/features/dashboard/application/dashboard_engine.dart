@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/app/providers/core_providers.dart';
 import 'package:lego_trading_manager/core/services/currency_converter.dart';
 import 'package:lego_trading_manager/core/enums/ownership_type.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
+import 'package:lego_trading_manager/features/inventory/application/inventory_engine.dart';
+import 'package:lego_trading_manager/features/watchlist/application/watchlist_engine.dart';
 
 class DashboardAction {
   final String title;
@@ -41,8 +42,12 @@ class DashboardEngine extends AsyncNotifier<DashboardEngineState> {
     });
     ref.onDispose(() => sub.cancel());
 
-    final items = ref.watch(inventoryRepositoryProvider).getAllItems();
-    final watchlist = ref.watch(watchlistRepositoryProvider).getAll();
+    // ФІКС: Дашборд тепер автоматично стежить за локальними змінами в Інвентарі та Списку спостереження
+    final invState = ref.watch(inventoryEngineProvider).valueOrNull;
+    final watchState = ref.watch(watchlistEngineProvider).valueOrNull;
+
+    final items = invState?.allItems ?? [];
+    final watchlist = watchState?.allItems ?? [];
     final converter = ref.watch(currencyConverterProvider);
     
     return _compute(items, watchlist, converter);
