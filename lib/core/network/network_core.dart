@@ -14,8 +14,8 @@ class NetworkCore {
   NetworkCore({required this.baseUrl}) {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: 60), // ФІКС: Даємо час Render прокинутись
+      receiveTimeout: const Duration(seconds: 60),
       contentType: 'application/json',
       responseType: ResponseType.json,
     ));
@@ -25,12 +25,13 @@ class NetworkCore {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('arcturus_jwt');
         
-        // 1. Додаємо JWT токен (якщо він є і не є фейковим 'cookie_session_active')
         if (token != null && token != 'cookie_session_active' && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
+          print('✅ [NetworkCore] Sending Bearer token');
+        } else {
+          print('⚠️ [NetworkCore] Request without token: ${options.path}');
         }
         
-        // 2. Якщо це НЕ веб (iOS/Android) — вручну підставляємо збережені Cookie
         if (!kIsWeb) {
           final cookie = prefs.getString('arcturus_cookie');
           if (cookie != null && cookie.isNotEmpty) {
@@ -38,13 +39,10 @@ class NetworkCore {
           }
         }
         
-        // 3. Життєво важливо для Flutter Web: змушує браузер відправляти збережені Cookie
         options.extra['withCredentials'] = true;
-        
         return handler.next(options);
       },
       onResponse: (response, handler) async {
-        // Якщо це НЕ веб (iOS/Android) — вручну зберігаємо Cookie з відповіді бекенду
         if (!kIsWeb) {
           final cookies = response.headers['set-cookie'];
           if (cookies != null && cookies.isNotEmpty) {
@@ -112,7 +110,6 @@ class NetworkCore {
 
   Future<void> initSocket() async {
     if (_socket != null && _socket!.connected) return;
-    
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('arcturus_jwt');
     final cookie = prefs.getString('arcturus_cookie');

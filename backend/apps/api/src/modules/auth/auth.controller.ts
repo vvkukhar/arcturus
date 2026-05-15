@@ -22,8 +22,8 @@ export class AuthController {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    // ФІКС: Віддаємо токен у JSON, щоб Flutter Web міг використовувати Bearer Auth
-    return res.json({ ok: true, user, token }); 
+    // ФІКС: Віддаємо токен у JSON для Flutter Web
+    return res.json({ ok: true, user, token });
   }
 
   @Post('login')
@@ -39,8 +39,8 @@ export class AuthController {
       maxAge: (dto.rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000,
     });
 
-    // ФІКС: Віддаємо токен у JSON
-    return res.json({ ok: true, user, token }); 
+    // ФІКС: Віддаємо токен у JSON для Flutter Web
+    return res.json({ ok: true, user, token });
   }
 
   @Post('logout')
