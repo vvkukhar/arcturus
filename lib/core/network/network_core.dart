@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
@@ -14,8 +13,8 @@ class NetworkCore {
   NetworkCore({required this.baseUrl}) {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 60), // ФІКС: Даємо час Render прокинутись
-      receiveTimeout: const Duration(seconds: 60),
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
       contentType: 'application/json',
       responseType: ResponseType.json,
     ));
@@ -27,31 +26,9 @@ class NetworkCore {
         
         if (token != null && token != 'cookie_session_active' && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
-          print('✅ [NetworkCore] Sending Bearer token');
-        } else {
-          print('⚠️ [NetworkCore] Request without token: ${options.path}');
         }
         
-        if (!kIsWeb) {
-          final cookie = prefs.getString('arcturus_cookie');
-          if (cookie != null && cookie.isNotEmpty) {
-            options.headers['Cookie'] = cookie;
-          }
-        }
-        
-        options.extra['withCredentials'] = true;
         return handler.next(options);
-      },
-      onResponse: (response, handler) async {
-        if (!kIsWeb) {
-          final cookies = response.headers['set-cookie'];
-          if (cookies != null && cookies.isNotEmpty) {
-            final cookieStr = cookies.map((c) => c.split(';').first).join('; ');
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('arcturus_cookie', cookieStr);
-          }
-        }
-        return handler.next(response);
       },
     ));
   }
@@ -84,7 +61,6 @@ class NetworkCore {
         if (response.statusCode == 401 || response.statusCode == 403) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.remove('arcturus_jwt');
-          await prefs.remove('arcturus_cookie');
           throw Exception('Unauthorized access. Please login again.');
         }
         
@@ -101,7 +77,7 @@ class NetworkCore {
           throw Exception(errStr);
         }
         if (i == retries) {
-          throw Exception(errStr);
+          throw Exception('Network error: $errStr');
         }
         await Future.delayed(Duration(milliseconds: 500 * (1 << i)));
       }
@@ -112,9 +88,8 @@ class NetworkCore {
     if (_socket != null && _socket!.connected) return;
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('arcturus_jwt');
-    final cookie = prefs.getString('arcturus_cookie');
     
-    if (token == null && cookie == null) return;
+    if (token == null || token.isEmpty || token == 'cookie_session_active') return;
 
     final uri = Uri.parse(baseUrl);
     final socketUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
@@ -126,11 +101,7 @@ class NetworkCore {
         .enableAutoConnect()
         .enableReconnection()
         .setReconnectionAttempts(10)
-        .setAuth(token != null && token != 'cookie_session_active' ? {'token': token} : {})
-        .setExtraHeaders({
-          'withCredentials': true,
-          if (!kIsWeb && cookie != null) 'cookie': cookie,
-        })
+        .setAuth({'token': token})
         .build(),
     );
 

@@ -135,10 +135,11 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
       if (exists) {
         await network.request('PATCH', '/inventory', body: { 'id': item.id, ...payload });
       } else {
+        // ФІКС: Надсилаємо setNumber/theme тільки якщо вони РЕАЛЬНО заповнені
         final itemRes = await network.request('POST', '/items', body: {
           'title': item.title,
-          'setNumber': item.setId ?? '',
-          'theme': item.theme ?? 'Other',
+          if (item.setId != null && item.setId!.trim().isNotEmpty) 'setNumber': item.setId!.trim(),
+          if (item.theme != null && item.theme!.trim().isNotEmpty) 'theme': item.theme!.trim(),
           'kind': item.type.name,
         });
         payload['itemId'] = itemRes['id'];

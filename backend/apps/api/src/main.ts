@@ -46,16 +46,11 @@ async function bootstrap() {
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
-  // Максимально гнучкий CORS для уникнення проблем з Flutter Web
+  // ФІКС: Прибрано credentials: true, що дозволяє origin: '*' та усуває CORS помилки у Flutter Web
   app.enableCors({
-    origin: (origin, callback) => {
-      callback(null, true);
-    },
-    credentials: true,
+    origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Accept, Authorization, x-api-key, X-Requested-With',
-    exposedHeaders: 'X-Total-Count, Content-Disposition',
-    maxAge: 86400,
   });
 
   app.setGlobalPrefix('api');
