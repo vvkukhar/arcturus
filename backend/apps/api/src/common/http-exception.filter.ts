@@ -1,13 +1,5 @@
-import {
-  ArgumentsHost,
-  Catch,
-  ExceptionFilter,
-  HttpException,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
-import * as Sentry from '@sentry/nestjs';
 
 @Catch()
 export class GlobalHttpExceptionFilter implements ExceptionFilter {
@@ -18,37 +10,35 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const isHttpException = exception instanceof HttpException;
-    const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    if (!isHttpException && process.env.NODE_ENV === 'production') {
-      Sentry.captureException(exception);
-      this.logger.error(`[Unhandled Exception] ${request.method} ${request.url}`, (exception as Error).stack);
+    let message = 'Internal server error';
+    let error = 'InternalServerError';
+
+    if (exception instanceof HttpException) {
+      const res = exception.getResponse();
+      if (typeof res === 'object' && res !== null) {
+        message = (res as any).message || message;
+        error = (res as any).error || error;
+      } else {
+        message = res as string;
+      }
+    } else if (exception instanceof Error) {
+      message = exception.message;
+      this.logger.error(`[Unhandled Exception] ${request.method} ${request.url}`, exception.stack);
+    } else {
+      message = String(exception);
+      this.logger.error(`[Unhandled Exception] ${request.method} ${request.url}`, String(exception));
     }
 
-    const rawResponse = isHttpException ? exception.getResponse() : null;
-
-    const message = typeof rawResponse === 'object' && rawResponse !== null && 'message' in rawResponse
-        ? (rawResponse as any).message
-        : exception instanceof Error
-          ? exception.message
-          : 'Internal server error';
-
-    const error = typeof rawResponse === 'object' && rawResponse !== null && 'error' in rawResponse
-        ? (rawResponse as any).error
-        : isHttpException
-          ? exception.name
-          : 'InternalServerError';
-
+    // Завжди повертаємо чіткий JSON
     response.status(status).json({
       ok: false,
       statusCode: status,
       error,
-      // ФІКС: Більше не ховаємо реальну помилку під написом "Internal server error"
-      message: message, 
+      message,
       path: request.url,
       timestamp: new Date().toISOString(),
-      traceId: request.headers['x-request-id'] || null,
     });
   }
 }

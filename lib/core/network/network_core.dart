@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,10 +14,11 @@ class NetworkCore {
   NetworkCore({required this.baseUrl}) {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 60), // Даємо Render час прокинутись
-      receiveTimeout: const Duration(seconds: 60),
+      connectTimeout: const Duration(seconds: 45),
+      receiveTimeout: const Duration(seconds: 45),
       contentType: 'application/json',
-      responseType: ResponseType.json,
+      // ФІКС: Читаємо як текст, щоб не губити помилки, якщо сервер повернув не JSON
+      responseType: ResponseType.plain, 
     ));
 
     _dio.interceptors.add(InterceptorsWrapper(
@@ -47,40 +49,56 @@ class NetworkCore {
   Future<dynamic> request(String method, String path, {Map<String, dynamic>? body, int retries = 3}) async {
     for (int i = 0; i <= retries; i++) {
       try {
-        final options = Options(method: method.toUpperCase());
+        final options = Options(
+          method: method.toUpperCase(),
+          validateStatus: (status) => true, // Завжди обробляємо самі
+        );
+
         final response = await _dio.request(path, data: body, options: options);
-        return response.data;
 
-      } on DioException catch (e) {
-        // Якщо сервер повернув помилку з текстом (наприклад 400, 401, 500)
-        if (e.response != null) {
-          if (e.response!.statusCode == 401 || e.response!.statusCode == 403) {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.remove('arcturus_jwt');
-            throw Exception('Unauthorized access. Please login again.');
-          }
-
-          // Витягуємо чисте повідомлення від NestJS
-          final data = e.response!.data;
-          if (data is Map && data['message'] != null) {
-            final msg = data['message'];
-            throw Exception(msg is List ? msg.join(', ') : msg.toString());
-          }
-          throw Exception('Server Error: ${e.response!.statusCode}');
+        // Парсимо JSON вручну
+        var responseData;
+        try {
+          responseData = response.data != null && response.data.toString().isNotEmpty 
+              ? jsonDecode(response.data.toString()) 
+              : null;
+        } catch (_) {
+          responseData = response.data.toString();
         }
 
-        // Якщо з'єднання обірвалось (наприклад, сервер ще спить)
-        if (i == retries) {
-          if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
-            throw Exception('Server is waking up. Try again.');
-          }
-          throw Exception('Network Error: Please check your connection.');
+        if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+          return responseData;
         }
-
-        // Чекаємо перед наступною спробою
-        await Future.delayed(Duration(milliseconds: 1500 * (i + 1)));
+        
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('arcturus_jwt');
+          throw Exception('Unauthorized access. Please login again.');
+        }
+        
+        // Витягуємо реальну помилку
+        String errorMessage = 'Status ${response.statusCode}';
+        if (responseData is Map && responseData['message'] != null) {
+          final msg = responseData['message'];
+          errorMessage = msg is List ? msg.join(', ') : msg.toString();
+        } else if (responseData != null) {
+          errorMessage = responseData.toString();
+        }
+        
+        throw Exception(errorMessage);
+        
       } catch (e) {
-        throw Exception(e.toString());
+        final errStr = e.toString().replaceAll('Exception: ', '');
+        
+        if (errStr.contains('Unauthorized access')) {
+          throw Exception(errStr);
+        }
+        
+        if (i == retries) {
+          throw Exception(errStr);
+        }
+        
+        await Future.delayed(Duration(milliseconds: 1000 * (i + 1)));
       }
     }
   }

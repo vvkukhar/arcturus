@@ -1300,7 +1300,6 @@ final i18nProvider = NotifierProvider<I18nNotifier, String>(I18nNotifier.new);
 
 import 'dart:async';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
@@ -1314,8 +1313,8 @@ class NetworkCore {
   NetworkCore({required this.baseUrl}) {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: 60), // Р”Р°С”РјРѕ Render С‡Р°СЃ РїСЂРѕРєРёРЅСѓС‚РёСЃСЊ
+      receiveTimeout: const Duration(seconds: 60),
       contentType: 'application/json',
       responseType: ResponseType.json,
     ));
@@ -1329,26 +1328,7 @@ class NetworkCore {
           options.headers['Authorization'] = 'Bearer $token';
         }
         
-        if (!kIsWeb) {
-          final cookie = prefs.getString('arcturus_cookie');
-          if (cookie != null && cookie.isNotEmpty) {
-            options.headers['Cookie'] = cookie;
-          }
-        }
-        
-        options.extra['withCredentials'] = true;
         return handler.next(options);
-      },
-      onResponse: (response, handler) async {
-        if (!kIsWeb) {
-          final cookies = response.headers['set-cookie'];
-          if (cookies != null && cookies.isNotEmpty) {
-            final cookieStr = cookies.map((c) => c.split(';').first).join('; ');
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('arcturus_cookie', cookieStr);
-          }
-        }
-        return handler.next(response);
       },
     ));
   }
@@ -1367,40 +1347,40 @@ class NetworkCore {
   Future<dynamic> request(String method, String path, {Map<String, dynamic>? body, int retries = 3}) async {
     for (int i = 0; i <= retries; i++) {
       try {
-        final options = Options(
-          method: method.toUpperCase(),
-          validateStatus: (status) => status != null && status < 500,
-        );
-
+        final options = Options(method: method.toUpperCase());
         final response = await _dio.request(path, data: body, options: options);
+        return response.data;
 
-        if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
-          return response.data;
+      } on DioException catch (e) {
+        // РЇРєС‰Рѕ СЃРµСЂРІРµСЂ РїРѕРІРµСЂРЅСѓРІ РїРѕРјРёР»РєСѓ Р· С‚РµРєСЃС‚РѕРј (РЅР°РїСЂРёРєР»Р°Рґ 400, 401, 500)
+        if (e.response != null) {
+          if (e.response!.statusCode == 401 || e.response!.statusCode == 403) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('arcturus_jwt');
+            throw Exception('Unauthorized access. Please login again.');
+          }
+
+          // Р’РёС‚СЏРіСѓС”РјРѕ С‡РёСЃС‚Рµ РїРѕРІС–РґРѕРјР»РµРЅРЅСЏ РІС–Рґ NestJS
+          final data = e.response!.data;
+          if (data is Map && data['message'] != null) {
+            final msg = data['message'];
+            throw Exception(msg is List ? msg.join(', ') : msg.toString());
+          }
+          throw Exception('Server Error: ${e.response!.statusCode}');
         }
-        
-        if (response.statusCode == 401 || response.statusCode == 403) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.remove('arcturus_jwt');
-          await prefs.remove('arcturus_cookie');
-          throw Exception('Unauthorized access. Please login again.');
-        }
-        
-        String errorMessage = 'Status ${response.statusCode}';
-        if (response.data is Map && response.data['message'] != null) {
-          final msg = response.data['message'];
-          errorMessage = msg is List ? msg.join(', ') : msg.toString();
-        }
-        throw Exception(errorMessage);
-        
-      } catch (e) {
-        final errStr = e.toString().replaceAll('Exception: ', '');
-        if (errStr.contains('Unauthorized access')) {
-          throw Exception(errStr);
-        }
+
+        // РЇРєС‰Рѕ Р·'С”РґРЅР°РЅРЅСЏ РѕР±С–СЂРІР°Р»РѕСЃСЊ (РЅР°РїСЂРёРєР»Р°Рґ, СЃРµСЂРІРµСЂ С‰Рµ СЃРїРёС‚СЊ)
         if (i == retries) {
-          throw Exception(errStr);
+          if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
+            throw Exception('Server is waking up. Try again.');
+          }
+          throw Exception('Network Error: Please check your connection.');
         }
-        await Future.delayed(Duration(milliseconds: 500 * (1 << i)));
+
+        // Р§РµРєР°С”РјРѕ РїРµСЂРµРґ РЅР°СЃС‚СѓРїРЅРѕСЋ СЃРїСЂРѕР±РѕСЋ
+        await Future.delayed(Duration(milliseconds: 1500 * (i + 1)));
+      } catch (e) {
+        throw Exception(e.toString());
       }
     }
   }
@@ -1409,9 +1389,8 @@ class NetworkCore {
     if (_socket != null && _socket!.connected) return;
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('arcturus_jwt');
-    final cookie = prefs.getString('arcturus_cookie');
     
-    if (token == null && cookie == null) return;
+    if (token == null || token.isEmpty || token == 'cookie_session_active') return;
 
     final uri = Uri.parse(baseUrl);
     final socketUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
@@ -1423,11 +1402,7 @@ class NetworkCore {
         .enableAutoConnect()
         .enableReconnection()
         .setReconnectionAttempts(10)
-        .setAuth(token != null && token != 'cookie_session_active' ? {'token': token} : {})
-        .setExtraHeaders({
-          'withCredentials': true,
-          if (!kIsWeb && cookie != null) 'cookie': cookie,
-        })
+        .setAuth({'token': token})
         .build(),
     );
 
@@ -4940,10 +4915,11 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
       if (exists) {
         await network.request('PATCH', '/inventory', body: { 'id': item.id, ...payload });
       } else {
+        // Р¤Р†РљРЎ: РќР°РґСЃРёР»Р°С”РјРѕ setNumber/theme С‚С–Р»СЊРєРё СЏРєС‰Рѕ РІРѕРЅРё Р Р•РђР›Р¬РќРћ Р·Р°РїРѕРІРЅРµРЅС–
         final itemRes = await network.request('POST', '/items', body: {
           'title': item.title,
-          'setNumber': item.setId ?? '',
-          'theme': item.theme ?? 'Other',
+          if (item.setId != null && item.setId!.trim().isNotEmpty) 'setNumber': item.setId!.trim(),
+          if (item.theme != null && item.theme!.trim().isNotEmpty) 'theme': item.theme!.trim(),
           'kind': item.type.name,
         });
         payload['itemId'] = itemRes['id'];
@@ -5119,11 +5095,8 @@ class InventoryScreen extends ConsumerWidget {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\inventory\presentation\item_form_screen.dart =====
 
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/enums/item_condition.dart';
@@ -5145,7 +5118,6 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   late final TextEditingController _title, _theme, _setId, _purchasePrice, _shipping, _extra, _marketAvg, _expectedPrice, _actualPrice, _notes;
   late ItemType _type;
   late ItemStatus _status;
-  List<String> _imagePaths = [];
   bool _isSaving = false;
 
   @override
@@ -5164,7 +5136,6 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     _notes = TextEditingController(text: i?.notes ?? '');
     _type = i?.type ?? ItemType.set;
     _status = i?.status ?? ItemStatus.purchased;
-    _imagePaths = i?.imagePaths.toList() ?? [];
   }
 
   @override
@@ -5174,12 +5145,6 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   }
 
   double _parse(String val) => double.tryParse(val.replaceAll(',', '.')) ?? 0;
-
-  Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: source, imageQuality: 80);
-    if (pickedFile != null && mounted) setState(() => _imagePaths.add(pickedFile.path));
-  }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -5213,7 +5178,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
         saleDate: _status == ItemStatus.sold ? (widget.item?.saleDate ?? DateTime.now()) : null,
         isTracked: true,
         quantity: 1,
-        imagePaths: _imagePaths,
+        imagePaths: widget.item?.imagePaths ?? [],
       );
 
       await ref.read(inventoryEngineProvider.notifier).saveItem(newItem);

@@ -3336,16 +3336,11 @@ async function bootstrap() {
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
-  // РњР°РєСЃРёРјР°Р»СЊРЅРѕ РіРЅСѓС‡РєРёР№ CORS РґР»СЏ СѓРЅРёРєРЅРµРЅРЅСЏ РїСЂРѕР±Р»РµРј Р· Flutter Web
+  // Р¤Р†РљРЎ: Р”РѕР·РІРѕР»СЏС”РјРѕ РґРѕСЃС‚СѓРї Р· Р±СѓРґСЊ-СЏРєРѕРіРѕ Origin С– РІРёРјРёРєР°С”РјРѕ credentials, С‰РѕР± Chrome РЅРµ Р±Р»РѕРєСѓРІР°РІ CORS
   app.enableCors({
-    origin: (origin, callback) => {
-      callback(null, true);
-    },
-    credentials: true,
+    origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Accept, Authorization, x-api-key, X-Requested-With',
-    exposedHeaders: 'X-Total-Count, Content-Disposition',
-    maxAge: 86400,
   });
 
   app.setGlobalPrefix('api');
@@ -3354,7 +3349,8 @@ async function bootstrap() {
     transform: true, 
     forbidNonWhitelisted: true,
     transformOptions: { enableImplicitConversion: true },
-    disableErrorMessages: process.env.NODE_ENV === 'production',
+    // Р¤Р†РљРЎ: РџРѕРєР°Р·СѓС”РјРѕ РґРµС‚Р°Р»С– РїРѕРјРёР»РѕРє РІР°Р»С–РґР°С†С–С— РЅР°РІС–С‚СЊ Сѓ РїСЂРѕРґР°РєС€РµРЅС–, С‰РѕР± Р±Р°С‡РёС‚Рё, С‰Рѕ РЅРµ С‚Р°Рє
+    disableErrorMessages: false,
   }));
   
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
@@ -3505,7 +3501,8 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       ok: false,
       statusCode: status,
       error,
-      message: process.env.NODE_ENV === 'production' && status === 500 ? 'Internal server error' : message,
+      // Р¤Р†РљРЎ: Р‘С–Р»СЊС€Рµ РЅРµ С…РѕРІР°С”РјРѕ СЂРµР°Р»СЊРЅСѓ РїРѕРјРёР»РєСѓ РїС–Рґ РЅР°РїРёСЃРѕРј "Internal server error"
+      message: message, 
       path: request.url,
       timestamp: new Date().toISOString(),
       traceId: request.headers['x-request-id'] || null,
@@ -4795,12 +4792,13 @@ export class AuthController {
     res.cookie('arcturus_admin_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/',
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({ ok: true, user });
+    // Р¤Р†РљРЎ: РџРµСЂРµРґР°С”РјРѕ token РІ JSON, С‰РѕР± Flutter Р№РѕРіРѕ РїС–РґС…РѕРїРёРІ
+    return res.json({ ok: true, user, token });
   }
 
   @Post('login')
@@ -4811,12 +4809,13 @@ export class AuthController {
     res.cookie('arcturus_admin_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/',
       maxAge: (dto.rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({ ok: true, user });
+    // Р¤Р†РљРЎ: РџРµСЂРµРґР°С”РјРѕ token РІ JSON
+    return res.json({ ok: true, user, token });
   }
 
   @Post('logout')
