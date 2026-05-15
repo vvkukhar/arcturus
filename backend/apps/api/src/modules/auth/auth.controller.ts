@@ -22,7 +22,7 @@ export class AuthController {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    // ФІКС: Віддаємо токен у JSON для Flutter Web
+    // ФІКС: Передаємо token в JSON, щоб Flutter його підхопив
     return res.json({ ok: true, user, token });
   }
 
@@ -39,7 +39,7 @@ export class AuthController {
       maxAge: (dto.rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000,
     });
 
-    // ФІКС: Віддаємо токен у JSON для Flutter Web
+    // ФІКС: Передаємо token в JSON
     return res.json({ ok: true, user, token });
   }
 

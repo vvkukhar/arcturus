@@ -13,8 +13,8 @@ class NetworkCore {
   NetworkCore({required this.baseUrl}) {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
+      connectTimeout: const Duration(seconds: 45), // Даємо час бекенду на Render прокинутись
+      receiveTimeout: const Duration(seconds: 45),
       contentType: 'application/json',
       responseType: ResponseType.json,
     ));
@@ -24,6 +24,7 @@ class NetworkCore {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('arcturus_jwt');
         
+        // Відправляємо справжній токен
         if (token != null && token != 'cookie_session_active' && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
@@ -49,7 +50,8 @@ class NetworkCore {
       try {
         final options = Options(
           method: method.toUpperCase(),
-          validateStatus: (status) => status != null && status < 500,
+          // Приймаємо будь-який статус, щоб вручну прочитати текст помилки
+          validateStatus: (status) => true, 
         );
 
         final response = await _dio.request(path, data: body, options: options);
@@ -64,22 +66,33 @@ class NetworkCore {
           throw Exception('Unauthorized access. Please login again.');
         }
         
+        // Витягуємо РЕАЛЬНУ помилку від NestJS / Prisma
         String errorMessage = 'Status ${response.statusCode}';
-        if (response.data is Map && response.data['message'] != null) {
-          final msg = response.data['message'];
-          errorMessage = msg is List ? msg.join(', ') : msg.toString();
+        if (response.data != null) {
+          if (response.data is Map && response.data['message'] != null) {
+            final msg = response.data['message'];
+            errorMessage = msg is List ? msg.join(', ') : msg.toString();
+          } else {
+            errorMessage = response.data.toString();
+          }
         }
         throw Exception(errorMessage);
         
       } catch (e) {
         final errStr = e.toString().replaceAll('Exception: ', '');
+        
         if (errStr.contains('Unauthorized access')) {
           throw Exception(errStr);
         }
+        
         if (i == retries) {
-          throw Exception('Network error: $errStr');
+          if (errStr.contains('XMLHttpRequest')) {
+            throw Exception('Server is waking up. Please try again in 20 seconds.');
+          }
+          throw Exception(errStr);
         }
-        await Future.delayed(Duration(milliseconds: 500 * (1 << i)));
+        
+        await Future.delayed(Duration(milliseconds: 1000 * (i + 1)));
       }
     }
   }

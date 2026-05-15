@@ -46,7 +46,7 @@ async function bootstrap() {
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
-  // ФІКС: Прибрано credentials: true, що дозволяє origin: '*' та усуває CORS помилки у Flutter Web
+  // ФІКС: Дозволяємо доступ з будь-якого Origin і вимикаємо credentials, щоб Chrome не блокував CORS
   app.enableCors({
     origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -59,7 +59,8 @@ async function bootstrap() {
     transform: true, 
     forbidNonWhitelisted: true,
     transformOptions: { enableImplicitConversion: true },
-    disableErrorMessages: process.env.NODE_ENV === 'production',
+    // ФІКС: Показуємо деталі помилок валідації навіть у продакшені, щоб бачити, що не так
+    disableErrorMessages: false,
   }));
   
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
