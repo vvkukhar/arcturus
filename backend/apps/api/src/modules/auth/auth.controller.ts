@@ -22,8 +22,8 @@ export class AuthController {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    // ФІКС: Передаємо token в JSON, щоб Flutter його підхопив
-    return res.json({ ok: true, user, token });
+    // ФІКС: Повертаємо просто об'єкт, без res.json(), щоб NestJS не крашився
+    return { ok: true, user, token };
   }
 
   @Post('login')
@@ -39,8 +39,8 @@ export class AuthController {
       maxAge: (dto.rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000,
     });
 
-    // ФІКС: Передаємо token в JSON
-    return res.json({ ok: true, user, token });
+    // ФІКС: Повертаємо просто об'єкт
+    return { ok: true, user, token };
   }
 
   @Post('logout')
@@ -52,7 +52,9 @@ export class AuthController {
     }
 
     res.clearCookie('arcturus_admin_token', { path: '/' });
-    return res.json({ ok: true });
+    
+    // ФІКС: Повертаємо просто об'єкт
+    return { ok: true };
   }
 
   @UseGuards(JwtAuthGuard)
