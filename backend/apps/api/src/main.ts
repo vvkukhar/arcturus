@@ -46,11 +46,11 @@ async function bootstrap() {
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
-  // ФІКС: Дозволяємо доступ з будь-якого Origin і вимикаємо credentials, щоб Chrome не блокував CORS
+  // ФІКС 3: ПОВНІСТЮ відкриваємо CORS для будь-яких методів і заголовків
   app.enableCors({
     origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Accept, Authorization, x-api-key, X-Requested-With',
+    methods: '*',
+    allowedHeaders: '*',
   });
 
   app.setGlobalPrefix('api');
@@ -59,7 +59,6 @@ async function bootstrap() {
     transform: true, 
     forbidNonWhitelisted: true,
     transformOptions: { enableImplicitConversion: true },
-    // ФІКС: Показуємо деталі помилок валідації навіть у продакшені, щоб бачити, що не так
     disableErrorMessages: false,
   }));
   

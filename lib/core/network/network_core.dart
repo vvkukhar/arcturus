@@ -17,7 +17,6 @@ class NetworkCore {
       connectTimeout: const Duration(seconds: 45),
       receiveTimeout: const Duration(seconds: 45),
       contentType: 'application/json',
-      // ФІКС: Читаємо як текст, щоб не губити помилки, якщо сервер повернув не JSON
       responseType: ResponseType.plain, 
     ));
 
@@ -51,12 +50,15 @@ class NetworkCore {
       try {
         final options = Options(
           method: method.toUpperCase(),
-          validateStatus: (status) => true, // Завжди обробляємо самі
+          validateStatus: (status) => true, 
         );
 
-        final response = await _dio.request(path, data: body, options: options);
+        // ФІКС 1: Ручне склеювання URL, щоб Dio не затирав /api/v1
+        final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+        final url = '${_dio.options.baseUrl.endsWith('/') ? _dio.options.baseUrl : '${_dio.options.baseUrl}/'}$cleanPath';
 
-        // Парсимо JSON вручну
+        final response = await _dio.request(url, data: body, options: options);
+
         var responseData;
         try {
           responseData = response.data != null && response.data.toString().isNotEmpty 
@@ -76,7 +78,6 @@ class NetworkCore {
           throw Exception('Unauthorized access. Please login again.');
         }
         
-        // Витягуємо реальну помилку
         String errorMessage = 'Status ${response.statusCode}';
         if (responseData is Map && responseData['message'] != null) {
           final msg = responseData['message'];
