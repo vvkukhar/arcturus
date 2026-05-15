@@ -44,7 +44,8 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       ok: false,
       statusCode: status,
       error,
-      message: process.env.NODE_ENV === 'production' && status === 500 ? 'Internal server error' : message,
+      // ФІКС: Більше не ховаємо реальну помилку під написом "Internal server error"
+      message: message, 
       path: request.url,
       timestamp: new Date().toISOString(),
       traceId: request.headers['x-request-id'] || null,
