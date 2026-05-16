@@ -1,19 +1,19 @@
 export const QUEUE_NAMES = {
   MARKET: 'market',
   DECISIONS: 'decisions',
-  SCRAPER: 'scraper',
+  SCRAPER: 'scrapers', // ФІКС: Було 'scraper' (додали 's')
   MAINTENANCE: 'maintenance',
   SYNC: 'sync',
 } as const;
 
 export const JOB_NAMES = {
-  RECOMPUTE_MARKET_SNAPSHOTS: 'recompute_market_snapshots',
-  RECOMPUTE_DECISIONS: 'recompute_decisions',
-  DETECT_DEALS: 'detect_deals',
-  MARK_STALE_LISTINGS: 'mark_stale_listings',
-  SOURCE_HEALTH_ROLLUP: 'source_health_rollup',
-  CLEANUP_OLD_SNAPSHOTS: 'cleanup_old_snapshots',
-  SCHEDULED_REFRESH: 'scheduled_refresh',
-  RUN_SCANNER_JOB: 'run_scanner_job',
-  GLOBAL_SYNC_REFRESH: 'global_sync_refresh',
+  RECOMPUTE_MARKET_SNAPSHOTS: 'recompute-market-snapshots', // ФІКС: Було з підкресленнями
+  RECOMPUTE_DECISIONS: 'recompute-decisions',
+  DETECT_DEALS: 'detect-deals',
+  MARK_STALE_LISTINGS: 'mark-stale-listings',
+  SOURCE_HEALTH_ROLLUP: 'source-health-rollup',
+  CLEANUP_OLD_SNAPSHOTS: 'cleanup-old-snapshots',
+  SCHEDULED_REFRESH: 'scheduled-refresh',
+  RUN_SCANNER_JOB: 'run-scanner', // ФІКС: Було 'run_scanner_job'
+  GLOBAL_SYNC_REFRESH: 'global-sync-refresh',
 } as const;

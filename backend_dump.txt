@@ -3344,11 +3344,11 @@ async function bootstrap() {
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
-  // Р¤Р†РљРЎ: Р”РѕР·РІРѕР»СЏС”РјРѕ РґРѕСЃС‚СѓРї Р· Р±СѓРґСЊ-СЏРєРѕРіРѕ Origin С– РІРёРјРёРєР°С”РјРѕ credentials, С‰РѕР± Chrome РЅРµ Р±Р»РѕРєСѓРІР°РІ CORS
+  // Р¤Р†РљРЎ 3: РџРћР’РќР†РЎРўР® РІС–РґРєСЂРёРІР°С”РјРѕ CORS РґР»СЏ Р±СѓРґСЊ-СЏРєРёС… РјРµС‚РѕРґС–РІ С– Р·Р°РіРѕР»РѕРІРєС–РІ
   app.enableCors({
     origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Accept, Authorization, x-api-key, X-Requested-With',
+    methods: '*',
+    allowedHeaders: '*',
   });
 
   app.setGlobalPrefix('api');
@@ -3357,7 +3357,6 @@ async function bootstrap() {
     transform: true, 
     forbidNonWhitelisted: true,
     transformOptions: { enableImplicitConversion: true },
-    // Р¤Р†РљРЎ: РџРѕРєР°Р·СѓС”РјРѕ РґРµС‚Р°Р»С– РїРѕРјРёР»РѕРє РІР°Р»С–РґР°С†С–С— РЅР°РІС–С‚СЊ Сѓ РїСЂРѕРґР°РєС€РµРЅС–, С‰РѕР± Р±Р°С‡РёС‚Рё, С‰Рѕ РЅРµ С‚Р°Рє
     disableErrorMessages: false,
   }));
   
@@ -4795,8 +4794,8 @@ export class AuthController {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    // Р¤Р†РљРЎ: РџРµСЂРµРґР°С”РјРѕ token РІ JSON, С‰РѕР± Flutter Р№РѕРіРѕ РїС–РґС…РѕРїРёРІ
-    return res.json({ ok: true, user, token });
+    // Р¤Р†РљРЎ: РџРѕРІРµСЂС‚Р°С”РјРѕ РїСЂРѕСЃС‚Рѕ РѕР±'С”РєС‚, Р±РµР· res.json(), С‰РѕР± NestJS РЅРµ РєСЂР°С€РёРІСЃСЏ
+    return { ok: true, user, token };
   }
 
   @Post('login')
@@ -4812,8 +4811,8 @@ export class AuthController {
       maxAge: (dto.rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000,
     });
 
-    // Р¤Р†РљРЎ: РџРµСЂРµРґР°С”РјРѕ token РІ JSON
-    return res.json({ ok: true, user, token });
+    // Р¤Р†РљРЎ: РџРѕРІРµСЂС‚Р°С”РјРѕ РїСЂРѕСЃС‚Рѕ РѕР±'С”РєС‚
+    return { ok: true, user, token };
   }
 
   @Post('logout')
@@ -4825,7 +4824,9 @@ export class AuthController {
     }
 
     res.clearCookie('arcturus_admin_token', { path: '/' });
-    return res.json({ ok: true });
+    
+    // Р¤Р†РљРЎ: РџРѕРІРµСЂС‚Р°С”РјРѕ РїСЂРѕСЃС‚Рѕ РѕР±'С”РєС‚
+    return { ok: true };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -22541,12 +22542,13 @@ export class ScannerController {
 
 import { Module } from '@nestjs/common';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { QueueModule } from '../queue/queue.module'; // рџ‘€ Р”РћР”РђРќРћ
 import { ScannerController } from './scanner.controller';
 import { ScannerExecutorService } from './scanner-executor.service';
 import { ScannerService } from './scanner.service';
 
 @Module({
-  imports: [RealtimeModule],
+  imports: [RealtimeModule, QueueModule], // рџ‘€ Р”РћР”РђРќРћ
   controllers: [ScannerController],
   providers: [ScannerService, ScannerExecutorService],
   exports: [ScannerService, ScannerExecutorService],
@@ -22558,6 +22560,7 @@ export class ScannerModule {}
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { QueueService } from '../queue/queue.service'; // рџ‘€ Р”РћР”РђРќРћ
 
 export type IngestListingInput = {
   externalId: string;
@@ -22580,6 +22583,7 @@ export class ScannerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
+    private readonly queueService: QueueService, // рџ‘€ Р”РћР”РђРќРћ
   ) {}
 
   normalizeTitle(title: string): string {
@@ -22719,6 +22723,9 @@ export class ScannerService {
     const job = await this.prisma.scanJob.create({
       data: { sourceCode: body.sourceCode, query: body.query ?? '', status: 'queued' },
     });
+
+    // рџ”Ґ Р“РћР›РћР’РќРР™ Р¤Р†РљРЎ: Р’С–РґРїСЂР°РІР»СЏС”РјРѕ Р·Р°РґР°С‡Сѓ РІ BullMQ
+    await this.queueService.enqueueScannerJob(job.id);
 
     this.realtime.emitCustom('scanner.job_queued', job);
     return job;
@@ -29952,28 +29959,21 @@ module.exports = {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\Dockerfile =====
 
-FROM node:20-alpine AS deps
-
+# Р’РёРєРѕСЂРёСЃС‚РѕРІСѓС”РјРѕ РѕР±СЂР°Р· Playwright, СЏРєРёР№ РјР°С” РІР±СѓРґРѕРІР°РЅС– Р±С–Р±Р»С–РѕС‚РµРєРё РґР»СЏ Р±СЂР°СѓР·РµСЂС–РІ!
+FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS deps
 WORKDIR /app
-
 COPY package*.json ./
 RUN npm install
 
-FROM node:20-alpine AS build
-
+FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS build
 WORKDIR /app
-
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
 RUN npm run build
 
-FROM node:20-alpine AS runner
-
+FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS runner
 WORKDIR /app
-
 ENV NODE_ENV=production
-
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma

@@ -509,8 +509,8 @@ class _AppBootstrapScreenState extends ConsumerState<AppBootstrapScreen> {
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiConfig {
-  // Р—РјС–РЅРёР»Рё РґРµС„РѕР»С‚РЅРёР№ URL, РґРѕРґР°РІС€Рё /v1
-  static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'https://arcturus-api-idsb.onrender.com/api/v1';
+  // Р¤Р†РљРЎ 2: Р†РіРЅРѕСЂСѓС”РјРѕ Р»РѕРєР°Р»СЊРЅРёР№ .env С– Р¶РѕСЂСЃС‚РєРѕ СЃС‚СѓРєР°С”РјРѕ РЅР° Render
+  static String get baseUrl => 'https://arcturus-api-idsb.onrender.com/api/v1';
   static const int timeoutSeconds = 15;
 }
 
@@ -1360,7 +1360,6 @@ class NetworkCore {
       connectTimeout: const Duration(seconds: 45),
       receiveTimeout: const Duration(seconds: 45),
       contentType: 'application/json',
-      // Р¤Р†РљРЎ: Р§РёС‚Р°С”РјРѕ СЏРє С‚РµРєСЃС‚, С‰РѕР± РЅРµ РіСѓР±РёС‚Рё РїРѕРјРёР»РєРё, СЏРєС‰Рѕ СЃРµСЂРІРµСЂ РїРѕРІРµСЂРЅСѓРІ РЅРµ JSON
       responseType: ResponseType.plain, 
     ));
 
@@ -1394,12 +1393,15 @@ class NetworkCore {
       try {
         final options = Options(
           method: method.toUpperCase(),
-          validateStatus: (status) => true, // Р—Р°РІР¶РґРё РѕР±СЂРѕР±Р»СЏС”РјРѕ СЃР°РјС–
+          validateStatus: (status) => true, 
         );
 
-        final response = await _dio.request(path, data: body, options: options);
+        // Р¤Р†РљРЎ 1: Р СѓС‡РЅРµ СЃРєР»РµСЋРІР°РЅРЅСЏ URL, С‰РѕР± Dio РЅРµ Р·Р°С‚РёСЂР°РІ /api/v1
+        final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+        final url = '${_dio.options.baseUrl.endsWith('/') ? _dio.options.baseUrl : '${_dio.options.baseUrl}/'}$cleanPath';
 
-        // РџР°СЂСЃРёРјРѕ JSON РІСЂСѓС‡РЅСѓ
+        final response = await _dio.request(url, data: body, options: options);
+
         var responseData;
         try {
           responseData = response.data != null && response.data.toString().isNotEmpty 
@@ -1419,7 +1421,6 @@ class NetworkCore {
           throw Exception('Unauthorized access. Please login again.');
         }
         
-        // Р’РёС‚СЏРіСѓС”РјРѕ СЂРµР°Р»СЊРЅСѓ РїРѕРјРёР»РєСѓ
         String errorMessage = 'Status ${response.statusCode}';
         if (responseData is Map && responseData['message'] != null) {
           final msg = responseData['message'];
