@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { QueueService } from '../queue/queue.service'; // 👈 ДОДАНО
 
 export type IngestListingInput = {
   externalId: string;
@@ -23,6 +24,7 @@ export class ScannerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
+    private readonly queueService: QueueService, // 👈 ДОДАНО
   ) {}
 
   normalizeTitle(title: string): string {
@@ -162,6 +164,9 @@ export class ScannerService {
     const job = await this.prisma.scanJob.create({
       data: { sourceCode: body.sourceCode, query: body.query ?? '', status: 'queued' },
     });
+
+    // 🔥 ГОЛОВНИЙ ФІКС: Відправляємо задачу в BullMQ
+    await this.queueService.enqueueScannerJob(job.id);
 
     this.realtime.emitCustom('scanner.job_queued', job);
     return job;
