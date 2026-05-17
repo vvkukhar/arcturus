@@ -78,50 +78,52 @@ export function InventoryEditDialog({ item }: Props) {
     );
   }
 
+  const inputClasses = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-blue-500 outline-none transition-all shadow-sm placeholder:text-slate-500";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md rounded-[2rem] border border-border bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-md rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-black tracking-tight text-slate-900">Edit Inventory Item</h2>
-          <button onClick={handleClose} className="rounded-full p-2 hover:bg-slate-100 text-slate-400">
+          <h2 className="text-xl font-black tracking-tight text-[var(--foreground)]">Edit Inventory Item</h2>
+          <button onClick={handleClose} className="rounded-full p-2 hover:bg-[var(--background)] text-slate-400 transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Purchase Price</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Purchase Price</label>
             <input
               required
               type="number"
               step="0.01"
               value={purchasePrice}
               onChange={(e) => setPurchasePrice(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 outline-none transition-all"
+              className={inputClasses}
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Quantity</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Quantity</label>
             <input
               required
               type="number"
               min="1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 outline-none transition-all"
+              className={inputClasses}
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Manual Sell Price</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Manual Sell Price</label>
             <input
               type="number"
               step="0.01"
               value={expectedSalePriceManual}
               onChange={(e) => setExpectedSalePriceManual(e.target.value)}
               placeholder="Leave empty to auto-calculate"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:border-blue-500 outline-none transition-all"
+              className={inputClasses}
             />
           </div>
 
@@ -131,11 +133,11 @@ export function InventoryEditDialog({ item }: Props) {
             </div>
           )}
 
-          <div className="mt-6 flex gap-3 pt-2">
+          <div className="mt-6 flex gap-3 pt-2 border-t border-[var(--border)]">
             <Button type="button" variant="ghost" className="flex-1" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" className="flex-1" disabled={loading}>
+            <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {loading ? 'Saving...' : 'Save Changes'}
             </Button>
