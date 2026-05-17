@@ -4,30 +4,25 @@ import { ProductCard } from '@/components/store/product-card';
 import { appConfig } from '@/lib/config';
 import Link from 'next/link';
 
-export const revalidate = 300;
+export const revalidate = 0; // Завжди тягнемо свіжі дані з БД
 
 export const metadata: Metadata = {
   title: 'Catalog | Arcturus Premium LEGO',
   description: 'Browse our curated selection of rare, retired, and authenticated LEGO sets and minifigures.',
 };
 
-interface CatalogItem {
-  id: string;
-  slug: string;
-  title: string;
-  theme: string;
-  sellPrice: number;
-  condition: string;
-  isAvailable: boolean;
-  images: { imageUrl: string; isPrimary: boolean }[];
-}
-
-async function getCatalogData(searchParams: URLSearchParams): Promise<CatalogItem[]> {
-  const res = await fetch(`${appConfig.apiBaseUrl}/public/catalog?${searchParams.toString()}`, {
-    next: { revalidate: 60, tags: ['catalog'] }
-  });
-  if (!res.ok) return [];
-  return res.json();
+async function getCatalogData(searchParams: URLSearchParams) {
+  try {
+    const res = await fetch(`${appConfig.apiBaseUrl}/public/catalog?${searchParams.toString()}`, {
+      cache: 'no-store'
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error('Catalog fetch error:', err);
+    return [];
+  }
 }
 
 export default async function CatalogPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
@@ -39,7 +34,9 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   if (typeof resolvedParams.theme === 'string') query.set('theme', resolvedParams.theme);
 
   const items = await getCatalogData(query);
-  const themes = Array.from(new Set(items.map(i => i.theme))).sort();
+  
+  // ВИПРАВЛЕНО: правильний шлях до теми та захист від падінь
+  const themes = Array.from(new Set(items.map((i: any) => i.item?.theme).filter(Boolean))).sort() as string[];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 animate-in fade-in duration-500 transform-gpu">
@@ -80,8 +77,18 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
 
       {items.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((item) => (
-            <ProductCard key={item.id} item={item} />
+          {items.map((item: any) => (
+            <ProductCard 
+              key={item.id} 
+              item={{
+                ...item,
+                title: item.titleSnapshot,
+                theme: item.item?.theme || 'LEGO',
+                // ВИПРАВЛЕНО: мапимо правильну ціну для карточки товару
+                sellPrice: item.expectedSalePriceManual ?? item.totalCost ?? 0,
+                slug: (item.titleSnapshot || item.id).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-'),
+              }} 
+            />
           ))}
         </div>
       ) : (
