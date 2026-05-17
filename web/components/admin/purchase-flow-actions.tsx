@@ -16,13 +16,12 @@ export function PurchaseFlowActions({ id, selectedPrice }: Props) {
   const [loading, setLoading] = useState<'bought' | 'remove' | null>(null);
 
   const handleMarkBought = async () => {
-    // Даємо змогу оператору підтвердити фінальну ціну покупки
     const price = prompt('Confirm final purchase price (UAH):', String(selectedPrice || 0));
     if (price === null) return;
     
     try {
       setLoading('bought');
-      await apiFetch('/api/proxy/flows/purchase/mark-bought', {
+      await apiFetch('/api/proxy/flows/purchase/bought', {
         method: 'PATCH',
         body: JSON.stringify({
           id,
@@ -42,8 +41,8 @@ export function PurchaseFlowActions({ id, selectedPrice }: Props) {
     if (!confirm('Remove from purchase flow?')) return;
     try {
       setLoading('remove');
-      await apiFetch('/api/proxy/flows/purchase/remove', {
-        method: 'PATCH',
+      await apiFetch('/api/proxy/flows/purchase', {
+        method: 'DELETE',
         body: JSON.stringify({ id }),
       });
       router.refresh();

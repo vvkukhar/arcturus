@@ -1,9 +1,6 @@
-import { DataTable } from '@/components/admin/data-table';
-import { RowActions } from '@/components/admin/row-actions';
 import { SectionCard } from '@/components/admin/section-card';
-import { StatusPill } from '@/components/admin/status-pill';
+import { RepriceFlowTable } from '@/components/admin/reprice-flow-table';
 import { api } from '@/lib/api';
-import { formatMoney } from '@/lib/format';
 import type { RepriceFlowItem } from '@/lib/types';
 
 export const revalidate = 0;
@@ -34,51 +31,7 @@ export default async function AdminRepriceFlowPage() {
       </div>
 
       <SectionCard title="Reprice Queue" contentClassName="p-0 sm:p-6">
-        <DataTable
-          rows={rows}
-          emptyText="The reprice flow pipeline is currently empty."
-          getRowKey={(row) => row.id}
-          columns={[
-            {
-              key: 'id',
-              header: 'Flow Item',
-              render: (row) => (
-                <div className="flex flex-col">
-                  <span className="font-bold text-[var(--foreground)]">{row.inventoryItem?.titleSnapshot ?? row.inventoryItemId}</span>
-                  <span className="mt-1 font-mono text-xs font-medium text-slate-400">ID: {row.id}</span>
-                </div>
-              ),
-            },
-            {
-              key: 'current',
-              header: 'Current Price',
-              render: (row) => (
-                <span className="font-medium text-slate-700 dark:text-slate-300">
-                  {row.currentPrice ? formatMoney(row.currentPrice) : '—'}
-                </span>
-              ),
-            },
-            {
-              key: 'suggested',
-              header: 'Suggested Price',
-              render: (row) => (
-                <span className="font-bold text-blue-600 dark:text-blue-400">
-                  {row.suggestedPrice ? formatMoney(row.suggestedPrice) : '—'}
-                </span>
-              ),
-            },
-            {
-              key: 'status',
-              header: 'Status',
-              render: (row) => <StatusPill value={row.status} />,
-            },
-            {
-              key: 'actions',
-              header: 'Actions',
-              render: () => <RowActions primaryLabel="Mark Listed" secondaryLabel="Remove" />,
-            },
-          ]}
-        />
+        <RepriceFlowTable rows={rows} />
       </SectionCard>
     </div>
   );
