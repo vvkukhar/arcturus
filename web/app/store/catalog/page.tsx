@@ -11,7 +11,12 @@ export const metadata: Metadata = {
   description: 'Browse our curated selection of rare, retired, and authenticated LEGO sets.',
 };
 
-export default async function CatalogPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
+// ЗВЕРНИ УВАГУ: Тепер searchParams — це Promise (вимога Next.js 15+)
+export default async function CatalogPage(props: { 
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }> 
+}) {
+  const resolvedParams = await props.searchParams;
+  
   let items: any[] = [];
   let themes: string[] = [];
 
@@ -19,8 +24,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: { [k
     const query = new URLSearchParams();
     query.set('availableOnly', 'true');
     
-    if (typeof searchParams.q === 'string') query.set('q', searchParams.q);
-    if (typeof searchParams.theme === 'string') query.set('theme', searchParams.theme);
+    if (typeof resolvedParams.q === 'string') query.set('q', resolvedParams.q);
+    if (typeof resolvedParams.theme === 'string') query.set('theme', resolvedParams.theme);
 
     const res = await fetch(`${appConfig.apiBaseUrl}/public/catalog?${query.toString()}`, {
       cache: 'no-store'
@@ -48,7 +53,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: { [k
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input 
               name="q"
-              defaultValue={typeof searchParams.q === 'string' ? searchParams.q : ''}
+              defaultValue={typeof resolvedParams.q === 'string' ? resolvedParams.q : ''}
               placeholder="Пошук..." 
               className="h-12 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] pl-9 pr-4 text-sm font-medium outline-none transition-shadow focus:ring-2 focus:ring-blue-500"
             />
@@ -57,7 +62,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: { [k
             <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <select
               name="theme"
-              defaultValue={typeof searchParams.theme === 'string' ? searchParams.theme : ''}
+              defaultValue={typeof resolvedParams.theme === 'string' ? resolvedParams.theme : ''}
               onChange={(e) => e.target.form?.submit()}
               className="h-12 w-full cursor-pointer appearance-none rounded-2xl border border-[var(--border)] bg-[var(--card)] pl-9 pr-4 text-sm font-medium outline-none transition-shadow focus:ring-2 focus:ring-blue-500"
             >
@@ -73,10 +78,9 @@ export default async function CatalogPage({ searchParams }: { searchParams: { [k
       {items.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item: any) => {
-            // МАКСИМАЛЬНИЙ ЗАХИСТ (Фолбеки для ручних сетів без даних)
             const safeTitle = item.titleSnapshot || item.item?.title || 'Arcturus Custom Item';
             const safeSlug = String(safeTitle).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-            const safeImage = item.imageUrl || item.item?.imageUrl || 'https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?w=800&q=80'; // Крута картинка-заглушка з лего
+            const safeImage = item.imageUrl || item.item?.imageUrl || 'https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?w=800&q=80';
             
             return (
               <ProductCard 
