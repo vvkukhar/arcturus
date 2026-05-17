@@ -43,6 +43,9 @@ async function runAll() {
       }).catch(() => {});
     }
   }
+
+  // ФІКС: Безпечний перезапуск браузера ПІСЛЯ завершення всіх скраперів, щоб очистити пам'ять
+  await browserManager.restart();
 }
 
 async function main() {

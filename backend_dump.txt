@@ -2753,8 +2753,10 @@ export class AiService {
         temperature: 0.1,
       });
 
-      const content = response.choices[0].message.content;
-      return JSON.parse(content || '{}');
+      // Р¤Р†РљРЎ: Р—Р°С‡РёС‰Р°С”РјРѕ markdown, СЏРєС‰Рѕ AI РІРёСЂС–С€РёС‚СЊ Р№РѕРіРѕ РґРѕРґР°С‚Рё
+      let content = response.choices[0].message.content || '{}';
+      content = content.replace(/^```json\n?/i, '').replace(/```$/i, '').trim();
+      return JSON.parse(content);
     } catch (error) {
       this.logger.error('Failed to explain deal via AI', error);
       return {
@@ -2822,8 +2824,11 @@ export class AiService {
         temperature: 0.1,
       });
 
-      const content = response.choices[0].message.content;
-      const parsed = JSON.parse(content || '{"tasks":[]}');
+      // Р¤Р†РљРЎ: Р—Р°С‡РёС‰Р°С”РјРѕ markdown
+      let content = response.choices[0].message.content || '{"tasks":[]}';
+      content = content.replace(/^```json\n?/i, '').replace(/```$/i, '').trim();
+      
+      const parsed = JSON.parse(content);
       return parsed.tasks;
     } catch (error) {
       return [
@@ -2984,7 +2989,11 @@ export class OpenAiService {
         response_format: { type: 'json_object' },
       });
 
-      return JSON.parse(response.choices[0].message.content || '{}');
+      // Р¤Р†РљРЎ: Р—Р°С‡РёС‰Р°С”РјРѕ markdown
+      let content = response.choices[0].message.content || '{}';
+      content = content.replace(/^```json\n?/i, '').replace(/```$/i, '').trim();
+
+      return JSON.parse(content);
     } catch (e: any) {
       this.logger.error(`AI Analysis failed: ${e.message}`);
       return null;
@@ -11459,7 +11468,7 @@ export class InventoryService {
       },
       orderBy: { createdAt: 'desc' },
       take: params?.limit ?? 50,
-      skip: params?.offset ?? 0, // Р¤Р†РљРЎ: Р РµР°Р»С–Р·Р°С†С–СЏ РїР°РіС–РЅР°С†С–С— РЅР° СЂС–РІРЅС– Р‘Р”
+      skip: params?.offset ?? 0,
     });
   }
 
@@ -11493,37 +11502,46 @@ export class InventoryService {
     const totalCost = toMoney(dto.totalCost ?? (purchasePrice * quantity) + extraCosts + shippingToMe);
 
     const result = await this.prisma.$transaction(async (tx) => {
-      const item = await tx.item.upsert({
-        where: {
-          setNumber_kind: {
-            setNumber: dto.setNumber ?? 'UNKNOWN',
+      let dbItem = null;
+
+      if (dto.itemId) {
+        dbItem = await tx.item.findUnique({ where: { id: dto.itemId } });
+      }
+
+      if (!dbItem && dto.setNumber) {
+        dbItem = await tx.item.findFirst({
+          where: { setNumber: dto.setNumber, kind: dto.kind ?? 'set' }
+        });
+      }
+
+      if (!dbItem) {
+        dbItem = await tx.item.create({
+          data: {
+            title: dto.titleSnapshot,
+            setNumber: dto.setNumber ?? null,
             kind: dto.kind ?? 'set',
+            theme: dto.theme ?? null,
+            conditionDefault: dto.condition ?? 'used',
           },
-        },
-        update: {},
-        create: {
-          title: dto.titleSnapshot,
-          setNumber: dto.setNumber,
-          kind: dto.kind ?? 'set',
-          theme: dto.theme,
-          conditionDefault: dto.condition ?? 'used',
-        },
-      });
+        });
+      }
 
       const inventoryItem = await tx.inventoryItem.create({
         data: {
-          itemId: item.id,
-          titleSnapshot: dto.titleSnapshot || item.title,
+          itemId: dbItem.id,
+          titleSnapshot: dto.titleSnapshot || dbItem.title,
           purchasePrice,
           totalCost,
           quantity,
-          condition: dto.condition ?? item.conditionDefault ?? 'used',
+          condition: dto.condition ?? dbItem.conditionDefault ?? 'used',
           sealed: dto.sealed ?? false,
           expectedSalePriceManual: dto.expectedSalePriceManual != null ? toMoney(dto.expectedSalePriceManual) : null,
           source: dto.source ?? null,
+          purchaseUrl: dto.purchaseUrl ?? null,
           storageLocationId: dto.storageLocationId ?? null,
           warehouseId: dto.warehouseId ?? null,
           assignedUserId: dto.assignedUserId ?? null,
+          notes: dto.notes ?? null,
         },
         include: { item: true, assignedUser: true, images: true },
       });
@@ -11550,6 +11568,8 @@ export class InventoryService {
     });
 
     this.realtime.emitInventoryUpdated(result);
+    this.realtime.emitDashboardRefresh('inventory_created');
+    
     return result;
   }
 
@@ -11568,11 +11588,23 @@ export class InventoryService {
         sealed: dto.sealed,
         expectedSalePriceManual: dto.expectedSalePriceManual === undefined ? undefined : dto.expectedSalePriceManual === null ? null : toMoney(dto.expectedSalePriceManual),
         storageLocationId: dto.storageLocationId,
+        warehouseId: dto.warehouseId,
+        source: dto.source,
+        purchaseUrl: dto.purchaseUrl,
+        notes: dto.notes,
+        assignedUserId: dto.assignedUserId,
       },
       include: { item: true, assignedUser: true, images: { orderBy: { sortOrder: 'asc' } } },
     });
 
+    await this.activity.log('inventory.updated', {
+      inventoryItemId: updated.id,
+      title: updated.titleSnapshot,
+    });
+
     this.realtime.emitInventoryUpdated(updated);
+    this.realtime.emitDashboardRefresh('inventory_updated');
+
     return updated;
   }
 
@@ -11588,12 +11620,15 @@ export class InventoryService {
     });
 
     this.realtime.emitInventoryRefresh({ id, deleted: true });
+    this.realtime.emitDashboardRefresh('inventory_deleted');
+    
     return deleted;
   }
 
   async bulkDelete(ids: string[]): Promise<unknown> {
     const result = await this.prisma.inventoryItem.deleteMany({ where: { id: { in: ids } } });
     this.realtime.emitInventoryRefresh({ ids, deleted: true });
+    this.realtime.emitDashboardRefresh('inventory_bulk_deleted');
     return result;
   }
 
@@ -11616,17 +11651,43 @@ import {
 } from 'class-validator';
 
 export class CreateInventoryItemDto {
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  itemId!: string;
+  itemId?: string;
 
   @ApiProperty()
   @IsString()
   titleSnapshot!: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  kind?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  theme?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  setNumber?: string | null;
+
   @ApiProperty({ example: 1200 })
   @IsNumber()
   purchasePrice!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  shippingToMe?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  extraCosts?: number;
 
   @ApiPropertyOptional({ example: 1350 })
   @IsOptional()
@@ -11667,7 +11728,12 @@ export class CreateInventoryItemDto {
   @ApiPropertyOptional({ example: 'Shelf A1' })
   @IsOptional()
   @IsString()
-  storageLocation?: string | null;
+  storageLocationId?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  warehouseId?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -11708,8 +11774,28 @@ export class UpdateInventoryItemDto {
   titleSnapshot?: string;
 
   @IsOptional()
+  @IsString()
+  kind?: string;
+
+  @IsOptional()
+  @IsString()
+  theme?: string | null;
+
+  @IsOptional()
+  @IsString()
+  setNumber?: string | null;
+
+  @IsOptional()
   @IsNumber()
   purchasePrice?: number;
+
+  @IsOptional()
+  @IsNumber()
+  shippingToMe?: number;
+
+  @IsOptional()
+  @IsNumber()
+  extraCosts?: number;
 
   @IsOptional()
   @IsNumber()
@@ -11742,7 +11828,11 @@ export class UpdateInventoryItemDto {
 
   @IsOptional()
   @IsString()
-  storageLocation?: string | null;
+  storageLocationId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  warehouseId?: string | null;
 
   @IsOptional()
   @IsString()
@@ -16272,6 +16362,12 @@ export class PaymentsService {
   }
 
   private async processSuccessfulPayment(orderId: string, amountTotalKopecks: number): Promise<void> {
+    // Р¤Р†РљРЎ: Р†РґРµРјРїРѕС‚РµРЅС‚РЅС–СЃС‚СЊ. РЇРєС‰Рѕ РІРµР±С…СѓРє РїСЂРёР№С€РѕРІ РІРґСЂСѓРіРµ - С–РіРЅРѕСЂСѓС”РјРѕ
+    const existingOrder = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!existingOrder || existingOrder.status === 'paid' || existingOrder.status === 'sold') {
+      return; 
+    }
+
     const order = await this.prisma.order.update({
       where: { id: orderId },
       data: { status: 'paid' },

@@ -41,6 +41,7 @@ export class PosService {
       throw new BadRequestException('Cart is empty');
     }
 
+    // Сортуємо ID для уникнення Deadlocks у PostgreSQL
     const sortedItems = [...params.items].sort((a, b) => 
       a.inventoryItemId.localeCompare(b.inventoryItemId)
     );
@@ -51,15 +52,16 @@ export class PosService {
       let totalProfit = 0;
 
       for (const cartItem of sortedItems) {
+        // ФІКС: Звичайний FOR UPDATE. Дозволяємо БД ставити транзакції в чергу, а не відбивати їх.
         const inventory = await tx.$queryRaw<Array<any>>`
           SELECT "id", "quantity", "totalCost", "itemId", "titleSnapshot", "warehouseId", "storageLocationId" 
           FROM "InventoryItem" 
           WHERE "id" = ${cartItem.inventoryItemId} 
-          FOR UPDATE SKIP LOCKED
+          FOR UPDATE
         `;
 
         if (!inventory || inventory.length === 0) {
-          throw new BadRequestException(`Item ${cartItem.inventoryItemId} is currently locked or unavailable`);
+          throw new BadRequestException(`Item ${cartItem.inventoryItemId} is unavailable`);
         }
 
         const inv = inventory[0];

@@ -32,7 +32,7 @@ export async function runOlxSource(): Promise<void> {
 
   try {
     const unresolvedOperations: any[] = [];
-    const creates: any[] = []; // ФІКС: Тепер це масив об'єктів, а не SQL-стdataрінгів
+    const creates: any[] = [];
     const now = new Date();
 
     for (const query of searchQueries) {
@@ -47,7 +47,6 @@ export async function runOlxSource(): Promise<void> {
         const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
         const listingId = stableListingId('olx', listing.externalListingId);
         
-        // Збираємо об'єкт для безпечної вставки
         creates.push({
           id: listingId,
           sourceId: source.id,
@@ -76,16 +75,12 @@ export async function runOlxSource(): Promise<void> {
           itemsMatched += 1;
         }
       }
-    }
 
-    // ФІКС: БЕЗПЕЧНИЙ БАЛК ІНСЕРТ ЧЕРЕЗ JSONB
-    if (creates.length > 0) {
-      const dbChunkSize = 500; 
-      for (let i = 0; i < creates.length; i += dbChunkSize) {
-        const chunk = creates.slice(i, i + dbChunkSize);
+      // ФІКС: Скидаємо масив прямо в циклі, щоб не накопичувати RAM
+      if (creates.length >= 500) {
         await prisma.$executeRaw`
           INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "status", "fetchedAt", "updatedAt")
-          SELECT * FROM jsonb_to_recordset(${JSON.stringify(chunk)}::jsonb) AS x(
+          SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
             "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
             "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
             "shippingPrice" float, "shippingCurrency" text, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
@@ -96,8 +91,27 @@ export async function runOlxSource(): Promise<void> {
             "fetchedAt" = EXCLUDED."fetchedAt",
             "updatedAt" = EXCLUDED."updatedAt"
         `;
-        itemsInserted += chunk.length;
+        itemsInserted += creates.length;
+        creates.length = 0; // Очищуємо пам'ять!
       }
+    }
+
+    // Дозаписуємо залишки
+    if (creates.length > 0) {
+      await prisma.$executeRaw`
+        INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "status", "fetchedAt", "updatedAt")
+        SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
+          "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
+          "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
+          "shippingPrice" float, "shippingCurrency" text, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
+        )
+        ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
+          "price" = EXCLUDED."price",
+          "status" = 'active',
+          "fetchedAt" = EXCLUDED."fetchedAt",
+          "updatedAt" = EXCLUDED."updatedAt"
+      `;
+      itemsInserted += creates.length;
     }
 
     for (const u of unresolvedOperations) {

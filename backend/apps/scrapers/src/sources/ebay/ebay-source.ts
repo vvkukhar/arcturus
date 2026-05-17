@@ -85,15 +85,12 @@ export async function runEbaySource(): Promise<void> {
           itemsMatched += 1;
         }
       }
-    }
 
-    if (creates.length > 0) {
-      const dbChunkSize = 500;
-      for (let i = 0; i < creates.length; i += dbChunkSize) {
-        const chunk = creates.slice(i, i + dbChunkSize);
+      // ФІКС: Скидаємо масив створюваних записів для очищення RAM
+      if (creates.length >= 500) {
         await prisma.$executeRaw`
           INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
-          SELECT * FROM jsonb_to_recordset(${JSON.stringify(chunk)}::jsonb) AS x(
+          SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
             "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
             "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
             "shippingPrice" float, "shippingCurrency" text, "condition" text, "sealed" boolean, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
@@ -105,8 +102,28 @@ export async function runEbaySource(): Promise<void> {
             "fetchedAt" = EXCLUDED."fetchedAt",
             "updatedAt" = EXCLUDED."updatedAt"
         `;
-        itemsInserted += chunk.length;
+        itemsInserted += creates.length;
+        creates.length = 0; // Очищуємо пам'ять!
       }
+    }
+
+    // Записуємо залишок, якщо такий є
+    if (creates.length > 0) {
+      await prisma.$executeRaw`
+        INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
+        SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
+          "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
+          "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
+          "shippingPrice" float, "shippingCurrency" text, "condition" text, "sealed" boolean, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
+        )
+        ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
+          "price" = EXCLUDED."price",
+          "shippingPrice" = EXCLUDED."shippingPrice",
+          "status" = 'active',
+          "fetchedAt" = EXCLUDED."fetchedAt",
+          "updatedAt" = EXCLUDED."updatedAt"
+      `;
+      itemsInserted += creates.length;
     }
 
     for (const u of unresolvedOperations) {

@@ -14,6 +14,9 @@ export const createPrismaClient = () => {
       $allModels: {
         async $allOperations({ model, operation, args, query }: any) {
           if (softDeleteModels.includes(model)) {
+            // ФІКС: Ініціалізуємо args, щоб запобігти падінню, якщо запит прийшов порожнім (напр. count())
+            args = args || {};
+
             if (['findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy'].includes(operation)) {
               args.where = { ...args.where, deletedAt: null };
             } else if (operation === 'findUnique' || operation === 'findUniqueOrThrow') {

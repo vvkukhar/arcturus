@@ -2196,21 +2196,15 @@ class AppValidators {
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/router/app_router.dart';
 import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/dashboard_live_screen.dart';
-import 'package:lego_trading_manager/features/inventory/presentation/inventory_screen.dart';
-import 'package:lego_trading_manager/features/purchases/presentation/purchases_screen.dart';
-import 'package:lego_trading_manager/features/sales/presentation/sales_screen.dart';
-import 'package:lego_trading_manager/features/settings/presentation/settings_hub_screen.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_screen.dart';
-import 'package:lego_trading_manager/features/pos/presentation/pos_terminal_screen.dart';
 
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
 
-  void _open(BuildContext context, Widget screen) {
-    Navigator.of(context).pop();
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => screen));
+  void _open(BuildContext context, String route) {
+    Navigator.of(context).pop(); // Р—Р°РєСЂРёРІР°С”РјРѕ Drawer
+    Navigator.of(context).pushNamed(route); // РќР°РєРёРґР°С”РјРѕ РµРєСЂР°РЅ РїРѕРІРµСЂС… RootLayout
   }
 
   @override
@@ -2234,15 +2228,16 @@ class AppDrawer extends ConsumerWidget {
                 ],
               ),
             ),
-            ListTile(leading: const Icon(Icons.point_of_sale), title: Text(i18n.t('cc.pos')), onTap: () => _open(context, const PosTerminalScreen())),
+            // Р¤Р†РљРЎ: Р—Р°Р»РёС€РёР»Рё С‚С–Р»СЊРєРё СЃРїРµС†РёС„С–С‡РЅС– РµРєСЂР°РЅРё, РїСЂРёР±СЂР°Р»Рё РґСѓР±Р»С– Р· BottomNavigationBar
+            ListTile(leading: const Icon(Icons.point_of_sale), title: Text(i18n.t('cc.pos')), onTap: () => _open(context, AppRouter.pos)),
             const Divider(),
-            ListTile(leading: const Icon(Icons.dashboard_outlined), title: Text(i18n.t('drawer.dashboard')), onTap: () => _open(context, const DashboardLiveScreen())),
-            ListTile(leading: const Icon(Icons.inventory_2_outlined), title: Text(i18n.t('drawer.inventory')), onTap: () => _open(context, const InventoryScreen())),
-            ListTile(leading: const Icon(Icons.shopping_cart_outlined), title: Text(i18n.t('drawer.purchases')), onTap: () => _open(context, const PurchasesScreen())),
-            ListTile(leading: const Icon(Icons.point_of_sale_outlined), title: Text(i18n.t('drawer.sales')), onTap: () => _open(context, const SalesScreen())),
-            ListTile(leading: const Icon(Icons.visibility_outlined), title: Text(i18n.t('drawer.watchlist')), onTap: () => _open(context, const WatchlistScreen())),
+            ListTile(leading: const Icon(Icons.shopping_cart_outlined), title: Text(i18n.t('drawer.purchases')), onTap: () => _open(context, AppRouter.purchases)),
+            ListTile(leading: const Icon(Icons.point_of_sale_outlined), title: Text(i18n.t('drawer.sales')), onTap: () => _open(context, AppRouter.sales)),
+            ListTile(leading: const Icon(Icons.visibility_outlined), title: Text(i18n.t('drawer.watchlist')), onTap: () => _open(context, AppRouter.watchlist)),
+            ListTile(leading: const Icon(Icons.local_fire_department_outlined), title: Text(i18n.t('cc.dealEval')), onTap: () => _open(context, AppRouter.dealEvaluator)),
             const Divider(),
-            ListTile(leading: const Icon(Icons.settings_outlined), title: Text(i18n.t('drawer.settings')), onTap: () => _open(context, const SettingsHubScreen())),
+            ListTile(leading: const Icon(Icons.history), title: Text(i18n.t('history.title')), onTap: () => _open(context, AppRouter.dealHistory)),
+            ListTile(leading: const Icon(Icons.analytics_outlined), title: Text(i18n.t('activity.log.title')), onTap: () => _open(context, AppRouter.activityLog)),
           ],
         ),
       ),
@@ -6835,6 +6830,14 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
   final _focusNode = FocusNode();
   bool _isProcessing = false;
 
+  // Р¤Р†РљРЎ: Р—РІС–Р»СЊРЅСЏС”РјРѕ РїР°Рј'СЏС‚СЊ РїСЂРё Р·Р°РєСЂРёС‚С‚С– РµРєСЂР°РЅСѓ
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
   Future<void> _handleScan(String code) async {
     if (code.trim().isEmpty) return;
     
@@ -7760,6 +7763,7 @@ class _SaleFormScreenState extends ConsumerState<SaleFormScreen> {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\lib\features\search\application\search_engine.dart =====
 
 import 'dart:convert';
+import 'dart:async'; // Р¤Р†РљРЎ: Р†РјРїРѕСЂС‚ РґР»СЏ Timer
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
@@ -7792,6 +7796,7 @@ class SearchEngineState {
 class SearchEngine extends AsyncNotifier<SearchEngineState> {
   static const _recentKey = 'arcturus_search_recent';
   static const _pinnedKey = 'arcturus_search_pinned';
+  Timer? _debounceTimer; // Р¤Р†РљРЎ: Р”РѕРґР°Р»Рё С‚Р°Р№РјРµСЂ РґР»СЏ РґРµР±Р°СѓРЅСЃСѓ
 
   @override
   Future<SearchEngineState> build() async {
@@ -7814,47 +7819,52 @@ class SearchEngine extends AsyncNotifier<SearchEngineState> {
       return;
     }
 
-    state = const AsyncValue.loading();
-    
-    try {
-      final network = ref.read(networkCoreProvider);
-      final q = query.trim();
-      final limit = 10;
-      final results = <SearchResult>[];
+    // Р¤Р†РљРЎ: Р РµР°Р»С–Р·Р°С†С–СЏ Р”РµР±Р°СѓРЅСЃСѓ (400РјСЃ)
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
 
-      if (typeFilter == null || typeFilter == 'inventory') {
-        final res = await network.request('GET', '/inventory?q=$q&limit=$limit');
-        for (var item in (res as List)) {
-          results.add(SearchResult(item['id'], item['titleSnapshot'] ?? 'Item', 'search.sub.inv', 'inventory', '/inventory', 100, subArgs: {'status': item['status'] ?? ''}));
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () async {
+      state = const AsyncValue.loading();
+      
+      try {
+        final network = ref.read(networkCoreProvider);
+        final q = query.trim();
+        final limit = 10;
+        final results = <SearchResult>[];
+
+        if (typeFilter == null || typeFilter == 'inventory') {
+          final res = await network.request('GET', '/inventory?q=$q&limit=$limit');
+          for (var item in (res as List)) {
+            results.add(SearchResult(item['id'], item['titleSnapshot'] ?? 'Item', 'search.sub.inv', 'inventory', '/inventory', 100, subArgs: {'status': item['status'] ?? ''}));
+          }
         }
-      }
 
-      if (typeFilter == null || typeFilter == 'watchlist') {
-        final res = await network.request('GET', '/watchlist?q=$q&limit=$limit');
-        for (var item in (res as List)) {
-          results.add(SearchResult(item['id'], item['titleSnapshot'] ?? 'Target', 'search.sub.watch', 'watchlist', '/watchlist', 90, subArgs: {'price': item['desiredBuyPrice']?.toString() ?? '0'}));
+        if (typeFilter == null || typeFilter == 'watchlist') {
+          final res = await network.request('GET', '/watchlist?q=$q&limit=$limit');
+          for (var item in (res as List)) {
+            results.add(SearchResult(item['id'], item['titleSnapshot'] ?? 'Target', 'search.sub.watch', 'watchlist', '/watchlist', 90, subArgs: {'price': item['desiredBuyPrice']?.toString() ?? '0'}));
+          }
         }
-      }
 
-      if (typeFilter == null || typeFilter == 'purchase') {
-        final res = await network.request('GET', '/procurement?q=$q&limit=$limit');
-        for (var item in (res as List)) {
-          results.add(SearchResult(item['id'], item['sourceCode'] ?? 'Purchase', 'search.sub.pur', 'purchase', '/purchases', 80, subArgs: {'total': item['totalCost']?.toString() ?? '0', 'currency': 'UAH'}));
+        if (typeFilter == null || typeFilter == 'purchase') {
+          final res = await network.request('GET', '/procurement?q=$q&limit=$limit');
+          for (var item in (res as List)) {
+            results.add(SearchResult(item['id'], item['sourceCode'] ?? 'Purchase', 'search.sub.pur', 'purchase', '/purchases', 80, subArgs: {'total': item['totalCost']?.toString() ?? '0', 'currency': 'UAH'}));
+          }
         }
-      }
 
-      if (typeFilter == null || typeFilter == 'sale') {
-        final res = await network.request('GET', '/sales?q=$q&limit=$limit');
-        for (var item in (res as List)) {
-          results.add(SearchResult(item['id'], item['channel'] ?? 'Sale', 'search.sub.sale', 'sale', '/sales', 80, subArgs: {'net': item['profit']?.toString() ?? '0', 'currency': 'UAH'}));
+        if (typeFilter == null || typeFilter == 'sale') {
+          final res = await network.request('GET', '/sales?q=$q&limit=$limit');
+          for (var item in (res as List)) {
+            results.add(SearchResult(item['id'], item['channel'] ?? 'Sale', 'search.sub.sale', 'sale', '/sales', 80, subArgs: {'net': item['profit']?.toString() ?? '0', 'currency': 'UAH'}));
+          }
         }
-      }
 
-      results.sort((a, b) => b.score.compareTo(a.score));
-      state = AsyncValue.data(curr.copyWith(query: query, typeFilter: typeFilter, searchResults: results));
-    } catch (e) {
-      state = AsyncValue.data(curr.copyWith(query: query, typeFilter: typeFilter, searchResults: []));
-    }
+        results.sort((a, b) => b.score.compareTo(a.score));
+        state = AsyncValue.data(curr.copyWith(query: query, typeFilter: typeFilter, searchResults: results));
+      } catch (e) {
+        state = AsyncValue.data(curr.copyWith(query: query, typeFilter: typeFilter, searchResults: []));
+      }
+    });
   }
 
   Future<void> saveRecentQuery(String query) async {

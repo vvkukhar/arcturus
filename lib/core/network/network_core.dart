@@ -15,6 +15,9 @@ class NetworkCore {
   final _eventsController = StreamController<Map<String, dynamic>>.broadcast();
   bool _isReconnectingSocket = false;
   final _storage = const FlutterSecureStorage();
+  
+  // ФІКС: In-memory кеш для швидкого доступу
+  String? _cachedToken;
 
   NetworkCore({required this.baseUrl}) {
     _dio = Dio(BaseOptions(
@@ -27,9 +30,13 @@ class NetworkCore {
 
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final token = await _storage.read(key: 'arcturus_jwt');
-        if (token != null && token != 'cookie_session_active' && token.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $token';
+        // ФІКС: Читаємо з повільного сховища лише якщо кеш порожній
+        if (_cachedToken == null) {
+          _cachedToken = await _storage.read(key: 'arcturus_jwt');
+        }
+        
+        if (_cachedToken != null && _cachedToken != 'cookie_session_active' && _cachedToken!.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $_cachedToken';
         }
         return handler.next(options);
       },
@@ -70,6 +77,7 @@ class NetworkCore {
         }
         
         if (response.statusCode == 401 || response.statusCode == 403) {
+          _cachedToken = null; // Скидаємо кеш
           await _storage.delete(key: 'arcturus_jwt');
           
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -113,9 +121,9 @@ class NetworkCore {
         _socket!.dispose();
       }
 
-      final token = await _storage.read(key: 'arcturus_jwt');
+      _cachedToken ??= await _storage.read(key: 'arcturus_jwt');
       
-      if (token == null || token.isEmpty || token == 'cookie_session_active') return;
+      if (_cachedToken == null || _cachedToken!.isEmpty || _cachedToken == 'cookie_session_active') return;
 
       final uri = Uri.parse(baseUrl);
       final socketUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
@@ -129,7 +137,7 @@ class NetworkCore {
           .setReconnectionDelay(1000)
           .setReconnectionDelayMax(5000)
           .setReconnectionAttempts(double.maxFinite.toInt())
-          .setAuth({'token': token})
+          .setAuth({'token': _cachedToken})
           .build(),
       );
 

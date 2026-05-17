@@ -47,7 +47,9 @@ export async function globalArbitrageJob(): Promise<{ evaluated: number; opportu
     
     if (!localSellPrice || localSellPrice <= 0) continue;
 
-    const netProfit = localSellPrice - totalLandedUah;
+    // ФІКС: Враховуємо комісію платформ (в середньому 8%) та пакування (~40 грн) для реалістичного прогнозу
+    const estimatedFees = (localSellPrice * 0.08) + 40;
+    const netProfit = localSellPrice - totalLandedUah - estimatedFees;
     const roi = (netProfit / totalLandedUah) * 100;
 
     if (roi >= 25 && netProfit >= 300) {
@@ -60,7 +62,7 @@ export async function globalArbitrageJob(): Promise<{ evaluated: number; opportu
             action: roi >= 40 ? 'IMPORT_STRONG' : 'IMPORT',
             score: Math.min(100, 50 + (roi / 2)),
             confidence: Number(localSnapshot?.confidenceScore ?? 0.5),
-            reasonPrimary: `Global arbitrage: +${netProfit.toFixed(0)} UAH profit`,
+            reasonPrimary: `Global arbitrage: +${netProfit.toFixed(0)} UAH profit (fees included)`,
             payloadJson: {
               listingId: listing.id,
               url: listing.url,
@@ -70,6 +72,7 @@ export async function globalArbitrageJob(): Promise<{ evaluated: number; opportu
               shippingUah: Number(shippingUah.toFixed(2)),
               taxUah: Number((dutyUah + vatUah).toFixed(2)),
               totalLandedUah,
+              estimatedFees: Number(estimatedFees.toFixed(2)),
               localSellPrice,
               roi,
               netProfit,
