@@ -15,14 +15,15 @@ export function PurchaseFlowActions({ id, selectedPrice }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState<'bought' | 'remove' | null>(null);
 
-  const handleMarkBought = async () => {
+const handleMarkBought = async () => {
     const price = prompt('Confirm final purchase price (UAH):', String(selectedPrice || 0));
     if (price === null) return;
     
     try {
       setLoading('bought');
-      // ВИПРАВЛЕНО: Правильний роут, який створює товар в Inventory!
-      await apiFetch('/api/proxy/flows/purchase/mark-bought', {
+      
+      // ВИПРАВЛЕНО: тепер шлях збігається з бекендом
+      await apiFetch('/api/proxy/flows/purchase/bought', {
         method: 'PATCH',
         body: JSON.stringify({
           id,
