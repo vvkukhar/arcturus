@@ -1,7 +1,7 @@
 import { DataTable } from '@/components/admin/data-table';
-import { RowActions } from '@/components/admin/row-actions';
 import { SectionCard } from '@/components/admin/section-card';
 import { StatusPill } from '@/components/admin/status-pill';
+import { PurchaseFlowActions } from '@/components/admin/purchase-flow-actions';
 import { api } from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 import type { PurchaseFlowItem } from '@/lib/types';
@@ -74,7 +74,7 @@ export default async function AdminPurchaseFlowPage() {
             {
               key: 'actions',
               header: 'Actions',
-              render: () => <RowActions primaryLabel="Mark Bought" secondaryLabel="Remove" />,
+              render: (row) => <PurchaseFlowActions id={row.id} selectedPrice={row.selectedPrice ?? null} />,
             },
           ]}
         />
