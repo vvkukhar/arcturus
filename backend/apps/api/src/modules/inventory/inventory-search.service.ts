@@ -7,79 +7,31 @@ export class InventorySearchService {
 
   async search(params: {
     q?: string;
-    theme?: string;
-    kind?: string;
-    condition?: string;
-    sealed?: boolean;
-    minPrice?: number;
-    maxPrice?: number;
     inStockOnly?: boolean;
     limit?: number;
   }): Promise<unknown[]> {
     const q = params.q?.trim();
+    const limit = params.limit ?? 50;
 
-    return this.prisma.inventoryItem.findMany({
-      where: {
-        quantity: params.inStockOnly ? { gt: 0 } : undefined,
-        condition: params.condition,
-        sealed: params.sealed,
-        expectedSalePriceManual:
-          params.minPrice != null || params.maxPrice != null
-            ? {
-                gte: params.minPrice,
-                lte: params.maxPrice,
-              }
-            : undefined,
-        item: {
-          kind: params.kind,
-          theme: params.theme
-            ? {
-                equals: params.theme,
-                mode: 'insensitive',
-              }
-            : undefined,
-        },
-        OR:
-          q && q.length > 0
-            ? [
-                {
-                  titleSnapshot: {
-                    contains: q,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  item: {
-                    title: {
-                      contains: q,
-                      mode: 'insensitive',
-                    },
-                  },
-                },
-                {
-                  item: {
-                    setNumber: {
-                      contains: q,
-                      mode: 'insensitive',
-                    },
-                  },
-                },
-              ]
-            : undefined,
-      },
-      include: {
-        item: true,
-        assignedUser: true,
-        images: {
-          orderBy: {
-            sortOrder: 'asc',
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: params.limit ?? 100,
-    });
+    if (!q) {
+      return this.prisma.inventoryItem.findMany({
+        where: params.inStockOnly ? { quantity: { gt: 0 } } : undefined,
+        include: { item: true },
+        take: limit,
+      });
+    }
+
+    // ВИКОРИСТОВУЄМО GIN ІНДЕКСИ + pg_trgm ДЛЯ ШВИДКОГО ПОШУКУ
+    return this.prisma.$queryRaw`
+      SELECT 
+        "InventoryItem".*, 
+        row_to_json("Item".*) as "item"
+      FROM "InventoryItem"
+      INNER JOIN "Item" ON "InventoryItem"."itemId" = "Item"."id"
+      WHERE ("Item"."title" % ${q} OR "InventoryItem"."titleSnapshot" % ${q} OR "Item"."setNumber" ILIKE ${`%${q}%`})
+      ${params.inStockOnly ? this.prisma.$queryRawUnsafe('AND "InventoryItem"."quantity" > 0') : this.prisma.$queryRawUnsafe('')}
+      ORDER BY GREATEST(similarity("Item"."title", ${q}), similarity("InventoryItem"."titleSnapshot", ${q})) DESC
+      LIMIT ${limit};
+    `;
   }
 }

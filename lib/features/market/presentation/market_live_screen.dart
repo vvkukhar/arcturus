@@ -2,26 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-// Створюємо тимчасовий провайдер, який буде робити запит на бекенд 
-// і отримувати сирий список лістингів.
 final liveListingsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final network = ref.read(networkCoreProvider);
-  
-  if (!await network.isOnline()) {
-    throw Exception('Offline. Cannot fetch live market data.');
-  }
-
+  if (!await network.isOnline()) throw Exception('Offline. Cannot fetch live market data.');
   try {
-    // Тягнемо з бекенду останні 100 знайдених оголошень
     final res = await network.request('GET', '/scanner/listings?limit=100');
-    if (res is List) {
-      return res;
-    }
-    return [];
-  } catch (e) {
-    throw Exception('Failed to load listings: $e');
-  }
+    return res is List ? res : [];
+  } catch (e) { throw Exception('Failed to load listings: $e'); }
 });
 
 class MarketLiveScreen extends ConsumerWidget {
@@ -37,10 +26,11 @@ class MarketLiveScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final listingsAsync = ref.watch(liveListingsProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Live Market Data', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(i18n.t('market.liveData'), style: const TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -50,14 +40,14 @@ class MarketLiveScreen extends ConsumerWidget {
       ),
       body: listingsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text(i18n.t('common.error', {'error': e.toString()}))),
         data: (listings) {
           if (listings.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
-                'No raw market data found.\nRun a scraper first.',
+                i18n.t('market.noRawData'),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white54, fontSize: 16),
+                style: const TextStyle(color: Colors.white54, fontSize: 16),
               ),
             );
           }
@@ -137,10 +127,10 @@ class MarketLiveScreen extends ConsumerWidget {
                                       margin: const EdgeInsets.only(right: 8),
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
-                                      child: const Text('SEALED', style: TextStyle(fontSize: 10, color: Colors.blueAccent)),
+                                      child: Text(i18n.t('market.sealed'), style: const TextStyle(fontSize: 10, color: Colors.blueAccent)),
                                     ),
                                   Text(
-                                    'Condition: $condition',
+                                    '${i18n.t('market.condition')}: $condition',
                                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                                   ),
                                 ],

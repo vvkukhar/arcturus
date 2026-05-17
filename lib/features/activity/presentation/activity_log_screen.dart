@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_engine.dart';
 import 'package:lego_trading_manager/features/activity/presentation/activity_timeline_screen.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class ActivityLogScreen extends ConsumerWidget {
   const ActivityLogScreen({super.key});
@@ -9,10 +10,11 @@ class ActivityLogScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stateAsync = ref.watch(activityEngineProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Activity Center', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(i18n.t('activity.log.title'), style: const TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
@@ -22,10 +24,10 @@ class ActivityLogScreen extends ConsumerWidget {
       ),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text(i18n.t('common.error', {'error': e.toString()}))),
         data: (state) {
           if (state.logs.isEmpty) {
-            return const Center(child: Text('System activity is empty.', style: TextStyle(color: Colors.white54)));
+            return Center(child: Text(i18n.t('activity.log.empty'), style: const TextStyle(color: Colors.white54)));
           }
 
           return CustomScrollView(
@@ -37,13 +39,13 @@ class ActivityLogScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeroCard(state),
+                      _buildHeroCard(state, i18n),
                       const SizedBox(height: 16),
-                      _buildMetricGrid(state),
+                      _buildMetricGrid(state, i18n),
                       const SizedBox(height: 16),
-                      _buildInsights(state),
+                      _buildInsights(state, i18n),
                       const SizedBox(height: 24),
-                      const Text('Recent Operations', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(i18n.t('activity.recentOps'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 12),
                     ],
                   ),
@@ -53,7 +55,7 @@ class ActivityLogScreen extends ConsumerWidget {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final item = state.logs[index];
-                    return _LogTile(item: item);
+                    return _LogTile(item: item, i18n: i18n);
                   },
                   childCount: state.logs.length > 10 ? 10 : state.logs.length,
                 ),
@@ -65,7 +67,7 @@ class ActivityLogScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeroCard(ActivityEngineState state) {
+  Widget _buildHeroCard(ActivityEngineState state, I18nNotifier i18n) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -81,10 +83,10 @@ class ActivityLogScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${state.controlScore.toStringAsFixed(0)} Control Score', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+          Text('${state.controlScore.toStringAsFixed(0)} ${i18n.t('activity.controlScore')}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
           const SizedBox(height: 8),
           Text(
-            'Momentum: ${state.momentumLabel} • Discipline: ${state.disciplineLabel}',
+            '${i18n.t('activity.momentum')}: ${i18n.t(state.momKey)} • ${i18n.t('activity.discipline')}: ${i18n.t(state.discKey)}',
             style: const TextStyle(color: Colors.white70),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -94,7 +96,7 @@ class ActivityLogScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMetricGrid(ActivityEngineState state) {
+  Widget _buildMetricGrid(ActivityEngineState state, I18nNotifier i18n) {
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -103,27 +105,27 @@ class ActivityLogScreen extends ConsumerWidget {
       crossAxisSpacing: 12,
       childAspectRatio: 2.0,
       children: [
-        _MiniCard(title: 'Active Streak', value: '${state.activeDayStreak}d', color: Colors.greenAccent),
-        _MiniCard(title: '7-Day Activity', value: '${state.activeDaysInLast7}/7', color: Colors.blueAccent),
-        _MiniCard(title: 'Best Day', value: '${state.bestDayCount} acts', color: Colors.orangeAccent),
-        _MiniCard(title: 'Top Type', value: state.topType, color: Colors.purpleAccent),
+        _MiniCard(title: i18n.t('activity.activeStreak'), value: '${state.activeDayStreak}d', color: Colors.greenAccent),
+        _MiniCard(title: i18n.t('activity.7day'), value: '${state.activeDaysInLast7}/7', color: Colors.blueAccent),
+        _MiniCard(title: i18n.t('activity.bestDay'), value: state.bestDayCount.toString(), color: Colors.orangeAccent),
+        _MiniCard(title: i18n.t('activity.topType'), value: state.topType, color: Colors.purpleAccent),
       ],
     );
   }
 
-  Widget _buildInsights(ActivityEngineState state) {
+  Widget _buildInsights(ActivityEngineState state, I18nNotifier i18n) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: [
-          _RowStat('Total Reports', state.reports.toString()),
+          _RowStat(i18n.t('activity.totalReports'), state.reports.toString()),
           const Divider(color: Colors.white10),
-          _RowStat('Total Purchases', state.purchases.toString()),
+          _RowStat(i18n.t('activity.totalPurchases'), state.purchases.toString()),
           const Divider(color: Colors.white10),
-          _RowStat('Total Sales', state.sales.toString()),
+          _RowStat(i18n.t('activity.totalSales'), state.sales.toString()),
           const Divider(color: Colors.white10),
-          _RowStat('Watchlist Actions', state.watchlist.toString()),
+          _RowStat(i18n.t('activity.watchActions'), state.watchlist.toString()),
         ],
       ),
     );
@@ -184,7 +186,8 @@ class _RowStat extends StatelessWidget {
 
 class _LogTile extends StatelessWidget {
   final ActivityLogEntryModel item;
-  const _LogTile({required this.item});
+  final I18nNotifier i18n;
+  const _LogTile({required this.item, required this.i18n});
 
   IconData _icon() {
     switch (item.type) {

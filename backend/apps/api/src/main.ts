@@ -46,7 +46,6 @@ async function bootstrap() {
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
-  // ФІКС 3: ПОВНІСТЮ відкриваємо CORS для будь-яких методів і заголовків
   app.enableCors({
     origin: '*',
     methods: '*',

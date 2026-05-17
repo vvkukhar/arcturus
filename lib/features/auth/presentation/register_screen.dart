@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
 import 'package:lego_trading_manager/features/auth/application/auth_engine.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -36,6 +37,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
       backgroundColor: const Color(0xFF0D0F14),
       appBar: AppBar(
@@ -54,14 +57,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('Create Account', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white)),
-                const Text('Join Arcturus Hub', style: TextStyle(color: Colors.white54)),
+                Text(i18n.t('auth.regTitle'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white)),
+                Text(i18n.t('auth.regSub'), style: const TextStyle(color: Colors.white54)),
                 const SizedBox(height: 48),
                 TextField(
                   controller: _name,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Full Name',
+                    labelText: i18n.t('auth.name'),
                     prefixIcon: const Icon(Icons.person_outline, color: Colors.white54),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
@@ -73,7 +76,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   controller: _email,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Email Address',
+                    labelText: i18n.t('auth.email'),
                     prefixIcon: const Icon(Icons.email_outlined, color: Colors.white54),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
@@ -86,7 +89,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   obscureText: true,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Password (min 6 chars)',
+                    labelText: '${i18n.t('auth.password')} (min 6 chars)',
                     prefixIcon: const Icon(Icons.lock_outline, color: Colors.white54),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
@@ -98,7 +101,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   controller: _inviteCode,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Invite Code',
+                    labelText: i18n.t('auth.inviteCode'),
                     prefixIcon: const Icon(Icons.vpn_key_outlined, color: Colors.white54),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
@@ -112,7 +115,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: FilledButton(
                     onPressed: _isLoading ? null : _register,
                     style: FilledButton.styleFrom(backgroundColor: Colors.blueAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Register', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(i18n.t('auth.register'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                 ),
               ],

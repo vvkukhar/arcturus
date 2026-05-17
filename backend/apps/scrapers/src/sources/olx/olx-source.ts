@@ -31,9 +31,9 @@ export async function runOlxSource(): Promise<void> {
   let itemsUpdated = 0;
 
   try {
-    const upsertOperations: any[] = [];
     const unresolvedOperations: any[] = [];
-    const now = new Date();
+    const creates: string[] = [];
+    const now = new Date().toISOString();
 
     for (const query of searchQueries) {
       const url = `https://www.olx.ua/uk/list/q-lego-${encodeURIComponent(query)}/`;
@@ -46,51 +46,15 @@ export async function runOlxSource(): Promise<void> {
         const resolvedItemId = await resolveItemIdFromTitle(listing.titleRaw);
         const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
         const listingId = stableListingId('olx', listing.externalListingId);
+        
+        const price = listing.price || 0;
+        const shippingPrice = listing.shippingPrice || 0;
+        const titleRawEscaped = listing.titleRaw.replace(/'/g, "''");
+        const urlEscaped = listing.url.replace(/'/g, "''");
+        const imgEscaped = listing.imageUrl ? `'${listing.imageUrl.replace(/'/g, "''")}'` : 'NULL';
 
-        upsertOperations.push(
-          prisma.marketListing.upsert({
-            where: { id: listingId },
-            update: {
-              sourceCode: source.code,
-              itemId,
-              titleRaw: listing.titleRaw,
-              title: listing.titleRaw,
-              url: listing.url,
-              imageUrl: listing.imageUrl,
-              price: listing.price,
-              currency: listing.currency ?? 'UAH',
-              shippingPrice: listing.shippingPrice ?? 0,
-              shippingCurrency: listing.shippingCurrency ?? 'UAH',
-              condition: listing.condition,
-              sealed: listing.sealed,
-              status: 'active',
-              fetchedAt: now,
-              lastSeenAt: now,
-            },
-            create: {
-              id: listingId,
-              sourceId: source.id,
-              sourceCode: source.code,
-              itemId,
-              externalListingId: listing.externalListingId,
-              externalId: listing.externalListingId,
-              titleRaw: listing.titleRaw,
-              title: listing.titleRaw,
-              url: listing.url,
-              imageUrl: listing.imageUrl,
-              price: listing.price,
-              currency: listing.currency ?? 'UAH',
-              shippingPrice: listing.shippingPrice ?? 0,
-              shippingCurrency: listing.shippingCurrency ?? 'UAH',
-              condition: listing.condition,
-              sealed: listing.sealed,
-              status: 'active',
-              fetchedAt: now,
-              firstSeenAt: now,
-              lastSeenAt: now,
-            },
-          })
-        );
+        // ФІКС: Будуємо RAW SQL для надшвидкого Bulk Upsert
+        creates.push(`('${listingId}', '${source.id}', 'olx', '${itemId}', '${listing.externalListingId}', '${titleRawEscaped}', '${urlEscaped}', ${imgEscaped}, ${price}, 'UAH', ${shippingPrice}, 'UAH', 'active', '${now}', '${now}')`);
 
         if (resolvedItemId == null) {
           unresolvedOperations.push({
@@ -104,11 +68,20 @@ export async function runOlxSource(): Promise<void> {
       }
     }
 
-    if (upsertOperations.length > 0) {
-      const chunkSize = 100;
-      for (let i = 0; i < upsertOperations.length; i += chunkSize) {
-        const chunk = upsertOperations.slice(i, i + chunkSize);
-        await prisma.$transaction(chunk);
+    // Виконуємо надшвидкий масовий інсерт пачками по 500
+    if (creates.length > 0) {
+      const dbChunkSize = 500; 
+      for (let i = 0; i < creates.length; i += dbChunkSize) {
+        const chunk = creates.slice(i, i + dbChunkSize);
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "status", "fetchedAt", "updatedAt")
+          VALUES ${chunk.join(',')}
+          ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
+            "price" = EXCLUDED."price",
+            "status" = 'active',
+            "fetchedAt" = EXCLUDED."fetchedAt",
+            "updatedAt" = EXCLUDED."updatedAt"
+        `);
         itemsInserted += chunk.length;
       }
     }

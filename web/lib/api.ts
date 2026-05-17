@@ -28,7 +28,7 @@ const CB_CONFIG = {
   RESET_TIMEOUT: 15000,
   BASE_BACKOFF: 250,
   MAX_BACKOFF: 3000,
-  TIMEOUT: 12000,
+  TIMEOUT: 15000,
 };
 
 function getCircuitState(endpoint: string): CircuitState {
@@ -77,9 +77,12 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
   
   const base = appConfig.apiBaseUrl.replace(/\/$/, '');
   let cleanPath = path.startsWith('/') ? path : `/${path}`;
-  if (base.endsWith('/api') && cleanPath.startsWith('/api')) {
+  if (base.endsWith('/api/v1') && cleanPath.startsWith('/api/v1')) {
+    cleanPath = cleanPath.substring(7); 
+  } else if (base.endsWith('/api') && cleanPath.startsWith('/api')) {
     cleanPath = cleanPath.substring(4); 
   }
+  
   const targetUrl = path.startsWith('http') ? path : `${base}${cleanPath}`;
   const requestKey = `${init.method || 'GET'}:${targetUrl}:${typeof init.body === 'string' ? init.body : ''}`;
 

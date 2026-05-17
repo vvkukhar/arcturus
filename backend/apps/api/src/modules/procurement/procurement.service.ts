@@ -33,7 +33,7 @@ export class ProcurementService {
       },
       include: { item: true, watchlistItem: true, inventoryItem: true, assignedUser: true },
       orderBy: { createdAt: 'desc' },
-      take: params?.limit ?? 200,
+      take: params?.limit ?? 10000,
     });
   }
 

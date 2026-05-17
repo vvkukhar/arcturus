@@ -11,6 +11,8 @@ export class BrowserManager {
   private contextPool: BrowserContext[] = [];
   private readonly MAX_CONTEXTS = parseInt(process.env.SCRAPER_MAX_CONTEXTS ?? '3', 10);
   private contextIndex = 0;
+  private requestsCount = 0;
+  private readonly MAX_REQUESTS_BEFORE_RESTART = 50;
 
   async init(): Promise<void> {
     if (!this.browser) {
@@ -57,6 +59,11 @@ export class BrowserManager {
   }
 
   async fetchHtml(url: string): Promise<string> {
+    this.requestsCount++;
+    if (this.requestsCount > this.MAX_REQUESTS_BEFORE_RESTART) {
+      await this.restart();
+    }
+
     await this.init();
     const context = await this.getNextContext();
     const page = await context.newPage();
@@ -76,6 +83,12 @@ export class BrowserManager {
     } finally {
       await page.close().catch(() => {});
     }
+  }
+
+  async restart(): Promise<void> {
+    await this.close();
+    this.requestsCount = 0;
+    await this.init();
   }
 
   async close(): Promise<void> {

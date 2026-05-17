@@ -1,22 +1,62 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/utils/core_utils.dart';
+import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/item_form_screen.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class ItemDetailsScreen extends ConsumerWidget {
-  final ItemModel item;
+  final InventoryItemModel item;
   const ItemDetailsScreen({super.key, required this.item});
+
+  void _showQr(BuildContext context, I18nNotifier i18n) {
+    final qrData = item.item?.setNumber != null && item.item!.setNumber!.isNotEmpty ? item.item!.setNumber! : item.id;
+    
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(i18n.t('inv.qrCode'), style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            QrImageView(
+              data: qrData,
+              version: QrVersions.auto,
+              size: 250.0,
+              backgroundColor: Colors.white,
+            ),
+            const SizedBox(height: 16),
+            Text(item.titleSnapshot, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(i18n.t('inv.scanQrToFind'), textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close', style: TextStyle(color: Colors.blueAccent))),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final expectedProfit = (item.expectedSalePrice ?? 0) - item.totalCost;
-    final margin = (item.expectedSalePrice ?? 0) <= 0 ? 0.0 : (expectedProfit / item.expectedSalePrice!) * 100;
+    final expectedSalePrice = item.expectedSalePriceManual ?? item.totalCost;
+    final expectedProfit = expectedSalePrice - item.totalCost;
+    final margin = expectedSalePrice <= 0 ? 0.0 : (expectedProfit / expectedSalePrice) * 100;
     final roi = item.totalCost <= 0 ? 0.0 : (expectedProfit / item.totalCost) * 100;
+    final daysInInv = DateTime.now().difference(item.createdAt).inDays;
+    
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Item Details', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(i18n.t('inv.details'), style: const TextStyle(fontWeight: FontWeight.w900)),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code, color: Colors.white),
+            onPressed: () => _showQr(context, i18n),
+          ),
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ItemFormScreen(item: item))),
@@ -33,21 +73,21 @@ class ItemDetailsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900), maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text(item.titleSnapshot, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900), maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8, runSpacing: 8,
                   children: [
-                    _Badge(item.type.name.toUpperCase(), Colors.blue),
-                    _Badge(item.status.name.toUpperCase(), Colors.orange),
-                    if (item.theme != null) _Badge(item.theme!, Colors.purple),
+                    _Badge(i18n.t('type.${item.item?.kind.name ?? 'unknown'}').toUpperCase(), Colors.blue),
+                    _Badge(i18n.t(item.status.name).toUpperCase(), Colors.orange),
+                    if (item.item?.theme != null) _Badge(item.item!.theme!, Colors.purple),
                   ],
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          const Text('Financial Insights', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(i18n.t('form.financials'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           GridView.count(
             crossAxisCount: 2,
@@ -56,42 +96,32 @@ class ItemDetailsScreen extends ConsumerWidget {
             crossAxisSpacing: 12, mainAxisSpacing: 12,
             childAspectRatio: 1.5,
             children: [
-              _InsightCard('Expected Profit', expectedProfit.toStringAsFixed(2), expectedProfit >= 0 ? Colors.green : Colors.red),
+              _InsightCard(i18n.t('inv.expectedProfit'), expectedProfit.toStringAsFixed(2), expectedProfit >= 0 ? Colors.green : Colors.red),
               _InsightCard('ROI', '${roi.toStringAsFixed(1)}%', roi >= 0 ? Colors.green : Colors.red),
               _InsightCard('Margin', '${margin.toStringAsFixed(1)}%', margin >= 0 ? Colors.green : Colors.red),
-              _InsightCard('Days Held', (item.daysInInventory ?? 0).toString(), Colors.blueAccent),
+              _InsightCard(i18n.t('inv.daysInInv'), daysInInv.toString(), Colors.blueAccent),
             ],
           ),
           const SizedBox(height: 16),
-          const Text('Core Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(i18n.t('form.coreDetails'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(16)),
             child: Column(
               children: [
-                _InfoRow('Total Cost', item.totalCost.toStringAsFixed(2)),
+                _InfoRow(i18n.t('inv.totalCost'), item.totalCost.toStringAsFixed(2)),
                 const Divider(height: 24, color: Colors.white10),
-                _InfoRow('Market Avg', item.marketAverage?.toStringAsFixed(2) ?? '-'),
+                _InfoRow(i18n.t('form.expectedSale'), expectedSalePrice.toStringAsFixed(2)),
                 const Divider(height: 24, color: Colors.white10),
-                _InfoRow('Expected Sale', item.expectedSalePrice?.toStringAsFixed(2) ?? '-'),
-                const Divider(height: 24, color: Colors.white10),
-                _InfoRow('Condition', item.condition.name),
-                const Divider(height: 24, color: Colors.white10),
-                _InfoRow('Completeness', item.completeness.name),
+                _InfoRow(i18n.t('form.condition'), i18n.t('cond.${item.condition.name.replaceAll('ItemCondition.', '')}')),
+                if (item.storageLocationId != null && item.storageLocationId!.isNotEmpty) ...[
+                  const Divider(height: 24, color: Colors.white10),
+                  _InfoRow(i18n.t('form.location'), item.storageLocationId!),
+                ],
               ],
             ),
           ),
-          if (item.notes != null && item.notes!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Text('Notes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: const Color(0xFF171A21), borderRadius: BorderRadius.circular(16)),
-              child: Text(item.notes!),
-            ),
-          ]
         ],
       ),
     );

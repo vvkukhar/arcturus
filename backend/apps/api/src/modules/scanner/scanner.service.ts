@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import { QueueService } from '../queue/queue.service'; // 👈 ДОДАНО
+import { QueueService } from '../queue/queue.service';
 
 export type IngestListingInput = {
   externalId: string;
@@ -24,7 +24,7 @@ export class ScannerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
-    private readonly queueService: QueueService, // 👈 ДОДАНО
+    private readonly queueService: QueueService,
   ) {}
 
   normalizeTitle(title: string): string {
@@ -165,7 +165,6 @@ export class ScannerService {
       data: { sourceCode: body.sourceCode, query: body.query ?? '', status: 'queued' },
     });
 
-    // 🔥 ГОЛОВНИЙ ФІКС: Відправляємо задачу в BullMQ
     await this.queueService.enqueueScannerJob(job.id);
 
     this.realtime.emitCustom('scanner.job_queued', job);
@@ -189,9 +188,9 @@ export class ScannerService {
     let unresolved = 0;
     const unresolvedOperations = [];
     const now = new Date();
-    const formattedNow = now.toISOString();
-
-    const dbRows = [];
+    
+    // ФІКС: Замість raw-рядків формуємо масив безпечних промісів
+    const upsertOperations = [];
 
     for (const listing of body.listings) {
       if (!listing.externalId || !listing.title || !Number.isFinite(listing.price)) continue;
@@ -199,22 +198,42 @@ export class ScannerService {
       const id = this.createListingId(body.sourceCode, listing.externalId);
       const resolved = await this.resolveItemId(listing.title);
 
-      const titleSafe = listing.title.replace(/'/g, "''");
-      const urlSafe = (listing.url ?? '').replace(/'/g, "''");
-      const imageUrlSafe = listing.imageUrl ? `'${listing.imageUrl.replace(/'/g, "''")}'` : 'NULL';
-      const shippingPriceSafe = listing.shippingPrice !== null && listing.shippingPrice !== undefined ? listing.shippingPrice : 'NULL';
-      const conditionSafe = listing.condition ? `'${listing.condition.replace(/'/g, "''")}'` : 'NULL';
-      const sealedSafe = listing.sealed !== null && listing.sealed !== undefined ? listing.sealed : 'NULL';
-      const cpSafe = listing.completenessPercent !== null && listing.completenessPercent !== undefined ? listing.completenessPercent : 'NULL';
-      const qaSafe = listing.quantityAvailable ?? 1;
-
-      dbRows.push(`(
-        '${id}', '${source.id}', '${source.code}', '${resolved.itemId}', '${listing.externalId}', '${listing.externalId}',
-        '${titleSafe}', '${titleSafe}', '${urlSafe}', ${imageUrlSafe},
-        ${listing.price}, '${listing.currency ?? 'UAH'}', ${shippingPriceSafe}, '${listing.shippingCurrency ?? listing.currency ?? 'UAH'}',
-        '${listing.country ?? 'UA'}', ${conditionSafe}, ${sealedSafe}, ${cpSafe}, ${qaSafe},
-        'active', '${formattedNow}', '${formattedNow}', '${formattedNow}', '${formattedNow}', '${formattedNow}'
-      )`);
+      upsertOperations.push(
+        this.prisma.marketListing.upsert({
+          where: { id },
+          update: {
+            price: listing.price,
+            lastSeenAt: now,
+            status: 'active',
+            updatedAt: now,
+          },
+          create: {
+            id,
+            sourceId: source.id,
+            sourceCode: source.code,
+            itemId: resolved.itemId,
+            externalListingId: listing.externalId,
+            externalId: listing.externalId,
+            titleRaw: listing.title,
+            title: listing.title,
+            url: listing.url ?? '',
+            imageUrl: listing.imageUrl ?? null,
+            price: listing.price,
+            currency: listing.currency ?? 'UAH',
+            shippingPrice: listing.shippingPrice ?? null,
+            shippingCurrency: listing.shippingCurrency ?? listing.currency ?? 'UAH',
+            country: listing.country ?? 'UA',
+            condition: listing.condition ?? null,
+            sealed: listing.sealed ?? null,
+            completenessPercent: listing.completenessPercent ?? null,
+            quantityAvailable: listing.quantityAvailable ?? 1,
+            status: 'active',
+            fetchedAt: now,
+            firstSeenAt: now,
+            lastSeenAt: now,
+          }
+        })
+      );
 
       if (!resolved.resolved) {
         unresolved += 1;
@@ -226,25 +245,12 @@ export class ScannerService {
       }
     }
 
-    if (dbRows.length > 0) {
-      const chunkSize = 1000;
-      for (let i = 0; i < dbRows.length; i += chunkSize) {
-        const chunk = dbRows.slice(i, i + chunkSize);
-        const query = `
-          INSERT INTO "MarketListing" (
-            "id", "sourceId", "sourceCode", "itemId", "externalListingId", "externalId",
-            "titleRaw", "title", "url", "imageUrl",
-            "price", "currency", "shippingPrice", "shippingCurrency",
-            "country", "condition", "sealed", "completenessPercent", "quantityAvailable",
-            "status", "fetchedAt", "firstSeenAt", "lastSeenAt", "createdAt", "updatedAt"
-          ) VALUES ${chunk.join(',')}
-          ON CONFLICT ("id") DO UPDATE SET
-            "price" = EXCLUDED."price",
-            "lastSeenAt" = EXCLUDED."lastSeenAt",
-            "status" = 'active',
-            "updatedAt" = EXCLUDED."updatedAt";
-        `;
-        await this.prisma.$executeRawUnsafe(query);
+    // ФІКС: Виконуємо запити безпечними пачками через транзакцію Prisma
+    if (upsertOperations.length > 0) {
+      const chunkSize = 200;
+      for (let i = 0; i < upsertOperations.length; i += chunkSize) {
+        const chunk = upsertOperations.slice(i, i + chunkSize);
+        await this.prisma.$transaction(chunk);
       }
     }
 
@@ -254,7 +260,7 @@ export class ScannerService {
 
     this.realtime.emitListingsRefresh({
       sourceCode: body.sourceCode,
-      count: dbRows.length,
+      count: upsertOperations.length,
       unresolved,
     });
 

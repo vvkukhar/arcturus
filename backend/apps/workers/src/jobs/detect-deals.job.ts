@@ -36,7 +36,7 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
     lastId = listings[listings.length - 1].id;
     scannedListings += listings.length;
 
-    const itemIds: string[] = Array.from(new Set<string>(listings.map((l) => String(l.itemId))));
+    const itemIds = Array.from(new Set<string>(listings.map((l) => String(l.itemId))));
     
     const watchlistItems = await prisma.watchlistItem.findMany({
       where: { itemId: { in: itemIds }, active: true },
@@ -52,7 +52,8 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
       watchlistMap.set(w.itemId, arr);
     }
 
-    const creates: any[] = [];
+    const creates: string[] = [];
+    const now = new Date().toISOString();
 
     for (const listing of listings) {
       const matchedWatchlists = watchlistMap.get(listing.itemId);
@@ -80,31 +81,21 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
 
         if (action === 'SKIP') continue;
 
-        creates.push({
-          id: `${listing.id}_${watchlistItem.id}`,
-          listingId: listing.id,
-          watchlistItemId: watchlistItem.id,
-          buyPrice,
-          targetSellPrice,
-          profit,
-          roiPercent,
-          action,
-          score,
-          status: 'open',
-          updatedAt: new Date()
-        });
+        const id = `${listing.id}_${watchlistItem.id}`;
+        
+        creates.push(`('${id}', '${listing.id}', '${watchlistItem.id}', ${buyPrice}, ${targetSellPrice}, ${profit}, ${roiPercent}, '${action}', ${score}, 'open', '${now}')`);
         
         createdOrUpdated += 1;
       }
     }
 
     if (creates.length > 0) {
-      const dbChunkSize = 250; 
+      const dbChunkSize = 500; 
       for (let i = 0; i < creates.length; i += dbChunkSize) {
         const chunk = creates.slice(i, i + dbChunkSize);
         await prisma.$executeRawUnsafe(`
           INSERT INTO "Deal" ("id", "listingId", "watchlistItemId", "buyPrice", "targetSellPrice", "profit", "roiPercent", "action", "score", "status", "updatedAt")
-          VALUES ${chunk.map(c => `('${c.id}', '${c.listingId}', '${c.watchlistItemId}', ${c.buyPrice}, ${c.targetSellPrice}, ${c.profit}, ${c.roiPercent}, '${c.action}', ${c.score}, '${c.status}', '${c.updatedAt.toISOString()}')`).join(',')}
+          VALUES ${chunk.join(',')}
           ON CONFLICT ("watchlistItemId", "listingId") DO UPDATE SET
             "buyPrice" = EXCLUDED."buyPrice",
             "targetSellPrice" = EXCLUDED."targetSellPrice",

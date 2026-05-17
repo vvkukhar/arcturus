@@ -129,6 +129,8 @@ export async function recomputeMarketSnapshotsJob(): Promise<{ totalItems: numbe
       await prisma.marketSnapshot.createMany({ data: snapshotData });
       snapshotsCreated += snapshotData.length;
     }
+
+    await new Promise((res) => setTimeout(res, 100));
   }
 
   return { totalItems, snapshotsCreated };

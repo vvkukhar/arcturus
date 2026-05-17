@@ -1,114 +1,89 @@
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/core/utils/core_utils.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
+import 'package:lego_trading_manager/core/network/socket_event_bus.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
-import 'package:lego_trading_manager/core/sync/sync_engine.dart';
-
-class SalesAnalysis {
-  final int totalCount;
-  final double totalNet, totalFees, averageNet;
-  const SalesAnalysis(this.totalCount, this.totalNet, this.totalFees, this.averageNet);
-}
+import 'package:lego_trading_manager/data/repositories/app_repositories.dart';
 
 class SalesEngineState {
-  final List<SaleModel> allSales, visibleSales;
-  final Set<String> selectedIds;
-  final String query, sortOption;
-  final SalesAnalysis analysis;
+  final List<SaleModel> sales;
+  final String query;
 
-  const SalesEngineState({required this.allSales, required this.visibleSales, required this.selectedIds, required this.query, required this.sortOption, required this.analysis});
+  const SalesEngineState({
+    required this.sales,
+    required this.query,
+  });
+
+  SalesEngineState copyWith({List<SaleModel>? sales, String? query}) {
+    return SalesEngineState(
+      sales: sales ?? this.sales,
+      query: query ?? this.query,
+    );
+  }
 }
 
 class SalesEngine extends AsyncNotifier<SalesEngineState> {
   @override
   Future<SalesEngineState> build() async {
-    final network = ref.watch(networkCoreProvider);
-    final repo = ref.read(salesRepositoryProvider);
+    final eventBus = ref.watch(socketEventBusProvider);
+    final sub = eventBus.events.listen((event) {
+      final type = event['type'];
+      final payloads = event['payloads'] as List?;
 
-    if (await network.isOnline()) {
-      try {
-        final res = await network.request('GET', '/sales');
-        if (res is List) {
-          final mapped = res.map((e) => SaleModel(
-            id: e['id'] ?? AppUtils.generateId(),
-            itemId: e['inventoryItemId'] ?? e['itemId'] ?? '',
-            platform: e['channel'] ?? 'Unknown',
-            salePrice: (e['sellPrice'] ?? 0).toDouble(),
-            platformFee: 0.0,
-            shippingPaidByMe: 0.0,
-            shippingPaidByBuyer: 0,
-            finalNet: (e['profit'] ?? 0).toDouble(),
-            currency: 'UAH',
-            saleDate: e['createdAt'] != null ? DateTime.parse(e['createdAt']) : DateTime.now(),
-            quantity: e['quantity'] ?? 1,
-          )).toList();
-          await repo.replaceAll(mapped);
+      if (payloads == null) return;
+
+      if (type == 'sale_registered') {
+        final currentState = state.valueOrNull;
+        if (currentState != null) {
+          final itemsList = List<SaleModel>.from(currentState.sales);
+          for (final payload in payloads) {
+            if (payload == null || payload['id'] == null) continue;
+            final updatedItem = SaleModel.fromMap(Map<String, dynamic>.from(payload));
+            itemsList.insert(0, updatedItem);
+          }
+          state = AsyncValue.data(currentState.copyWith(sales: itemsList));
         }
-      } catch(e) { print("Init fetch error (Sales): $e"); }
-    }
-    
-    final sub = network.socketEvents.listen((event) {
-      if (['sale_registered'].contains(event['type'])) ref.invalidateSelf();
+      } else if (type == 'sale_deleted') {
+         final currentState = state.valueOrNull;
+         if (currentState != null) {
+           final itemsList = List<SaleModel>.from(currentState.sales);
+           for (final payload in payloads) {
+             if (payload == null || payload['id'] == null) continue;
+             itemsList.removeWhere((i) => i.id == payload['id']);
+           }
+           state = AsyncValue.data(currentState.copyWith(sales: itemsList));
+         }
+      }
     });
     ref.onDispose(() => sub.cancel());
 
-    final list = repo.getAllSales();
-    return _computeState(list, '', 'newest', const {});
+    return _fetchData('');
   }
 
-  static SalesEngineState _computeState(List<SaleModel> all, String q, String sort, Set<String> selected) {
-    double net = 0, fees = 0;
-    final qLower = q.trim().toLowerCase();
-    var visible = <SaleModel>[];
-
-    for (final s in all) {
-      net += s.finalNet; fees += s.platformFee;
-      if (qLower.isEmpty || s.platform.toLowerCase().contains(qLower) || s.itemId.toLowerCase().contains(qLower) || (s.buyerName ?? '').toLowerCase().contains(qLower)) visible.add(s);
-    }
-    switch (sort) {
-      case 'newest': visible.sort((a, b) => b.saleDate.compareTo(a.saleDate)); break;
-      case 'netHigh': visible.sort((a, b) => b.finalNet.compareTo(a.finalNet)); break;
-    }
-    return SalesEngineState(allSales: all, visibleSales: visible, selectedIds: selected, query: q, sortOption: sort, analysis: SalesAnalysis(all.length, net, fees, all.isEmpty ? 0 : net / all.length));
-  }
-
-  Future<void> saveSale(SaleModel sale) async {
-    final currentState = await future;
-    final network = ref.read(networkCoreProvider);
-    final exists = currentState.allSales.any((e) => e.id == sale.id);
+  Future<SalesEngineState> _fetchData(String query) async {
+    final repo = ref.read(salesRepositoryProvider);
+    final qParams = <String, dynamic>{'limit': 100};
     
-    try {
-      if (sale.itemId.trim().isEmpty) {
-        throw Exception('Inventory Item ID is strictly required to register a sale!');
-      }
+    if (query.isNotEmpty) qParams['q'] = query;
+    
+    final sales = await repo.fetchAll(query: qParams);
+    return SalesEngineState(sales: sales, query: query);
+  }
 
-      final payload = <String, dynamic>{
-        'inventoryItemId': sale.itemId.trim(),
-        'sellPrice': sale.salePrice,
-        'quantity': sale.quantity,
-      };
+  void search(String query) async {
+    state = const AsyncValue.loading();
+    state = AsyncValue.data(await _fetchData(query));
+  }
 
-      if (sale.platform.isNotEmpty) payload['channel'] = sale.platform;
-      if (sale.buyerName != null && sale.buyerName!.isNotEmpty) payload['buyerName'] = sale.buyerName;
-      if (sale.note != null && sale.note!.isNotEmpty) payload['notes'] = sale.note;
-
-      final res = await network.request(exists ? 'PATCH' : 'POST', '/sales', body: exists ? {'id': sale.id, ...payload} : payload);
-
-      final newSale = exists ? sale : sale.copyWith(id: res['id']);
-      final repo = ref.read(salesRepositoryProvider);
-      if (exists) await repo.update((e) => e.id == sale.id, newSale);
-      else await repo.add(newSale);
-      
-      state = AsyncValue.data(_computeState(repo.getAllSales(), currentState.query, currentState.sortOption, currentState.selectedIds));
-    } catch (e) {
-      throw Exception(e.toString().replaceAll('Exception: ', ''));
+  Future<void> saveSale(Map<String, dynamic> payload, {String? id}) async {
+    final repo = ref.read(salesRepositoryProvider);
+    if (id != null && id.isNotEmpty) {
+      await repo.update(id, payload);
+    } else {
+      await repo.create(payload);
     }
   }
 
-  void search(String q) async {
-    final currentState = await future;
-    state = AsyncValue.data(_computeState(currentState.allSales, q, currentState.sortOption, currentState.selectedIds));
+  Future<void> deleteSale(String id) async {
+    await ref.read(salesRepositoryProvider).delete(id);
   }
 }
 

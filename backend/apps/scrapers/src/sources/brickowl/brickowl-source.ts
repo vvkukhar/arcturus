@@ -32,9 +32,9 @@ export async function runBrickOwlSource(): Promise<void> {
   let itemsUpdated = 0;
 
   try {
-    const upsertOperations: any[] = [];
     const unresolvedOperations: any[] = [];
-    const now = new Date();
+    const creates: string[] = [];
+    const now = new Date().toISOString();
 
     for (const query of searchQueries) {
       const url = `https://www.brickowl.com/search/catalog?query=${encodeURIComponent(query)}`;
@@ -55,50 +55,17 @@ export async function runBrickOwlSource(): Promise<void> {
           sealed: listing.sealed,
         });
 
-        upsertOperations.push(
-          prisma.marketListing.upsert({
-            where: { id: listingId },
-            update: {
-              sourceCode: source.code,
-              itemId,
-              titleRaw: listing.titleRaw,
-              title: listing.titleRaw,
-              url: listing.url,
-              imageUrl: listing.imageUrl,
-              price: listing.price,
-              currency: listing.currency ?? 'USD',
-              shippingPrice,
-              shippingCurrency: listing.shippingCurrency ?? 'USD',
-              condition: listing.condition,
-              sealed: listing.sealed,
-              status: 'active',
-              fetchedAt: now,
-              lastSeenAt: now,
-            },
-            create: {
-              id: listingId,
-              sourceId: source.id,
-              sourceCode: source.code,
-              itemId,
-              externalListingId: listing.externalListingId,
-              externalId: listing.externalListingId,
-              titleRaw: listing.titleRaw,
-              title: listing.titleRaw,
-              url: listing.url,
-              imageUrl: listing.imageUrl,
-              price: listing.price,
-              currency: listing.currency ?? 'USD',
-              shippingPrice,
-              shippingCurrency: listing.shippingCurrency ?? 'USD',
-              condition: listing.condition,
-              sealed: listing.sealed,
-              status: 'active',
-              fetchedAt: now,
-              firstSeenAt: now,
-              lastSeenAt: now,
-            },
-          })
-        );
+        const price = listing.price || 0;
+        const condition = listing.condition ? `'${listing.condition.replace(/'/g, "''")}'` : 'NULL';
+        const sealed = listing.sealed ? 'true' : 'false';
+        const titleRawEscaped = listing.titleRaw.replace(/'/g, "''");
+        const urlEscaped = listing.url.replace(/'/g, "''");
+        const imgEscaped = listing.imageUrl ? `'${listing.imageUrl.replace(/'/g, "''")}'` : 'NULL';
+        const externalIdEscaped = listing.externalListingId.replace(/'/g, "''");
+        const currency = listing.currency ? `'${listing.currency.replace(/'/g, "''")}'` : "'USD'";
+        const shipCurrency = listing.shippingCurrency ? `'${listing.shippingCurrency.replace(/'/g, "''")}'` : "'USD'";
+
+        creates.push(`('${listingId}', '${source.id}', 'brickowl', '${itemId}', '${externalIdEscaped}', '${titleRawEscaped}', '${urlEscaped}', ${imgEscaped}, ${price}, ${currency}, ${shippingPrice}, ${shipCurrency}, ${condition}, ${sealed}, 'active', '${now}', '${now}')`);
 
         if (resolvedItemId == null) {
           unresolvedOperations.push({
@@ -113,11 +80,20 @@ export async function runBrickOwlSource(): Promise<void> {
       await new Promise((res) => setTimeout(res, 2500 + Math.random() * 3500));
     }
 
-    if (upsertOperations.length > 0) {
-      const chunkSize = 100;
-      for (let i = 0; i < upsertOperations.length; i += chunkSize) {
-        const chunk = upsertOperations.slice(i, i + chunkSize);
-        await prisma.$transaction(chunk);
+    if (creates.length > 0) {
+      const dbChunkSize = 500;
+      for (let i = 0; i < creates.length; i += dbChunkSize) {
+        const chunk = creates.slice(i, i + dbChunkSize);
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
+          VALUES ${chunk.join(',')}
+          ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
+            "price" = EXCLUDED."price",
+            "shippingPrice" = EXCLUDED."shippingPrice",
+            "status" = 'active',
+            "fetchedAt" = EXCLUDED."fetchedAt",
+            "updatedAt" = EXCLUDED."updatedAt"
+        `);
         itemsInserted += chunk.length;
       }
     }

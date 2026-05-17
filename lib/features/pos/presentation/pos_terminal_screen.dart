@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
 import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
+import 'package:lego_trading_manager/core/sync/sync_engine.dart';
+import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/features/pos/application/pos_cart_provider.dart';
 import 'package:lego_trading_manager/features/pos/presentation/pos_scanner_modal.dart';
 
@@ -19,29 +20,26 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
   final _focusNode = FocusNode();
   bool _isProcessing = false;
 
-  void _handleScan(String code) {
+  Future<void> _handleScan(String code) async {
     if (code.trim().isEmpty) return;
     
-    final invRepo = ref.read(inventoryRepositoryProvider);
-    final items = invRepo.getAllItems();
-    
-    // ФІКС: Тепер шукає по Inventory ID, Set Number АБО по шматку Назви!
-    final match = items.where((i) => 
-      (i.id.toLowerCase() == code.toLowerCase() || 
-       (i.setId != null && i.setId!.toLowerCase() == code.toLowerCase()) ||
-       i.title.toLowerCase().contains(code.toLowerCase())) && 
-      i.isActive && i.quantity > 0
-    ).firstOrNull;
+    final network = ref.read(networkCoreProvider);
+    final i18n = ref.read(i18nProvider.notifier);
 
-    if (match != null) {
-      ref.read(posCartProvider.notifier).addItem(match);
-      _searchController.clear();
-      _focusNode.requestFocus();
-    } else {
-      final i18n = ref.read(i18nProvider.notifier);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(i18n.t('pos.notFound')), backgroundColor: Colors.redAccent),
-      );
+    try {
+      final res = await network.request('POST', '/pos/scan', body: {'barcode': code.trim()});
+      if (res != null) {
+        final item = InventoryItemModel.fromMap(Map<String, dynamic>.from(res));
+        ref.read(posCartProvider.notifier).addItem(item);
+        _searchController.clear();
+        _focusNode.requestFocus();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(i18n.t('pos.notFound')), backgroundColor: Colors.redAccent),
+        );
+      }
     }
   }
 
@@ -70,12 +68,14 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text(i18n.t('common.error', {'error': e.toString()})), backgroundColor: Colors.redAccent),
         );
       }
     } finally {
-      setState(() => _isProcessing = false);
-      _focusNode.requestFocus();
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        _focusNode.requestFocus();
+      }
     }
   }
 
@@ -87,7 +87,7 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
 
     double total = 0;
     for (final c in cart) {
-      total += (c.item.expectedSalePrice ?? c.item.totalCost) * c.quantity;
+      total += (c.item.expectedSalePriceManual ?? c.item.totalCost) * c.quantity;
     }
 
     return Scaffold(
@@ -111,7 +111,7 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
               autofocus: true,
               onSubmitted: _handleScan,
               decoration: InputDecoration(
-                hintText: 'Search by ID, Set Number or Title...',
+                hintText: i18n.t('pos.searchHint'),
                 prefixIcon: const Icon(Icons.qr_code_scanner),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.camera_alt, color: Colors.blueAccent),
@@ -143,10 +143,10 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
                       itemCount: cart.length,
                       itemBuilder: (context, index) {
                         final c = cart[index];
-                        final price = c.item.expectedSalePrice ?? c.item.totalCost;
+                        final price = c.item.expectedSalePriceManual ?? c.item.totalCost;
                         return ListTile(
-                          title: Text(c.item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('#${c.item.setId ?? c.item.id.substring(0,6)} • ${AppUtils.money(price)}'),
+                          title: Text(c.item.titleSnapshot, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('#${c.item.item?.setNumber ?? c.item.id.substring(0,6)} • ${AppUtils.money(price)}'),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [

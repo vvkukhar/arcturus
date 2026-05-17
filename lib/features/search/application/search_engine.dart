@@ -1,16 +1,17 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
+import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 
 class SearchResult {
-  final String id, title, subtitle, type, route;
+  final String id, title, subKey, type, route;
+  final Map<String, String>? subArgs;
   final int score;
 
-  const SearchResult(this.id, this.title, this.subtitle, this.type, this.route, this.score);
+  const SearchResult(this.id, this.title, this.subKey, this.type, this.route, this.score, {this.subArgs});
   
-  Map<String, dynamic> toMap() => {'id': id, 'title': title, 'subtitle': subtitle, 'type': type, 'route': route, 'score': score};
-  factory SearchResult.fromMap(Map<String, dynamic> map) => SearchResult(map['id'], map['title'], map['subtitle'], map['type'], map['route'], map['score']);
+  Map<String, dynamic> toMap() => {'id': id, 'title': title, 'subKey': subKey, 'type': type, 'route': route, 'score': score};
+  factory SearchResult.fromMap(Map<String, dynamic> map) => SearchResult(map['id'], map['title'], map['subKey'], map['type'], map['route'], map['score']);
 }
 
 class SearchEngineState {
@@ -43,44 +44,56 @@ class SearchEngine extends AsyncNotifier<SearchEngineState> {
     return SearchEngineState(query: '', recentQueries: recent, pinnedResults: pinned, searchResults: []);
   }
 
-  int _fuzzyScore(String query, String text) {
-    final q = query.trim().toLowerCase();
-    final t = text.trim().toLowerCase();
-    if (q.isEmpty || t.isEmpty) return 0;
-    if (t == q) return 1000;
-    if (t.startsWith(q)) return 800;
-    if (t.contains(q)) return 600;
-    return 0;
-  }
-
-  void search(String query, {String? typeFilter}) {
-    if (state.value == null) return;
-    final curr = state.value!;
+  void search(String query, {String? typeFilter}) async {
+    final curr = state.valueOrNull;
+    if (curr == null) return;
     
     if (query.trim().isEmpty) {
       state = AsyncValue.data(curr.copyWith(query: query, typeFilter: typeFilter, searchResults: []));
       return;
     }
 
-    final results = <SearchResult>[];
-    void check(String id, String title, String subtitle, String type, String route) {
-      if (typeFilter != null && typeFilter != type) return;
-      int score = _fuzzyScore(query, title);
-      score += _fuzzyScore(query, subtitle) ~/ 2;
-      if (score > 0) {
-        results.add(SearchResult(id, title, subtitle, type, route, score));
+    state = const AsyncValue.loading();
+    
+    try {
+      final network = ref.read(networkCoreProvider);
+      final q = query.trim();
+      final limit = 10;
+      final results = <SearchResult>[];
+
+      if (typeFilter == null || typeFilter == 'inventory') {
+        final res = await network.request('GET', '/inventory?q=$q&limit=$limit');
+        for (var item in (res as List)) {
+          results.add(SearchResult(item['id'], item['titleSnapshot'] ?? 'Item', 'search.sub.inv', 'inventory', '/inventory', 100, subArgs: {'status': item['status'] ?? ''}));
+        }
       }
+
+      if (typeFilter == null || typeFilter == 'watchlist') {
+        final res = await network.request('GET', '/watchlist?q=$q&limit=$limit');
+        for (var item in (res as List)) {
+          results.add(SearchResult(item['id'], item['titleSnapshot'] ?? 'Target', 'search.sub.watch', 'watchlist', '/watchlist', 90, subArgs: {'price': item['desiredBuyPrice']?.toString() ?? '0'}));
+        }
+      }
+
+      if (typeFilter == null || typeFilter == 'purchase') {
+        final res = await network.request('GET', '/procurement?q=$q&limit=$limit');
+        for (var item in (res as List)) {
+          results.add(SearchResult(item['id'], item['sourceCode'] ?? 'Purchase', 'search.sub.pur', 'purchase', '/purchases', 80, subArgs: {'total': item['totalCost']?.toString() ?? '0', 'currency': 'UAH'}));
+        }
+      }
+
+      if (typeFilter == null || typeFilter == 'sale') {
+        final res = await network.request('GET', '/sales?q=$q&limit=$limit');
+        for (var item in (res as List)) {
+          results.add(SearchResult(item['id'], item['channel'] ?? 'Sale', 'search.sub.sale', 'sale', '/sales', 80, subArgs: {'net': item['profit']?.toString() ?? '0', 'currency': 'UAH'}));
+        }
+      }
+
+      results.sort((a, b) => b.score.compareTo(a.score));
+      state = AsyncValue.data(curr.copyWith(query: query, typeFilter: typeFilter, searchResults: results));
+    } catch (e) {
+      state = AsyncValue.data(curr.copyWith(query: query, typeFilter: typeFilter, searchResults: []));
     }
-
-    for (final i in ref.read(inventoryRepositoryProvider).getAllItems()) { check(i.id, i.title, 'Inventory • ${i.status.name}', 'inventory', '/inventory'); }
-    for (final w in ref.read(watchlistRepositoryProvider).getAll()) { check(w.id, w.title, 'Watchlist • Target ${w.desiredBuyPrice}', 'watchlist', '/watchlist'); }
-    for (final p in ref.read(purchasesRepositoryProvider).getAllPurchases()) { check(p.id, p.source, 'Purchase • ${p.finalTotal} ${p.currency}', 'purchase', '/purchases'); }
-    for (final s in ref.read(salesRepositoryProvider).getAllSales()) { check(s.id, s.platform, 'Sale • Net ${s.finalNet} ${s.currency}', 'sale', '/sales'); }
-    for (final m in ref.read(marketRepositoryProvider).getAll()) { check(m.id, m.source, 'Market • Avg ${m.averagePrice}', 'market', '/market'); }
-
-    results.sort((a, b) => b.score.compareTo(a.score));
-
-    state = AsyncValue.data(curr.copyWith(query: query, typeFilter: typeFilter, searchResults: results));
   }
 
   Future<void> saveRecentQuery(String query) async {

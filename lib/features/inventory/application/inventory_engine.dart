@@ -1,165 +1,172 @@
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/core/utils/core_utils.dart';
-import 'package:lego_trading_manager/core/enums/item_status.dart';
-import 'package:lego_trading_manager/core/enums/item_condition.dart';
-import 'package:lego_trading_manager/core/enums/item_type.dart';
-import 'package:lego_trading_manager/core/enums/item_completeness.dart';
-import 'package:lego_trading_manager/core/enums/ownership_type.dart';
+import 'package:lego_trading_manager/core/network/socket_event_bus.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
-import 'package:lego_trading_manager/core/sync/sync_engine.dart';
-
-class InventoryAnalysis {
-  final int activeCount, soldCount, deadStockCount, alertsCount;
-  final double totalCost, expectedProfit;
-  final List<ItemModel> deadStock, alerts;
-
-  const InventoryAnalysis(this.activeCount, this.soldCount, this.deadStockCount, this.alertsCount, this.totalCost, this.expectedProfit, this.deadStock, this.alerts);
-}
+import 'package:lego_trading_manager/data/repositories/app_repositories.dart';
 
 class InventoryEngineState {
-  final List<ItemModel> allItems;
-  final List<ItemModel> visibleItems;
-  final Set<String> selectedIds;
+  final List<InventoryItemModel> items;
   final String query;
-  final ItemStatus? filterStatus;
-  final String sortOption;
-  final InventoryAnalysis analysis;
+  final String? status;
+  final String sort;
+  final int offset;
+  final bool hasMore;
+  final bool isLoadingMore;
 
-  const InventoryEngineState({required this.allItems, required this.visibleItems, required this.selectedIds, required this.query, this.filterStatus, required this.sortOption, required this.analysis});
+  const InventoryEngineState({
+    required this.items,
+    required this.query,
+    this.status,
+    required this.sort,
+    this.offset = 0,
+    this.hasMore = true,
+    this.isLoadingMore = false,
+  });
+
+  InventoryEngineState copyWith({
+    List<InventoryItemModel>? items, 
+    String? query, 
+    String? status, 
+    String? sort,
+    int? offset,
+    bool? hasMore,
+    bool? isLoadingMore,
+  }) {
+    return InventoryEngineState(
+      items: items ?? this.items,
+      query: query ?? this.query,
+      status: status ?? this.status,
+      sort: sort ?? this.sort,
+      offset: offset ?? this.offset,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    );
+  }
 }
 
 class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
+  static const int _pageSize = 50;
+
   @override
   Future<InventoryEngineState> build() async {
-    final network = ref.watch(networkCoreProvider);
-    final repo = ref.read(inventoryRepositoryProvider);
-    
-    if (await network.isOnline()) {
-      try {
-        final res = await network.request('GET', '/inventory');
-        if (res is List) {
-          final mappedItems = res.map((e) {
-            return ItemModel(
-               id: e['id']?.toString() ?? AppUtils.generateId(),
-               title: e['titleSnapshot']?.toString() ?? e['item']?['title'] ?? 'Unknown Item',
-               type: ItemType.set,
-               condition: ItemCondition.newSealed,
-               completeness: ItemCompleteness.complete,
-               ownershipType: OwnershipType.resale,
-               purchasePrice: (e['purchasePrice'] ?? 0).toDouble(),
-               shippingToMe: 0.0,
-               extraCosts: 0.0,
-               totalCost: (e['totalCost'] ?? 0).toDouble(),
-               marketAverage: e['marketAverage']?.toDouble(),
-               expectedSalePrice: e['expectedSalePriceManual']?.toDouble(),
-               actualSalePrice: e['actualSalePrice']?.toDouble(),
-               status: ItemStatus.purchased,
-               quantity: e['quantity'] ?? 1,
-               isTracked: true,
-            );
-          }).toList();
-          await repo.replaceAll(mappedItems);
-        }
-      } catch (e) {}
-    }
+    final eventBus = ref.watch(socketEventBusProvider);
+    final sub = eventBus.events.listen((event) {
+      final type = event['type'];
+      final payloads = event['payloads'] as List?; 
 
-    final sub = network.socketEvents.listen((event) {
-      if (['inventory_updated', 'sale_registered'].contains(event['type'])) {
-        ref.invalidateSelf();
+      if (type == 'inventory_updated' && payloads != null) {
+        final currentState = state.valueOrNull;
+        if (currentState != null) {
+          final itemsList = List<InventoryItemModel>.from(currentState.items);
+          
+          for (final payload in payloads) {
+            if (payload == null || payload['id'] == null) continue;
+            
+            final index = itemsList.indexWhere((i) => i.id == payload['id']);
+            final isDeleted = payload['deleted'] == true;
+
+            if (isDeleted && index != -1) {
+               itemsList.removeAt(index);
+            } else if (!isDeleted) {
+               final updatedItem = InventoryItemModel.fromMap(Map<String, dynamic>.from(payload));
+               if (index != -1) {
+                 itemsList[index] = updatedItem;
+               } else {
+                 itemsList.insert(0, updatedItem);
+               }
+            }
+          }
+          
+          state = AsyncValue.data(currentState.copyWith(items: itemsList));
+        }
+      } else if (type == 'sale_registered') {
+        ref.invalidateSelf(); 
       }
     });
     ref.onDispose(() => sub.cancel());
 
-    final items = repo.getAllItems();
-    return _computeState(items, '', null, 'newest', const {});
+    return _fetchData('', null, 'newest', 0);
   }
 
-  static InventoryEngineState _computeState(List<ItemModel> all, String q, ItemStatus? status, String sort, Set<String> selected) {
-    int active = 0, sold = 0, dead = 0, alertCount = 0;
-    double tCost = 0, eProfit = 0;
-    final deadList = <ItemModel>[], alertList = <ItemModel>[];
-    final qLower = q.trim().toLowerCase();
-    var visible = <ItemModel>[];
-
-    for (final item in all) {
-      if (item.status == ItemStatus.sold) {
-        sold++;
-      } else if (item.isActive) {
-        active++;
-        final profit = (item.expectedSalePrice ?? 0) - (item.totalCost);
-        final days = item.daysInInventory ?? 0;
-        if (days >= 30) { dead++; deadList.add(item); }
-        if (profit <= 100 || days >= 60) { alertCount++; alertList.add(item); }
-      }
-
-      bool matches = status == null || item.status == status;
-      if (matches && qLower.isNotEmpty) {
-        matches = item.title.toLowerCase().contains(qLower) || (item.setId ?? '').toLowerCase().contains(qLower);
-      }
-
-      if (matches) {
-        visible.add(item);
-        tCost += item.totalCost;
-        eProfit += ((item.expectedSalePrice ?? 0) - item.totalCost);
-      }
-    }
-
-    deadList.sort((a, b) => (b.daysInInventory ?? 0).compareTo(a.daysInInventory ?? 0));
-    switch (sort) {
-      case 'newest': visible.sort((a, b) => (b.purchaseDate ?? DateTime(2000)).compareTo(a.purchaseDate ?? DateTime(2000))); break;
-      case 'cost': visible.sort((a, b) => (b.totalCost).compareTo(a.totalCost)); break;
-      case 'profit': visible.sort((a, b) => ((b.expectedSalePrice ?? 0) - b.totalCost).compareTo((a.expectedSalePrice ?? 0) - a.totalCost)); break;
-    }
-    return InventoryEngineState(allItems: all, visibleItems: visible, selectedIds: selected, query: q, filterStatus: status, sortOption: sort, analysis: InventoryAnalysis(active, sold, dead, alertCount, tCost, eProfit, deadList, alertList));
-  }
-
-  Future<void> saveItem(ItemModel item) async {
-    final currentState = await future; 
-    final network = ref.read(networkCoreProvider);
-    final exists = currentState.allItems.any((e) => e.id == item.id);
+  Future<InventoryEngineState> _fetchData(String query, String? status, String sort, int offset) async {
+    final repo = ref.read(inventoryRepositoryProvider);
+    final qParams = <String, dynamic>{'limit': _pageSize, 'offset': offset};
     
-    try {
-      final payload = {
-        'titleSnapshot': item.title,
-        'purchasePrice': item.purchasePrice,
-        'totalCost': item.totalCost,
-        'quantity': item.quantity,
-        'condition': item.condition.name,
-        'sealed': item.condition == ItemCondition.newSealed,
-        'expectedSalePriceManual': item.expectedSalePrice,
-        'notes': item.notes,
-      };
-
-      if (exists) {
-        await network.request('PATCH', '/inventory', body: { 'id': item.id, ...payload });
-      } else {
-        // ФІКС: Надсилаємо setNumber/theme тільки якщо вони РЕАЛЬНО заповнені
-        final itemRes = await network.request('POST', '/items', body: {
-          'title': item.title,
-          if (item.setId != null && item.setId!.trim().isNotEmpty) 'setNumber': item.setId!.trim(),
-          if (item.theme != null && item.theme!.trim().isNotEmpty) 'theme': item.theme!.trim(),
-          'kind': item.type.name,
-        });
-        payload['itemId'] = itemRes['id'];
-        final invRes = await network.request('POST', '/inventory', body: payload);
-        item = item.copyWith(id: invRes['id']); 
-      }
-
-      final repo = ref.read(inventoryRepositoryProvider);
-      if (exists) await repo.updateItem(item);
-      else await repo.addItem(item);
-      
-      state = AsyncValue.data(_computeState(repo.getAllItems(), currentState.query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
-    } catch (e) {
-      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    if (query.isNotEmpty) qParams['q'] = query;
+    if (status != null) qParams['status'] = status;
+    
+    final items = await repo.fetchAll(query: qParams);
+    
+    // Sort logic (Backend might not sort complex fields like profit properly, so we enforce it locally)
+    if (sort == 'cost') {
+      items.sort((a, b) => b.totalCost.compareTo(a.totalCost));
+    } else if (sort == 'profit') {
+      items.sort((a, b) => (b.expectedSalePriceManual ?? b.totalCost).compareTo(a.expectedSalePriceManual ?? a.totalCost));
     }
+
+    return InventoryEngineState(
+      items: items, 
+      query: query, 
+      status: status, 
+      sort: sort,
+      offset: offset,
+      hasMore: items.length >= _pageSize,
+    );
   }
 
   void search(String query) async {
-    final currentState = await future;
-    state = AsyncValue.data(_computeState(currentState.allItems, query, currentState.filterStatus, currentState.sortOption, currentState.selectedIds));
+    final curr = state.valueOrNull;
+    state = const AsyncValue.loading();
+    state = AsyncValue.data(await _fetchData(query, curr?.status, curr?.sort ?? 'newest', 0));
+  }
+
+  void updateFilters(String? status, String sort) async {
+    final curr = state.valueOrNull;
+    state = const AsyncValue.loading();
+    state = AsyncValue.data(await _fetchData(curr?.query ?? '', status, sort, 0));
+  }
+
+  Future<void> loadMore() async {
+    final curr = state.valueOrNull;
+    if (curr == null || curr.isLoadingMore || !curr.hasMore) return;
+
+    state = AsyncValue.data(curr.copyWith(isLoadingMore: true));
+    
+    try {
+      final repo = ref.read(inventoryRepositoryProvider);
+      final nextOffset = curr.offset + _pageSize;
+      final qParams = <String, dynamic>{'limit': _pageSize, 'offset': nextOffset};
+      
+      if (curr.query.isNotEmpty) qParams['q'] = curr.query;
+      if (curr.status != null) qParams['status'] = curr.status;
+
+      final newItems = await repo.fetchAll(query: qParams);
+      
+      final allItems = [...curr.items, ...newItems];
+
+      if (curr.sort == 'cost') {
+        allItems.sort((a, b) => b.totalCost.compareTo(a.totalCost));
+      } else if (curr.sort == 'profit') {
+        allItems.sort((a, b) => (b.expectedSalePriceManual ?? b.totalCost).compareTo(a.expectedSalePriceManual ?? a.totalCost));
+      }
+
+      state = AsyncValue.data(curr.copyWith(
+        items: allItems,
+        offset: nextOffset,
+        hasMore: newItems.length >= _pageSize,
+        isLoadingMore: false,
+      ));
+    } catch (e) {
+      state = AsyncValue.data(curr.copyWith(isLoadingMore: false));
+    }
+  }
+
+  Future<void> saveItem(Map<String, dynamic> payload, {String? id}) async {
+    final repo = ref.read(inventoryRepositoryProvider);
+    if (id != null && id.isNotEmpty) {
+      await repo.update(id, payload);
+    } else {
+      await repo.create(payload);
+    }
   }
 }
 

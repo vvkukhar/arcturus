@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
-import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
 import 'package:lego_trading_manager/features/dashboard/application/dashboard_engine.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class DashboardLiveScreen extends ConsumerWidget {
   const DashboardLiveScreen({super.key});
@@ -13,19 +13,19 @@ class DashboardLiveScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final stateAsync = ref.watch(dashboardEngineProvider);
     final syncState = ref.watch(syncEngineProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Live Dashboard', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(i18n.t('dashboard.title'), style: const TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(icon: const Icon(Icons.hub_outlined), onPressed: () => Navigator.pushNamed(context, AppRouter.commandCenter)),
         ],
       ),
-      drawer: const AppDrawer(),
       floatingActionButton: const GlobalQuickAddFab(),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text(i18n.t('common.error', {'error': e.toString()}))),
         data: (state) => CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
@@ -39,16 +39,15 @@ class DashboardLiveScreen extends ConsumerWidget {
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-                        child: const Row(children: [Icon(Icons.cloud_off, color: Colors.orange), SizedBox(width: 10), Text('Offline Mode')]),
+                        child: Row(children: [const Icon(Icons.cloud_off, color: Colors.orange), const SizedBox(width: 10), Text(i18n.t('dashboard.offline'))]),
                       ),
-                    _buildHeroCard(state),
+                    _buildHeroCard(state, i18n),
                     const SizedBox(height: 24),
-                    _buildMetricsGrid(state),
+                    _buildMetricsGrid(state, i18n),
                     
-                    // ФІКС: Тепер ми ВИВОДИМО ці дії на екран!
                     if (state.priorityQueue.isNotEmpty) ...[
                       const SizedBox(height: 32),
-                      _buildPriorityQueue(state.priorityQueue, context),
+                      _buildPriorityQueue(state.priorityQueue, context, i18n),
                     ],
                   ],
                 ),
@@ -60,7 +59,7 @@ class DashboardLiveScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeroCard(DashboardEngineState state) {
+  Widget _buildHeroCard(DashboardEngineState state, I18nNotifier i18n) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -70,15 +69,15 @@ class DashboardLiveScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          Text(state.headline, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          Text(i18n.t(state.headKey), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
           const SizedBox(height: 4),
-          Text(state.subline, style: const TextStyle(color: Colors.white70)),
+          Text(i18n.t(state.subKey, state.subArgs), style: const TextStyle(color: Colors.white70)),
         ],
       ),
     );
   }
 
-  Widget _buildMetricsGrid(DashboardEngineState state) {
+  Widget _buildMetricsGrid(DashboardEngineState state, I18nNotifier i18n) {
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -87,20 +86,19 @@ class DashboardLiveScreen extends ConsumerWidget {
       crossAxisSpacing: 12,
       childAspectRatio: 1.5,
       children: [
-        _MetricTile('Capital', '${state.totalInvested.toStringAsFixed(0)} ${state.currency}', Colors.blue),
-        _MetricTile('Profit', '${state.expectedOpenProfit.toStringAsFixed(0)} ${state.currency}', Colors.green),
+        _MetricTile(i18n.t('dashboard.capital'), '${state.totalInvested.toStringAsFixed(0)} ${state.currency}', Colors.blue),
+        _MetricTile(i18n.t('dashboard.profit'), '${state.expectedOpenProfit.toStringAsFixed(0)} ${state.currency}', Colors.green),
       ],
     );
   }
 
-  // ФІКС: Блок для відображення знайдених угод та проблем
-  Widget _buildPriorityQueue(List<DashboardAction> queue, BuildContext context) {
+  Widget _buildPriorityQueue(List<DashboardAction> queue, BuildContext context, I18nNotifier i18n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Align(
+        Align(
           alignment: Alignment.centerLeft,
-          child: Text('Priority Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          child: Text(i18n.t('dashboard.priority'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         ),
         const SizedBox(height: 12),
         ...queue.map((action) {
@@ -117,15 +115,13 @@ class DashboardLiveScreen extends ConsumerWidget {
             ),
             child: ListTile(
               leading: Icon(icon, color: color),
-              title: Text(action.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(action.subtitle, style: const TextStyle(color: Colors.white70)),
+              title: Text(i18n.t(action.titleKey, action.titleArgs), style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(i18n.t(action.subtitleKey, action.subArgs), style: const TextStyle(color: Colors.white70)),
               trailing: const Icon(Icons.chevron_right, color: Colors.white30),
               onTap: () {
                 if (isGood) {
-                  // Якщо це крута угода (Buy...) - кидаємо в Deal Evaluator
                   Navigator.pushNamed(context, AppRouter.dealEvaluator);
                 } else {
-                  // Якщо це проблема з інвентарем - кидаємо в Інвентар
                   Navigator.pushNamed(context, AppRouter.inventory);
                 }
               },

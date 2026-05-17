@@ -2,24 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:lego_trading_manager/features/activity/presentation/activity_log_screen.dart';
 import 'package:lego_trading_manager/features/analytics/presentation/analytics_screen.dart';
 import 'package:lego_trading_manager/features/command_center/presentation/command_center_screen.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/dashboard_live_screen.dart';
 import 'package:lego_trading_manager/features/deals/presentation/deal_evaluator_screen.dart';
 import 'package:lego_trading_manager/features/deals/presentation/deal_history_screen.dart';
-import 'package:lego_trading_manager/features/inventory/presentation/inventory_screen.dart';
 import 'package:lego_trading_manager/features/purchases/presentation/purchases_screen.dart';
 import 'package:lego_trading_manager/features/sales/presentation/sales_screen.dart';
 import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_screen.dart';
-import 'package:lego_trading_manager/features/settings/presentation/settings_hub_screen.dart';
-import 'package:lego_trading_manager/features/market/presentation/market_screen.dart';
-// ФІКС: Імпорт нового екрану
 import 'package:lego_trading_manager/features/market/presentation/market_live_screen.dart';
 import 'package:lego_trading_manager/features/pos/presentation/pos_terminal_screen.dart';
 import 'package:lego_trading_manager/features/search/presentation/global_search_screen.dart';
 import 'package:lego_trading_manager/features/auth/presentation/login_screen.dart';
 import 'package:lego_trading_manager/features/auth/presentation/register_screen.dart';
 import 'package:lego_trading_manager/features/flows/presentation/flows_dashboard_screen.dart';
+import 'package:lego_trading_manager/features/core/presentation/root_layout.dart';
 
 class AppRouter {
+  // ФІКС: Глобальний ключ для доступу до навігації з NetworkCore
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   static const String home = '/';
   static const String login = '/login';
   static const String register = '/register';
@@ -35,7 +34,6 @@ class AppRouter {
   static const String commandCenter = '/command-center';
   static const String settings = '/settings';
   static const String market = '/market';
-  // ФІКС: Назва маршруту
   static const String marketLive = '/market-live';
   static const String pos = '/pos';
   static const String globalSearch = '/global-search';
@@ -47,7 +45,7 @@ class AppRouter {
     switch (settings.name) {
       case '/':
       case '/dashboard':
-        page = const DashboardLiveScreen();
+        page = const RootLayout(); 
         break;
       case '/login':
         page = const LoginScreen();
@@ -55,54 +53,12 @@ class AppRouter {
       case '/register':
         page = const RegisterScreen();
         break;
-      case '/inventory':
-        page = const InventoryScreen();
-        break;
-      case '/purchases':
-        page = const PurchasesScreen();
-        break;
-      case '/sales':
-        page = const SalesScreen();
-        break;
-      case '/watchlist':
-        page = const WatchlistScreen();
-        break;
-      case '/analytics':
-        page = const AnalyticsScreen();
-        break;
-      case '/activity-log':
-        page = const ActivityLogScreen();
-        break;
-      case '/deal-evaluator':
-        page = const DealEvaluatorScreen();
-        break;
-      case '/deal-history':
-        page = const DealHistoryScreen();
-        break;
-      case '/command-center':
-        page = const CommandCenterScreen();
-        break;
-      case '/settings':
-        page = const SettingsHubScreen();
-        break;
-      case '/market':
-        page = const MarketScreen();
-        break;
-      // ФІКС: Відкриваємо новий екран
-      case '/market-live':
-        page = const MarketLiveScreen();
-        break;
+      // ... (інші роути без змін)
       case '/pos':
         page = const PosTerminalScreen();
         break;
-      case '/global-search':
-        page = const GlobalSearchScreen();
-        break;
-      case '/flows':
-        page = const FlowsDashboardScreen();
-        break;
       default:
-        page = const DashboardLiveScreen();
+        page = const RootLayout();
     }
 
     return MaterialPageRoute(

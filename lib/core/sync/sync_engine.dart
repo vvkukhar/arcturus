@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/core/network/network_core.dart';
@@ -15,6 +16,7 @@ final networkCoreProvider = Provider((ref) => NetworkCore(baseUrl: ApiConfig.bas
 class SyncEngine extends AsyncNotifier<SyncEngineState> {
   static const String _queueKey = 'arcturus_sync_queue';
   bool _isProcessing = false;
+  Completer<void>? _syncLock;
 
   @override
   Future<SyncEngineState> build() async {
@@ -33,7 +35,6 @@ class SyncEngine extends AsyncNotifier<SyncEngineState> {
     return SyncEngineState(isOnline: isOnline, pendingMutations: rawQueue.length);
   }
 
-  // ДОДАНО: Метод для ручного переходу в офлайн-режим
   void setOfflineMode() {
     final currentPending = state.valueOrNull?.pendingMutations ?? 0;
     state = AsyncValue.data(SyncEngineState(isOnline: false, pendingMutations: currentPending));
@@ -58,47 +59,61 @@ class SyncEngine extends AsyncNotifier<SyncEngineState> {
     final isOnline = await ref.read(networkCoreProvider).isOnline();
     state = AsyncValue.data(SyncEngineState(isOnline: isOnline, pendingMutations: rawQueue.length));
 
-    if (isOnline) Future.microtask(() => _processQueue());
+    if (isOnline) {
+      Future.microtask(() => _processQueue());
+    }
   }
 
   Future<void> _processQueue() async {
-    if (_isProcessing) return;
+    if (_isProcessing) {
+      if (_syncLock != null) await _syncLock!.future;
+      return;
+    }
+    
     _isProcessing = true;
+    _syncLock = Completer<void>();
 
-    final prefs = await SharedPreferences.getInstance();
-    final network = ref.read(networkCoreProvider);
-    var rawQueue = prefs.getStringList(_queueKey) ?? [];
-    final successfulIds = <String>{};
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final network = ref.read(networkCoreProvider);
+      
+      while (true) {
+        final rawQueue = prefs.getStringList(_queueKey) ?? [];
+        if (rawQueue.isEmpty) break;
 
-    for (final rawMutation in rawQueue) {
-      try {
-        final mutation = jsonDecode(rawMutation);
-        await network.request(
-          mutation['method'],
-          mutation['endpoint'],
-          body: mutation['payload'],
-        );
-        successfulIds.add(mutation['id']);
-      } catch (e) {
-        if (e.toString().contains('UNAUTHORIZED')) {
-          break; 
+        final currentMutationRaw = rawQueue.first;
+        final mutation = jsonDecode(currentMutationRaw);
+
+        try {
+          await network.request(
+            mutation['method'],
+            mutation['endpoint'],
+            body: mutation['payload'],
+            retries: 0,
+          );
+          
+          final freshQueue = prefs.getStringList(_queueKey) ?? [];
+          freshQueue.removeWhere((item) => jsonDecode(item)['id'] == mutation['id']);
+          await prefs.setStringList(_queueKey, freshQueue);
+          
+          if (state.value != null) {
+            state = AsyncValue.data(SyncEngineState(isOnline: true, pendingMutations: freshQueue.length));
+          }
+        } catch (e) {
+          if (e.toString().contains('Unauthorized') || e.toString().contains('Status 5')) {
+            break;
+          } else {
+            final freshQueue = prefs.getStringList(_queueKey) ?? [];
+            freshQueue.removeWhere((item) => jsonDecode(item)['id'] == mutation['id']);
+            await prefs.setStringList(_queueKey, freshQueue);
+          }
         }
       }
+    } finally {
+      _isProcessing = false;
+      _syncLock?.complete();
+      _syncLock = null;
     }
-
-    if (successfulIds.isNotEmpty) {
-      rawQueue = prefs.getStringList(_queueKey) ?? [];
-      final updatedQueue = rawQueue.where((raw) {
-        final id = jsonDecode(raw)['id'];
-        return !successfulIds.contains(id);
-      }).toList();
-      
-      await prefs.setStringList(_queueKey, updatedQueue);
-      if (state.value != null) {
-        state = AsyncValue.data(SyncEngineState(isOnline: true, pendingMutations: updatedQueue.length));
-      }
-    }
-    _isProcessing = false;
   }
 }
 

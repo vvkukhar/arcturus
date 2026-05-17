@@ -31,9 +31,9 @@ class SocketManager {
     this.isConnecting = true;
 
     this.currentToken = token;
-    const baseUrl = appConfig.apiBaseUrl.replace(/\/api\/?$/, '');
+    const wsUrl = appConfig.wsBaseUrl;
 
-    this.instance = io(baseUrl, {
+    this.instance = io(wsUrl, {
       transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,

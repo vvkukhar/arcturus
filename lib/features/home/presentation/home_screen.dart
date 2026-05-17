@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Arcturus Hub', style: TextStyle(fontWeight: FontWeight.w900))),
+      appBar: AppBar(title: Text(i18n.t('home.title'), style: const TextStyle(fontWeight: FontWeight.w900))),
       body: ListView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -22,20 +26,20 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('System Online', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
+                Text(i18n.t('sync.health'), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
                 const SizedBox(height: 8),
                 const Text('All engines operational. Core synced.', style: TextStyle(color: Colors.white70)),
                 const SizedBox(height: 24),
                 FilledButton(
                   style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
                   onPressed: () => Navigator.pushNamed(context, AppRouter.dashboard),
-                  child: const Text('Enter Live Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(i18n.t('home.openDashboard'), style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          const Text('Operations', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(i18n.t('cc.trading'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           GridView.count(
             crossAxisCount: 2,
@@ -45,10 +49,10 @@ class HomeScreen extends StatelessWidget {
             crossAxisSpacing: 12,
             childAspectRatio: 2.5,
             children: [
-              _QuickAction('Inventory', Icons.inventory_2, AppRouter.inventory, context),
-              _QuickAction('Analytics', Icons.analytics, AppRouter.analytics, context),
-              _QuickAction('Deal Evaluator', Icons.local_fire_department, AppRouter.dealEvaluator, context),
-              _QuickAction('Command Center', Icons.hub, AppRouter.commandCenter, context),
+              _QuickAction(i18n.t('inv.title'), Icons.inventory_2, AppRouter.inventory, context),
+              _QuickAction(i18n.t('cc.analytics'), Icons.analytics, AppRouter.analytics, context),
+              _QuickAction(i18n.t('cc.dealEval'), Icons.local_fire_department, AppRouter.dealEvaluator, context),
+              _QuickAction(i18n.t('cc.title'), Icons.hub, AppRouter.commandCenter, context),
             ],
           )
         ],

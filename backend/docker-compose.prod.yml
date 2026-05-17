@@ -1,4 +1,3 @@
-
 x-logging: &default-logging
   driver: "json-file"
   options:
@@ -50,7 +49,7 @@ services:
       - "--maxmemory"
       - "1gb"
       - "--maxmemory-policy"
-      - "noeviction"
+      - "allkeys-lru"
       - "--tcp-keepalive"
       - "300"
     volumes:

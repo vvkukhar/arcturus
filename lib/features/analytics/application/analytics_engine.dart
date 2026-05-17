@@ -1,154 +1,54 @@
-import 'dart:isolate';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
-import 'package:lego_trading_manager/app/providers/core_providers.dart';
-import 'package:lego_trading_manager/core/services/currency_converter.dart';
-import 'package:lego_trading_manager/data/models/app_models.dart';
-import 'package:lego_trading_manager/features/activity/application/activity_engine.dart';
-
-class SmartRecommendation {
-  final String title, message, severity;
-  const SmartRecommendation(this.title, this.message, this.severity);
-}
-
-class RepriceSuggestion {
-  final String itemId, title;
-  final double current, suggested;
-  const RepriceSuggestion(this.itemId, this.title, this.current, this.suggested);
-}
+import 'package:lego_trading_manager/core/sync/sync_engine.dart';
+import 'package:lego_trading_manager/core/network/socket_event_bus.dart';
 
 class AnalyticsEngineState {
-  final double totalInvested, totalSoldRevenue, totalNetProfit, averageRoi, averageMargin, frozenCapital, inventoryValue, automationHealthScore;
-  final int soldCount, activeCount, deadStockCount;
-  final Map<String, double> capitalAllocation;
-  final Map<String, int> turnoverBuckets, profitBands, velocityBuckets;
-  final List<SmartRecommendation> recommendations;
-  final List<RepriceSuggestion> repriceSuggestions;
-  final String currency;
+  final double netProfit;
+  final double grossRevenue;
+  final double totalInvested;
+  final double inventoryValue;
+  final int activeItemsCount;
+  final int salesCount;
 
-  const AnalyticsEngineState({required this.totalInvested, required this.totalSoldRevenue, required this.totalNetProfit, required this.averageRoi, required this.averageMargin, required this.frozenCapital, required this.inventoryValue, required this.soldCount, required this.activeCount, required this.deadStockCount, required this.capitalAllocation, required this.turnoverBuckets, required this.profitBands, required this.velocityBuckets, required this.recommendations, required this.repriceSuggestions, required this.automationHealthScore, required this.currency});
+  const AnalyticsEngineState({
+    required this.netProfit,
+    required this.grossRevenue,
+    required this.totalInvested,
+    required this.inventoryValue,
+    required this.activeItemsCount,
+    required this.salesCount,
+  });
+
+  factory AnalyticsEngineState.fromMap(Map<String, dynamic> map) {
+    return AnalyticsEngineState(
+      netProfit: (map['netProfit'] ?? 0).toDouble(),
+      grossRevenue: (map['grossRevenue'] ?? 0).toDouble(),
+      totalInvested: (map['totalInventoryCost'] ?? 0).toDouble(),
+      inventoryValue: (map['expectedInventoryValue'] ?? 0).toDouble(),
+      activeItemsCount: map['activeInventoryItems'] ?? 0,
+      salesCount: map['salesCount'] ?? 0,
+    );
+  }
 }
 
 class AnalyticsEngine extends AsyncNotifier<AnalyticsEngineState> {
   @override
   Future<AnalyticsEngineState> build() async {
-    final items = ref.watch(inventoryRepositoryProvider).getAllItems();
-    final sales = ref.watch(salesRepositoryProvider).getAllSales();
-    final watchlist = ref.watch(watchlistRepositoryProvider).getAll();
-    final converter = ref.watch(currencyConverterProvider);
-    
-    if (kIsWeb) {
-      return _computeBackground(items, sales, watchlist, converter);
-    } else {
-      return await Isolate.run(() => _computeBackground(items, sales, watchlist, converter));
-    }
-  }
-
-  static AnalyticsEngineState _computeBackground(List<ItemModel> items, List<SaleModel> sales, List<WatchlistItemModel> watchlist, CurrencyConverter converter) {
-    double invested = 0, soldRev = 0, netProfit = 0, frozen = 0, invValue = 0, totalRoi = 0, totalMargin = 0;
-    int sold = sales.length, active = 0, dead = 0, negativeExpected = 0;
-    
-    final capital = {'Planned': 0.0, 'Purchased': 0.0, 'Listed': 0.0, 'Reserved': 0.0, 'Sold': 0.0, 'Other': 0.0};
-    final turn = {'< 7d': 0, '7-30d': 0, '31-90d': 0, '> 90d': 0};
-    final pb = {'Loss': 0, '0-500': 0, '500-2000': 0, '> 2000': 0};
-    final velocity = {'0-14d': 0, '15-45d': 0, '46-90d': 0, '90d+': 0};
-    
-    final recommendations = <SmartRecommendation>[];
-    final repriceSuggestions = <RepriceSuggestion>[];
-
-    // 1. Аналізуємо Активний Інвентар
-    for (final item in items) {
-      final totalCostConv = converter(item.totalCost);
-      final stName = item.status.name;
-      
-      if (stName == 'planned') { capital['Planned'] = capital['Planned']! + totalCostConv; }
-      else if (['purchased', 'received', 'inDelivery', 'restoring', 'readyForSale', 'found'].contains(stName)) { capital['Purchased'] = capital['Purchased']! + totalCostConv; }
-      else if (stName == 'listed') { capital['Listed'] = capital['Listed']! + totalCostConv; }
-      else if (stName == 'reserved') { capital['Reserved'] = capital['Reserved']! + totalCostConv; }
-      else if (stName == 'sold') { capital['Sold'] = capital['Sold']! + totalCostConv; }
-      else { capital['Other'] = capital['Other']! + totalCostConv; }
-
-      if (item.isActive) {
-        active++;
-        invested += totalCostConv; 
-        frozen += totalCostConv;
-        final marketAvgConv = item.marketAverage != null ? converter(item.marketAverage!) : 0.0;
-        invValue += marketAvgConv;
-        
-        final days = item.daysInInventory ?? 0;
-        if (days <= 14) { velocity['0-14d'] = velocity['0-14d']! + 1; }
-        else if (days <= 45) { velocity['15-45d'] = velocity['15-45d']! + 1; }
-        else if (days <= 90) { velocity['46-90d'] = velocity['46-90d']! + 1; }
-        else { velocity['90d+'] = velocity['90d+']! + 1; dead++; }
-
-        final expSaleConv = item.expectedSalePrice != null ? converter(item.expectedSalePrice!) : 0.0;
-        if ((expSaleConv - totalCostConv) < 0) { negativeExpected++; }
-
-        if (item.marketAverage != null && item.expectedSalePrice != null) {
-          if ((item.expectedSalePrice! - item.marketAverage!).abs() >= 5) {
-            repriceSuggestions.add(RepriceSuggestion(item.id, item.title, item.expectedSalePrice!, item.marketAverage! * 0.98));
-          }
-        }
+    final eventBus = ref.watch(socketEventBusProvider);
+    final sub = eventBus.events.listen((event) {
+      if (['sale_registered', 'inventory_updated'].contains(event['type'])) {
+        ref.invalidateSelf();
       }
+    });
+    ref.onDispose(() => sub.cancel());
+
+    final network = ref.read(networkCoreProvider);
+    try {
+      final response = await network.request('GET', '/dashboard/business-snapshot');
+      return AnalyticsEngineState.fromMap(Map<String, dynamic>.from(response));
+    } catch (e) {
+      throw Exception('Failed to load analytics: $e');
     }
-
-    // 2. ФІКС: Аналізуємо реальні Продажі (Sales), щоб вивести прибуток
-    for (final sale in sales) {
-      final actPriceConv = converter(sale.salePrice, from: sale.currency);
-      soldRev += actPriceConv;
-      
-      final net = converter(sale.finalNet, from: sale.currency);
-      netProfit += net;
-      
-      // Вираховуємо собівартість (costBasis) з маржі
-      final calcCostBasis = sale.salePrice - sale.platformFee - sale.shippingPaidByMe - sale.finalNet;
-      final calcCostBasisConv = converter(calcCostBasis, from: sale.currency);
-
-      totalRoi += calcCostBasisConv > 0 ? (net / calcCostBasisConv) * 100 : 0.0;
-      totalMargin += actPriceConv > 0 ? (net / actPriceConv) * 100 : 0.0;
-
-      if (net < 0) { pb['Loss'] = pb['Loss']! + 1; }
-      else if (net <= 500) { pb['0-500'] = pb['0-500']! + 1; }
-      else if (net <= 2000) { pb['500-2000'] = pb['500-2000']! + 1; }
-      else { pb['> 2000'] = pb['> 2000']! + 1; }
-    }
-
-    if (dead > 0) { recommendations.add(SmartRecommendation('Dead stock pressure', '$dead items older than 90 days. Consider repricing.', 'warning')); }
-    if (negativeExpected > 0) { recommendations.add(SmartRecommendation('Negative expected profit', '$negativeExpected items currently look unprofitable.', 'danger')); }
-    
-    final underDesired = watchlist.where((item) => item.marketPrice != null && item.marketPrice! <= item.desiredBuyPrice).length;
-    if (underDesired > 0) { recommendations.add(SmartRecommendation('Buy opportunities', '$underDesired watchlist items are under desired price.', 'good')); }
-    if (recommendations.isEmpty) { recommendations.add(const SmartRecommendation('Stable state', 'No major alerts detected right now.', 'neutral')); }
-
-    repriceSuggestions.sort((a, b) => (b.current - b.suggested).abs().compareTo((a.current - a.suggested).abs()));
-
-    return AnalyticsEngineState(totalInvested: invested, totalSoldRevenue: soldRev, totalNetProfit: netProfit, averageRoi: sold > 0 ? totalRoi / sold : 0, averageMargin: sold > 0 ? totalMargin / sold : 0, frozenCapital: frozen, inventoryValue: invValue, soldCount: sold, activeCount: active, deadStockCount: dead, capitalAllocation: capital, turnoverBuckets: turn, profitBands: pb, velocityBuckets: velocity, recommendations: recommendations, repriceSuggestions: repriceSuggestions, automationHealthScore: 85.0, currency: converter.baseCurrency);
-  }
-
-  Future<void> applyMarketRepriceToAll() async {
-    final repo = ref.read(inventoryRepositoryProvider);
-    final items = repo.getAllItems();
-    int affected = 0;
-
-    for(var item in items) {
-       if (item.marketAverage != null && item.isActive) {
-           affected++;
-           await repo.updateItem(item.copyWith(expectedSalePrice: item.marketAverage! * 0.98));
-       }
-    }
-    await ref.read(activityEngineProvider.notifier).logAction('Bulk Reprice Executed', 'Applied 98% market avg to $affected items', 'inventory');
-    ref.invalidateSelf();
-  }
-
-  Future<void> applyRepriceSuggestion(String itemId, double suggestedPrice) async {
-    final repo = ref.read(inventoryRepositoryProvider);
-    final item = repo.getById(itemId);
-    if (item == null) return;
-
-    await repo.updateItem(item.copyWith(expectedSalePrice: suggestedPrice));
-    await ref.read(activityEngineProvider.notifier).logAction('Single Reprice Applied', '${item.title} -> ${suggestedPrice.toStringAsFixed(2)}', 'inventory');
-    ref.invalidateSelf();
   }
 }
 

@@ -6,9 +6,8 @@ import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 
 class AuthEngineState {
   final bool isAuthenticated;
-  final bool isOfflineMode;
   final Map<String, dynamic>? user;
-  const AuthEngineState({this.isAuthenticated = false, this.isOfflineMode = false, this.user});
+  const AuthEngineState({this.isAuthenticated = false, this.user});
 }
 
 class AuthEngine extends AsyncNotifier<AuthEngineState> {
@@ -17,10 +16,7 @@ class AuthEngine extends AsyncNotifier<AuthEngineState> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('arcturus_jwt');
     final cookie = prefs.getString('arcturus_cookie');
-    final offline = prefs.getString('arcturus_offline') == 'true';
 
-    if (offline) return const AuthEngineState(isAuthenticated: true, isOfflineMode: true);
-    
     if (token != null || cookie != null) {
       try {
         final res = await ref.read(networkCoreProvider).request('GET', '/auth/me');
@@ -104,18 +100,10 @@ class AuthEngine extends AsyncNotifier<AuthEngineState> {
     }
   }
 
-  Future<void> enableOfflineMode() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('arcturus_offline', 'true');
-    ref.read(syncEngineProvider.notifier).setOfflineMode();
-    state = const AsyncValue.data(AuthEngineState(isAuthenticated: true, isOfflineMode: true));
-  }
-
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('arcturus_jwt');
     await prefs.remove('arcturus_cookie');
-    await prefs.remove('arcturus_offline');
     ref.read(networkCoreProvider).dispose();
     state = const AsyncValue.data(AuthEngineState());
   }

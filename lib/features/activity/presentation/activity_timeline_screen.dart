@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/activity/application/activity_engine.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class ActivityTimelineScreen extends ConsumerWidget {
   const ActivityTimelineScreen({super.key});
@@ -9,10 +10,11 @@ class ActivityTimelineScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final stateAsync = ref.watch(activityEngineProvider);
     final engine = ref.read(activityEngineProvider.notifier);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Timeline', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(i18n.t('activity.timeline.title'), style: const TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
@@ -22,7 +24,7 @@ class ActivityTimelineScreen extends ConsumerWidget {
       ),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text(i18n.t('common.error', {'error': e.toString()}))),
         data: (state) {
           return Column(
             children: [
@@ -35,7 +37,7 @@ class ActivityTimelineScreen extends ConsumerWidget {
                       child: TextField(
                         onChanged: (v) => engine.filter(v, state.typeFilter),
                         decoration: InputDecoration(
-                          hintText: 'Search...',
+                          hintText: i18n.t('activity.timeline.search'),
                           prefixIcon: const Icon(Icons.search),
                           filled: true,
                           fillColor: const Color(0xFF171A21),
@@ -53,12 +55,12 @@ class ActivityTimelineScreen extends ConsumerWidget {
                           fillColor: const Color(0xFF171A21),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                         ),
-                        items: const [
-                          DropdownMenuItem(value: null, child: Text('All')),
-                          DropdownMenuItem(value: 'purchase', child: Text('Buy')),
-                          DropdownMenuItem(value: 'sale', child: Text('Sell')),
-                          DropdownMenuItem(value: 'report', child: Text('Report')),
-                          DropdownMenuItem(value: 'watchlist', child: Text('Watch')),
+                        items: [
+                          DropdownMenuItem(value: null, child: Text(i18n.t('activity.log.allTypes'))),
+                          DropdownMenuItem(value: 'purchase', child: Text(i18n.t('activity.log.purchase'))),
+                          DropdownMenuItem(value: 'sale', child: Text(i18n.t('activity.log.sale'))),
+                          DropdownMenuItem(value: 'report', child: Text(i18n.t('activity.log.report'))),
+                          DropdownMenuItem(value: 'watchlist', child: Text(i18n.t('activity.log.watchlist'))),
                         ],
                         onChanged: (v) => engine.filter(state.searchQuery, v),
                       ),
@@ -68,7 +70,7 @@ class ActivityTimelineScreen extends ConsumerWidget {
               ),
               Expanded(
                 child: state.visibleLogs.isEmpty
-                    ? const Center(child: Text('No matching records found.', style: TextStyle(color: Colors.white54)))
+                    ? Center(child: Text(i18n.t('activity.timeline.empty'), style: const TextStyle(color: Colors.white54)))
                     : ListView.builder(
                         physics: const BouncingScrollPhysics(),
                         itemCount: state.visibleLogs.length,

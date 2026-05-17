@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/partout/application/partout_engine.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class PartOutScreen extends ConsumerWidget {
   const PartOutScreen({super.key});
@@ -10,18 +11,19 @@ class PartOutScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final stateAsync = ref.watch(partOutEngineProvider);
     final engine = ref.read(partOutEngineProvider.notifier);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Part-out Projects', style: TextStyle(fontWeight: FontWeight.w900))),
+      appBar: AppBar(title: Text(i18n.t('partout.title'), style: const TextStyle(fontWeight: FontWeight.w900))),
       drawer: const AppDrawer(),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {}, // Add logic later
+        onPressed: () {}, 
         icon: const Icon(Icons.precision_manufacturing),
-        label: const Text('Add Project'),
+        label: Text(i18n.t('partout.add')),
       ),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text(i18n.t('common.error', {'error': e.toString()}))),
         data: (state) {
           return Column(
             children: [
@@ -30,7 +32,7 @@ class PartOutScreen extends ConsumerWidget {
                 child: TextField(
                   onChanged: engine.search,
                   decoration: InputDecoration(
-                    hintText: 'Search projects...',
+                    hintText: i18n.t('partout.search'),
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
                     fillColor: const Color(0xFF171A21),
@@ -40,7 +42,7 @@ class PartOutScreen extends ConsumerWidget {
               ),
               Expanded(
                 child: state.projects.isEmpty
-                    ? const Center(child: Text('No part-out projects found.', style: TextStyle(color: Colors.white54)))
+                    ? Center(child: Text(i18n.t('partout.empty'), style: const TextStyle(color: Colors.white54)))
                     : ListView.builder(
                         physics: const BouncingScrollPhysics(),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -61,7 +63,7 @@ class PartOutScreen extends ConsumerWidget {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  const Text('Exp. Profit', style: TextStyle(fontSize: 10, color: Colors.white54)),
+                                  Text(i18n.t('inv.expectedProfit'), style: const TextStyle(fontSize: 10, color: Colors.white54)),
                                   Text(
                                     computed.expectedProfit.toStringAsFixed(0),
                                     style: TextStyle(fontWeight: FontWeight.w900, color: isProfitable ? Colors.greenAccent : Colors.redAccent),

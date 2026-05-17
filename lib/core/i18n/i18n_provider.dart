@@ -1,11 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/providers/core_providers.dart';
 import 'package:lego_trading_manager/core/i18n/app_dictionary.dart';
 
 class I18nNotifier extends Notifier<String> {
   @override
-  String build() => 'uk';
+  String build() {
+    final prefs = ref.watch(sharedPreferencesProvider);
+    return prefs.getString('settings.locale') ?? 'uk';
+  }
 
   void setLocale(String locale) {
+    final prefs = ref.read(sharedPreferencesProvider);
+    prefs.setString('settings.locale', locale);
     state = locale;
   }
 

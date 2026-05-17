@@ -30,8 +30,8 @@ export async function runBrickEconomySource(): Promise<void> {
   let itemsUpdated = 0;
 
   try {
-    const upsertOperations: any[] = [];
-    const now = new Date();
+    const creates: string[] = [];
+    const now = new Date().toISOString();
 
     for (const query of searchQueries) {
       const url = `https://www.brickeconomy.com/search?query=${encodeURIComponent(query)}`;
@@ -45,44 +45,14 @@ export async function runBrickEconomySource(): Promise<void> {
         const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
         const listingId = stableListingId('brickeconomy', data.externalListingId);
 
-        upsertOperations.push(
-          prisma.marketListing.upsert({
-            where: { id: listingId },
-            update: {
-              sourceCode: source.code,
-              itemId,
-              titleRaw: data.titleRaw,
-              title: data.titleRaw,
-              url: data.url,
-              price: data.price,
-              currency: data.currency ?? 'USD',
-              condition: 'newSealed',
-              sealed: true,
-              status: 'active',
-              fetchedAt: now,
-              lastSeenAt: now,
-            },
-            create: {
-              id: listingId,
-              sourceId: source.id,
-              sourceCode: source.code,
-              itemId,
-              externalListingId: data.externalListingId,
-              externalId: data.externalListingId,
-              titleRaw: data.titleRaw,
-              title: data.titleRaw,
-              url: data.url,
-              price: data.price,
-              currency: data.currency ?? 'USD',
-              condition: 'newSealed',
-              sealed: true,
-              status: 'active',
-              fetchedAt: now,
-              firstSeenAt: now,
-              lastSeenAt: now,
-            },
-          })
-        );
+        const price = data.price || 0;
+        const titleRawEscaped = data.titleRaw.replace(/'/g, "''");
+        const urlEscaped = data.url.replace(/'/g, "''");
+        const externalIdEscaped = data.externalListingId.replace(/'/g, "''");
+        const currency = data.currency ? `'${data.currency.replace(/'/g, "''")}'` : "'USD'";
+
+        // BrickEconomy не дає інформації про шипінг, ставимо 0
+        creates.push(`('${listingId}', '${source.id}', 'brickeconomy', '${itemId}', '${externalIdEscaped}', '${titleRawEscaped}', '${urlEscaped}', NULL, ${price}, ${currency}, 0, ${currency}, 'newSealed', true, 'active', '${now}', '${now}')`);
 
         if (resolvedItemId != null) {
           itemsMatched += 1;
@@ -91,11 +61,19 @@ export async function runBrickEconomySource(): Promise<void> {
       await new Promise((res) => setTimeout(res, 3000 + Math.random() * 3000));
     }
 
-    if (upsertOperations.length > 0) {
-      const chunkSize = 100;
-      for (let i = 0; i < upsertOperations.length; i += chunkSize) {
-        const chunk = upsertOperations.slice(i, i + chunkSize);
-        await prisma.$transaction(chunk);
+    if (creates.length > 0) {
+      const dbChunkSize = 500;
+      for (let i = 0; i < creates.length; i += dbChunkSize) {
+        const chunk = creates.slice(i, i + dbChunkSize);
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
+          VALUES ${chunk.join(',')}
+          ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
+            "price" = EXCLUDED."price",
+            "status" = 'active',
+            "fetchedAt" = EXCLUDED."fetchedAt",
+            "updatedAt" = EXCLUDED."updatedAt"
+        `);
         itemsInserted += chunk.length;
       }
     }

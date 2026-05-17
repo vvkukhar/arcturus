@@ -28,12 +28,14 @@ export class InventoryController {
     @Query('assignedUserId') assignedUserId?: string,
     @Query('status') status?: string,
     @Query('limit') limit?: string,
+    @Query('offset') offset?: string, // ФІКС: Додали підтримку Offset
   ): Promise<unknown[]> {
     return this.inventoryService.list({
       q,
       assignedUserId,
       status,
-      limit: limit ? Number(limit) : 200,
+      limit: limit ? Number(limit) : 50,
+      offset: offset ? Number(offset) : 0,
     });
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/app/router/app_router.dart';
 import 'package:lego_trading_manager/features/auth/application/auth_engine.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -27,13 +28,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  void _offline() async {
-    await ref.read(authEngineProvider.notifier).enableOfflineMode();
-    if (mounted) Navigator.pushReplacementNamed(context, AppRouter.dashboard);
-  }
-
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
       backgroundColor: const Color(0xFF0D0F14),
       body: Center(
@@ -46,14 +44,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: [
                 const Icon(Icons.inventory_2, size: 80, color: Colors.blueAccent),
                 const SizedBox(height: 24),
-                const Text('Arcturus Hub', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white)),
-                const Text('Sign in to your enterprise operations', style: TextStyle(color: Colors.white54)),
+                Text(i18n.t('auth.loginTitle'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white)),
+                Text(i18n.t('auth.loginSub'), style: const TextStyle(color: Colors.white54)),
                 const SizedBox(height: 48),
                 TextField(
                   controller: _email,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Email Address',
+                    labelText: i18n.t('auth.email'),
                     prefixIcon: const Icon(Icons.email_outlined, color: Colors.white54),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
@@ -66,7 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   obscureText: true,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    labelText: i18n.t('auth.password'),
                     prefixIcon: const Icon(Icons.lock_outline, color: Colors.white54),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
@@ -80,24 +78,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: FilledButton(
                     onPressed: _isLoading ? null : _login,
                     style: FilledButton.styleFrom(backgroundColor: Colors.blueAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Sign In', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: OutlinedButton.icon(
-                    onPressed: _offline,
-                    icon: const Icon(Icons.wifi_off, color: Colors.greenAccent),
-                    label: const Text('Local / Offline Mode', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
-                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.greenAccent), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(i18n.t('auth.signIn'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                 ),
                 const SizedBox(height: 24),
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/register'),
-                  child: const Text("Don't have an account? Create one", style: TextStyle(color: Colors.white70)),
+                  child: Text(i18n.t('auth.noAccount'), style: const TextStyle(color: Colors.white70)),
                 )
               ],
             ),

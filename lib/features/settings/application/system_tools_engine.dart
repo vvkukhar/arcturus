@@ -1,7 +1,8 @@
-import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 
 class SystemToolsState {
   final bool isExporting;
@@ -16,43 +17,49 @@ class SystemToolsEngine extends AsyncNotifier<SystemToolsState> {
     return const SystemToolsState();
   }
 
-  Future<String> createFullBackupJson() async {
+  Future<void> _exportAndShare(String endpoint, String filename, String successMessage) async {
     state = const AsyncValue.data(SystemToolsState(isExporting: true));
     try {
-      final payload = {
-        'inventory': ref.read(inventoryRepositoryProvider).getAllItems().map((e) => e.toMap()).toList(),
-        'purchases': ref.read(purchasesRepositoryProvider).getAllPurchases().map((e) => e.toJson()).toList(),
-        'sales': ref.read(salesRepositoryProvider).getAllSales().map((e) => e.toJson()).toList(),
-        'watchlist': ref.read(watchlistRepositoryProvider).getAll().map((e) => e.toMap()).toList(),
-        'market': ref.read(marketRepositoryProvider).getAll().map((e) => e.toMap()).toList(),
-        'partoutProjects': [], 
-        'partoutLines': [],
-        'createdAt': DateTime.now().toIso8601String(),
-      };
-      state = const AsyncValue.data(SystemToolsState(lastMessage: 'Export successful'));
-      return const JsonEncoder.withIndent('  ').convert(payload);
+      final network = ref.read(networkCoreProvider);
+      final responseData = await network.request('GET', endpoint);
+      
+      final String content = responseData is Map || responseData is List 
+          ? responseData.toString() 
+          : responseData as String;
+
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/$filename');
+      await file.writeAsString(content);
+
+      await Share.shareXFiles([XFile(file.path)], text: 'Arcturus Data Export');
+      state = AsyncValue.data(SystemToolsState(lastMessage: successMessage));
     } catch (e) {
       state = AsyncValue.data(SystemToolsState(lastMessage: 'Export failed: $e'));
-      return '';
     }
   }
 
-  Future<void> restoreFromJson(String jsonText) async {
-    state = const AsyncValue.data(SystemToolsState(isImporting: true));
-    try {
-      final decoded = jsonDecode(jsonText);
-      if (decoded is! Map<String, dynamic>) throw Exception('Invalid format');
-      
-      state = const AsyncValue.data(SystemToolsState(lastMessage: 'Restore successful. Please restart the application to apply the changes safely.'));
-    } catch (e) {
-      state = AsyncValue.data(SystemToolsState(lastMessage: 'Invalid JSON format: $e'));
-    }
+  Future<void> exportFullBackupFile() async {
+    await _exportAndShare(
+      '/backup', 
+      'arcturus_backup_${DateTime.now().millisecondsSinceEpoch}.json', 
+      'Backup ready for saving/sharing.'
+    );
+  }
+
+  Future<void> exportInventoryCsv() async {
+    await _exportAndShare(
+      '/import-export/export/inventory.csv', 
+      'arcturus_inventory_${DateTime.now().millisecondsSinceEpoch}.csv', 
+      'CSV ready for saving/sharing.'
+    );
+  }
+
+  Future<void> restoreFromFile() async {
+    state = const AsyncValue.data(SystemToolsState(lastMessage: 'File restore is currently managed via Admin Web Panel.'));
   }
 
   Future<void> clearAllLocalData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); 
-    state = const AsyncValue.data(SystemToolsState(lastMessage: 'All Arcturus memory core data wiped successfully.'));
+    state = const AsyncValue.data(SystemToolsState(lastMessage: 'Local wipe is deprecated in thin-client mode. Data persists on server.'));
   }
 }
 

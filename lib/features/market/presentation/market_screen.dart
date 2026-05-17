@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/features/market/application/market_engine.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class MarketScreen extends ConsumerWidget {
   const MarketScreen({super.key});
@@ -10,10 +11,11 @@ class MarketScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final stateAsync = ref.watch(marketEngineProvider);
     final engine = ref.read(marketEngineProvider.notifier);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Market Intelligence', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(i18n.t('market.title'), style: const TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -24,13 +26,13 @@ class MarketScreen extends ConsumerWidget {
       drawer: const AppDrawer(),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text(i18n.t('common.error', {'error': e.toString()}))),
         data: (state) {
           if (state.sources.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
-                'No market sources configured on backend.',
-                style: TextStyle(color: Colors.white54, fontSize: 16),
+                i18n.t('market.noSources'),
+                style: const TextStyle(color: Colors.white54, fontSize: 16),
               ),
             );
           }
@@ -50,14 +52,14 @@ class MarketScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Scraper Engines', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    Text(i18n.t('market.engines'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Text('${state.sources.where((s) => s['enabled'] == true).length} active sources monitoring the market', style: const TextStyle(color: Colors.white70)),
+                    Text(i18n.t('market.activeSources', {'count': state.sources.where((s) => s['enabled'] == true).length.toString()}), style: const TextStyle(color: Colors.white70)),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
-              const Text('Data Sources', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(i18n.t('market.dataSources'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               ...state.sources.map((source) {
                 final isEnabled = source['enabled'] == true;
@@ -79,7 +81,7 @@ class MarketScreen extends ConsumerWidget {
                     trailing: isEnabled
                       ? FilledButton.tonalIcon(
                           icon: const Icon(Icons.play_arrow, size: 16),
-                          label: const Text('Run'),
+                          label: Text(i18n.t('market.run')),
                           onPressed: () async {
                             try {
                               await engine.triggerScraper(source['code']);
@@ -100,7 +102,7 @@ class MarketScreen extends ConsumerWidget {
                       : Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                          child: const Text('DISABLED', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+                          child: Text(i18n.t('market.disabled'), style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
                         ),
                   ),
                 );

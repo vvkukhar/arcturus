@@ -1,12 +1,14 @@
-// backend/api/src/modules/media/media.service.ts
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { ActivityService } from '../activity/activity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { v4 as uuidv4 } from 'uuid';
 
 export type UploadedInventoryImageFile = {
   buffer: Buffer;
@@ -15,17 +17,61 @@ export type UploadedInventoryImageFile = {
 
 @Injectable()
 export class MediaService {
+  private readonly logger = new Logger(MediaService.name);
+  private s3Client: S3Client | null = null;
+  private isS3Configured = false;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
     private readonly activity: ActivityService,
-  ) {}
+  ) {
+    if (process.env.S3_BUCKET && process.env.S3_ACCESS_KEY) {
+      this.s3Client = new S3Client({
+        region: process.env.S3_REGION || 'eu-central-1',
+        endpoint: process.env.S3_ENDPOINT, 
+        forcePathStyle: true, // ВАЖЛИВО ДЛЯ SUPABASE S3
+        credentials: {
+          accessKeyId: process.env.S3_ACCESS_KEY,
+          secretAccessKey: process.env.S3_SECRET_KEY || '',
+        },
+      });
+      this.isS3Configured = true;
+      this.logger.log('S3 Storage successfully configured with Supabase');
+    } else {
+      this.logger.warn('S3 is not configured. Falling back to Base64 storage (Not recommended for Production).');
+    }
+  }
 
-  private buildDataUrl(file: UploadedInventoryImageFile): string {
+  private async uploadImage(file: UploadedInventoryImageFile): Promise<string> {
     if (!file?.buffer || !file?.mimetype) {
       throw new BadRequestException('Invalid file');
     }
 
+    if (this.isS3Configured && this.s3Client) {
+      try {
+        // Визначаємо розширення з mimetype (наприклад 'image/png' -> 'png')
+        const ext = file.mimetype.split('/')[1] || 'jpeg';
+        const fileName = `inventory/${uuidv4()}.${ext}`;
+        
+        await this.s3Client.send(
+          new PutObjectCommand({
+            Bucket: process.env.S3_BUCKET,
+            Key: fileName,
+            Body: file.buffer,
+            ContentType: file.mimetype,
+            // ACL: 'public-read' не потрібен для Supabase, оскільки бакет уже Public
+          })
+        );
+        
+        // Збираємо публічне посилання
+        return `${process.env.S3_PUBLIC_URL}/${fileName}`;
+      } catch (e) {
+        this.logger.error('S3 Upload failed, falling back to base64', e);
+      }
+    }
+
+    // Fallback: якщо S3 не налаштовано або впало, зберігаємо як раніше
     return `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
   }
 
@@ -49,7 +95,7 @@ export class MediaService {
     }
 
     const imageUrl = params.file
-      ? this.buildDataUrl(params.file)
+      ? await this.uploadImage(params.file)
       : params.imageUrl?.trim();
 
     if (!imageUrl) {

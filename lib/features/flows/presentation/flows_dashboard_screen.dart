@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/flows/application/flows_engine.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class FlowsDashboardScreen extends ConsumerWidget {
   const FlowsDashboardScreen({super.key});
@@ -8,24 +9,25 @@ class FlowsDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stateAsync = ref.watch(flowsEngineProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Execution Flows', style: TextStyle(fontWeight: FontWeight.w900)),
-          bottom: const TabBar(
+          title: Text(i18n.t('cc.flows'), style: const TextStyle(fontWeight: FontWeight.w900)),
+          bottom: TabBar(
             indicatorColor: Colors.blueAccent,
             tabs: [
-              Tab(text: 'Purchases'),
-              Tab(text: 'Reprices'),
-              Tab(text: 'Reviews'),
+              Tab(text: i18n.t('pur.title')),
+              Tab(text: i18n.t('flow.reprice.title')),
+              Tab(text: i18n.t('flow.review.title')),
             ],
           ),
         ),
         body: stateAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          error: (e, _) => Center(child: Text(i18n.t('common.error', {'error': e.toString()}))),
           data: (state) {
             return TabBarView(
               children: [
@@ -41,7 +43,7 @@ class FlowsDashboardScreen extends ConsumerWidget {
   }
 }
 
-class _FlowList extends StatelessWidget {
+class _FlowList extends ConsumerWidget {
   final List<Map<String, dynamic>> items;
   final String type;
   final FlowsEngine engine;
@@ -49,8 +51,10 @@ class _FlowList extends StatelessWidget {
   const _FlowList({required this.items, required this.type, required this.engine});
 
   @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) return Center(child: Text('No active $type flows.', style: const TextStyle(color: Colors.white54)));
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
+    if (items.isEmpty) return Center(child: Text(i18n.t('flow.$type.empty'), style: const TextStyle(color: Colors.white54)));
 
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
@@ -74,9 +78,9 @@ class _FlowList extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Flow ID: ${item['id'].toString().substring(0, 8)}...', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white70)),
+                      Text('ID: ${item['id'].toString().substring(0, 8)}...', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white70)),
                       const SizedBox(height: 4),
-                      Text('Status: ${item['status'].toString().toUpperCase()}', style: TextStyle(fontWeight: FontWeight.w900, color: isDone ? Colors.green : Colors.orange)),
+                      Text('${i18n.t('flow.purchase.status')} ${item['status'].toString().toUpperCase()}', style: TextStyle(fontWeight: FontWeight.w900, color: isDone ? Colors.green : Colors.orange)),
                     ],
                   ),
                 ),

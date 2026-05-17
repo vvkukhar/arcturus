@@ -1,78 +1,69 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lego_trading_manager/core/sync/sync_engine.dart';
+import 'package:lego_trading_manager/core/network/socket_event_bus.dart';
 
 class DealEvaluation {
   final String id;
-  final String title;
-  final double askingPrice;
-  final double marketPrice;
-  final double expectedProfit;
-  final double marginPercent;
-  final String verdict;
-  final DateTime createdAt;
+  final String action;
+  final double score;
+  final String reasonPrimary;
+  final Map<String, dynamic> payload;
 
-  const DealEvaluation({required this.id, required this.title, required this.askingPrice, required this.marketPrice, required this.expectedProfit, required this.marginPercent, required this.verdict, required this.createdAt});
+  const DealEvaluation({
+    required this.id,
+    required this.action,
+    required this.score,
+    required this.reasonPrimary,
+    required this.payload,
+  });
 
-  Map<String, dynamic> toMap() => {'id': id, 'title': title, 'askingPrice': askingPrice, 'marketPrice': marketPrice, 'expectedProfit': expectedProfit, 'marginPercent': marginPercent, 'verdict': verdict, 'createdAt': createdAt.toIso8601String()};
-
-  factory DealEvaluation.fromMap(Map<String, dynamic> map) => DealEvaluation(id: map['id'] as String, title: map['title'] as String, askingPrice: (map['askingPrice'] as num).toDouble(), marketPrice: (map['marketPrice'] as num).toDouble(), expectedProfit: (map['expectedProfit'] as num).toDouble(), marginPercent: (map['marginPercent'] as num).toDouble(), verdict: map['verdict'] as String, createdAt: DateTime.parse(map['createdAt'] as String));
+  factory DealEvaluation.fromMap(Map<String, dynamic> map) {
+    return DealEvaluation(
+      id: map['id'],
+      action: map['action'],
+      score: (map['score'] ?? 0).toDouble(),
+      reasonPrimary: map['reasonPrimary'] ?? '',
+      payload: map['payloadJson'] != null ? Map<String, dynamic>.from(map['payloadJson']) : {},
+    );
+  }
 }
 
 class DealsEngine extends AsyncNotifier<List<DealEvaluation>> {
-  static const _key = 'arcturus_deal_history';
-
   @override
   Future<List<DealEvaluation>> build() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
-    if (raw == null || raw.isEmpty) return [];
-    final list = jsonDecode(raw) as List;
-    return list.map((e) => DealEvaluation.fromMap(Map<String, dynamic>.from(e))).toList();
-  }
+    final eventBus = ref.watch(socketEventBusProvider);
+    final sub = eventBus.events.listen((event) {
+      if (event['type'] == 'decision.executed' || event['type'] == 'decision.buy_evaluated') {
+        ref.invalidateSelf();
+      }
+    });
+    ref.onDispose(() => sub.cancel());
 
-  DealEvaluation evaluate({required String title, required double askingPrice, required double marketPrice}) {
-    final profit = marketPrice - askingPrice;
-    
-    // ФІКС: Маржа рахується від Market Price (Доходу), а не від Asking Price!
-    final margin = marketPrice <= 0 ? 0.0 : (profit / marketPrice) * 100;
-    
-    // А от для verdict ми використовуємо ROI (відношення до витрат)
-    final roi = askingPrice <= 0 ? 0.0 : (profit / askingPrice) * 100;
-    
-    String verdict = 'weak';
-    if (profit <= 0) {
-      verdict = 'avoid';
-    } else if (roi >= 40) { // Оцінюємо по справжньому ROI
-      verdict = 'strong buy';
-    } else if (roi >= 20) {
-      verdict = 'good';
+    final network = ref.read(networkCoreProvider);
+    try {
+      final response = await network.request('GET', '/decision-engine/latest?limit=50');
+      if (response is List) {
+        return response.map((e) => DealEvaluation.fromMap(Map<String, dynamic>.from(e))).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
-
-    return DealEvaluation(
-      id: DateTime.now().microsecondsSinceEpoch.toString(), 
-      title: title.trim().isEmpty ? 'Untitled Deal' : title.trim(), 
-      askingPrice: askingPrice, 
-      marketPrice: marketPrice, 
-      expectedProfit: profit, 
-      marginPercent: margin, // Тепер тут реальна маржа
-      verdict: verdict, 
-      createdAt: DateTime.now()
-    );
   }
 
-  Future<void> saveEvaluation(DealEvaluation deal) async {
-    final current = state.value ?? [];
-    final next = [deal, ...current];
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode(next.map((e) => e.toMap()).toList()));
-    state = AsyncValue.data(next);
-  }
-
-  Future<void> clearHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_key);
-    state = const AsyncValue.data([]);
+  Future<DealEvaluation> evaluateLocal(String itemId, double buyPrice, double targetSellPrice) async {
+    final network = ref.read(networkCoreProvider);
+    try {
+      final response = await network.request('POST', '/decision-engine/buy', body: {
+        'itemId': itemId,
+        'buyPrice': buyPrice,
+        'targetSellPrice': targetSellPrice,
+      });
+      ref.invalidateSelf();
+      return DealEvaluation.fromMap(Map<String, dynamic>.from(response));
+    } catch (e) {
+      throw Exception('Failed to evaluate deal: $e');
+    }
   }
 }
 

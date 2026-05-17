@@ -84,6 +84,8 @@ export async function recomputeDecisionsJob(): Promise<{
     if (dbOperations.length > 0) {
       await prisma.$transaction(dbOperations);
     }
+
+    await new Promise((res) => setTimeout(res, 50));
   }
 
   let hasMoreListings = true;
@@ -181,6 +183,8 @@ export async function recomputeDecisionsJob(): Promise<{
     if (dbOperations.length > 0) {
       await prisma.$transaction(dbOperations);
     }
+
+    await new Promise((res) => setTimeout(res, 50));
   }
 
   await prisma.activityLog.create({

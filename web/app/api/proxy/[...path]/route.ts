@@ -26,10 +26,12 @@ async function handleProxy(req: NextRequest, props: { params: Promise<{ path: st
     method: req.method,
     headers,
     redirect: 'manual',
-    body: req.body,
   };
 
-  if (req.body) options.duplex = 'half';
+  if (req.body && req.method !== 'GET' && req.method !== 'HEAD') {
+    options.body = req.body;
+    options.duplex = 'half';
+  }
 
   try {
     const response = await fetch(backendUrl.toString(), options);

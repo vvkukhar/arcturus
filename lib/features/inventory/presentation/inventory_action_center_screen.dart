@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_engine.dart';
 import 'package:lego_trading_manager/features/inventory/presentation/item_form_screen.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class InventoryActionCenterScreen extends ConsumerWidget {
   const InventoryActionCenterScreen({super.key});
@@ -9,29 +10,30 @@ class InventoryActionCenterScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stateAsync = ref.watch(inventoryEngineProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Action Center', style: TextStyle(fontWeight: FontWeight.w900))),
+      appBar: AppBar(title: Text(i18n.t('ac.title'), style: const TextStyle(fontWeight: FontWeight.w900))),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text(i18n.t('common.error', {'error': e.toString()}))),
         data: (state) {
           return ListView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(16),
             children: [
-              _buildHealthHero(state),
+              _buildHealthHero(state, i18n),
               const SizedBox(height: 24),
               if (state.analysis.deadStock.isNotEmpty) ...[
-                const Text('Dead Stock ( > 30 days)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+                Text(i18n.t('ac.deadStock'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent)),
                 const SizedBox(height: 12),
-                ...state.analysis.deadStock.map((item) => _buildActionCard(context, item, 'Held for ${item.daysInInventory} days', Colors.redAccent)),
+                ...state.analysis.deadStock.map((item) => _buildActionCard(context, item, i18n.t('ac.heldFor', {'days': item.daysInInventory.toString()}), Colors.redAccent)),
                 const SizedBox(height: 24),
               ],
               if (state.analysis.alerts.isNotEmpty) ...[
-                const Text('Review Required', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
+                Text(i18n.t('ac.reviewReq'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
                 const SizedBox(height: 12),
-                ...state.analysis.alerts.map((item) => _buildActionCard(context, item, 'Low profit or market mismatch', Colors.orange)),
+                ...state.analysis.alerts.map((item) => _buildActionCard(context, item, i18n.t('ac.lowProfit'), Colors.orange)),
               ]
             ],
           );
@@ -40,7 +42,7 @@ class InventoryActionCenterScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHealthHero(InventoryEngineState state) {
+  Widget _buildHealthHero(InventoryEngineState state, I18nNotifier i18n) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -56,9 +58,9 @@ class InventoryActionCenterScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${state.analysis.deadStockCount} Dead Stock Items', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          Text('${state.analysis.deadStockCount} ${i18n.t('ac.deadStockItems')}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
           const SizedBox(height: 8),
-          Text('${state.analysis.alertsCount} items require manual review.', style: const TextStyle(fontSize: 14, color: Colors.white70)),
+          Text('${state.analysis.alertsCount} ${i18n.t('ac.manualReview')}', style: const TextStyle(fontSize: 14, color: Colors.white70)),
         ],
       ),
     );

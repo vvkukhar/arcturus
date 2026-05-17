@@ -35,7 +35,7 @@ export class WatchlistService {
       },
       orderBy: [{ active: 'desc' }, { priority: 'desc' }, { createdAt: 'desc' }],
       include: { item: true, assignedUser: true },
-      take: params?.limit ?? 300,
+      take: params?.limit ?? 10000,
     });
   }
 

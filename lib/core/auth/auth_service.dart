@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   final String baseUrl;
   final http.Client _client;
-  final FlutterSecureStorage _secureStorage;
+  final _storage = const FlutterSecureStorage();
 
   AuthService({required this.baseUrl, http.Client? client})
-      : _client = client ?? http.Client(),
-        _secureStorage = const FlutterSecureStorage();
+      : _client = client ?? http.Client();
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     final res = await _client.post(
@@ -20,7 +20,8 @@ class AuthService {
     
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final data = jsonDecode(res.body);
-      await _secureStorage.write(key: 'arcturus_jwt', value: data['token']);
+      // ФІКС: Токен зберігаємо у безпечному сховищі
+      await _storage.write(key: 'arcturus_jwt', value: data['token']);
       return data['user'];
     }
     throw Exception('AUTH_FAILED');
@@ -36,10 +37,16 @@ class AuthService {
         );
       } catch (_) {}
     }
-    await _secureStorage.delete(key: 'arcturus_jwt');
+    await _storage.delete(key: 'arcturus_jwt');
+    
+    // Чистимо звичайні налаштування сесії (якщо є)
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('arcturus_cookie');
   }
 
-  Future<String?> getToken() async => await _secureStorage.read(key: 'arcturus_jwt');
+  Future<String?> getToken() async {
+    return await _storage.read(key: 'arcturus_jwt');
+  }
   
   Future<bool> isAuthenticated() async => await getToken() != null;
 }

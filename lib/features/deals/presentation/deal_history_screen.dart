@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/deals/application/deals_engine.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class DealHistoryScreen extends ConsumerWidget {
   const DealHistoryScreen({super.key});
@@ -8,10 +9,11 @@ class DealHistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stateAsync = ref.watch(dealsEngineProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Deal History', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(i18n.t('history.title'), style: const TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
@@ -21,9 +23,9 @@ class DealHistoryScreen extends ConsumerWidget {
       ),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text(i18n.t('common.error', {'error': e.toString()}))),
         data: (deals) {
-          if (deals.isEmpty) return const Center(child: Text('No deal history found.', style: TextStyle(color: Colors.white54)));
+          if (deals.isEmpty) return Center(child: Text(i18n.t('history.empty'), style: const TextStyle(color: Colors.white54)));
 
           return ListView.builder(
             physics: const BouncingScrollPhysics(),

@@ -1,11 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/app/providers/repositories_providers.dart';
-import 'package:lego_trading_manager/core/enums/item_status.dart';
-import 'package:lego_trading_manager/core/utils/core_utils.dart';
-import 'package:lego_trading_manager/features/sales/application/sales_engine.dart';
+import 'package:lego_trading_manager/core/sync/sync_engine.dart';
+import 'package:lego_trading_manager/data/models/app_models.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PosCartItem {
-  final ItemModel item;
+  final InventoryItemModel item;
   final int quantity;
   
   PosCartItem({required this.item, required this.quantity});
@@ -19,7 +18,7 @@ class PosCart extends Notifier<List<PosCartItem>> {
   @override
   List<PosCartItem> build() => [];
 
-  void addItem(ItemModel item) {
+  void addItem(InventoryItemModel item) {
     if (!item.isActive || item.quantity <= 0) return;
     
     final existingIdx = state.indexWhere((i) => i.item.id == item.id);
@@ -55,39 +54,30 @@ class PosCart extends Notifier<List<PosCartItem>> {
   Future<void> checkout(String paymentMethod) async {
     if (state.isEmpty) return;
     
-    final salesEngine = ref.read(salesEngineProvider.notifier);
-    final invRepo = ref.read(inventoryRepositoryProvider);
+    final network = ref.read(networkCoreProvider);
 
-    for (final cartItem in state) {
-      final item = cartItem.item;
-      final salePrice = item.expectedSalePrice ?? item.totalCost;
-      final unitCost = item.totalCost / (item.quantity > 0 ? item.quantity : 1);
-      
-      final sale = SaleModel(
-        id: AppUtils.generateId(),
-        itemId: item.id,
-        platform: 'POS ($paymentMethod)',
-        salePrice: salePrice * cartItem.quantity,
-        platformFee: 0,
-        shippingPaidByMe: 0,
-        shippingPaidByBuyer: 0,
-        finalNet: (salePrice * cartItem.quantity) - (unitCost * cartItem.quantity),
-        currency: 'UAH',
-        saleDate: DateTime.now(),
-        quantity: cartItem.quantity,
-      );
+    final payload = {
+      'paymentMethod': paymentMethod,
+      'items': state.map((c) => {
+        'inventoryItemId': c.item.id,
+        'quantity': c.quantity,
+        'price': c.item.expectedSalePriceManual ?? c.item.totalCost,
+      }).toList(),
+    };
 
-      await salesEngine.saveSale(sale);
+    try {
+      final response = await network.request('POST', '/pos/checkout', body: payload);
       
-      final updatedQty = item.quantity - cartItem.quantity;
-      final updatedItem = item.copyWith(
-        status: updatedQty <= 0 ? ItemStatus.sold : item.status,
-        quantity: updatedQty
-      );
-      
-      await invRepo.updateItem(updatedItem);
+      if (paymentMethod == 'card' && response is Map && response['url'] != null) {
+        final url = Uri.parse(response['url']);
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+        }
+      }
+      state = [];
+    } catch (e) {
+      throw Exception('Checkout failed: $e');
     }
-    state = [];
   }
 }
 

@@ -1,6 +1,5 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lego_trading_manager/core/network/socket_event_bus.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 
 class FlowsEngineState {
@@ -18,39 +17,41 @@ class FlowsEngineState {
 class FlowsEngine extends AsyncNotifier<FlowsEngineState> {
   @override
   Future<FlowsEngineState> build() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    Future<List<Map<String, dynamic>>> load(String key) async {
-      final raw = prefs.getString('arcturus_flow_$key');
-      if (raw == null || raw.isEmpty) return [];
-      return List<Map<String, dynamic>>.from(jsonDecode(raw).map((e) => Map<String, dynamic>.from(e)));
-    }
+    final eventBus = ref.watch(socketEventBusProvider);
+    final sub = eventBus.events.listen((event) {
+      if (event['type'] == 'flow_refresh') ref.invalidateSelf();
+    });
+    ref.onDispose(() => sub.cancel());
 
-    return FlowsEngineState(purchases: await load('purchase'), reprices: await load('reprice'), reviews: await load('review'));
+    final network = ref.read(networkCoreProvider);
+    
+    try {
+      final pRes = await network.request('GET', '/flows/purchase');
+      final repRes = await network.request('GET', '/flows/reprice');
+      final revRes = await network.request('GET', '/flows/review');
+
+      return FlowsEngineState(
+        purchases: pRes is List ? List<Map<String, dynamic>>.from(pRes) : [],
+        reprices: repRes is List ? List<Map<String, dynamic>>.from(repRes) : [],
+        reviews: revRes is List ? List<Map<String, dynamic>>.from(revRes) : [],
+      );
+    } catch (e) {
+      return const FlowsEngineState(purchases: [], reprices: [], reviews: []);
+    }
   }
 
   Future<void> processAction(String flowType, String action, String id, [Map<String, dynamic>? extra]) async {
-    if (state.value == null) return;
-    final curr = state.value!;
-    
-    List<Map<String, dynamic>> list = List.from(flowType == 'purchase' ? curr.purchases : flowType == 'reprice' ? curr.reprices : curr.reviews);
-
-    if (action == 'remove') {
-      list.removeWhere((e) => e['id'] == id);
-    } else {
-      final idx = list.indexWhere((e) => e['id'] == id);
-      if (idx != -1) {
-        final status = flowType == 'purchase' ? 'bought' : flowType == 'reprice' ? 'listed' : 'reviewed';
-        list[idx] = {...list[idx], 'status': status};
+    final network = ref.read(networkCoreProvider);
+    try {
+      if (action == 'remove') {
+        await network.request('DELETE', '/flows/$flowType', body: {'id': id});
+      } else {
+        await network.request('PATCH', '/flows/$flowType/$action', body: {'id': id, ...?extra});
       }
+      ref.invalidateSelf();
+    } catch (e) {
+      throw Exception('Flow action failed: $e');
     }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('arcturus_flow_$flowType', jsonEncode(list));
-
-    state = AsyncValue.data(flowType == 'purchase' ? curr.copyWith(purchases: list) : flowType == 'reprice' ? curr.copyWith(reprices: list) : curr.copyWith(reviews: list));
-
-    ref.read(syncEngineProvider.notifier).enqueueMutation('${flowType}_flow', '/flows/$flowType/$action', 'PATCH', {'id': id, ...?extra});
   }
 }
 

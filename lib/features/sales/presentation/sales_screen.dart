@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
+import 'package:lego_trading_manager/core/widgets/global_quick_add_fab.dart';
 import 'package:lego_trading_manager/features/sales/application/sales_engine.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class SalesScreen extends ConsumerWidget {
   const SalesScreen({super.key});
@@ -9,24 +10,25 @@ class SalesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stateAsync = ref.watch(salesEngineProvider);
+    final i18n = ref.watch(i18nProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Sales', style: TextStyle(fontWeight: FontWeight.w900))),
-      drawer: const AppDrawer(),
+      appBar: AppBar(title: Text(i18n.t('sale.title'), style: const TextStyle(fontWeight: FontWeight.w900))),
+      floatingActionButton: const GlobalQuickAddFab(),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text(i18n.t('common.error', {'error': e.toString()}))),
         data: (state) {
           if (state.visibleSales.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.point_of_sale_outlined, size: 64, color: Colors.white24),
-                  SizedBox(height: 16),
-                  Text('No sales yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white54)),
-                  SizedBox(height: 8),
-                  Text('Record your first sale to see profits.', style: TextStyle(color: Colors.white38)),
+                  const Icon(Icons.point_of_sale_outlined, size: 64, color: Colors.white24),
+                  const SizedBox(height: 16),
+                  Text(i18n.t('sale.empty'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white54)),
+                  const SizedBox(height: 8),
+                  const Text('Record your first sale to see profits.', style: TextStyle(color: Colors.white38)),
                 ],
               ),
             );

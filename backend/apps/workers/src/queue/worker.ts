@@ -6,11 +6,13 @@ import { routeJob } from './job-router';
 export function startWorkers() {
   const connection = createRedisConnection();
 
+  // ФІКС: Суворо обмежуємо SCRAPERS до 2 потоків (щоб не вбити RAM сервера браузерами Playwright)
+  // Інші задачі є легкими (тільки CPU/БД), їх можна крутити паралельно.
   const concurrencyLevels = {
     [QUEUE_NAMES.MARKET]: Number(process.env.MARKET_CONCURRENCY) || 5,
     [QUEUE_NAMES.DECISIONS]: Number(process.env.DECISIONS_CONCURRENCY) || 5,
     [QUEUE_NAMES.MAINTENANCE]: Number(process.env.MAINTENANCE_CONCURRENCY) || 2,
-    [QUEUE_NAMES.SCRAPERS]: Number(process.env.SCRAPERS_CONCURRENCY) || 8,
+    [QUEUE_NAMES.SCRAPERS]: Number(process.env.SCRAPERS_CONCURRENCY) || 2, 
     [QUEUE_NAMES.SYNC]: Number(process.env.SYNC_CONCURRENCY) || 3,
   };
 

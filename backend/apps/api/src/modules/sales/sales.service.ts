@@ -140,7 +140,7 @@ export class SalesService {
         expenses: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: params?.limit ?? 100,
+      take: params?.limit ?? 10000,
     });
   }
 

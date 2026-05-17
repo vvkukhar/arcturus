@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/features/deals/application/deals_engine.dart';
+import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class DealEvaluatorScreen extends ConsumerStatefulWidget {
   const DealEvaluatorScreen({super.key});
@@ -29,10 +30,11 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
   }
 
   Future<void> _save() async {
+    final i18n = ref.read(i18nProvider.notifier);
     if (_result != null) {
       await ref.read(dealsEngineProvider.notifier).saveEvaluation(_result!);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deal saved to history')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(i18n.t('eval.itemCreated'))));
         Navigator.pop(context);
       }
     }
@@ -40,31 +42,33 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = ref.watch(i18nProvider.notifier);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Deal Evaluator', style: TextStyle(fontWeight: FontWeight.w900))),
+      appBar: AppBar(title: Text(i18n.t('eval.title'), style: const TextStyle(fontWeight: FontWeight.w900))),
       body: ListView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          TextField(controller: _title, decoration: const InputDecoration(labelText: 'Deal Title')),
+          TextField(controller: _title, decoration: InputDecoration(labelText: i18n.t('form.title'))),
           const SizedBox(height: 12),
-          TextField(controller: _ask, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Asking Price')),
+          TextField(controller: _ask, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: i18n.t('eval.askingPrice'))),
           const SizedBox(height: 12),
-          TextField(controller: _market, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Market Price')),
+          TextField(controller: _market, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: i18n.t('eval.marketPrice'))),
           const SizedBox(height: 24),
           FilledButton(
             style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
             onPressed: _evaluate,
-            child: const Text('Evaluate', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            child: Text(i18n.t('eval.evaluate'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(height: 24),
-          if (_result != null) _buildResultCard(_result!),
+          if (_result != null) _buildResultCard(_result!, i18n),
         ],
       ),
     );
   }
 
-  Widget _buildResultCard(DealEvaluation model) {
+  Widget _buildResultCard(DealEvaluation model, I18nNotifier i18n) {
     final color = model.verdict == 'strong buy' ? Colors.green : model.verdict == 'good' ? Colors.lightGreen : model.verdict == 'weak' ? Colors.orange : Colors.red;
     return Container(
       padding: const EdgeInsets.all(20),
@@ -77,13 +81,13 @@ class _DealEvaluatorScreenState extends ConsumerState<DealEvaluatorScreen> {
         children: [
           Text(model.verdict.toUpperCase(), style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
           const Divider(height: 32, color: Colors.white10),
-          _Row('Expected Profit', model.expectedProfit.toStringAsFixed(2)),
+          _Row(i18n.t('inv.expectedProfit'), model.expectedProfit.toStringAsFixed(2)),
           _Row('Margin', '${model.marginPercent.toStringAsFixed(1)}%'),
           const SizedBox(height: 24),
           FilledButton.tonalIcon(
             onPressed: _save,
             icon: const Icon(Icons.save),
-            label: const Text('Save to History'),
+            label: Text(i18n.t('common.save')),
           )
         ],
       ),
