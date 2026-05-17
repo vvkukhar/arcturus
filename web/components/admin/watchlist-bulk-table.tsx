@@ -48,15 +48,17 @@ export function WatchlistBulkTable({ rows }: Props) {
     if (bulkLoading || selected.size === 0) return;
     try {
       setBulkLoading(true);
-      const requests = Array.from(selected).map((id) =>
-        apiFetch('/api/admin/flows/purchase/add', {
-          method: 'POST',
-          body: JSON.stringify({ watchlistItemId: id }),
-        })
-      );
-      await Promise.all(requests);
+      
+      // ВИПРАВЛЕНО: викликаємо один масовий ендпоінт замість Promise.all
+      await apiFetch('/api/admin/flows/purchase/bulk-add', {
+        method: 'POST',
+        body: JSON.stringify({ ids: Array.from(selected) }),
+      });
+      
       clear();
       router.refresh();
+    } catch {
+      alert('Error bulk adding to Purchase Flow');
     } finally {
       setBulkLoading(false);
     }
