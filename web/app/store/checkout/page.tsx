@@ -7,6 +7,8 @@ import { Trash2, ArrowRight, ShieldCheck, CreditCard, Loader2, Package } from 'l
 import { useCart } from '@/lib/store/cart';
 import { formatMoney } from '@/lib/format';
 import { apiFetch } from '@/lib/api';
+import { NovaPoshtaPicker } from '@/components/checkout/nova-poshta-picker';
+import type { ApiResponse } from '@/lib/types';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -14,6 +16,10 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [buyerName, setBuyerName] = useState('');
   const [contactInfo, setContactInfo] = useState('');
+  
+  // Додано стейт для Нової Пошти
+  const [city, setCity] = useState('');
+  const [branch, setBranch] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const handleCheckout = useCallback(async (e: React.FormEvent) => {
@@ -24,6 +30,7 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
+      // 1. FAANG-level: Валідація стоку перед самою транзакцією
       await validateStock();
       const currentItems = useCart.getState().items;
       
@@ -31,35 +38,53 @@ export default function CheckoutPage() {
         throw new Error('Деякі товари щойно розкупили. Кошик оновлено.');
       }
 
+      // 2. Створюємо резерви та замовлення в БД
       const requests = currentItems.map(item => 
-        apiFetch<{ id: string }>('/api/store/contact', {
+        apiFetch<ApiResponse<any>>('/api/store/contact', {
           method: 'POST',
           body: JSON.stringify({
             inventoryItemId: item.id,
             productTitle: item.title,
             name: buyerName.trim(),
             contact: contactInfo.trim(),
-            message: `Order from Cart (Qty: ${item.quantity})`
+            // Записуємо дані доставки в повідомлення для оператора
+            message: `Order from Cart (Qty: ${item.quantity}). Delivery: ${city}, ${branch}`
           }),
         })
       );
 
       const results = await Promise.all(requests);
-      const firstOrderId = results[0]?.id;
+      
+      // Витягуємо ID замовлення (через оновлений бекенд)
+      const firstResponseData = results[0]?.data;
+      const orderId = firstResponseData?.orderId || firstResponseData?.id;
 
-      clearCart();
+      if (!orderId) {
+        throw new Error('Не вдалося згенерувати ID замовлення на сервері.');
+      }
 
-      if (firstOrderId) {
-        router.replace(`/success?orderId=${firstOrderId}`);
+      // 3. Ініціюємо платіжну сесію Monobank
+      const checkoutResponse = await apiFetch<ApiResponse<{ url: string }>>('/api/store/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ orderId }),
+      });
+
+      const paymentUrl = checkoutResponse?.data?.url || (checkoutResponse as any)?.url;
+
+      if (paymentUrl) {
+        clearCart(); // Очищаємо кошик тільки якщо маємо лінку на оплату
+        window.location.href = paymentUrl;
       } else {
-        router.replace(`/success?reference=CART_${Date.now()}`);
+        // Fallback якщо платіжка вимкнена (наприклад, для тестування)
+        clearCart();
+        router.replace(`/success?orderId=${orderId}`);
       }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Помилка при оформленні замовлення. Перевірте з\'єднання та спробуйте ще раз.');
+      setError(err instanceof Error ? err.message : 'Критична помилка при оформленні. Спробуйте ще раз.');
       setIsProcessing(false);
     }
-  }, [items, buyerName, contactInfo, isProcessing, clearCart, router, validateStock]);
+  }, [items, buyerName, contactInfo, city, branch, isProcessing, clearCart, router, validateStock]);
 
   if (items.length === 0) {
     return (
@@ -77,6 +102,8 @@ export default function CheckoutPage() {
     );
   }
 
+  const isFormValid = buyerName.trim() && contactInfo.trim() && city.trim() && branch.trim();
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 animate-in fade-in duration-500 pb-24 transform-gpu">
       <h1 className="text-4xl font-black text-[var(--foreground)] tracking-tight mb-10">Оформлення замовлення</h1>
@@ -85,7 +112,7 @@ export default function CheckoutPage() {
         <div className="lg:col-span-7 space-y-6">
           <div className="bg-[var(--card)] border border-[var(--border)] rounded-[2.5rem] p-8 shadow-sm">
             <h2 className="text-xl font-black mb-8 flex items-center gap-3">
-              <ShieldCheck className="text-blue-500 h-6 w-6" /> Контактні дані
+              <ShieldCheck className="text-blue-500 h-6 w-6" /> Контактні дані та доставка
             </h2>
             
             {error && (
@@ -94,29 +121,38 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            <form id="checkout-form" onSubmit={handleCheckout} className="space-y-5">
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Ім'я та Прізвище</label>
-                <input 
-                  type="text" 
-                  required 
-                  value={buyerName} 
-                  onChange={(e) => setBuyerName(e.target.value)} 
-                  disabled={isProcessing} 
-                  className="w-full h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all disabled:opacity-50" 
-                  placeholder="Введіть ваше ім'я" 
-                />
+            <form id="checkout-form" onSubmit={handleCheckout} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Ім'я та Прізвище</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={buyerName} 
+                    onChange={(e) => setBuyerName(e.target.value)} 
+                    disabled={isProcessing} 
+                    className="w-full h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all disabled:opacity-50" 
+                    placeholder="Введіть ваше ім'я" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Телефон / Telegram</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={contactInfo} 
+                    onChange={(e) => setContactInfo(e.target.value)} 
+                    disabled={isProcessing} 
+                    className="w-full h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all disabled:opacity-50" 
+                    placeholder="+380... або @username" 
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Телефон або Telegram</label>
-                <input 
-                  type="text" 
-                  required 
-                  value={contactInfo} 
-                  onChange={(e) => setContactInfo(e.target.value)} 
-                  disabled={isProcessing} 
-                  className="w-full h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all disabled:opacity-50" 
-                  placeholder="+380... або @username" 
+
+              <div className="pt-4 border-t border-[var(--border)]">
+                <NovaPoshtaPicker 
+                  onCitySelect={setCity} 
+                  onWarehouseSelect={setBranch} 
                 />
               </div>
             </form>
@@ -127,7 +163,7 @@ export default function CheckoutPage() {
           <div className="bg-[var(--card)] border border-[var(--border)] rounded-[2.5rem] p-8 shadow-sm sticky top-6">
             <h2 className="text-xl font-black mb-6">Ваше замовлення</h2>
             
-            <div className="space-y-4 mb-8 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
+            <div className="space-y-4 mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">
               {items.map((item) => (
                 <div key={item.id} className="flex gap-4 p-4 rounded-2xl bg-[var(--background)] border border-[var(--border)] relative group">
                   <div className="relative h-20 w-20 shrink-0 rounded-[1rem] overflow-hidden bg-slate-100 dark:bg-slate-900 border border-[var(--border)]">
@@ -162,7 +198,7 @@ export default function CheckoutPage() {
             <button 
               type="submit" 
               form="checkout-form" 
-              disabled={isProcessing} 
+              disabled={isProcessing || !isFormValid} 
               className="w-full flex h-16 items-center justify-center gap-3 rounded-[2rem] bg-[var(--foreground)] text-[var(--background)] text-lg font-black transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-2xl shadow-black/10 dark:shadow-white/10"
             >
               {isProcessing ? (
@@ -170,7 +206,7 @@ export default function CheckoutPage() {
               ) : (
                 <>
                   <CreditCard className="h-6 w-6" /> 
-                  Підтвердити 
+                  Сплатити безпечно 
                   <ArrowRight className="h-5 w-5 ml-1" />
                 </>
               )}

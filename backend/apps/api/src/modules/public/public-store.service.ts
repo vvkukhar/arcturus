@@ -17,7 +17,12 @@ export class PublicStoreService {
   ) {}
 
   private slugify(value: string): string {
-    return value.trim().toLowerCase().replace(/[^\p{L}\p{N}\s-]+/gu, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s-]+/gu, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
   }
 
   private resolveOrderBy(sort?: string): any {
@@ -30,6 +35,7 @@ export class PublicStoreService {
 
   async getCatalog(params: { q?: string; type?: string; availableOnly?: boolean; theme?: string; sort?: string; limit?: number }): Promise<unknown[]> {
     const cacheKey = `public_catalog:${JSON.stringify(params)}`;
+    
     if (!params.q) {
       const cached = await this.redis.get<unknown[]>(cacheKey);
       if (cached) return cached;
@@ -43,7 +49,12 @@ export class PublicStoreService {
         quantity: params.availableOnly === true ? { gt: 0 } : undefined,
         ...(params.type && params.type !== 'all' ? { item: { kind: params.type } } : {}),
         ...(params.theme ? { item: { theme: { equals: params.theme, mode: 'insensitive' } } } : {}),
-        ...(q ? { OR: [{ titleSnapshot: { contains: q, mode: 'insensitive' } }, { item: { title: { contains: q, mode: 'insensitive' } } }, { item: { setNumber: { contains: q, mode: 'insensitive' } } }, { item: { theme: { contains: q, mode: 'insensitive' } } }] } : {}),
+        ...(q ? { OR: [
+          { titleSnapshot: { contains: q, mode: 'insensitive' } }, 
+          { item: { title: { contains: q, mode: 'insensitive' } } }, 
+          { item: { setNumber: { contains: q, mode: 'insensitive' } } }, 
+          { item: { theme: { contains: q, mode: 'insensitive' } } }
+        ] } : {}),
       },
       select: {
         id: true,
@@ -62,67 +73,58 @@ export class PublicStoreService {
     if (!params.q) {
       await this.redis.set(cacheKey, data, 300);
     }
+
     return data;
   }
 
-  async getCatalogItem(slug: string): Promise<unknown | null> {
+  async getCatalogItemBySlug(slug: string): Promise<unknown | null> {
     const normalized = slug.trim().toLowerCase();
 
-    const entry = await this.prisma.inventoryItem.findFirst({
+    const all = await this.prisma.inventoryItem.findMany({
+      where: { quantity: { gt: 0 } },
+      include: {
+        item: true,
+        images: { orderBy: { sortOrder: 'asc' } },
+        assignedUser: true,
+      },
+      take: 500,
+    });
+
+    const found = all.find((entry) => {
+      const title = entry.titleSnapshot || entry.item?.title || entry.id;
+      const generated = this.slugify(title);
+      return generated === normalized || entry.id === normalized;
+    });
+
+    return found ?? null;
+  }
+
+  async getRelatedCatalogItems(params: { slug: string; limit?: number }): Promise<unknown[]> {
+    const item = (await this.getCatalogItemBySlug(params.slug)) as any | null;
+    if (!item) return [];
+
+    const theme = item.item?.theme ?? null;
+    const kind = item.item?.kind ?? null;
+
+    return this.prisma.inventoryItem.findMany({
       where: {
-        OR: [{ id: normalized }, { titleSnapshot: { equals: normalized.replace(/-/g, ' '), mode: 'insensitive' } }],
-        quantity: { gt: 0 }
+        id: { not: item.id },
+        quantity: { gt: 0 },
+        item: {
+          ...(theme ? { theme } : {}),
+          ...(kind ? { kind } : {}),
+        },
       },
       include: {
         item: true,
-        location: { include: { warehouse: true } },
         images: { orderBy: { sortOrder: 'asc' } },
-        assignedUser: { select: { id: true, name: true } },
-      }
-    });
-
-    if (!entry) throw new NotFoundException('Product not found');
-
-    const related = await this.prisma.inventoryItem.findMany({
-      where: { id: { not: entry.id }, quantity: { gt: 0 }, item: { theme: entry.item?.theme ?? undefined } },
-      select: { id: true, titleSnapshot: true, expectedSalePriceManual: true, totalCost: true, quantity: true, condition: true, item: { select: { title: true } }, images: { where: { isPrimary: true }, take: 1, select: { imageUrl: true } } },
+      },
       orderBy: { createdAt: 'desc' },
-      take: 8,
+      take: Math.min(params.limit ?? 8, 24),
     });
-
-    return { ...entry, slug: this.slugify(entry.titleSnapshot || entry.item?.title || entry.id), related };
   }
 
-  async trackOrder(query: string): Promise<unknown> {
-    const normalized = query.trim();
-    if (!normalized) throw new BadRequestException('Tracking query is required');
-
-    const order = await this.prisma.order.findFirst({
-      where: {
-        OR: [
-          { id: normalized },
-          { contact: { contains: normalized } }
-        ]
-      },
-      select: {
-        id: true,
-        status: true,
-        productTitle: true,
-        sellPrice: true,
-        quantity: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
-
-    return order;
-  }
-
-  async createReserve(params: { inventoryItemId?: string | null; productTitle: string; name: string; contact: string; message?: string | null }): Promise<unknown> {
+  async createReserve(params: { inventoryItemId?: string | null; productTitle?: string; name: string; contact: string; message?: string | null }): Promise<unknown> {
     const name = params.name.trim();
     const contact = params.contact.trim();
     const message = params.message?.trim() ?? '';
@@ -132,9 +134,12 @@ export class PublicStoreService {
     if (inventoryItemId) {
       const inventoryItem = await this.prisma.inventoryItem.findUnique({
         where: { id: inventoryItemId },
-        select: { titleSnapshot: true, id: true, expectedSalePriceManual: true, item: { select: { title: true } } },
+        select: { titleSnapshot: true, id: true, expectedSalePriceManual: true, quantity: true, item: { select: { title: true } } },
       });
+      
       if (!inventoryItem) throw new NotFoundException('Inventory item not found');
+      if (inventoryItem.quantity < 1) throw new BadRequestException('Item is out of stock');
+
       productTitle = productTitle || inventoryItem.titleSnapshot || inventoryItem.item?.title || inventoryItem.id;
     }
 
@@ -158,6 +163,19 @@ export class PublicStoreService {
           adminNote: reserve.message ?? null,
         },
       });
+
+      // 🔥 ВІДНІМАЄМО КІЛЬКІСТЬ ЗІ СКЛАДУ ОДРАЗУ ПРИ ЗАМОВЛЕННІ 🔥
+      if (inventoryItemId) {
+        await tx.inventoryItem.update({
+          where: { id: inventoryItemId },
+          data: {
+            quantity: {
+              decrement: 1 
+            }
+          }
+        });
+      }
+
       return { reserve, order };
     });
 
@@ -173,59 +191,57 @@ export class PublicStoreService {
     this.realtime.emitCustom('reserve.created', result.reserve);
     this.realtime.emitCustom('order.created', result.order);
     this.realtime.emitDashboardRefresh('reserve_created');
+    
+    // Оновлюємо UI інвентаря, щоб таблиці перемалювали QTY = 0
+    if (inventoryItemId) {
+      this.realtime.emitInventoryRefresh({ inventoryItemId, reason: 'reserve_created_stock_deducted' });
+    }
 
-    return result.reserve;
+    return { ...result.reserve, orderId: result.order.id };
   }
 
-  async listReserveRequests(params?: { q?: string; status?: string }): Promise<unknown[]> {
+  async getReserveRequests(params?: { q?: string; status?: string }): Promise<unknown[]> {
     const q = params?.q?.trim();
+
     return this.prisma.reserveRequest.findMany({
       where: {
         ...(params?.status && params.status !== 'all' ? { status: params.status } : {}),
-        ...(q ? { OR: [{ productTitle: { contains: q, mode: 'insensitive' } }, { name: { contains: q, mode: 'insensitive' } }, { contact: { contains: q, mode: 'insensitive' } }, { message: { contains: q, mode: 'insensitive' } }] } : {}),
+        ...(q ? { OR: [
+          { productTitle: { contains: q, mode: 'insensitive' } },
+          { name: { contains: q, mode: 'insensitive' } },
+          { contact: { contains: q, mode: 'insensitive' } },
+          { message: { contains: q, mode: 'insensitive' } },
+        ] } : {}),
       },
-      include: { orders: true, inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } } } },
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: 500,
     });
   }
 
-  async getReserveRequest(id: string): Promise<unknown> {
-    const row = await this.prisma.reserveRequest.findUnique({
-      where: { id },
-      include: { orders: true, inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' } } } } },
-    });
-    if (!row) throw new NotFoundException('Reserve request not found');
-    return row;
-  }
+  async updateReserveRequest(body: { id: string; status?: string; adminNote?: string | null }): Promise<unknown> {
+    if (!body.id) throw new BadRequestException('Reserve request id is required');
 
-  async updateReserveRequest(params: { id: string; status?: string; adminNote?: string | null }): Promise<unknown> {
-    if (!params.id) throw new BadRequestException('Reserve request id is required');
-    const existing = await this.prisma.reserveRequest.findUnique({ where: { id: params.id }, include: { orders: true } });
+    const existing = await this.prisma.reserveRequest.findUnique({ where: { id: body.id } });
     if (!existing) throw new NotFoundException('Reserve request not found');
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const reserve = await tx.reserveRequest.update({ where: { id: params.id }, data: { status: params.status, adminNote: params.adminNote } });
-      if (params.status && existing.orders.length > 0) {
-        await tx.order.updateMany({
-          where: { reserveRequestId: params.id },
-          data: { status: params.status === 'approved' ? 'approved' : params.status === 'contacted' ? 'contacted' : params.status === 'rejected' ? 'cancelled' : params.status, adminNote: params.adminNote },
-        });
-      }
-      return reserve;
+    const updated = await this.prisma.reserveRequest.update({
+      where: { id: body.id },
+      data: {
+        status: body.status,
+        adminNote: body.adminNote,
+      },
     });
 
-    await this.activity.log('reserve.updated', { reserveRequestId: updated.id, status: updated.status, adminNote: updated.adminNote });
     this.realtime.emitCustom('reserve.updated', updated);
     this.realtime.emitDashboardRefresh('reserve_updated');
+
     return updated;
   }
 
-  async reserveBoard(): Promise<any> {
+  async getReserveBoard(): Promise<unknown> {
     const rows = await this.prisma.reserveRequest.findMany({
-      include: { orders: true, inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } } } },
       orderBy: { createdAt: 'desc' },
-      take: 300,
+      take: 500,
     });
 
     return {
@@ -233,30 +249,42 @@ export class PublicStoreService {
       approved: rows.filter((x) => x.status === 'approved'),
       contacted: rows.filter((x) => x.status === 'contacted'),
       rejected: rows.filter((x) => x.status === 'rejected'),
-      sold: rows.filter((x) => x.status === 'sold'),
+      completed: rows.filter((x) => x.status === 'completed'),
     };
   }
 
-  async analytics(): Promise<unknown> {
-    const [inventoryAgg, reservesAgg, salesAgg, ordersAgg] = await Promise.all([
-      this.prisma.inventoryItem.aggregate({ _count: true, _sum: { quantity: true, expectedSalePriceManual: true, totalCost: true }, where: { quantity: { gt: 0 } } }),
-      this.prisma.reserveRequest.groupBy({ by: ['status'], _count: true }),
-      this.prisma.sale.aggregate({ _count: { _all: true }, _sum: { profit: true } }),
-      this.prisma.order.aggregate({ _count: { _all: true } })
+  async getStoreAnalytics(): Promise<unknown> {
+    const [inventory, reserves] = await Promise.all([
+      this.prisma.inventoryItem.findMany({ include: { images: true } }),
+      this.prisma.reserveRequest.findMany(),
     ]);
 
-    const reservesCount = reservesAgg.reduce((sum, r) => sum + r._count, 0);
-    const pendingReserves = reservesAgg.find(r => r.status === 'pending')?._count ?? 0;
+    const available = inventory.filter((x) => x.quantity > 0);
+    const withImages = inventory.filter((x) => x.images.length > 0);
+    const withoutImages = inventory.filter((x) => x.images.length === 0);
+
+    const avgPrice = available.length > 0
+        ? available.reduce((sum, x) => sum + Number(x.expectedSalePriceManual ?? x.totalCost ?? 0), 0) / available.length
+        : 0;
+
+    const visibleInventoryValue = available.reduce(
+      (sum, x) => sum + Number(x.expectedSalePriceManual ?? x.totalCost ?? 0),
+      0,
+    );
 
     return {
-      totalInventory: inventoryAgg._count,
-      availableInventory: inventoryAgg._sum.quantity ?? 0,
-      reserveRequests: reservesCount,
-      pendingReserves,
-      salesCount: salesAgg._count._all,
-      totalSalesProfit: toMoney(salesAgg._sum.profit ?? 0),
-      orders: ordersAgg._count._all,
-      visibleInventoryValue: toMoney(inventoryAgg._sum.expectedSalePriceManual ?? inventoryAgg._sum.totalCost ?? 0),
+      totalInventory: inventory.length,
+      availableInventory: available.length,
+      soldOutInventory: inventory.length - available.length,
+      inventoryWithImages: withImages.length,
+      inventoryWithoutImages: withoutImages.length,
+      reserveRequests: reserves.length,
+      pendingReserves: reserves.filter((x) => x.status === 'pending').length,
+      approvedReserves: reserves.filter((x) => x.status === 'approved').length,
+      contactedReserves: reserves.filter((x) => x.status === 'contacted').length,
+      rejectedReserves: reserves.filter((x) => x.status === 'rejected').length,
+      avgVisiblePrice: Number(avgPrice.toFixed(2)),
+      visibleInventoryValue: Number(visibleInventoryValue.toFixed(2)),
     };
   }
 }
