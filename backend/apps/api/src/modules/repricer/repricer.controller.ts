@@ -2,44 +2,55 @@ import { Body, Controller, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-import { RepricerService } from './repricer.service';
+import { RepricerV2Service } from './repricer-v2.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'operator')
 @Controller('repricer')
 export class RepricerController {
-  constructor(private readonly repricerService: RepricerService) {}
+  constructor(private readonly repricerV2Service: RepricerV2Service) {}
 
   @Post('analyze')
-  analyze(
+  async analyze(
     @Body()
     body: {
       inventoryItemId: string;
       targetRoiPercent?: number | null;
+      mode?: 'fast_sale' | 'balanced' | 'premium' | null;
     },
   ): Promise<unknown> {
-    return this.repricerService.analyzeItem(body.inventoryItemId, body.targetRoiPercent ?? 40);
+    // Перевели головний аналітика на ядро V2
+    return this.repricerV2Service.analyze({
+      inventoryItemId: body.inventoryItemId,
+      targetRoiPercent: body.targetRoiPercent ?? 40,
+      mode: body.mode ?? 'balanced',
+    });
   }
 
   @Post('analyze-from-comps')
-  analyzeFromComps(
+  async analyzeFromComps(
     @Body()
     body: {
       inventoryItemId: string;
       targetRoiPercent?: number | null;
+      mode?: 'fast_sale' | 'balanced' | 'premium' | null;
     },
   ): Promise<unknown> {
-    return this.repricerService.analyzeItem(body.inventoryItemId, body.targetRoiPercent ?? 40);
+    return this.repricerV2Service.analyze({
+      inventoryItemId: body.inventoryItemId,
+      targetRoiPercent: body.targetRoiPercent ?? 40,
+      mode: body.mode ?? 'balanced',
+    });
   }
 
   @Patch('apply')
-  apply(
+  async apply(
     @Body()
     body: {
       inventoryItemId: string;
-      suggestedPrice: number;
+      price: number;
     },
   ): Promise<unknown> {
-    return this.repricerService.applyReprice(body.inventoryItemId, body.suggestedPrice);
+    return this.repricerV2Service.apply(body);
   }
 }
