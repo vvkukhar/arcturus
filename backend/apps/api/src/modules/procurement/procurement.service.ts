@@ -23,7 +23,7 @@ export class ProcurementService {
     return toMoney(Number(base) + Number(params.shippingPrice ?? 0));
   }
 
-  async list(params?: { status?: string; q?: string; assignedUserId?: string; limit?: number }): Promise<unknown[]> {
+  async list(params?: { status?: string; q?: string; assignedUserId?: string; limit?: number; offset?: number }): Promise<unknown[]> {
     const q = params?.q?.trim();
     return this.prisma.purchaseOrder.findMany({
       where: {
@@ -33,7 +33,8 @@ export class ProcurementService {
       },
       include: { item: true, watchlistItem: true, inventoryItem: true, assignedUser: true },
       orderBy: { createdAt: 'desc' },
-      take: params?.limit ?? 10000,
+      take: params?.limit ?? 50,
+      skip: params?.offset ?? 0,
     });
   }
 

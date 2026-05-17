@@ -28,6 +28,7 @@ export class WatchlistController {
     @Query('active') active?: string,
     @Query('assignedUserId') assignedUserId?: string,
     @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ): Promise<unknown[]> {
     return this.service.list({
       q,
@@ -36,7 +37,8 @@ export class WatchlistController {
           ? undefined
           : active === 'true',
       assignedUserId,
-      limit: limit ? Number(limit) : 300,
+      limit: limit ? Number(limit) : 50,
+      offset: offset ? Number(offset) : 0,
     });
   }
 

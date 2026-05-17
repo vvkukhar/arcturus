@@ -65,7 +65,6 @@ bash scripts/server-bootstrap-ubuntu.sh
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\docker-compose.prod.yml =====
 
-
 x-logging: &default-logging
   driver: "json-file"
   options:
@@ -117,7 +116,7 @@ services:
       - "--maxmemory"
       - "1gb"
       - "--maxmemory-policy"
-      - "noeviction"
+      - "allkeys-lru"
       - "--tcp-keepalive"
       - "300"
     volumes:
@@ -403,10 +402,13 @@ bash scripts/ops-healthcheck.sh
     "db:studio": "npm run studio --workspace=@arcturus/db"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1048.0",
     "class-transformer": "^0.5.1",
-    "class-validator": "^0.14.1"
+    "class-validator": "^0.14.1",
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
+    "@types/uuid": "^10.0.0",
     "typescript": "^5.7.2"
   }
 }
@@ -889,6 +891,7 @@ unleashHell()
     "@arcturus/db": "*",
     "@arcturus/scrapers": "*",
     "@arcturus/shared": "*",
+    "@aws-sdk/client-s3": "^3.1048.0",
     "@bull-board/api": "^5.20.5",
     "@bull-board/express": "^5.20.5",
     "@nestjs/bullmq": "^10.1.1",
@@ -920,7 +923,8 @@ unleashHell()
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.1",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.8",
@@ -934,6 +938,7 @@ unleashHell()
     "@types/node": "^22.19.17",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.2",
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "eslint": "^9.17.0",
@@ -11360,12 +11365,14 @@ export class InventoryController {
     @Query('assignedUserId') assignedUserId?: string,
     @Query('status') status?: string,
     @Query('limit') limit?: string,
+    @Query('offset') offset?: string, // Р¤Р†РљРЎ: Р”РѕРґР°Р»Рё РїС–РґС‚СЂРёРјРєСѓ Offset
   ): Promise<unknown[]> {
     return this.inventoryService.list({
       q,
       assignedUserId,
       status,
-      limit: limit ? Number(limit) : 200,
+      limit: limit ? Number(limit) : 50,
+      offset: offset ? Number(offset) : 0,
     });
   }
 
@@ -11454,6 +11461,56 @@ export class InventoryService {
     private readonly activity: ActivityService,
     private readonly notifications: NotificationsService,
   ) {}
+
+  async list(params?: { q?: string; assignedUserId?: string; status?: string; limit?: number; offset?: number }): Promise<unknown[]> {
+    const q = params?.q?.trim();
+
+    return this.prisma.inventoryItem.findMany({
+      where: {
+        ...(params?.status && params.status !== 'all' ? { status: params.status } : {}),
+        ...(params?.assignedUserId ? { assignedUserId: params.assignedUserId } : {}),
+        ...(q
+          ? {
+              OR: [
+                { titleSnapshot: { contains: q, mode: 'insensitive' } },
+                { item: { title: { contains: q, mode: 'insensitive' } } },
+                { item: { setNumber: { contains: q, mode: 'insensitive' } } },
+              ],
+            }
+          : {}),
+      },
+      include: {
+        item: true,
+        assignedUser: true,
+        images: { orderBy: { sortOrder: 'asc' }, take: 1 },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: params?.limit ?? 50,
+      skip: params?.offset ?? 0, // Р¤Р†РљРЎ: Р РµР°Р»С–Р·Р°С†С–СЏ РїР°РіС–РЅР°С†С–С— РЅР° СЂС–РІРЅС– Р‘Р”
+    });
+  }
+
+  async stats(): Promise<unknown> {
+    const agg = await this.prisma.inventoryItem.aggregate({
+      _count: { _all: true },
+      _sum: { totalCost: true, expectedSalePriceManual: true, quantity: true },
+    });
+    return {
+      totalItems: agg._count._all,
+      totalUnits: agg._sum.quantity ?? 0,
+      totalCost: toMoney(agg._sum.totalCost ?? 0),
+      expectedRevenue: toMoney(agg._sum.expectedSalePriceManual ?? agg._sum.totalCost ?? 0),
+    };
+  }
+
+  async getById(id: string): Promise<unknown> {
+    const item = await this.prisma.inventoryItem.findUnique({
+      where: { id },
+      include: { item: true, assignedUser: true, images: { orderBy: { sortOrder: 'asc' } }, location: { include: { warehouse: true } } },
+    });
+    if (!item) throw new NotFoundException('Item not found');
+    return item;
+  }
 
   async create(dto: CreateInventoryItemDto): Promise<unknown> {
     const purchasePrice = toMoney(dto.purchasePrice);
@@ -11544,6 +11601,31 @@ export class InventoryService {
 
     this.realtime.emitInventoryUpdated(updated);
     return updated;
+  }
+
+  async delete(id: string): Promise<unknown> {
+    const existing = await this.prisma.inventoryItem.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Inventory item not found');
+
+    const deleted = await this.prisma.inventoryItem.delete({ where: { id } });
+
+    await this.activity.log('inventory.deleted', {
+      inventoryItemId: id,
+      title: existing.titleSnapshot,
+    });
+
+    this.realtime.emitInventoryRefresh({ id, deleted: true });
+    return deleted;
+  }
+
+  async bulkDelete(ids: string[]): Promise<unknown> {
+    const result = await this.prisma.inventoryItem.deleteMany({ where: { id: { in: ids } } });
+    this.realtime.emitInventoryRefresh({ ids, deleted: true });
+    return result;
+  }
+
+  async exportRows(): Promise<unknown[]> {
+    return [];
   }
 }
 
@@ -13685,15 +13767,17 @@ export class MediaModule {}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\media\media.service.ts =====
 
-// backend/api/src/modules/media/media.service.ts
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { ActivityService } from '../activity/activity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { v4 as uuidv4 } from 'uuid';
 
 export type UploadedInventoryImageFile = {
   buffer: Buffer;
@@ -13702,17 +13786,61 @@ export type UploadedInventoryImageFile = {
 
 @Injectable()
 export class MediaService {
+  private readonly logger = new Logger(MediaService.name);
+  private s3Client: S3Client | null = null;
+  private isS3Configured = false;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
     private readonly activity: ActivityService,
-  ) {}
+  ) {
+    if (process.env.S3_BUCKET && process.env.S3_ACCESS_KEY) {
+      this.s3Client = new S3Client({
+        region: process.env.S3_REGION || 'eu-central-1',
+        endpoint: process.env.S3_ENDPOINT, 
+        forcePathStyle: true, // Р’РђР–Р›РР’Рћ Р”Р›РЇ SUPABASE S3
+        credentials: {
+          accessKeyId: process.env.S3_ACCESS_KEY,
+          secretAccessKey: process.env.S3_SECRET_KEY || '',
+        },
+      });
+      this.isS3Configured = true;
+      this.logger.log('S3 Storage successfully configured with Supabase');
+    } else {
+      this.logger.warn('S3 is not configured. Falling back to Base64 storage (Not recommended for Production).');
+    }
+  }
 
-  private buildDataUrl(file: UploadedInventoryImageFile): string {
+  private async uploadImage(file: UploadedInventoryImageFile): Promise<string> {
     if (!file?.buffer || !file?.mimetype) {
       throw new BadRequestException('Invalid file');
     }
 
+    if (this.isS3Configured && this.s3Client) {
+      try {
+        // Р’РёР·РЅР°С‡Р°С”РјРѕ СЂРѕР·С€РёСЂРµРЅРЅСЏ Р· mimetype (РЅР°РїСЂРёРєР»Р°Рґ 'image/png' -> 'png')
+        const ext = file.mimetype.split('/')[1] || 'jpeg';
+        const fileName = `inventory/${uuidv4()}.${ext}`;
+        
+        await this.s3Client.send(
+          new PutObjectCommand({
+            Bucket: process.env.S3_BUCKET,
+            Key: fileName,
+            Body: file.buffer,
+            ContentType: file.mimetype,
+            // ACL: 'public-read' РЅРµ РїРѕС‚СЂС–Р±РµРЅ РґР»СЏ Supabase, РѕСЃРєС–Р»СЊРєРё Р±Р°РєРµС‚ СѓР¶Рµ Public
+          })
+        );
+        
+        // Р—Р±РёСЂР°С”РјРѕ РїСѓР±Р»С–С‡РЅРµ РїРѕСЃРёР»Р°РЅРЅСЏ
+        return `${process.env.S3_PUBLIC_URL}/${fileName}`;
+      } catch (e) {
+        this.logger.error('S3 Upload failed, falling back to base64', e);
+      }
+    }
+
+    // Fallback: СЏРєС‰Рѕ S3 РЅРµ РЅР°Р»Р°С€С‚РѕРІР°РЅРѕ Р°Р±Рѕ РІРїР°Р»Рѕ, Р·Р±РµСЂС–РіР°С”РјРѕ СЏРє СЂР°РЅС–С€Рµ
     return `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
   }
 
@@ -13736,7 +13864,7 @@ export class MediaService {
     }
 
     const imageUrl = params.file
-      ? this.buildDataUrl(params.file)
+      ? await this.uploadImage(params.file)
       : params.imageUrl?.trim();
 
     if (!imageUrl) {

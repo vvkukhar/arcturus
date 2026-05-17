@@ -4844,31 +4844,50 @@ class InventoryEngineState {
   final String query;
   final String? status;
   final String sort;
+  final int offset;
+  final bool hasMore;
+  final bool isLoadingMore;
 
   const InventoryEngineState({
     required this.items,
     required this.query,
     this.status,
     required this.sort,
+    this.offset = 0,
+    this.hasMore = true,
+    this.isLoadingMore = false,
   });
 
-  InventoryEngineState copyWith({List<InventoryItemModel>? items, String? query, String? status, String? sort}) {
+  InventoryEngineState copyWith({
+    List<InventoryItemModel>? items, 
+    String? query, 
+    String? status, 
+    String? sort,
+    int? offset,
+    bool? hasMore,
+    bool? isLoadingMore,
+  }) {
     return InventoryEngineState(
       items: items ?? this.items,
       query: query ?? this.query,
       status: status ?? this.status,
       sort: sort ?? this.sort,
+      offset: offset ?? this.offset,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
     );
   }
 }
 
 class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
+  static const int _pageSize = 50;
+
   @override
   Future<InventoryEngineState> build() async {
     final eventBus = ref.watch(socketEventBusProvider);
     final sub = eventBus.events.listen((event) {
       final type = event['type'];
-      final payloads = event['payloads'] as List?; // Р¤Р†РљРЎ: Р§РёС‚Р°С”РјРѕ РјР°СЃРёРІ
+      final payloads = event['payloads'] as List?; 
 
       if (type == 'inventory_updated' && payloads != null) {
         final currentState = state.valueOrNull;
@@ -4901,30 +4920,80 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
     });
     ref.onDispose(() => sub.cancel());
 
-    return _fetchData('', null, 'newest');
+    return _fetchData('', null, 'newest', 0);
   }
 
-  Future<InventoryEngineState> _fetchData(String query, String? status, String sort) async {
+  Future<InventoryEngineState> _fetchData(String query, String? status, String sort, int offset) async {
     final repo = ref.read(inventoryRepositoryProvider);
-    final qParams = <String, dynamic>{'limit': 100};
+    final qParams = <String, dynamic>{'limit': _pageSize, 'offset': offset};
     
     if (query.isNotEmpty) qParams['q'] = query;
     if (status != null) qParams['status'] = status;
     
     final items = await repo.fetchAll(query: qParams);
-    return InventoryEngineState(items: items, query: query, status: status, sort: sort);
+    
+    // Sort logic (Backend might not sort complex fields like profit properly, so we enforce it locally)
+    if (sort == 'cost') {
+      items.sort((a, b) => b.totalCost.compareTo(a.totalCost));
+    } else if (sort == 'profit') {
+      items.sort((a, b) => (b.expectedSalePriceManual ?? b.totalCost).compareTo(a.expectedSalePriceManual ?? a.totalCost));
+    }
+
+    return InventoryEngineState(
+      items: items, 
+      query: query, 
+      status: status, 
+      sort: sort,
+      offset: offset,
+      hasMore: items.length >= _pageSize,
+    );
   }
 
   void search(String query) async {
     final curr = state.valueOrNull;
     state = const AsyncValue.loading();
-    state = AsyncValue.data(await _fetchData(query, curr?.status, curr?.sort ?? 'newest'));
+    state = AsyncValue.data(await _fetchData(query, curr?.status, curr?.sort ?? 'newest', 0));
   }
 
   void updateFilters(String? status, String sort) async {
     final curr = state.valueOrNull;
     state = const AsyncValue.loading();
-    state = AsyncValue.data(await _fetchData(curr?.query ?? '', status, sort));
+    state = AsyncValue.data(await _fetchData(curr?.query ?? '', status, sort, 0));
+  }
+
+  Future<void> loadMore() async {
+    final curr = state.valueOrNull;
+    if (curr == null || curr.isLoadingMore || !curr.hasMore) return;
+
+    state = AsyncValue.data(curr.copyWith(isLoadingMore: true));
+    
+    try {
+      final repo = ref.read(inventoryRepositoryProvider);
+      final nextOffset = curr.offset + _pageSize;
+      final qParams = <String, dynamic>{'limit': _pageSize, 'offset': nextOffset};
+      
+      if (curr.query.isNotEmpty) qParams['q'] = curr.query;
+      if (curr.status != null) qParams['status'] = curr.status;
+
+      final newItems = await repo.fetchAll(query: qParams);
+      
+      final allItems = [...curr.items, ...newItems];
+
+      if (curr.sort == 'cost') {
+        allItems.sort((a, b) => b.totalCost.compareTo(a.totalCost));
+      } else if (curr.sort == 'profit') {
+        allItems.sort((a, b) => (b.expectedSalePriceManual ?? b.totalCost).compareTo(a.expectedSalePriceManual ?? a.totalCost));
+      }
+
+      state = AsyncValue.data(curr.copyWith(
+        items: allItems,
+        offset: nextOffset,
+        hasMore: newItems.length >= _pageSize,
+        isLoadingMore: false,
+      ));
+    } catch (e) {
+      state = AsyncValue.data(curr.copyWith(isLoadingMore: false));
+    }
   }
 
   Future<void> saveItem(Map<String, dynamic> payload, {String? id}) async {
@@ -5174,10 +5243,35 @@ import 'package:lego_trading_manager/features/item_details/presentation/item_det
 import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 
-class InventoryScreen extends ConsumerWidget {
+class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
 
-  void _showFilterSheet(BuildContext context, WidgetRef ref) {
+  @override
+  ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
+}
+
+class _InventoryScreenState extends ConsumerState<InventoryScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      ref.read(inventoryEngineProvider.notifier).loadMore();
+    }
+  }
+
+  void _showFilterSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -5187,7 +5281,7 @@ class InventoryScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final stateAsync = ref.watch(inventoryEngineProvider);
     final i18n = ref.watch(i18nProvider.notifier);
 
@@ -5197,7 +5291,7 @@ class InventoryScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list),
-            onPressed: () => _showFilterSheet(context, ref),
+            onPressed: () => _showFilterSheet(context),
           ),
         ],
       ),
@@ -5206,7 +5300,7 @@ class InventoryScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text(i18n.t('common.error', {'error': e.toString()}))),
         data: (state) {
-          if (state.visibleItems.isEmpty) {
+          if (state.items.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -5222,17 +5316,25 @@ class InventoryScreen extends ConsumerWidget {
           }
 
           return ListView.builder(
+            controller: _scrollController,
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(16),
-            itemCount: state.visibleItems.length,
+            itemCount: state.items.length + (state.isLoadingMore ? 1 : 0),
             itemBuilder: (context, index) {
-              final item = state.visibleItems[index];
+              if (index == state.items.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              final item = state.items[index];
               return Card(
                 color: const Color(0xFF171A21),
                 margin: const EdgeInsets.only(bottom: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
-                  title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(item.titleSnapshot, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text('${i18n.t('inv.status')}: ${item.status.name}', style: const TextStyle(color: Colors.white70)),
                   trailing: const Icon(Icons.chevron_right, color: Colors.white30),
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ItemDetailsScreen(item: item))),
@@ -5262,8 +5364,8 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
     super.initState();
     final state = ref.read(inventoryEngineProvider).valueOrNull;
     if (state != null) {
-      _status = state.filterStatus;
-      _sort = state.sortOption;
+      _status = state.status != null ? ItemStatus.values.firstWhere((e) => e.name == state.status) : null;
+      _sort = state.sort;
     }
   }
 
@@ -5315,7 +5417,7 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
               FilledButton(
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                 onPressed: () {
-                  ref.read(inventoryEngineProvider.notifier).updateFilters(_status, _sort);
+                  ref.read(inventoryEngineProvider.notifier).updateFilters(_status?.name, _sort);
                   Navigator.pop(context);
                 },
                 child: Text(i18n.t('inv.apply'), style: const TextStyle(fontWeight: FontWeight.bold)),

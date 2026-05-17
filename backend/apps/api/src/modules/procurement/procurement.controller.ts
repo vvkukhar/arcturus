@@ -28,12 +28,14 @@ export class ProcurementController {
     @Query('q') q?: string,
     @Query('assignedUserId') assignedUserId?: string,
     @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ): Promise<unknown[]> {
     return this.procurementService.list({
       status,
       q,
       assignedUserId,
-      limit: limit ? Number(limit) : 200,
+      limit: limit ? Number(limit) : 50,
+      offset: offset ? Number(offset) : 0,
     });
   }
 

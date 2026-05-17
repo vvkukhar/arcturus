@@ -32,8 +32,8 @@ export async function runOlxSource(): Promise<void> {
 
   try {
     const unresolvedOperations: any[] = [];
-    const creates: string[] = [];
-    const now = new Date().toISOString();
+    const creates: any[] = []; // ФІКС: Тепер це масив об'єктів, а не SQL-стdataрінгів
+    const now = new Date();
 
     for (const query of searchQueries) {
       const url = `https://www.olx.ua/uk/list/q-lego-${encodeURIComponent(query)}/`;
@@ -47,14 +47,24 @@ export async function runOlxSource(): Promise<void> {
         const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
         const listingId = stableListingId('olx', listing.externalListingId);
         
-        const price = listing.price || 0;
-        const shippingPrice = listing.shippingPrice || 0;
-        const titleRawEscaped = listing.titleRaw.replace(/'/g, "''");
-        const urlEscaped = listing.url.replace(/'/g, "''");
-        const imgEscaped = listing.imageUrl ? `'${listing.imageUrl.replace(/'/g, "''")}'` : 'NULL';
-
-        // ФІКС: Будуємо RAW SQL для надшвидкого Bulk Upsert
-        creates.push(`('${listingId}', '${source.id}', 'olx', '${itemId}', '${listing.externalListingId}', '${titleRawEscaped}', '${urlEscaped}', ${imgEscaped}, ${price}, 'UAH', ${shippingPrice}, 'UAH', 'active', '${now}', '${now}')`);
+        // Збираємо об'єкт для безпечної вставки
+        creates.push({
+          id: listingId,
+          sourceId: source.id,
+          sourceCode: 'olx',
+          itemId,
+          externalListingId: listing.externalListingId,
+          titleRaw: listing.titleRaw,
+          url: listing.url,
+          imageUrl: listing.imageUrl ?? null,
+          price: listing.price || 0,
+          currency: 'UAH',
+          shippingPrice: listing.shippingPrice || 0,
+          shippingCurrency: 'UAH',
+          status: 'active',
+          fetchedAt: now,
+          updatedAt: now,
+        });
 
         if (resolvedItemId == null) {
           unresolvedOperations.push({
@@ -68,20 +78,24 @@ export async function runOlxSource(): Promise<void> {
       }
     }
 
-    // Виконуємо надшвидкий масовий інсерт пачками по 500
+    // ФІКС: БЕЗПЕЧНИЙ БАЛК ІНСЕРТ ЧЕРЕЗ JSONB
     if (creates.length > 0) {
       const dbChunkSize = 500; 
       for (let i = 0; i < creates.length; i += dbChunkSize) {
         const chunk = creates.slice(i, i + dbChunkSize);
-        await prisma.$executeRawUnsafe(`
+        await prisma.$executeRaw`
           INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "status", "fetchedAt", "updatedAt")
-          VALUES ${chunk.join(',')}
+          SELECT * FROM jsonb_to_recordset(${JSON.stringify(chunk)}::jsonb) AS x(
+            "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
+            "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
+            "shippingPrice" float, "shippingCurrency" text, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
+          )
           ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
             "price" = EXCLUDED."price",
             "status" = 'active',
             "fetchedAt" = EXCLUDED."fetchedAt",
             "updatedAt" = EXCLUDED."updatedAt"
-        `);
+        `;
         itemsInserted += chunk.length;
       }
     }

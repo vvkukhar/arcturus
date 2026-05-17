@@ -33,8 +33,8 @@ export async function runBrickLinkSource(): Promise<void> {
 
   try {
     const unresolvedOperations: any[] = [];
-    const creates: string[] = [];
-    const now = new Date().toISOString();
+    const creates: any[] = [];
+    const now = new Date();
 
     for (const query of searchQueries) {
       const url = `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(query)}#T=S`;
@@ -55,17 +55,25 @@ export async function runBrickLinkSource(): Promise<void> {
           sealed: listing.sealed,
         });
 
-        const price = listing.price || 0;
-        const condition = listing.condition ? `'${listing.condition.replace(/'/g, "''")}'` : 'NULL';
-        const sealed = listing.sealed ? 'true' : 'false';
-        const titleRawEscaped = listing.titleRaw.replace(/'/g, "''");
-        const urlEscaped = listing.url.replace(/'/g, "''");
-        const imgEscaped = listing.imageUrl ? `'${listing.imageUrl.replace(/'/g, "''")}'` : 'NULL';
-        const externalIdEscaped = listing.externalListingId.replace(/'/g, "''");
-        const currency = listing.currency ? `'${listing.currency.replace(/'/g, "''")}'` : "'USD'";
-        const shipCurrency = listing.shippingCurrency ? `'${listing.shippingCurrency.replace(/'/g, "''")}'` : "'USD'";
-
-        creates.push(`('${listingId}', '${source.id}', 'bricklink', '${itemId}', '${externalIdEscaped}', '${titleRawEscaped}', '${urlEscaped}', ${imgEscaped}, ${price}, ${currency}, ${shippingPrice}, ${shipCurrency}, ${condition}, ${sealed}, 'active', '${now}', '${now}')`);
+        creates.push({
+          id: listingId,
+          sourceId: source.id,
+          sourceCode: 'bricklink',
+          itemId,
+          externalListingId: listing.externalListingId,
+          titleRaw: listing.titleRaw,
+          url: listing.url,
+          imageUrl: listing.imageUrl ?? null,
+          price: listing.price || 0,
+          currency: listing.currency || 'USD',
+          shippingPrice,
+          shippingCurrency: listing.shippingCurrency || listing.currency || 'USD',
+          condition: listing.condition ?? null,
+          sealed: listing.sealed ?? false,
+          status: 'active',
+          fetchedAt: now,
+          updatedAt: now,
+        });
 
         if (resolvedItemId == null) {
           unresolvedOperations.push({
@@ -83,16 +91,21 @@ export async function runBrickLinkSource(): Promise<void> {
       const dbChunkSize = 500;
       for (let i = 0; i < creates.length; i += dbChunkSize) {
         const chunk = creates.slice(i, i + dbChunkSize);
-        await prisma.$executeRawUnsafe(`
+        // Безпечний Bulk Upsert за допомогою JSONB та Prisma Parameterization
+        await prisma.$executeRaw`
           INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
-          VALUES ${chunk.join(',')}
+          SELECT * FROM jsonb_to_recordset(${JSON.stringify(chunk)}::jsonb) AS x(
+            "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
+            "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
+            "shippingPrice" float, "shippingCurrency" text, "condition" text, "sealed" boolean, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
+          )
           ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
             "price" = EXCLUDED."price",
             "shippingPrice" = EXCLUDED."shippingPrice",
             "status" = 'active',
             "fetchedAt" = EXCLUDED."fetchedAt",
             "updatedAt" = EXCLUDED."updatedAt"
-        `);
+        `;
         itemsInserted += chunk.length; 
       }
     }

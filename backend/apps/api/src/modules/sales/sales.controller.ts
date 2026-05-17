@@ -22,10 +22,12 @@ export class SalesController {
   list(
     @Query('q') q?: string,
     @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ): Promise<unknown[]> {
     return this.salesService.list({
       q,
-      limit: limit ? Number(limit) : 100,
+      limit: limit ? Number(limit) : 50,
+      offset: offset ? Number(offset) : 0,
     });
   }
 

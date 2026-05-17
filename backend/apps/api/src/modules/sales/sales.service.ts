@@ -117,7 +117,7 @@ export class SalesService {
     return result;
   }
 
-  async list(params?: { q?: string; limit?: number }): Promise<unknown[]> {
+  async list(params?: { q?: string; limit?: number; offset?: number }): Promise<unknown[]> {
     const q = params?.q?.trim();
 
     return this.prisma.sale.findMany({
@@ -140,7 +140,8 @@ export class SalesService {
         expenses: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: params?.limit ?? 10000,
+      take: params?.limit ?? 50,
+      skip: params?.offset ?? 0,
     });
   }
 

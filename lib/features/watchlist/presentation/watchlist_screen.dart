@@ -5,11 +5,36 @@ import 'package:lego_trading_manager/features/watchlist/application/watchlist_en
 import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_item_form_screen.dart';
 import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
-class WatchlistScreen extends ConsumerWidget {
+class WatchlistScreen extends ConsumerStatefulWidget {
   const WatchlistScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WatchlistScreen> createState() => _WatchlistScreenState();
+}
+
+class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      ref.read(watchlistEngineProvider.notifier).loadMore();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final stateAsync = ref.watch(watchlistEngineProvider);
     final engine = ref.read(watchlistEngineProvider.notifier);
     final i18n = ref.watch(i18nProvider.notifier);
@@ -21,7 +46,7 @@ class WatchlistScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text(i18n.t('common.error', {'error': e.toString()}))),
         data: (state) {
-          if (state.visibleItems.isEmpty) {
+          if (state.items.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -37,17 +62,25 @@ class WatchlistScreen extends ConsumerWidget {
           }
 
           return ListView.builder(
+            controller: _scrollController,
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(16),
-            itemCount: state.visibleItems.length,
+            itemCount: state.items.length + (state.isLoadingMore ? 1 : 0),
             itemBuilder: (context, index) {
-              final item = state.visibleItems[index];
+              if (index == state.items.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              final item = state.items[index];
               return Card(
                 color: const Color(0xFF171A21),
                 margin: const EdgeInsets.only(bottom: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
-                  title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(item.titleSnapshot, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text('${i18n.t('watch.target')}: ${item.desiredBuyPrice}', style: const TextStyle(color: Colors.white70)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,

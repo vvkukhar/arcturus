@@ -16,7 +16,7 @@ export class WatchlistService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  async list(params?: { q?: string; active?: boolean; assignedUserId?: string; limit?: number }): Promise<unknown[]> {
+  async list(params?: { q?: string; active?: boolean; assignedUserId?: string; limit?: number; offset?: number }): Promise<unknown[]> {
     const q = params?.q?.trim();
 
     return this.prisma.watchlistItem.findMany({
@@ -35,7 +35,8 @@ export class WatchlistService {
       },
       orderBy: [{ active: 'desc' }, { priority: 'desc' }, { createdAt: 'desc' }],
       include: { item: true, assignedUser: true },
-      take: params?.limit ?? 10000,
+      take: params?.limit ?? 50,
+      skip: params?.offset ?? 0,
     });
   }
 

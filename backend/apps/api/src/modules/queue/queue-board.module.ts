@@ -40,15 +40,19 @@ export class QueueBoardModule implements NestModule {
       },
     });
 
+    // ФІКС: Надійна Basic Auth замість вразливого query.token
     consumer
       .apply((req: Request, res: Response, next: NextFunction) => {
-        const token = req.query.token || req.headers['authorization']?.split(' ')[1];
-        const adminToken = process.env.ADMIN_TOKEN;
+        const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+        const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+        const expectedPassword = process.env.ADMIN_TOKEN;
         
-        if (token === adminToken && adminToken) {
+        if (login === 'admin' && password === expectedPassword && expectedPassword) {
           return next();
         }
-        res.status(401).json({ error: 'Unauthorized Queue Access' });
+
+        res.set('WWW-Authenticate', 'Basic realm="Arcturus Secure Area"');
+        res.status(401).send('Authentication required.');
       }, serverAdapter.getRouter())
       .forRoutes('/admin/queues');
   }
