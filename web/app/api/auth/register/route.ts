@@ -19,9 +19,15 @@ export async function POST(request: NextRequest) {
   });
 
   if (!apiRes.ok) {
-    const errorData = await apiRes.json().catch(() => ({}));
+    let errorMessage = 'Registration failed';
+    try {
+      const errorData = await apiRes.json();
+      errorMessage = errorData.message || errorMessage;
+    } catch {
+      errorMessage = `Server Error: ${apiRes.statusText || apiRes.status}. Check API URL: ${appConfig.apiBaseUrl}`;
+    }
     return NextResponse.json(
-      { ok: false, error: errorData.message || 'Registration failed' },
+      { ok: false, error: errorMessage },
       { status: apiRes.status },
     );
   }
