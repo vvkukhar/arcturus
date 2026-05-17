@@ -1,9 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
 
 const PUBLIC_PATHS = new Set(['/manifest.json', '/favicon.ico', '/login', '/register']);
 const STATIC_EXTENSION_REGEX = /\.(?!html|json)[^.]+$/i;
-const JWT_SECRET = process.env.JWT_SECRET ? new TextEncoder().encode(process.env.JWT_SECRET) : null;
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -19,14 +17,11 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get('arcturus_admin_token')?.value;
   const isAdminRoute = pathname.startsWith('/admin');
   const isPublicPath = PUBLIC_PATHS.has(pathname);
-  let isAuth = false;
-
-  if (token && JWT_SECRET) {
-    try {
-      await jwtVerify(token, JWT_SECRET);
-      isAuth = true;
-    } catch {}
-  }
+  
+  // Бекенд використовує Opaque Tokens (hex), а не JWT.
+  // Мідлвар лише перевіряє наявність куки. 
+  // Реальна валідація токена проходить в <AuthGate> через /api/auth/me.
+  const isAuth = !!token;
 
   if (isAdminRoute && !isAuth) {
     return NextResponse.redirect(new URL('/login', req.url));
