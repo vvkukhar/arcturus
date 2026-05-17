@@ -11,10 +11,13 @@ export const metadata: Metadata = {
   description: 'Browse our curated selection of rare, retired, and authenticated LEGO sets.',
 };
 
-// ЗВЕРНИ УВАГУ: Тепер searchParams — це Promise (вимога Next.js 15+)
-export default async function CatalogPage(props: { 
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }> 
-}) {
+// ВИПРАВЛЕНО: Додали повний тип PageProps, який вимагає Next.js 15
+type Props = {
+  params: Promise<any>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function CatalogPage(props: Props) {
   const resolvedParams = await props.searchParams;
   
   let items: any[] = [];
