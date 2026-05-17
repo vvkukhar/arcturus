@@ -77,13 +77,24 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
   
   const base = appConfig.apiBaseUrl.replace(/\/$/, '');
   let cleanPath = path.startsWith('/') ? path : `/${path}`;
-  if (base.endsWith('/api/v1') && cleanPath.startsWith('/api/v1')) {
-    cleanPath = cleanPath.substring(7); 
-  } else if (base.endsWith('/api') && cleanPath.startsWith('/api')) {
-    cleanPath = cleanPath.substring(4); 
-  }
   
-  const targetUrl = path.startsWith('http') ? path : `${base}${cleanPath}`;
+  // ФІКС МАРШРУТИЗАЦІЇ: Локальні запити Next.js не повинні йти на віддалений бекенд
+  let targetUrl = '';
+  if (path.startsWith('http')) {
+    targetUrl = path;
+  } else if (path.startsWith('/api/')) {
+    // Це запит від клієнта до локального Next.js (наприклад, /api/auth/register)
+    targetUrl = path; 
+  } else {
+    // Це запит від серверного компонента напряму до бекенду
+    if (base.endsWith('/api/v1') && cleanPath.startsWith('/api/v1')) {
+      cleanPath = cleanPath.substring(7); 
+    } else if (base.endsWith('/api') && cleanPath.startsWith('/api')) {
+      cleanPath = cleanPath.substring(4); 
+    }
+    targetUrl = `${base}${cleanPath}`;
+  }
+
   const requestKey = `${init.method || 'GET'}:${targetUrl}:${typeof init.body === 'string' ? init.body : ''}`;
 
   if (dedupe && isServer && (!init.method || init.method === 'GET') && activeRequests.has(requestKey)) {
