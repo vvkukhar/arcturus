@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Download, Loader2 } from 'lucide-react';
 
 type Props = {
   endpoint: string;
@@ -24,6 +25,7 @@ export function ExportCsvButton({ endpoint, filename }: Props) {
   return (
     <div className="flex items-center gap-3">
       <button
+        disabled={loading}
         onClick={async () => {
           try {
             setLoading(true);
@@ -85,12 +87,13 @@ export function ExportCsvButton({ endpoint, filename }: Props) {
             setLoading(false);
           }
         }}
-        className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+        className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--background)] shadow-sm disabled:opacity-50"
       >
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
         {loading ? 'Exporting...' : 'Export CSV'}
       </button>
 
-      {error ? <div className="text-xs text-red-600">{error}</div> : null}
+      {error ? <div className="text-xs font-bold text-red-500">{error}</div> : null}
     </div>
   );
 }
