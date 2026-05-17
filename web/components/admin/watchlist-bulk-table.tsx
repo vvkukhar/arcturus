@@ -44,21 +44,21 @@ export function WatchlistBulkTable({ rows }: Props) {
 
   const clear = useCallback(() => setSelected(new Set()), []);
 
-  const bulkAdd = useCallback(async () => {
+const bulkAdd = useCallback(async () => {
     if (bulkLoading || selected.size === 0) return;
     try {
       setBulkLoading(true);
       
-      // ВИПРАВЛЕНО: викликаємо один масовий ендпоінт замість Promise.all
-      await apiFetch('/api/admin/flows/purchase/bulk-add', {
+      // Стукаємо прямо в бекенд через проксі з правильним полем watchlistItemIds
+      await apiFetch('/api/proxy/flows/purchase/bulk-add', {
         method: 'POST',
-        body: JSON.stringify({ ids: Array.from(selected) }),
+        body: JSON.stringify({ watchlistItemIds: Array.from(selected) }),
       });
       
       clear();
       router.refresh();
-    } catch {
-      alert('Error bulk adding to Purchase Flow');
+    } catch (err: any) {
+      alert(err.message || 'Error bulk adding to Purchase Flow');
     } finally {
       setBulkLoading(false);
     }
