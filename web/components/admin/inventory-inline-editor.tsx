@@ -65,8 +65,10 @@ export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
     }
   };
 
+  const inputClasses = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-blue-500 outline-none transition-all shadow-sm placeholder:text-slate-500";
+
   return (
-    <div className="space-y-3 rounded-2xl border border-border bg-slate-50 p-4">
+    <div className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Quick Edit</span>
       </div>
@@ -76,7 +78,7 @@ export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
           <input
             value={titleSnapshot}
             onChange={(e) => setTitleSnapshot(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-blue-500 outline-none"
+            className={inputClasses}
             placeholder="Title"
           />
         </div>
@@ -86,7 +88,7 @@ export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
           step="0.01"
           value={purchasePrice}
           onChange={(e) => setPurchasePrice(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-blue-500 outline-none"
+          className={inputClasses}
           placeholder="Purchase (₴)"
         />
 
@@ -95,7 +97,7 @@ export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
           min="1"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-blue-500 outline-none"
+          className={inputClasses}
           placeholder="Qty"
         />
 
@@ -104,28 +106,28 @@ export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
           step="0.01"
           value={expectedSalePriceManual}
           onChange={(e) => setExpectedSalePriceManual(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-blue-500 outline-none"
+          className={inputClasses}
           placeholder="Manual Sell"
         />
 
         <select
           value={condition}
           onChange={(e) => setCondition(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-blue-500 outline-none cursor-pointer"
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-3 py-2.5 text-sm font-bold focus:bg-[var(--card)] focus:border-blue-500 outline-none cursor-pointer shadow-sm"
         >
           <option value="new">New</option>
           <option value="used">Used</option>
           <option value="incomplete">Incomplete</option>
         </select>
 
-        <label className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm cursor-pointer hover:bg-slate-50">
+        <label className="flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm cursor-pointer hover:bg-[var(--card)] transition-colors">
           <input
             type="checkbox"
             checked={sealed}
             onChange={(e) => setSealed(e.target.checked)}
             className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
           />
-          <span className="font-medium text-slate-700">Sealed</span>
+          <span className="font-bold text-[var(--foreground)]">Sealed</span>
         </label>
       </div>
 
@@ -136,7 +138,7 @@ export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
         <button
           disabled={loading}
           onClick={handleSave}
-          className="flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50"
+          className="flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-white px-5 py-2 text-sm font-semibold text-white dark:text-slate-900 transition-colors hover:bg-black dark:hover:bg-slate-200 disabled:opacity-50 shadow-sm"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {loading ? 'Saving...' : 'Save Inline'}

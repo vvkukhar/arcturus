@@ -65,8 +65,8 @@ export function AdminTopbar() {
           )}
 
           <Button
-            variant="secondary"
-            className="gap-2 bg-[var(--background)] text-slate-700 hover:bg-[var(--border)] dark:text-slate-300 shadow-none border border-[var(--border)]"
+            variant="outline"
+            className="gap-2 border-[var(--border)] bg-[var(--card)] text-slate-600 hover:bg-[var(--background)] hover:text-[var(--foreground)] dark:text-slate-300 shadow-sm"
             onClick={() => router.refresh()}
           >
             <RefreshCcw size={16} />
