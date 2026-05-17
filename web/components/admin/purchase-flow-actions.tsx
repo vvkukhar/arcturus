@@ -21,7 +21,8 @@ export function PurchaseFlowActions({ id, selectedPrice }: Props) {
     
     try {
       setLoading('bought');
-      await apiFetch('/api/proxy/flows/purchase/bought', {
+      // ВИПРАВЛЕНО: Правильний роут, який створює товар в Inventory!
+      await apiFetch('/api/proxy/flows/purchase/mark-bought', {
         method: 'PATCH',
         body: JSON.stringify({
           id,
@@ -41,8 +42,8 @@ export function PurchaseFlowActions({ id, selectedPrice }: Props) {
     if (!confirm('Remove from purchase flow?')) return;
     try {
       setLoading('remove');
-      await apiFetch('/api/proxy/flows/purchase', {
-        method: 'DELETE',
+      await apiFetch('/api/proxy/flows/purchase/remove', {
+        method: 'PATCH',
         body: JSON.stringify({ id }),
       });
       router.refresh();
