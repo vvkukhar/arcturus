@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { trackEcommerce } from '../analytics';
-import { api } from '../api';
+import { apiFetch } from '../api';
 
 export interface CartItem {
   id: string;
@@ -96,7 +96,8 @@ export const useCart = create<CartStore>()(
 
         try {
           const ids = currentItems.map(i => i.id).join(',');
-          const res = await api.get<any[]>(`/public/catalog?ids=${ids}`, { requireAuth: false });
+          // ФІКС: Звертаємося до проксі Next.js, щоб уникнути CORS-блокувань в браузері
+          const res = await apiFetch<any[]>(`/api/proxy/public/catalog?ids=${ids}`, { requireAuth: false });
           if (!Array.isArray(res)) return;
 
           const availableMap = new Map(res.map(r => [r.id, r.quantity]));

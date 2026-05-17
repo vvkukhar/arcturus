@@ -8,7 +8,9 @@ export const maxDuration = 60;
 async function handleProxy(req: NextRequest, props: { params: Promise<{ path: string[] }> }) {
   const { path } = await props.params;
   const token = await getAdminToken();
-  const sanitizedPath = path.map(p => p.replace(/[^a-zA-Z0-9\-_\.]/g, '')).join('/');
+  
+  // ФІКС БЕЗПЕКИ: Видаляємо крапки, щоб унеможливити Directory Traversal (../)
+  const sanitizedPath = path.map(p => p.replace(/[^a-zA-Z0-9\-_]/g, '')).join('/');
   
   if (!token && !sanitizedPath.startsWith('public/')) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });

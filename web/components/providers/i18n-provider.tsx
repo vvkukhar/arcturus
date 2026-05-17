@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { dict, Language, DictKey } from '@/lib/i18n';
 
 type I18nContextType = {
@@ -24,14 +24,15 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const setLang = (newLang: Language) => {
+  const setLang = useCallback((newLang: Language) => {
     setLangState(newLang);
     localStorage.setItem('arcturus_lang', newLang);
-  };
+  }, []);
 
-  const t = (key: DictKey): string => {
+  // ФІКС: Мемоізуємо функцію, щоб запобігти нескінченним ререндерам та скиданням useEffect у дочірніх компонентах
+  const t = useCallback((key: DictKey): string => {
     return dict[lang]?.[key] || dict['en']?.[key] || key;
-  };
+  }, [lang]);
 
   return (
     <I18nContext.Provider value={{ lang, setLang, t }}>
