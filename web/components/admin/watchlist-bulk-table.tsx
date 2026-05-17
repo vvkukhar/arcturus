@@ -49,16 +49,20 @@ const bulkAdd = useCallback(async () => {
     try {
       setBulkLoading(true);
       
-      // Стукаємо прямо в бекенд через проксі з правильним полем watchlistItemIds
-      await apiFetch('/api/proxy/flows/purchase/bulk-add', {
-        method: 'POST',
-        body: JSON.stringify({ watchlistItemIds: Array.from(selected) }),
-      });
+      // Відправляємо кожен елемент окремо через гарантовано робочий ендпоінт
+      const requests = Array.from(selected).map((id) =>
+        apiFetch('/api/proxy/flows/purchase/add', {
+          method: 'POST',
+          body: JSON.stringify({ watchlistItemId: id }),
+        })
+      );
+      
+      await Promise.all(requests);
       
       clear();
       router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Error bulk adding to Purchase Flow');
+      alert(err.message || 'Error adding to Purchase Flow');
     } finally {
       setBulkLoading(false);
     }
