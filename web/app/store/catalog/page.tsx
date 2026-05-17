@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   description: 'Browse our curated selection of rare, retired, and authenticated LEGO sets.',
 };
 
-// ВИПРАВЛЕНО: Додали повний тип PageProps, який вимагає Next.js 15
 type Props = {
   params: Promise<any>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -66,8 +65,7 @@ export default async function CatalogPage(props: Props) {
             <select
               name="theme"
               defaultValue={typeof resolvedParams.theme === 'string' ? resolvedParams.theme : ''}
-              onChange={(e) => e.target.form?.submit()}
-              className="h-12 w-full cursor-pointer appearance-none rounded-2xl border border-[var(--border)] bg-[var(--card)] pl-9 pr-4 text-sm font-medium outline-none transition-shadow focus:ring-2 focus:ring-blue-500"
+              className="h-12 w-full appearance-none rounded-2xl border border-[var(--border)] bg-[var(--card)] pl-9 pr-4 text-sm font-medium outline-none transition-shadow focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Усі серії</option>
               {themes.map((theme) => (
@@ -75,6 +73,10 @@ export default async function CatalogPage(props: Props) {
               ))}
             </select>
           </div>
+          {/* ВИПРАВЛЕНО: Додали кнопку замість JS події onChange */}
+          <button type="submit" className="h-12 px-6 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors">
+            Знайти
+          </button>
         </form>
       </div>
 
