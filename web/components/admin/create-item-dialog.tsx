@@ -64,11 +64,11 @@ export function CreateItemDialog() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md rounded-[2rem] border border-border bg-white p-6 md:p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-md rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-black text-slate-900">Create Catalog Item</h2>
-          <button onClick={handleClose} className="rounded-full p-2 hover:bg-slate-100 text-slate-400">
+          <h2 className="text-xl font-black text-[var(--foreground)]">Create Catalog Item</h2>
+          <button onClick={handleClose} className="rounded-full p-2 hover:bg-[var(--background)] text-slate-400 transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -87,7 +87,7 @@ export function CreateItemDialog() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. LEGO Star Wars Millennium Falcon"
-              className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3.5 text-sm font-bold focus:bg-white focus:border-blue-500 outline-none transition-all shadow-sm"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-blue-500 outline-none transition-all shadow-sm placeholder:text-slate-500"
             />
           </div>
 
@@ -98,7 +98,7 @@ export function CreateItemDialog() {
                 value={setNumber}
                 onChange={(e) => setSetNumber(e.target.value)}
                 placeholder="e.g. 75192"
-                className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3.5 text-sm font-bold focus:bg-white focus:border-blue-500 outline-none transition-all shadow-sm"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-blue-500 outline-none transition-all shadow-sm placeholder:text-slate-500"
               />
             </div>
             <div className="space-y-1.5">
@@ -107,7 +107,7 @@ export function CreateItemDialog() {
                 value={theme}
                 onChange={(e) => setTheme(e.target.value)}
                 placeholder="e.g. Star Wars"
-                className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3.5 text-sm font-bold focus:bg-white focus:border-blue-500 outline-none transition-all shadow-sm"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-blue-500 outline-none transition-all shadow-sm placeholder:text-slate-500"
               />
             </div>
           </div>
@@ -117,7 +117,7 @@ export function CreateItemDialog() {
             <select
               value={kind}
               onChange={(e) => setKind(e.target.value)}
-              className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3.5 text-sm font-bold focus:bg-white focus:border-blue-500 outline-none cursor-pointer shadow-sm"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-blue-500 outline-none cursor-pointer shadow-sm"
             >
               <option value="set">Set</option>
               <option value="minifigure">Minifigure</option>
@@ -125,7 +125,7 @@ export function CreateItemDialog() {
             </select>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-slate-100 flex gap-3">
+          <div className="mt-8 pt-4 border-t border-[var(--border)] flex gap-3">
             <Button type="button" variant="ghost" className="flex-1" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>
