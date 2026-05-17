@@ -20,10 +20,8 @@ const handleMarkBought = async () => {
     if (price === null) return;
     
     try {
-      setLoading('bought');
-      
-      // ВИПРАВЛЕНО: тепер шлях збігається з бекендом
-      await apiFetch('/api/proxy/flows/purchase/bought', {
+setLoading('bought');
+      await apiFetch('/api/proxy/flows/purchase/mark-bought', { // <--- ТУТ ПОВЕРНУЛИ mark-bought
         method: 'PATCH',
         body: JSON.stringify({
           id,
