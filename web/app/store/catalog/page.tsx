@@ -4,39 +4,36 @@ import { ProductCard } from '@/components/store/product-card';
 import { appConfig } from '@/lib/config';
 import Link from 'next/link';
 
-export const revalidate = 0; // Завжди тягнемо свіжі дані з БД
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: 'Catalog | Arcturus Premium LEGO',
-  description: 'Browse our curated selection of rare, retired, and authenticated LEGO sets and minifigures.',
+  description: 'Browse our curated selection of rare, retired, and authenticated LEGO sets.',
 };
 
-async function getCatalogData(searchParams: URLSearchParams) {
+export default async function CatalogPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
+  let items: any[] = [];
+  let themes: string[] = [];
+
   try {
-    const res = await fetch(`${appConfig.apiBaseUrl}/public/catalog?${searchParams.toString()}`, {
+    const query = new URLSearchParams();
+    query.set('availableOnly', 'true');
+    
+    if (typeof searchParams.q === 'string') query.set('q', searchParams.q);
+    if (typeof searchParams.theme === 'string') query.set('theme', searchParams.theme);
+
+    const res = await fetch(`${appConfig.apiBaseUrl}/public/catalog?${query.toString()}`, {
       cache: 'no-store'
     });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
+
+    if (res.ok) {
+      const data = await res.json();
+      items = Array.isArray(data) ? data : [];
+      themes = Array.from(new Set(items.map((i: any) => i?.item?.theme || 'LEGO').filter(Boolean))).sort() as string[];
+    }
   } catch (err) {
     console.error('Catalog fetch error:', err);
-    return [];
   }
-}
-
-export default async function CatalogPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-  const resolvedParams = await searchParams;
-  const query = new URLSearchParams();
-  query.set('availableOnly', 'true');
-  
-  if (typeof resolvedParams.q === 'string') query.set('q', resolvedParams.q);
-  if (typeof resolvedParams.theme === 'string') query.set('theme', resolvedParams.theme);
-
-  const items = await getCatalogData(query);
-  
-  // ВИПРАВЛЕНО: правильний шлях до теми та захист від падінь
-  const themes = Array.from(new Set(items.map((i: any) => i.item?.theme).filter(Boolean))).sort() as string[];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 animate-in fade-in duration-500 transform-gpu">
@@ -48,23 +45,21 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         
         <form method="GET" action="/store/catalog" className="flex w-full flex-col gap-4 sm:flex-row md:w-auto">
           <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input 
               name="q"
-              defaultValue={typeof resolvedParams.q === 'string' ? resolvedParams.q : ''}
+              defaultValue={typeof searchParams.q === 'string' ? searchParams.q : ''}
               placeholder="Пошук..." 
               className="h-12 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] pl-9 pr-4 text-sm font-medium outline-none transition-shadow focus:ring-2 focus:ring-blue-500"
-              aria-label="Search catalog"
             />
           </div>
           <div className="relative flex-1 sm:w-48">
-            <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <select
               name="theme"
-              defaultValue={typeof resolvedParams.theme === 'string' ? resolvedParams.theme : ''}
+              defaultValue={typeof searchParams.theme === 'string' ? searchParams.theme : ''}
               onChange={(e) => e.target.form?.submit()}
               className="h-12 w-full cursor-pointer appearance-none rounded-2xl border border-[var(--border)] bg-[var(--card)] pl-9 pr-4 text-sm font-medium outline-none transition-shadow focus:ring-2 focus:ring-blue-500"
-              aria-label="Filter by theme"
             >
               <option value="">Усі серії</option>
               {themes.map((theme) => (
@@ -77,19 +72,26 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
 
       {items.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((item: any) => (
-            <ProductCard 
-              key={item.id} 
-              item={{
-                ...item,
-                title: item.titleSnapshot,
-                theme: item.item?.theme || 'LEGO',
-                // ВИПРАВЛЕНО: мапимо правильну ціну для карточки товару
-                sellPrice: item.expectedSalePriceManual ?? item.totalCost ?? 0,
-                slug: (item.titleSnapshot || item.id).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-'),
-              }} 
-            />
-          ))}
+          {items.map((item: any) => {
+            // МАКСИМАЛЬНИЙ ЗАХИСТ (Фолбеки для ручних сетів без даних)
+            const safeTitle = item.titleSnapshot || item.item?.title || 'Arcturus Custom Item';
+            const safeSlug = String(safeTitle).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+            const safeImage = item.imageUrl || item.item?.imageUrl || 'https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?w=800&q=80'; // Крута картинка-заглушка з лего
+            
+            return (
+              <ProductCard 
+                key={item.id || Math.random()} 
+                item={{
+                  ...item,
+                  title: safeTitle,
+                  theme: item.item?.theme || 'LEGO',
+                  sellPrice: item.expectedSalePriceManual ?? item.totalCost ?? item.purchasePrice ?? 0,
+                  slug: safeSlug,
+                  imageUrl: safeImage,
+                }} 
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-[var(--border)] bg-[var(--card)] py-20 text-center">
