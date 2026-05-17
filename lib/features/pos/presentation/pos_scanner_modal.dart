@@ -42,7 +42,7 @@ class _PosScannerModalState extends State<PosScannerModal> {
         children: [
           MobileScanner(
             controller: _controller,
-            errorBuilder: (context, error, child) {
+            errorBuilder: (context, error) { // ФІКС ТИПІЗАЦІЇ
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),

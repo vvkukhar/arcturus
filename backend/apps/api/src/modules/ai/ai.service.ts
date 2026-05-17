@@ -57,8 +57,10 @@ export class AiService {
         temperature: 0.1,
       });
 
-      const content = response.choices[0].message.content;
-      return JSON.parse(content || '{}');
+      // ФІКС: Зачищаємо markdown, якщо AI вирішить його додати
+      let content = response.choices[0].message.content || '{}';
+      content = content.replace(/^```json\n?/i, '').replace(/```$/i, '').trim();
+      return JSON.parse(content);
     } catch (error) {
       this.logger.error('Failed to explain deal via AI', error);
       return {
@@ -126,8 +128,11 @@ export class AiService {
         temperature: 0.1,
       });
 
-      const content = response.choices[0].message.content;
-      const parsed = JSON.parse(content || '{"tasks":[]}');
+      // ФІКС: Зачищаємо markdown
+      let content = response.choices[0].message.content || '{"tasks":[]}';
+      content = content.replace(/^```json\n?/i, '').replace(/```$/i, '').trim();
+      
+      const parsed = JSON.parse(content);
       return parsed.tasks;
     } catch (error) {
       return [

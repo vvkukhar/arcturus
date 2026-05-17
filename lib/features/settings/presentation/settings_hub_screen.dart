@@ -44,7 +44,7 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
           // LANGUAGE SWITCHER
           Card(
             color: const Color(0xFF171A21),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blueAccent.withOpacity(0.3))),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blueAccent.withValues(alpha: 0.3))), // ФІКС
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -82,7 +82,7 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
           // CURRENCY SWITCHER
           Card(
             color: const Color(0xFF171A21),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.amber.withOpacity(0.3))),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.amber.withValues(alpha: 0.3))), // ФІКС
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -122,7 +122,7 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
           // DATA MANAGEMENT (FILES)
           Card(
             color: const Color(0xFF171A21),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.greenAccent.withOpacity(0.3))),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.greenAccent.withValues(alpha: 0.3))), // ФІКС
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -199,10 +199,10 @@ class _SettingsHubScreenState extends ConsumerState<SettingsHubScreen> {
   Widget _buildCard(String title, String sub, IconData icon, Color color, VoidCallback onTap) {
     return Card(
       color: const Color(0xFF171A21),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: color.withOpacity(0.3))),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: color.withValues(alpha: 0.3))), // ФІКС
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color)),
+        leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color)), // ФІКС
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         subtitle: Text(sub, style: const TextStyle(color: Colors.white70)),
         onTap: onTap,

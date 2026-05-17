@@ -128,6 +128,12 @@ export class PaymentsService {
   }
 
   private async processSuccessfulPayment(orderId: string, amountTotalKopecks: number): Promise<void> {
+    // ФІКС: Ідемпотентність. Якщо вебхук прийшов вдруге - ігноруємо
+    const existingOrder = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!existingOrder || existingOrder.status === 'paid' || existingOrder.status === 'sold') {
+      return; 
+    }
+
     const order = await this.prisma.order.update({
       where: { id: orderId },
       data: { status: 'paid' },

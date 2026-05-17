@@ -40,7 +40,7 @@ export class InventoryService {
       },
       orderBy: { createdAt: 'desc' },
       take: params?.limit ?? 50,
-      skip: params?.offset ?? 0, // ФІКС: Реалізація пагінації на рівні БД
+      skip: params?.offset ?? 0,
     });
   }
 
@@ -74,37 +74,46 @@ export class InventoryService {
     const totalCost = toMoney(dto.totalCost ?? (purchasePrice * quantity) + extraCosts + shippingToMe);
 
     const result = await this.prisma.$transaction(async (tx) => {
-      const item = await tx.item.upsert({
-        where: {
-          setNumber_kind: {
-            setNumber: dto.setNumber ?? 'UNKNOWN',
+      let dbItem = null;
+
+      if (dto.itemId) {
+        dbItem = await tx.item.findUnique({ where: { id: dto.itemId } });
+      }
+
+      if (!dbItem && dto.setNumber) {
+        dbItem = await tx.item.findFirst({
+          where: { setNumber: dto.setNumber, kind: dto.kind ?? 'set' }
+        });
+      }
+
+      if (!dbItem) {
+        dbItem = await tx.item.create({
+          data: {
+            title: dto.titleSnapshot,
+            setNumber: dto.setNumber ?? null,
             kind: dto.kind ?? 'set',
+            theme: dto.theme ?? null,
+            conditionDefault: dto.condition ?? 'used',
           },
-        },
-        update: {},
-        create: {
-          title: dto.titleSnapshot,
-          setNumber: dto.setNumber,
-          kind: dto.kind ?? 'set',
-          theme: dto.theme,
-          conditionDefault: dto.condition ?? 'used',
-        },
-      });
+        });
+      }
 
       const inventoryItem = await tx.inventoryItem.create({
         data: {
-          itemId: item.id,
-          titleSnapshot: dto.titleSnapshot || item.title,
+          itemId: dbItem.id,
+          titleSnapshot: dto.titleSnapshot || dbItem.title,
           purchasePrice,
           totalCost,
           quantity,
-          condition: dto.condition ?? item.conditionDefault ?? 'used',
+          condition: dto.condition ?? dbItem.conditionDefault ?? 'used',
           sealed: dto.sealed ?? false,
           expectedSalePriceManual: dto.expectedSalePriceManual != null ? toMoney(dto.expectedSalePriceManual) : null,
           source: dto.source ?? null,
+          purchaseUrl: dto.purchaseUrl ?? null,
           storageLocationId: dto.storageLocationId ?? null,
           warehouseId: dto.warehouseId ?? null,
           assignedUserId: dto.assignedUserId ?? null,
+          notes: dto.notes ?? null,
         },
         include: { item: true, assignedUser: true, images: true },
       });
@@ -131,6 +140,8 @@ export class InventoryService {
     });
 
     this.realtime.emitInventoryUpdated(result);
+    this.realtime.emitDashboardRefresh('inventory_created');
+    
     return result;
   }
 
@@ -149,11 +160,23 @@ export class InventoryService {
         sealed: dto.sealed,
         expectedSalePriceManual: dto.expectedSalePriceManual === undefined ? undefined : dto.expectedSalePriceManual === null ? null : toMoney(dto.expectedSalePriceManual),
         storageLocationId: dto.storageLocationId,
+        warehouseId: dto.warehouseId,
+        source: dto.source,
+        purchaseUrl: dto.purchaseUrl,
+        notes: dto.notes,
+        assignedUserId: dto.assignedUserId,
       },
       include: { item: true, assignedUser: true, images: { orderBy: { sortOrder: 'asc' } } },
     });
 
+    await this.activity.log('inventory.updated', {
+      inventoryItemId: updated.id,
+      title: updated.titleSnapshot,
+    });
+
     this.realtime.emitInventoryUpdated(updated);
+    this.realtime.emitDashboardRefresh('inventory_updated');
+
     return updated;
   }
 
@@ -169,12 +192,15 @@ export class InventoryService {
     });
 
     this.realtime.emitInventoryRefresh({ id, deleted: true });
+    this.realtime.emitDashboardRefresh('inventory_deleted');
+    
     return deleted;
   }
 
   async bulkDelete(ids: string[]): Promise<unknown> {
     const result = await this.prisma.inventoryItem.deleteMany({ where: { id: { in: ids } } });
     this.realtime.emitInventoryRefresh({ ids, deleted: true });
+    this.realtime.emitDashboardRefresh('inventory_bulk_deleted');
     return result;
   }
 

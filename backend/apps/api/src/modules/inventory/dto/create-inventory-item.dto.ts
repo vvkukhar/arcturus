@@ -10,17 +10,43 @@ import {
 } from 'class-validator';
 
 export class CreateInventoryItemDto {
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  itemId!: string;
+  itemId?: string;
 
   @ApiProperty()
   @IsString()
   titleSnapshot!: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  kind?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  theme?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  setNumber?: string | null;
+
   @ApiProperty({ example: 1200 })
   @IsNumber()
   purchasePrice!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  shippingToMe?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  extraCosts?: number;
 
   @ApiPropertyOptional({ example: 1350 })
   @IsOptional()
@@ -61,7 +87,12 @@ export class CreateInventoryItemDto {
   @ApiPropertyOptional({ example: 'Shelf A1' })
   @IsOptional()
   @IsString()
-  storageLocation?: string | null;
+  storageLocationId?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  warehouseId?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

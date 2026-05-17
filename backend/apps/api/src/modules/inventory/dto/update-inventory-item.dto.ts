@@ -17,8 +17,28 @@ export class UpdateInventoryItemDto {
   titleSnapshot?: string;
 
   @IsOptional()
+  @IsString()
+  kind?: string;
+
+  @IsOptional()
+  @IsString()
+  theme?: string | null;
+
+  @IsOptional()
+  @IsString()
+  setNumber?: string | null;
+
+  @IsOptional()
   @IsNumber()
   purchasePrice?: number;
+
+  @IsOptional()
+  @IsNumber()
+  shippingToMe?: number;
+
+  @IsOptional()
+  @IsNumber()
+  extraCosts?: number;
 
   @IsOptional()
   @IsNumber()
@@ -51,7 +71,11 @@ export class UpdateInventoryItemDto {
 
   @IsOptional()
   @IsString()
-  storageLocation?: string | null;
+  storageLocationId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  warehouseId?: string | null;
 
   @IsOptional()
   @IsString()

@@ -7,8 +7,9 @@ class CommandCenterAction {
   final String title;
   final String subtitle;
   final String route;
+  final int? badgeCount;
   
-  const CommandCenterAction(this.id, this.title, this.subtitle, this.route);
+  const CommandCenterAction(this.id, this.title, this.subtitle, this.route, {this.badgeCount});
 }
 
 class CommandCenterSection {

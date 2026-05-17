@@ -1,16 +1,12 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/enums/item_condition.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/features/inventory/application/inventory_engine.dart';
 import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
-import 'package:lego_trading_manager/features/pos/presentation/pos_scanner_modal.dart'; 
-import 'package:lego_trading_manager/features/inventory/presentation/image_gallery_screen.dart';
+import 'package:lego_trading_manager/features/pos/presentation/pos_scanner_modal.dart';
 
 class ItemFormScreen extends ConsumerStatefulWidget {
   final InventoryItemModel? item;
@@ -29,8 +25,6 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   late ItemCondition _condition;
   bool _isSealed = false;
   bool _isSaving = false;
-  
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {

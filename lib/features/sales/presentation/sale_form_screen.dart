@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/features/sales/application/sales_engine.dart';
 import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class SaleFormScreen extends ConsumerStatefulWidget {
-  final SaleModel? sale;
+  final Map<String, dynamic>? sale;
   const SaleFormScreen({super.key, this.sale});
 
   @override
@@ -14,19 +13,18 @@ class SaleFormScreen extends ConsumerStatefulWidget {
 
 class _SaleFormScreenState extends ConsumerState<SaleFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _inventoryItemId, _platform, _price, _fee, _shippingMe, _shippingBuyer;
+  late final TextEditingController _inventoryItemId, _platform, _price, _fee, _shippingMe;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     final s = widget.sale;
-    _inventoryItemId = TextEditingController(text: s?.inventoryItemId ?? '');
-    _platform = TextEditingController(text: s?.channel ?? '');
-    _price = TextEditingController(text: s?.sellPrice.toString() ?? '');
-    _fee = TextEditingController(text: s?.platformFee.toString() ?? '0');
-    _shippingMe = TextEditingController(text: s?.shippingPaidByMe.toString() ?? '0');
-    _shippingBuyer = TextEditingController(text: s?.shippingPaidByBuyer.toString() ?? '0');
+    _inventoryItemId = TextEditingController(text: s?['inventoryItemId']?.toString() ?? '');
+    _platform = TextEditingController(text: s?['channel']?.toString() ?? '');
+    _price = TextEditingController(text: s?['sellPrice']?.toString() ?? '');
+    _fee = TextEditingController(text: s?['platformFee']?.toString() ?? '0');
+    _shippingMe = TextEditingController(text: s?['shippingPaidByMe']?.toString() ?? '0');
   }
 
   Future<void> _save() async {
@@ -48,10 +46,10 @@ class _SaleFormScreenState extends ConsumerState<SaleFormScreen> {
         'quantity': 1,
       };
 
-      await ref.read(salesEngineProvider.notifier).saveSale(payload, id: widget.sale?.id);
+      await ref.read(salesEngineProvider.notifier).saveSale(payload, id: widget.sale?['id']);
       if (mounted) Navigator.pop(context);
     } catch(e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(i18n.t('snack.saveFailed', {'error': e.toString()})), backgroundColor: Colors.redAccent));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${i18n.t('snack.saveFailed')} $e'), backgroundColor: Colors.redAccent));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -72,7 +70,7 @@ class _SaleFormScreenState extends ConsumerState<SaleFormScreen> {
             TextFormField(
               controller: _platform, 
               decoration: InputDecoration(
-                labelText: i18n.t('sale.platform') + ' *',
+                labelText: '${i18n.t('sale.platform')} *',
                 filled: true,
                 fillColor: const Color(0xFF171A21),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),

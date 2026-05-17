@@ -66,11 +66,11 @@ class MarketLiveScreen extends ConsumerWidget {
               final isStale = listing['status'] == 'stale';
 
               return Card(
-                color: isStale ? const Color(0xFF171A21).withOpacity(0.5) : const Color(0xFF171A21),
+                color: isStale ? const Color(0xFF171A21).withValues(alpha: 0.5) : const Color(0xFF171A21),
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: isStale ? Colors.transparent : Colors.blueAccent.withOpacity(0.1)),
+                  side: BorderSide(color: isStale ? Colors.transparent : Colors.blueAccent.withValues(alpha: 0.1)),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -94,7 +94,7 @@ class MarketLiveScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.purpleAccent.withOpacity(0.15),
+                              color: Colors.purpleAccent.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -126,7 +126,7 @@ class MarketLiveScreen extends ConsumerWidget {
                                     Container(
                                       margin: const EdgeInsets.only(right: 8),
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
+                                      decoration: BoxDecoration(color: Colors.blueAccent.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
                                       child: Text(i18n.t('market.sealed'), style: const TextStyle(fontSize: 10, color: Colors.blueAccent)),
                                     ),
                                   Text(

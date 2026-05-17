@@ -1,22 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:lego_trading_manager/features/activity/presentation/activity_log_screen.dart';
-import 'package:lego_trading_manager/features/analytics/presentation/analytics_screen.dart';
-import 'package:lego_trading_manager/features/command_center/presentation/command_center_screen.dart';
-import 'package:lego_trading_manager/features/deals/presentation/deal_evaluator_screen.dart';
-import 'package:lego_trading_manager/features/deals/presentation/deal_history_screen.dart';
-import 'package:lego_trading_manager/features/purchases/presentation/purchases_screen.dart';
-import 'package:lego_trading_manager/features/sales/presentation/sales_screen.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_screen.dart';
-import 'package:lego_trading_manager/features/market/presentation/market_live_screen.dart';
 import 'package:lego_trading_manager/features/pos/presentation/pos_terminal_screen.dart';
-import 'package:lego_trading_manager/features/search/presentation/global_search_screen.dart';
 import 'package:lego_trading_manager/features/auth/presentation/login_screen.dart';
 import 'package:lego_trading_manager/features/auth/presentation/register_screen.dart';
-import 'package:lego_trading_manager/features/flows/presentation/flows_dashboard_screen.dart';
 import 'package:lego_trading_manager/features/core/presentation/root_layout.dart';
 
 class AppRouter {
-  // ФІКС: Глобальний ключ для доступу до навігації з NetworkCore
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   static const String home = '/';
@@ -53,7 +41,6 @@ class AppRouter {
       case '/register':
         page = const RegisterScreen();
         break;
-      // ... (інші роути без змін)
       case '/pos':
         page = const PosTerminalScreen();
         break;

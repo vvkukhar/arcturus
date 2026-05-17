@@ -55,3 +55,21 @@ final watchlistRepositoryProvider = Provider((ref) => ApiRepository<WatchlistIte
   '/watchlist', 
   WatchlistItemModel.fromMap
 ));
+
+final purchasesRepositoryProvider = Provider((ref) => ApiRepository<dynamic>(
+  ref.watch(networkCoreProvider), 
+  '/procurement', 
+  (map) => map
+));
+
+final marketRepositoryProvider = Provider((ref) => ApiRepository<dynamic>(
+  ref.watch(networkCoreProvider), 
+  '/market', 
+  (map) => map
+));
+
+final partOutRepositoryProvider = Provider((ref) => ApiRepository<dynamic>(
+  ref.watch(networkCoreProvider), 
+  '/partout', 
+  (map) => map
+));

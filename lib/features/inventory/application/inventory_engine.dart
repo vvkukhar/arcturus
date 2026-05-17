@@ -3,6 +3,20 @@ import 'package:lego_trading_manager/core/network/socket_event_bus.dart';
 import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/data/repositories/app_repositories.dart';
 
+class InventoryAnalysis {
+  final List<dynamic> deadStock;
+  final int deadStockCount;
+  final List<dynamic> alerts;
+  final int alertsCount;
+
+  const InventoryAnalysis({
+    this.deadStock = const [],
+    this.deadStockCount = 0,
+    this.alerts = const [],
+    this.alertsCount = 0,
+  });
+}
+
 class InventoryEngineState {
   final List<InventoryItemModel> items;
   final String query;
@@ -11,6 +25,7 @@ class InventoryEngineState {
   final int offset;
   final bool hasMore;
   final bool isLoadingMore;
+  final InventoryAnalysis analysis;
 
   const InventoryEngineState({
     required this.items,
@@ -20,6 +35,7 @@ class InventoryEngineState {
     this.offset = 0,
     this.hasMore = true,
     this.isLoadingMore = false,
+    this.analysis = const InventoryAnalysis(),
   });
 
   InventoryEngineState copyWith({
@@ -30,6 +46,7 @@ class InventoryEngineState {
     int? offset,
     bool? hasMore,
     bool? isLoadingMore,
+    InventoryAnalysis? analysis,
   }) {
     return InventoryEngineState(
       items: items ?? this.items,
@@ -39,6 +56,7 @@ class InventoryEngineState {
       offset: offset ?? this.offset,
       hasMore: hasMore ?? this.hasMore,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      analysis: analysis ?? this.analysis,
     );
   }
 }
@@ -96,7 +114,6 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
     
     final items = await repo.fetchAll(query: qParams);
     
-    // Sort logic (Backend might not sort complex fields like profit properly, so we enforce it locally)
     if (sort == 'cost') {
       items.sort((a, b) => b.totalCost.compareTo(a.totalCost));
     } else if (sort == 'profit') {
@@ -168,6 +185,9 @@ class InventoryEngine extends AsyncNotifier<InventoryEngineState> {
       await repo.create(payload);
     }
   }
+
+  Future<void> deleteImage(String imageId) async {}
+  Future<void> setMainImage(String imageId) async {}
 }
 
 final inventoryEngineProvider = AsyncNotifierProvider<InventoryEngine, InventoryEngineState>(InventoryEngine.new);

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lego_trading_manager/core/enums/purchase_payment_method.dart';
-import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/features/purchases/application/purchases_engine.dart';
 import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class PurchaseFormScreen extends ConsumerStatefulWidget {
-  final PurchaseModel? purchase;
+  final Map<String, dynamic>? purchase;
   const PurchaseFormScreen({super.key, this.purchase});
 
   @override
@@ -16,19 +15,18 @@ class PurchaseFormScreen extends ConsumerStatefulWidget {
 class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _itemId, _source, _price, _shipping, _extra;
-  PurchasePaymentMethod _paymentMethod = PurchasePaymentMethod.card;
+  final PurchasePaymentMethod _paymentMethod = PurchasePaymentMethod.card; // ФІКС: Зробили final
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     final p = widget.purchase;
-    _itemId = TextEditingController(text: p?.itemId ?? '');
-    _source = TextEditingController(text: p?.source ?? '');
-    _price = TextEditingController(text: p?.purchasePrice.toString() ?? '');
-    _shipping = TextEditingController(text: p?.shippingCost.toString() ?? '0');
-    _extra = TextEditingController(text: p?.additionalCosts.toString() ?? '0');
-    if (p != null) _paymentMethod = p.paymentMethod;
+    _itemId = TextEditingController(text: p?['itemId']?.toString() ?? '');
+    _source = TextEditingController(text: p?['sourceCode']?.toString() ?? '');
+    _price = TextEditingController(text: p?['actualPrice']?.toString() ?? '');
+    _shipping = TextEditingController(text: p?['shippingPrice']?.toString() ?? '0');
+    _extra = TextEditingController(text: '0');
   }
 
   Future<void> _save() async {
@@ -51,10 +49,10 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
         'paymentMethod': _paymentMethod.name,
       };
 
-      await ref.read(purchasesEngineProvider.notifier).savePurchase(payload, id: widget.purchase?.id);
+      await ref.read(purchasesEngineProvider.notifier).savePurchase(payload, id: widget.purchase?['id']);
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(i18n.t('snack.saveFailed', {'error': e.toString()})), backgroundColor: Colors.redAccent));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${i18n.t('snack.saveFailed')} $e'), backgroundColor: Colors.redAccent));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -75,7 +73,7 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
             TextFormField(
               controller: _source, 
               decoration: InputDecoration(
-                labelText: i18n.t('pur.source') + ' *',
+                labelText: '${i18n.t('pur.source')} *', // ФІКС ІНТЕРПОЛЯЦІЇ
                 filled: true,
                 fillColor: const Color(0xFF171A21),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),

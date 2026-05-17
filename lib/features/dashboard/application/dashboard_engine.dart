@@ -3,26 +3,36 @@ import 'package:lego_trading_manager/core/network/socket_event_bus.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 
 class DashboardAction {
-  final String title;
-  final String subtitle;
+  final String titleKey;
+  final String subtitleKey;
   final String type;
+  final Map<String, String>? titleArgs;
+  final Map<String, String>? subArgs;
   
-  const DashboardAction(this.title, this.subtitle, this.type);
+  const DashboardAction(this.titleKey, this.subtitleKey, this.type, {this.titleArgs, this.subArgs});
 }
 
 class DashboardEngineState {
   final double totalInvested;
-  final double expectedProfit;
+  final double expectedOpenProfit;
   final int pendingOrders;
   final int activeListings;
   final List<DashboardAction> priorityQueue;
+  final String headKey;
+  final String subKey;
+  final Map<String, String>? subArgs;
+  final String currency;
 
   const DashboardEngineState({
     required this.totalInvested,
-    required this.expectedProfit,
+    required this.expectedOpenProfit,
     required this.pendingOrders,
     required this.activeListings,
     required this.priorityQueue,
+    this.headKey = 'dash.head.stable',
+    this.subKey = 'dash.sub.stats',
+    this.subArgs,
+    this.currency = 'UAH',
   });
 }
 
@@ -42,21 +52,19 @@ class DashboardEngine extends AsyncNotifier<DashboardEngineState> {
       
       final queue = <DashboardAction>[];
       if (exec['ordersPending'] > 0) {
-        queue.add(DashboardAction('Ship Orders', '${exec['ordersPending']} orders need shipment', 'good'));
-      }
-      if (exec['repricePending'] > 0) {
-        queue.add(DashboardAction('Reprice Items', '${exec['repricePending']} items need pricing update', 'danger'));
+        queue.add(const DashboardAction('Ship Orders', 'orders need shipment', 'good'));
       }
 
       return DashboardEngineState(
         totalInvested: (snap['totalInventoryCost'] ?? 0).toDouble(),
-        expectedProfit: (snap['expectedInventoryProfit'] ?? 0).toDouble(),
+        expectedOpenProfit: (snap['expectedInventoryProfit'] ?? 0).toDouble(),
         pendingOrders: exec['ordersPending'] ?? 0,
         activeListings: snap['activeInventoryItems'] ?? 0,
         priorityQueue: queue,
+        headKey: 'dash.head.stable',
       );
     } catch (e) {
-      return const DashboardEngineState(totalInvested: 0, expectedProfit: 0, pendingOrders: 0, activeListings: 0, priorityQueue: []);
+      return const DashboardEngineState(totalInvested: 0, expectedOpenProfit: 0, pendingOrders: 0, activeListings: 0, priorityQueue: []);
     }
   }
 }

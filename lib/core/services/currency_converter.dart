@@ -17,10 +17,10 @@ class CurrencyConverter {
     if (from == baseCurrency) return amount;
     
     double inUah = amount;
-    if (from == 'USD') inUah = amount * usdRate;
-    else if (from == 'EUR') inUah = amount * eurRate;
-    else if (from == 'CAD') inUah = amount * cadRate;
-    else if (from == 'GBP') inUah = amount * gbpRate;
+    if (from == 'USD') { inUah = amount * usdRate; }
+    else if (from == 'EUR') { inUah = amount * eurRate; }
+    else if (from == 'CAD') { inUah = amount * cadRate; }
+    else if (from == 'GBP') { inUah = amount * gbpRate; }
 
     if (baseCurrency == 'UAH') return inUah;
     if (baseCurrency == 'USD') return inUah / usdRate;

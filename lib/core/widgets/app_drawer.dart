@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lego_trading_manager/app/router/app_router.dart';
 import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
-import 'package:lego_trading_manager/features/dashboard/presentation/dashboard_live_screen.dart';
-import 'package:lego_trading_manager/features/inventory/presentation/inventory_screen.dart';
-import 'package:lego_trading_manager/features/purchases/presentation/purchases_screen.dart';
-import 'package:lego_trading_manager/features/sales/presentation/sales_screen.dart';
-import 'package:lego_trading_manager/features/settings/presentation/settings_hub_screen.dart';
-import 'package:lego_trading_manager/features/watchlist/presentation/watchlist_screen.dart';
-import 'package:lego_trading_manager/features/pos/presentation/pos_terminal_screen.dart';
 
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
 
-  void _open(BuildContext context, Widget screen) {
-    Navigator.of(context).pop();
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => screen));
+  void _open(BuildContext context, String route) {
+    Navigator.of(context).pop(); // Закриваємо Drawer
+    Navigator.of(context).pushNamed(route); // Накидаємо екран поверх RootLayout
   }
 
   @override
@@ -38,15 +32,16 @@ class AppDrawer extends ConsumerWidget {
                 ],
               ),
             ),
-            ListTile(leading: const Icon(Icons.point_of_sale), title: Text(i18n.t('cc.pos')), onTap: () => _open(context, const PosTerminalScreen())),
+            // ФІКС: Залишили тільки специфічні екрани, прибрали дублі з BottomNavigationBar
+            ListTile(leading: const Icon(Icons.point_of_sale), title: Text(i18n.t('cc.pos')), onTap: () => _open(context, AppRouter.pos)),
             const Divider(),
-            ListTile(leading: const Icon(Icons.dashboard_outlined), title: Text(i18n.t('drawer.dashboard')), onTap: () => _open(context, const DashboardLiveScreen())),
-            ListTile(leading: const Icon(Icons.inventory_2_outlined), title: Text(i18n.t('drawer.inventory')), onTap: () => _open(context, const InventoryScreen())),
-            ListTile(leading: const Icon(Icons.shopping_cart_outlined), title: Text(i18n.t('drawer.purchases')), onTap: () => _open(context, const PurchasesScreen())),
-            ListTile(leading: const Icon(Icons.point_of_sale_outlined), title: Text(i18n.t('drawer.sales')), onTap: () => _open(context, const SalesScreen())),
-            ListTile(leading: const Icon(Icons.visibility_outlined), title: Text(i18n.t('drawer.watchlist')), onTap: () => _open(context, const WatchlistScreen())),
+            ListTile(leading: const Icon(Icons.shopping_cart_outlined), title: Text(i18n.t('drawer.purchases')), onTap: () => _open(context, AppRouter.purchases)),
+            ListTile(leading: const Icon(Icons.point_of_sale_outlined), title: Text(i18n.t('drawer.sales')), onTap: () => _open(context, AppRouter.sales)),
+            ListTile(leading: const Icon(Icons.visibility_outlined), title: Text(i18n.t('drawer.watchlist')), onTap: () => _open(context, AppRouter.watchlist)),
+            ListTile(leading: const Icon(Icons.local_fire_department_outlined), title: Text(i18n.t('cc.dealEval')), onTap: () => _open(context, AppRouter.dealEvaluator)),
             const Divider(),
-            ListTile(leading: const Icon(Icons.settings_outlined), title: Text(i18n.t('drawer.settings')), onTap: () => _open(context, const SettingsHubScreen())),
+            ListTile(leading: const Icon(Icons.history), title: Text(i18n.t('history.title')), onTap: () => _open(context, AppRouter.dealHistory)),
+            ListTile(leading: const Icon(Icons.analytics_outlined), title: Text(i18n.t('activity.log.title')), onTap: () => _open(context, AppRouter.activityLog)),
           ],
         ),
       ),

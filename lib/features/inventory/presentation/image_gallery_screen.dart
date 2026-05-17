@@ -5,7 +5,7 @@ import 'package:lego_trading_manager/features/inventory/application/inventory_en
 import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 
 class ImageGalleryScreen extends ConsumerStatefulWidget {
-  final ItemModel item;
+  final InventoryItemModel item; // ФІКС: InventoryItemModel
   final int initialIndex;
 
   const ImageGalleryScreen({super.key, required this.item, required this.initialIndex});
@@ -46,7 +46,7 @@ class _ImageGalleryScreenState extends ConsumerState<ImageGalleryScreen> {
 
     if (confirm == true) {
       try {
-        await ref.read(inventoryEngineProvider.notifier).deleteImage(currentImage.id);
+        await ref.read(inventoryEngineProvider.notifier).deleteImage(currentImage['id']); // ФІКС MAP SYNTAX
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(i18n.t('gallery.deleted'))));
           Navigator.pop(context); 
@@ -59,10 +59,10 @@ class _ImageGalleryScreenState extends ConsumerState<ImageGalleryScreen> {
 
   void _setMain(I18nNotifier i18n) async {
     final currentImage = widget.item.images[_currentIndex];
-    if (currentImage.isPrimary) return; 
+    if (currentImage['isPrimary'] == true) return; 
 
     try {
-      await ref.read(inventoryEngineProvider.notifier).setMainImage(currentImage.id);
+      await ref.read(inventoryEngineProvider.notifier).setMainImage(currentImage['id']);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(i18n.t('gallery.mainSet')), backgroundColor: Colors.green));
         Navigator.pop(context); 
@@ -95,9 +95,9 @@ class _ImageGalleryScreenState extends ConsumerState<ImageGalleryScreen> {
             minScale: 0.5,
             maxScale: 4.0,
             child: Hero(
-              tag: img.id,
+              tag: img['id'],
               child: Image.network(
-                img.imageUrl,
+                img['imageUrl'],
                 fit: BoxFit.contain,
               ),
             ),
@@ -113,9 +113,9 @@ class _ImageGalleryScreenState extends ConsumerState<ImageGalleryScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: images[_currentIndex].isPrimary ? null : () => _setMain(i18n),
+                  onPressed: images[_currentIndex]['isPrimary'] == true ? null : () => _setMain(i18n),
                   icon: const Icon(Icons.star),
-                  label: Text(images[_currentIndex].isPrimary ? 'Main' : i18n.t('gallery.setMain')),
+                  label: Text(images[_currentIndex]['isPrimary'] == true ? 'Main' : i18n.t('gallery.setMain')),
                 ),
               ),
               const SizedBox(width: 16),

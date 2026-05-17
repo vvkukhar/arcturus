@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:lego_trading_manager/core/network/network_core.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 
 class AuthEngineState {

@@ -50,7 +50,7 @@ class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScree
       await ref.read(watchlistEngineProvider.notifier).saveItem(payload, id: widget.item?.id);
       if (mounted) Navigator.of(context).pop();
     } catch(e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(i18n.t('snack.saveFailed', {'error': e.toString()})), backgroundColor: Colors.redAccent));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${i18n.t('snack.saveFailed')} $e'), backgroundColor: Colors.redAccent));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -81,7 +81,7 @@ class _WatchlistItemFormScreenState extends ConsumerState<WatchlistItemFormScree
             TextFormField(
               controller: _setNumber, 
               decoration: InputDecoration(
-                labelText: i18n.t('form.setNumber') + ' (e.g. 75313) *',
+                labelText: '${i18n.t('form.setNumber')} (e.g. 75313) *', // ФІКС ІНТЕРПОЛЯЦІЇ
                 filled: true,
                 fillColor: const Color(0xFF171A21),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),

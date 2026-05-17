@@ -4,7 +4,6 @@ import 'package:lego_trading_manager/core/i18n/i18n_provider.dart';
 import 'package:lego_trading_manager/core/utils/core_utils.dart';
 import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
-import 'package:lego_trading_manager/data/models/app_models.dart';
 import 'package:lego_trading_manager/features/pos/application/pos_cart_provider.dart';
 import 'package:lego_trading_manager/features/pos/presentation/pos_scanner_modal.dart';
 
@@ -19,6 +18,14 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
   bool _isProcessing = false;
+
+  // ФІКС: Звільняємо пам'ять при закритті екрану
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
 
   Future<void> _handleScan(String code) async {
     if (code.trim().isEmpty) return;

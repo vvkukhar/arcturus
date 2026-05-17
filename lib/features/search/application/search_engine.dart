@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async'; // ФІКС: Імпорт для Timer
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
@@ -31,6 +32,7 @@ class SearchEngineState {
 class SearchEngine extends AsyncNotifier<SearchEngineState> {
   static const _recentKey = 'arcturus_search_recent';
   static const _pinnedKey = 'arcturus_search_pinned';
+  Timer? _debounceTimer; // ФІКС: Додали таймер для дебаунсу
 
   @override
   Future<SearchEngineState> build() async {
@@ -53,47 +55,52 @@ class SearchEngine extends AsyncNotifier<SearchEngineState> {
       return;
     }
 
-    state = const AsyncValue.loading();
-    
-    try {
-      final network = ref.read(networkCoreProvider);
-      final q = query.trim();
-      final limit = 10;
-      final results = <SearchResult>[];
+    // ФІКС: Реалізація Дебаунсу (400мс)
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
 
-      if (typeFilter == null || typeFilter == 'inventory') {
-        final res = await network.request('GET', '/inventory?q=$q&limit=$limit');
-        for (var item in (res as List)) {
-          results.add(SearchResult(item['id'], item['titleSnapshot'] ?? 'Item', 'search.sub.inv', 'inventory', '/inventory', 100, subArgs: {'status': item['status'] ?? ''}));
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () async {
+      state = const AsyncValue.loading();
+      
+      try {
+        final network = ref.read(networkCoreProvider);
+        final q = query.trim();
+        final limit = 10;
+        final results = <SearchResult>[];
+
+        if (typeFilter == null || typeFilter == 'inventory') {
+          final res = await network.request('GET', '/inventory?q=$q&limit=$limit');
+          for (var item in (res as List)) {
+            results.add(SearchResult(item['id'], item['titleSnapshot'] ?? 'Item', 'search.sub.inv', 'inventory', '/inventory', 100, subArgs: {'status': item['status'] ?? ''}));
+          }
         }
-      }
 
-      if (typeFilter == null || typeFilter == 'watchlist') {
-        final res = await network.request('GET', '/watchlist?q=$q&limit=$limit');
-        for (var item in (res as List)) {
-          results.add(SearchResult(item['id'], item['titleSnapshot'] ?? 'Target', 'search.sub.watch', 'watchlist', '/watchlist', 90, subArgs: {'price': item['desiredBuyPrice']?.toString() ?? '0'}));
+        if (typeFilter == null || typeFilter == 'watchlist') {
+          final res = await network.request('GET', '/watchlist?q=$q&limit=$limit');
+          for (var item in (res as List)) {
+            results.add(SearchResult(item['id'], item['titleSnapshot'] ?? 'Target', 'search.sub.watch', 'watchlist', '/watchlist', 90, subArgs: {'price': item['desiredBuyPrice']?.toString() ?? '0'}));
+          }
         }
-      }
 
-      if (typeFilter == null || typeFilter == 'purchase') {
-        final res = await network.request('GET', '/procurement?q=$q&limit=$limit');
-        for (var item in (res as List)) {
-          results.add(SearchResult(item['id'], item['sourceCode'] ?? 'Purchase', 'search.sub.pur', 'purchase', '/purchases', 80, subArgs: {'total': item['totalCost']?.toString() ?? '0', 'currency': 'UAH'}));
+        if (typeFilter == null || typeFilter == 'purchase') {
+          final res = await network.request('GET', '/procurement?q=$q&limit=$limit');
+          for (var item in (res as List)) {
+            results.add(SearchResult(item['id'], item['sourceCode'] ?? 'Purchase', 'search.sub.pur', 'purchase', '/purchases', 80, subArgs: {'total': item['totalCost']?.toString() ?? '0', 'currency': 'UAH'}));
+          }
         }
-      }
 
-      if (typeFilter == null || typeFilter == 'sale') {
-        final res = await network.request('GET', '/sales?q=$q&limit=$limit');
-        for (var item in (res as List)) {
-          results.add(SearchResult(item['id'], item['channel'] ?? 'Sale', 'search.sub.sale', 'sale', '/sales', 80, subArgs: {'net': item['profit']?.toString() ?? '0', 'currency': 'UAH'}));
+        if (typeFilter == null || typeFilter == 'sale') {
+          final res = await network.request('GET', '/sales?q=$q&limit=$limit');
+          for (var item in (res as List)) {
+            results.add(SearchResult(item['id'], item['channel'] ?? 'Sale', 'search.sub.sale', 'sale', '/sales', 80, subArgs: {'net': item['profit']?.toString() ?? '0', 'currency': 'UAH'}));
+          }
         }
-      }
 
-      results.sort((a, b) => b.score.compareTo(a.score));
-      state = AsyncValue.data(curr.copyWith(query: query, typeFilter: typeFilter, searchResults: results));
-    } catch (e) {
-      state = AsyncValue.data(curr.copyWith(query: query, typeFilter: typeFilter, searchResults: []));
-    }
+        results.sort((a, b) => b.score.compareTo(a.score));
+        state = AsyncValue.data(curr.copyWith(query: query, typeFilter: typeFilter, searchResults: results));
+      } catch (e) {
+        state = AsyncValue.data(curr.copyWith(query: query, typeFilter: typeFilter, searchResults: []));
+      }
+    });
   }
 
   Future<void> saveRecentQuery(String query) async {

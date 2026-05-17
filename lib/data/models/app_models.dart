@@ -1,7 +1,6 @@
 import 'package:lego_trading_manager/core/enums/item_status.dart';
 import 'package:lego_trading_manager/core/enums/item_type.dart';
 import 'package:lego_trading_manager/core/enums/item_condition.dart';
-import 'package:lego_trading_manager/core/enums/purchase_payment_method.dart';
 
 class CatalogItemModel {
   final String id;
@@ -56,6 +55,7 @@ class InventoryItemModel {
   final ItemStatus status;
   final DateTime createdAt;
   final CatalogItemModel? item;
+  final List<dynamic> images;
 
   const InventoryItemModel({
     required this.id,
@@ -74,6 +74,7 @@ class InventoryItemModel {
     required this.status,
     required this.createdAt,
     this.item,
+    this.images = const [],
   });
 
   bool get isActive => quantity > 0 && status != ItemStatus.sold && status != ItemStatus.archived;
@@ -100,6 +101,7 @@ class InventoryItemModel {
         status: status ?? this.status,
         createdAt: createdAt,
         item: item,
+        images: images,
       );
 
   factory InventoryItemModel.fromMap(Map<String, dynamic> map) => InventoryItemModel(
@@ -119,24 +121,8 @@ class InventoryItemModel {
         status: ItemStatus.values.firstWhere((e) => e.name == map['status'], orElse: () => ItemStatus.purchased),
         createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
         item: map['item'] != null ? CatalogItemModel.fromMap(Map<String, dynamic>.from(map['item'])) : null,
+        images: map['images'] ?? [],
       );
-
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'itemId': itemId,
-        'titleSnapshot': titleSnapshot,
-        'purchasePrice': purchasePrice,
-        'totalCost': totalCost,
-        'quantity': quantity,
-        'condition': condition.name,
-        'sealed': sealed,
-        'expectedSalePriceManual': expectedSalePriceManual,
-        'source': source,
-        'storageLocationId': storageLocationId,
-        'warehouseId': warehouseId,
-        'assignedUserId': assignedUserId,
-        'status': status.name,
-      };
 }
 
 class WatchlistItemModel {
@@ -162,6 +148,8 @@ class WatchlistItemModel {
     this.item,
   });
 
+  bool get isActive => active;
+
   factory WatchlistItemModel.fromMap(Map<String, dynamic> map) => WatchlistItemModel(
         id: map['id'],
         itemId: map['itemId'],
@@ -185,6 +173,9 @@ class SaleModel {
   final double roiPercent;
   final String channel;
   final int quantity;
+  final double platformFee;
+  final double shippingPaidByMe;
+  final double shippingPaidByBuyer;
   final DateTime createdAt;
   final InventoryItemModel? inventoryItem;
 
@@ -198,6 +189,9 @@ class SaleModel {
     required this.roiPercent,
     required this.channel,
     required this.quantity,
+    this.platformFee = 0.0,
+    this.shippingPaidByMe = 0.0,
+    this.shippingPaidByBuyer = 0.0,
     required this.createdAt,
     this.inventoryItem,
   });
@@ -212,7 +206,42 @@ class SaleModel {
         roiPercent: (map['roiPercent'] ?? 0).toDouble(),
         channel: map['channel'] ?? 'Unknown',
         quantity: map['quantity'] ?? 1,
+        platformFee: (map['platformFee'] ?? 0).toDouble(),
+        shippingPaidByMe: (map['shippingPaidByMe'] ?? 0).toDouble(),
+        shippingPaidByBuyer: (map['shippingPaidByBuyer'] ?? 0).toDouble(),
         createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
         inventoryItem: map['inventoryItem'] != null ? InventoryItemModel.fromMap(Map<String, dynamic>.from(map['inventoryItem'])) : null,
       );
+}
+
+class MarketSnapshotModel {
+  final String id;
+  final String itemId;
+  final double medianPrice;
+  const MarketSnapshotModel({required this.id, required this.itemId, required this.medianPrice});
+  factory MarketSnapshotModel.fromMap(Map<String, dynamic> map) => MarketSnapshotModel(id: map['id'], itemId: map['itemId'], medianPrice: (map['medianPrice'] ?? 0).toDouble());
+}
+
+class PartOutProjectModel {
+  final String id;
+  final String sourceSetTitle;
+  final double totalCost;
+  final dynamic status;
+  const PartOutProjectModel({required this.id, required this.sourceSetTitle, required this.totalCost, required this.status});
+  factory PartOutProjectModel.fromMap(Map<String, dynamic> map) => PartOutProjectModel(id: map['id'], sourceSetTitle: map['sourceSetTitle'] ?? 'Project', totalCost: (map['totalCost'] ?? 0).toDouble(), status: map['status']);
+  Map<String, dynamic> toMap() => {'id': id};
+}
+
+class PartOutLineModel {
+  final String id;
+  final String projectId;
+  final String title;
+  final int quantity;
+  final double expectedUnitPrice;
+  final double expectedTotalPrice;
+  final double actualTotalPrice;
+  final dynamic status;
+  const PartOutLineModel({required this.id, required this.projectId, required this.title, required this.quantity, required this.expectedUnitPrice, required this.expectedTotalPrice, required this.actualTotalPrice, required this.status});
+  factory PartOutLineModel.fromMap(Map<String, dynamic> map) => PartOutLineModel(id: map['id'], projectId: map['projectId'], title: map['title'] ?? 'Part', quantity: map['quantity'] ?? 1, expectedUnitPrice: (map['expectedUnitPrice'] ?? 0).toDouble(), expectedTotalPrice: (map['expectedTotalPrice'] ?? 0).toDouble(), actualTotalPrice: (map['actualTotalPrice'] ?? 0).toDouble(), status: map['status']);
+  Map<String, dynamic> toMap() => {'id': id};
 }

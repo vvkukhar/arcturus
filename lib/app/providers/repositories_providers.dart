@@ -1,8 +1,7 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:lego_trading_manager/data/repositories/app_repositories.dart';
-import 'package:lego_trading_manager/app/providers/core_providers.dart';
+
+export 'package:lego_trading_manager/data/repositories/app_repositories.dart';
 
 class CacheRepository {
   Future<String?> get(String key) async {
@@ -22,9 +21,3 @@ class CacheRepository {
 }
 
 final cacheRepositoryProvider = Provider((ref) => CacheRepository());
-final inventoryRepositoryProvider = Provider((ref) => InventoryRepository(ref.watch(sharedPreferencesProvider)));
-final purchasesRepositoryProvider = Provider((ref) => PurchasesRepository(ref.watch(sharedPreferencesProvider)));
-final salesRepositoryProvider = Provider((ref) => SalesRepository(ref.watch(sharedPreferencesProvider)));
-final watchlistRepositoryProvider = Provider((ref) => WatchlistRepository(ref.watch(sharedPreferencesProvider)));
-final marketRepositoryProvider = Provider((ref) => MarketRepository(ref.watch(sharedPreferencesProvider)));
-final partOutRepositoryProvider = Provider((ref) => PartOutRepository());

@@ -28,7 +28,6 @@ class _RootLayoutState extends ConsumerState<RootLayout> {
   @override
   Widget build(BuildContext context) {
     final i18n = ref.watch(i18nProvider.notifier);
-    // Відслідковуємо зміну мови, щоб відразу перемалювати панель
     ref.watch(i18nProvider);
 
     return Scaffold(
@@ -44,7 +43,7 @@ class _RootLayoutState extends ConsumerState<RootLayout> {
           });
         },
         backgroundColor: const Color(0xFF0F1115),
-        indicatorColor: Colors.blueAccent.withOpacity(0.2),
+        indicatorColor: Colors.blueAccent.withValues(alpha: 0.2),
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.dashboard_outlined),

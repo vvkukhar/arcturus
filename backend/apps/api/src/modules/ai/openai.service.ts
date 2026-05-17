@@ -35,7 +35,11 @@ export class OpenAiService {
         response_format: { type: 'json_object' },
       });
 
-      return JSON.parse(response.choices[0].message.content || '{}');
+      // ФІКС: Зачищаємо markdown
+      let content = response.choices[0].message.content || '{}';
+      content = content.replace(/^```json\n?/i, '').replace(/```$/i, '').trim();
+
+      return JSON.parse(content);
     } catch (e: any) {
       this.logger.error(`AI Analysis failed: ${e.message}`);
       return null;
