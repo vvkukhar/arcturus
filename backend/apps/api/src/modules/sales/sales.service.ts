@@ -21,6 +21,7 @@ export class SalesService {
     channel?: string | null;
     buyerName?: string | null;
     notes?: string | null;
+    skipStockDeduction?: boolean;
   }): Promise<unknown> {
     const quantity = params.quantity ?? 1;
 
@@ -35,8 +36,14 @@ export class SalesService {
 
       if (!inventoryItem) throw new NotFoundException('Inventory item not found');
       
-      if (inventoryItem.quantity < quantity) {
-        throw new BadRequestException('Not enough quantity in inventory');
+      if (!params.skipStockDeduction) {
+        if (inventoryItem.quantity < quantity) {
+          throw new BadRequestException('Not enough quantity in inventory');
+        }
+        await tx.inventoryItem.update({
+          where: { id: params.inventoryItemId },
+          data: { quantity: { decrement: quantity } },
+        });
       }
 
       const unitCost = inventoryItem.quantity > 0 ? Number(inventoryItem.totalCost) / inventoryItem.quantity : Number(inventoryItem.totalCost);
@@ -62,11 +69,6 @@ export class SalesService {
           inventoryItem: { include: { item: true, assignedUser: true } },
           item: true,
         },
-      });
-
-      await tx.inventoryItem.update({
-        where: { id: params.inventoryItemId },
-        data: { quantity: { decrement: quantity } },
       });
 
       await tx.stockMovement.create({

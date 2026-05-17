@@ -38,12 +38,12 @@ export class PublicStoreController {
 
   @Get('catalog/:slug')
   getCatalogItem(@Param('slug') slug: string): Promise<unknown> {
-    return this.publicStoreService.getCatalogItem(slug);
+    return this.publicStoreService.getCatalogItemBySlug(slug);
   }
 
   @Get('analytics')
   analytics(): Promise<unknown> {
-    return this.publicStoreService.analytics();
+    return this.publicStoreService.getStoreAnalytics();
   }
 
   @Get('track/:query')
@@ -56,7 +56,7 @@ export class PublicStoreController {
     @Body()
     body: {
       inventoryItemId?: string | null;
-      productTitle: string;
+      productTitle?: string;
       name: string;
       contact: string;
       message?: string | null;
@@ -72,7 +72,7 @@ export class PublicStoreController {
     @Query('q') q?: string,
     @Query('status') status?: string,
   ): Promise<unknown[]> {
-    return this.publicStoreService.listReserveRequests({
+    return this.publicStoreService.getReserveRequests({
       q,
       status,
     });
@@ -102,12 +102,7 @@ export class PublicStoreController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'operator')
   @Get('reserve-board')
-  reserveBoard(): Promise<{
-    pending: unknown[];
-    approved: unknown[];
-    contacted: unknown[];
-    rejected: unknown[];
-  }> {
-    return this.publicStoreService.reserveBoard();
+  reserveBoard(): Promise<unknown> {
+    return this.publicStoreService.getReserveBoard();
   }
 }

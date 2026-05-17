@@ -148,24 +148,50 @@ export class OrdersService {
     const existing = await this.prisma.order.findFirst({ where: { id: dto.id } });
     if (!existing) throw new NotFoundException('Order not found');
 
-    const updated = await this.prisma.order.update({
-      where: { id: dto.id },
-      data: {
-        status: dto.status,
-        productTitle: dto.productTitle,
-        buyerName: dto.buyerName,
-        contact: dto.contact,
-        sellPrice: dto.sellPrice === undefined ? undefined : dto.sellPrice === null ? null : toMoney(dto.sellPrice),
-        quantity: dto.quantity,
-        channel: dto.channel,
-        adminNote: dto.adminNote,
-      },
-      include: { reserveRequest: true, inventoryItem: true, sale: true },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const upd = await tx.order.update({
+        where: { id: dto.id },
+        data: {
+          status: dto.status,
+          productTitle: dto.productTitle,
+          buyerName: dto.buyerName,
+          contact: dto.contact,
+          sellPrice: dto.sellPrice === undefined ? undefined : dto.sellPrice === null ? null : toMoney(dto.sellPrice),
+          quantity: dto.quantity,
+          channel: dto.channel,
+          adminNote: dto.adminNote,
+        },
+        include: { reserveRequest: true, inventoryItem: true, sale: true },
+      });
+
+      if (dto.status === 'cancelled' && existing.status !== 'cancelled') {
+        const wasDeductedBefore = existing.reserveRequestId != null || existing.channel === 'public_store';
+        if (existing.inventoryItemId && wasDeductedBefore) {
+          await tx.inventoryItem.update({
+            where: { id: existing.inventoryItemId },
+            data: { quantity: { increment: existing.quantity } }
+          });
+          await tx.stockMovement.create({
+            data: {
+              inventoryItemId: existing.inventoryItemId,
+              type: 'order_cancelled_restock',
+              quantity: existing.quantity,
+              reason: `Order cancelled ${existing.id}`,
+            }
+          });
+        }
+      }
+
+      return upd;
     });
 
     await this.activity.log('order.updated', { orderId: updated.id, status: updated.status });
     this.realtime.emitCustom('order.updated', updated);
     this.realtime.emitDashboardRefresh('order_updated');
+
+    if (updated.inventoryItemId && dto.status === 'cancelled') {
+      this.realtime.emitInventoryRefresh({ inventoryItemId: updated.inventoryItemId, reason: 'order_cancelled_restock' });
+    }
 
     return updated;
   }
@@ -185,6 +211,8 @@ export class OrdersService {
     if (!order.inventoryItemId) throw new BadRequestException('Order has no inventory item');
     if (!order.sellPrice || order.sellPrice <= 0) throw new BadRequestException('Order has no valid sell price');
 
+    const isPublicStoreOrder = order.reserveRequestId != null || order.channel === 'public_store';
+
     const sale = await this.salesService.registerSale({
       inventoryItemId: order.inventoryItemId,
       sellPrice: order.sellPrice,
@@ -192,6 +220,7 @@ export class OrdersService {
       channel: order.channel ?? 'order',
       buyerName: order.buyerName,
       notes: order.adminNote ?? null,
+      skipStockDeduction: isPublicStoreOrder, 
     });
 
     const saleId = (sale as any).id;
