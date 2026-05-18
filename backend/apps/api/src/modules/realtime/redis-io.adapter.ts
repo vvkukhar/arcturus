@@ -33,11 +33,11 @@ export class RedisIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        // 🔥 ФІКС: origin: true автоматично повертає домен, з якого прийшов запит (твого фронта). 
-        // Це обходить заборону на використання '*' разом із credentials: true
+        // 🔥 ФІКС: origin: true змушує бекенд віддавати точний домен клієнта, а не заборонену '*'
         origin: true,
         credentials: true,
       },
+      allowEIO3: true,
     });
     
     if (this.adapterConstructor) {

@@ -31,20 +31,24 @@ class SocketManager {
     this.isConnecting = true;
 
     this.currentToken = token;
-    const wsUrl = appConfig.wsBaseUrl;
+    const wsUrl = appConfig.wsBaseUrl.replace(/\/$/, '');
 
     this.instance = io(wsUrl, {
-      // 🔥 ФІКС 1: Видалено жорсткий transports. Тепер Socket.io сам почне з polling і плавно перейде на websocket
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
-      randomizationFactor: 0.5,
+      reconnectionDelayMax: 5000,
       timeout: 20000,
       auth: token ? { token } : undefined,
-      // 🔥 ФІКС 2: Додаємо withCredentials для правильної роботи з налаштуваннями бекенду
+      // 🔥 ФІКС 1: Обов'язково передаємо credentials для CORS
       withCredentials: true,
+      // 🔥 ФІКС 2: Render вимагає починати з polling, щоб закріпити сесію на балансувальнику
+      transports: ['polling', 'websocket'], 
+    });
+
+    this.instance.on('connect_error', (err) => {
+      console.warn('[Socket.io] Connection error:', err.message);
     });
 
     this.isConnecting = false;
