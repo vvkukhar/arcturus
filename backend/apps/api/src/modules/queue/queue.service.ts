@@ -50,23 +50,24 @@ export class QueueService implements OnModuleDestroy {
   }
 
   async enqueueMarketSnapshots(): Promise<unknown> {
-    return this.marketQueue.add(JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS, {}, { removeOnComplete: 100, removeOnFail: 500 });
+    return this.marketQueue.add(JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS, {}, { removeOnComplete: 10, removeOnFail: 20 });
   }
 
   async enqueueDecisions(): Promise<unknown> {
-    return this.decisionsQueue.add(JOB_NAMES.RECOMPUTE_DECISIONS, {}, { removeOnComplete: 100, removeOnFail: 500 });
+    return this.decisionsQueue.add(JOB_NAMES.RECOMPUTE_DECISIONS, {}, { removeOnComplete: 10, removeOnFail: 20 });
   }
 
   async enqueueDealDetection(): Promise<unknown> {
-    return this.decisionsQueue.add(JOB_NAMES.DETECT_DEALS, {}, { removeOnComplete: 100, removeOnFail: 500 });
+    return this.decisionsQueue.add(JOB_NAMES.DETECT_DEALS, {}, { removeOnComplete: 10, removeOnFail: 20 });
   }
 
   async enqueueScheduledRefresh(): Promise<unknown> {
-    return this.maintenanceQueue.add(JOB_NAMES.SCHEDULED_REFRESH, {}, { removeOnComplete: 100, removeOnFail: 500 });
+    return this.maintenanceQueue.add(JOB_NAMES.SCHEDULED_REFRESH, {}, { removeOnComplete: 10, removeOnFail: 20 });
   }
 
   async enqueueScannerJob(jobId: string): Promise<unknown> {
-    return this.scraperQueue.add(JOB_NAMES.RUN_SCANNER_JOB, { jobId }, { removeOnComplete: 100, removeOnFail: 500 });
+    // 🔥 ВИПРАВЛЕНО НА RUN_SCANNER_JOB 🔥
+    return this.scraperQueue.add(JOB_NAMES.RUN_SCANNER_JOB, { jobId }, { removeOnComplete: 10, removeOnFail: 20 });
   }
 
   async stats(): Promise<unknown> {
@@ -82,7 +83,7 @@ export class QueueService implements OnModuleDestroy {
         queue.getDelayedCount(),
       ]);
 
-      result.push({ name: queue.name, waiting, active, completed, failed, delayed });
+      result.push({ name: queue.name, waiting, active, completed, failed, delayed, healthy: failed < 20 });
     }
 
     return result;

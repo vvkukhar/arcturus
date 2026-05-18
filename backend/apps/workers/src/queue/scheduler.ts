@@ -9,14 +9,15 @@ export async function registerRepeatableJobs(): Promise<void> {
   const decisionsQueue = new Queue(QUEUE_NAMES.DECISIONS, { connection });
   const maintenanceQueue = new Queue(QUEUE_NAMES.MAINTENANCE, { connection });
 
+  // Всі джоби тепер швидко видаляються з Redis, не забиваючи пам'ять
   await marketQueue.add(
     JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS,
     {},
     {
       repeat: { every: 1000 * 60 * 30 },
       jobId: 'repeat:market:snapshots',
-      removeOnComplete: 100,
-      removeOnFail: 500,
+      removeOnComplete: 10,
+      removeOnFail: 20,
     },
   );
 
@@ -26,8 +27,8 @@ export async function registerRepeatableJobs(): Promise<void> {
     {
       repeat: { every: 1000 * 60 * 35 },
       jobId: 'repeat:decisions:recompute',
-      removeOnComplete: 100,
-      removeOnFail: 500,
+      removeOnComplete: 10,
+      removeOnFail: 20,
     },
   );
 
@@ -37,8 +38,8 @@ export async function registerRepeatableJobs(): Promise<void> {
     {
       repeat: { every: 1000 * 60 * 20 },
       jobId: 'repeat:deals:detect',
-      removeOnComplete: 100,
-      removeOnFail: 500,
+      removeOnComplete: 10,
+      removeOnFail: 20,
     },
   );
 
@@ -48,8 +49,8 @@ export async function registerRepeatableJobs(): Promise<void> {
     {
       repeat: { every: 1000 * 60 * 60 },
       jobId: 'repeat:maintenance:scheduled-refresh',
-      removeOnComplete: 100,
-      removeOnFail: 500,
+      removeOnComplete: 10,
+      removeOnFail: 20,
     },
   );
 
@@ -59,11 +60,11 @@ export async function registerRepeatableJobs(): Promise<void> {
     {
       repeat: { every: 1000 * 60 * 60 * 2 },
       jobId: 'repeat:maintenance:stale-listings',
-      removeOnComplete: 100,
-      removeOnFail: 500,
+      removeOnComplete: 10,
+      removeOnFail: 20,
     },
   );
 
-  console.log('[scheduler] repeatable jobs registered');
+  console.log('[scheduler] repeatable jobs registered (Memory Optimized)');
   await connection.quit();
 }

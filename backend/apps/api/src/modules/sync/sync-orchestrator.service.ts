@@ -21,13 +21,12 @@ export class SyncOrchestratorService {
 
     const totalItems = await this.prisma.item.count();
     
-    // Встановлюємо статус у Redis перед відправкою задачі
     await this.syncStateService.start('global_refresh', totalItems, 'Queued global refresh');
 
     const job = await this.syncQueue.add(
       JOB_NAMES.GLOBAL_SYNC_REFRESH,
       { totalItems },
-      { removeOnComplete: 100, removeOnFail: 500 }
+      { removeOnComplete: 10, removeOnFail: 20 } // 🔥 ЕКОНОМІЯ ПАМ'ЯТІ
     );
 
     return {
@@ -41,7 +40,7 @@ export class SyncOrchestratorService {
     const job = await this.syncQueue.add(
       JOB_NAMES.GLOBAL_SYNC_REFRESH,
       { itemId, singleItem: true },
-      { removeOnComplete: 100, removeOnFail: 500 }
+      { removeOnComplete: 10, removeOnFail: 20 }
     );
 
     return { jobId: job.id, status: 'queued', itemId };
