@@ -78,21 +78,23 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
   const base = appConfig.apiBaseUrl.replace(/\/$/, '');
   let cleanPath = path.startsWith('/') ? path : `/${path}`;
   
-  // ФІКС МАРШРУТИЗАЦІЇ: Локальні запити Next.js не повинні йти на віддалений бекенд
+  // ФІКС МАРШРУТИЗАЦІЇ
   let targetUrl = '';
   if (path.startsWith('http')) {
     targetUrl = path;
-  } else if (path.startsWith('/api/')) {
-    // Це запит від клієнта до локального Next.js (наприклад, /api/auth/register)
-    targetUrl = path; 
+  } else if (!isServer && path.startsWith('/api/')) {
+    // На клієнті запити залишаємо локальними (Next.js rewrites та API Routes їх перехоплять)
+    // Просто вирізаємо /proxy/, якщо він є, щоб спрацювали rewrites з next.config.ts
+    targetUrl = path.replace('/api/proxy/', '/api/');
   } else {
-    // Це запит від серверного компонента напряму до бекенду
-    if (base.endsWith('/api/v1') && cleanPath.startsWith('/api/v1')) {
-      cleanPath = cleanPath.substring(7); 
-    } else if (base.endsWith('/api') && cleanPath.startsWith('/api')) {
-      cleanPath = cleanPath.substring(4); 
+    // На сервері (Server Components) стукаємо напряму на бекенд для швидкості
+    let clean = cleanPath;
+    if (clean.startsWith('/api/proxy/')) {
+      clean = clean.replace('/api/proxy/', '/');
+    } else if (clean.startsWith('/api/')) {
+      clean = clean.replace('/api/', '/');
     }
-    targetUrl = `${base}${cleanPath}`;
+    targetUrl = `${base}${clean}`;
   }
 
   const requestKey = `${init.method || 'GET'}:${targetUrl}:${typeof init.body === 'string' ? init.body : ''}`;
