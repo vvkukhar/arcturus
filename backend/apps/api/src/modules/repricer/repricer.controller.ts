@@ -11,7 +11,7 @@ export class RepricerController {
   constructor(private readonly repricerV2Service: RepricerV2Service) {}
 
   @Post('analyze')
-  analyze(
+  async analyze(
     @Body()
     body: {
       inventoryItemId: string;
@@ -28,7 +28,7 @@ export class RepricerController {
   }
 
   @Post('analyze-from-comps')
-  analyzeFromComps(
+  async analyzeFromComps(
     @Body()
     body: {
       inventoryItemId: string;
@@ -44,7 +44,7 @@ export class RepricerController {
   }
 
   @Patch('apply')
-  apply(
+  async apply(
     @Body()
     body: {
       inventoryItemId: string;
