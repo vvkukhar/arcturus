@@ -42,9 +42,12 @@ class SocketManager {
       randomizationFactor: 0.5,
       timeout: 20000,
       auth: token ? { token } : undefined,
-      // ВАЖЛИВО: Render вимагає polling спочатку. CORS ми вже полагодили на бекенді.
       transports: ['polling', 'websocket'],
       withCredentials: true,
+    });
+
+    this.instance.on('connect_error', (err) => {
+      console.warn('[Socket.io] Connection error:', err.message);
     });
 
     this.isConnecting = false;

@@ -78,19 +78,21 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
   const base = appConfig.apiBaseUrl.replace(/\/$/, '');
   let cleanPath = path.startsWith('/') ? path : `/${path}`;
   
-  // ФІКС МАРШРУТИЗАЦІЇ: Локальні запити Next.js не повинні йти на віддалений бекенд
   let targetUrl = '';
   if (path.startsWith('http')) {
     targetUrl = path;
-  } else if (path.startsWith('/api/')) {
-    targetUrl = path; 
+  } else if (!isServer && path.startsWith('/api/')) {
+    // На клієнті залишаємо запити як є, вони підуть до локального Next.js
+    targetUrl = path;
   } else {
-    if (base.endsWith('/api/v1') && cleanPath.startsWith('/api/v1')) {
-      cleanPath = cleanPath.substring(7); 
-    } else if (base.endsWith('/api') && cleanPath.startsWith('/api')) {
-      cleanPath = cleanPath.substring(4); 
+    // На сервері стукаємо напряму на бекенд
+    let clean = cleanPath;
+    if (clean.startsWith('/api/proxy/')) {
+      clean = clean.replace('/api/proxy/', '/');
+    } else if (clean.startsWith('/api/')) {
+      clean = clean.replace('/api/', '/');
     }
-    targetUrl = `${base}${cleanPath}`;
+    targetUrl = `${base}${clean}`;
   }
 
   const requestKey = `${init.method || 'GET'}:${targetUrl}:${typeof init.body === 'string' ? init.body : ''}`;
