@@ -17,7 +17,7 @@ export function RepricerFromCompsPanel() {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiFetch<any>('/api/proxy/repricer/analyze-from-comps', {
+      const data = await apiFetch<any>('/api/repricer/analyze-from-comps', {
         method: 'POST',
         body: JSON.stringify({ inventoryItemId: inventoryItemId.trim(), targetRoiPercent: Number(targetRoiPercent) }),
       });

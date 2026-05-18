@@ -30,8 +30,7 @@ export function RepricerPanel() {
     try {
       setLoading(true);
       setError(null);
-      // Використовуємо /api/proxy/ щоб токен авторизації Next.js передавався ідеально
-      const data = await apiFetch<RepricerResult>('/api/proxy/repricer/analyze', {
+      const data = await apiFetch<RepricerResult>('/api/repricer/analyze', {
         method: 'POST',
         body: JSON.stringify({
           inventoryItemId: inventoryItemId.trim(),
@@ -53,7 +52,7 @@ export function RepricerPanel() {
     try {
       setApplying(true);
       setError(null);
-      await apiFetch('/api/proxy/repricer/apply', { 
+      await apiFetch('/api/repricer/apply', { 
         method: 'PATCH', 
         body: JSON.stringify({ 
           inventoryItemId: result.inventoryItemId ?? inventoryItemId.trim(), 
