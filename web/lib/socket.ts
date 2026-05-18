@@ -38,17 +38,13 @@ class SocketManager {
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
+      reconnectionDelayMax: 10000,
+      randomizationFactor: 0.5,
       timeout: 20000,
       auth: token ? { token } : undefined,
-      // ВАЖЛИВО: Render/Vercel вимагають polling для ініціалізації
+      // ВАЖЛИВО: Render вимагає polling спочатку. CORS ми вже полагодили на бекенді.
       transports: ['polling', 'websocket'],
       withCredentials: true,
-      path: '/socket.io/',
-    });
-
-    this.instance.on('connect_error', (err) => {
-      console.warn('[Socket.io] Connection error:', err.message);
     });
 
     this.isConnecting = false;

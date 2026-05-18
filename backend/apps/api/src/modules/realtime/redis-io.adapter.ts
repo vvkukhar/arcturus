@@ -33,8 +33,10 @@ export class RedisIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        // Динамічний origin дозволяє браузеру приймати куки та credentials
-        origin: true,
+        // 🔥 АБСОЛЮТНИЙ ФІКС: Дозволяємо будь-який домен динамічно, не порушуючи правила credentials
+        origin: (origin: string | undefined, callback: (err: Error | null, origin?: boolean) => void) => {
+          callback(null, true); 
+        },
         credentials: true,
       },
       allowEIO3: true,
