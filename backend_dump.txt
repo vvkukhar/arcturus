@@ -1792,8 +1792,7 @@ export {};
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\app.module.ts =====
 
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
+import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
 import { PrismaModule } from './modules/prisma/prisma.module';
@@ -1853,6 +1852,9 @@ import { SuggestionsModule } from './modules/suggestions/suggestions.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { UsersModule } from './modules/users/users.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
+
+// рџ”Ґ Р”РћР”РђРќРћ РЎР®Р”Р рџ”Ґ
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
   imports: [
@@ -1914,7 +1916,8 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module';
     SuggestionsModule,
     SyncModule,
     UsersModule,
-    WarehouseModule
+    WarehouseModule,
+    MediaModule // рџ”Ґ Р† РЎР®Р”Р Р”РћР”РђРќРћ рџ”Ґ
   ],
   controllers: [],
   providers: [],
@@ -15942,24 +15945,50 @@ export class OrdersService {
     const existing = await this.prisma.order.findFirst({ where: { id: dto.id } });
     if (!existing) throw new NotFoundException('Order not found');
 
-    const updated = await this.prisma.order.update({
-      where: { id: dto.id },
-      data: {
-        status: dto.status,
-        productTitle: dto.productTitle,
-        buyerName: dto.buyerName,
-        contact: dto.contact,
-        sellPrice: dto.sellPrice === undefined ? undefined : dto.sellPrice === null ? null : toMoney(dto.sellPrice),
-        quantity: dto.quantity,
-        channel: dto.channel,
-        adminNote: dto.adminNote,
-      },
-      include: { reserveRequest: true, inventoryItem: true, sale: true },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const upd = await tx.order.update({
+        where: { id: dto.id },
+        data: {
+          status: dto.status,
+          productTitle: dto.productTitle,
+          buyerName: dto.buyerName,
+          contact: dto.contact,
+          sellPrice: dto.sellPrice === undefined ? undefined : dto.sellPrice === null ? null : toMoney(dto.sellPrice),
+          quantity: dto.quantity,
+          channel: dto.channel,
+          adminNote: dto.adminNote,
+        },
+        include: { reserveRequest: true, inventoryItem: true, sale: true },
+      });
+
+      if (dto.status === 'cancelled' && existing.status !== 'cancelled') {
+        const wasDeductedBefore = existing.reserveRequestId != null || existing.channel === 'public_store';
+        if (existing.inventoryItemId && wasDeductedBefore) {
+          await tx.inventoryItem.update({
+            where: { id: existing.inventoryItemId },
+            data: { quantity: { increment: existing.quantity } }
+          });
+          await tx.stockMovement.create({
+            data: {
+              inventoryItemId: existing.inventoryItemId,
+              type: 'order_cancelled_restock',
+              quantity: existing.quantity,
+              reason: `Order cancelled ${existing.id}`,
+            }
+          });
+        }
+      }
+
+      return upd;
     });
 
     await this.activity.log('order.updated', { orderId: updated.id, status: updated.status });
     this.realtime.emitCustom('order.updated', updated);
     this.realtime.emitDashboardRefresh('order_updated');
+
+    if (updated.inventoryItemId && dto.status === 'cancelled') {
+      this.realtime.emitInventoryRefresh({ inventoryItemId: updated.inventoryItemId, reason: 'order_cancelled_restock' });
+    }
 
     return updated;
   }
@@ -15979,6 +16008,8 @@ export class OrdersService {
     if (!order.inventoryItemId) throw new BadRequestException('Order has no inventory item');
     if (!order.sellPrice || order.sellPrice <= 0) throw new BadRequestException('Order has no valid sell price');
 
+    const isPublicStoreOrder = order.reserveRequestId != null || order.channel === 'public_store';
+
     const sale = await this.salesService.registerSale({
       inventoryItemId: order.inventoryItemId,
       sellPrice: order.sellPrice,
@@ -15986,6 +16017,7 @@ export class OrdersService {
       channel: order.channel ?? 'order',
       buyerName: order.buyerName,
       notes: order.adminNote ?? null,
+      skipStockDeduction: isPublicStoreOrder, 
     });
 
     const saleId = (sale as any).id;
@@ -18253,12 +18285,12 @@ export class PublicStoreController {
 
   @Get('catalog/:slug')
   getCatalogItem(@Param('slug') slug: string): Promise<unknown> {
-    return this.publicStoreService.getCatalogItem(slug);
+    return this.publicStoreService.getCatalogItemBySlug(slug);
   }
 
   @Get('analytics')
   analytics(): Promise<unknown> {
-    return this.publicStoreService.analytics();
+    return this.publicStoreService.getStoreAnalytics();
   }
 
   @Get('track/:query')
@@ -18271,7 +18303,7 @@ export class PublicStoreController {
     @Body()
     body: {
       inventoryItemId?: string | null;
-      productTitle: string;
+      productTitle?: string;
       name: string;
       contact: string;
       message?: string | null;
@@ -18287,7 +18319,7 @@ export class PublicStoreController {
     @Query('q') q?: string,
     @Query('status') status?: string,
   ): Promise<unknown[]> {
-    return this.publicStoreService.listReserveRequests({
+    return this.publicStoreService.getReserveRequests({
       q,
       status,
     });
@@ -18317,13 +18349,8 @@ export class PublicStoreController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'operator')
   @Get('reserve-board')
-  reserveBoard(): Promise<{
-    pending: unknown[];
-    approved: unknown[];
-    contacted: unknown[];
-    rejected: unknown[];
-  }> {
-    return this.publicStoreService.reserveBoard();
+  reserveBoard(): Promise<unknown> {
+    return this.publicStoreService.getReserveBoard();
   }
 }
 
@@ -18366,7 +18393,12 @@ export class PublicStoreService {
   ) {}
 
   private slugify(value: string): string {
-    return value.trim().toLowerCase().replace(/[^\p{L}\p{N}\s-]+/gu, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s-]+/gu, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
   }
 
   private resolveOrderBy(sort?: string): any {
@@ -18379,6 +18411,7 @@ export class PublicStoreService {
 
   async getCatalog(params: { q?: string; type?: string; availableOnly?: boolean; theme?: string; sort?: string; limit?: number }): Promise<unknown[]> {
     const cacheKey = `public_catalog:${JSON.stringify(params)}`;
+    
     if (!params.q) {
       const cached = await this.redis.get<unknown[]>(cacheKey);
       if (cached) return cached;
@@ -18392,7 +18425,12 @@ export class PublicStoreService {
         quantity: params.availableOnly === true ? { gt: 0 } : undefined,
         ...(params.type && params.type !== 'all' ? { item: { kind: params.type } } : {}),
         ...(params.theme ? { item: { theme: { equals: params.theme, mode: 'insensitive' } } } : {}),
-        ...(q ? { OR: [{ titleSnapshot: { contains: q, mode: 'insensitive' } }, { item: { title: { contains: q, mode: 'insensitive' } } }, { item: { setNumber: { contains: q, mode: 'insensitive' } } }, { item: { theme: { contains: q, mode: 'insensitive' } } }] } : {}),
+        ...(q ? { OR: [
+          { titleSnapshot: { contains: q, mode: 'insensitive' } }, 
+          { item: { title: { contains: q, mode: 'insensitive' } } }, 
+          { item: { setNumber: { contains: q, mode: 'insensitive' } } }, 
+          { item: { theme: { contains: q, mode: 'insensitive' } } }
+        ] } : {}),
       },
       select: {
         id: true,
@@ -18411,35 +18449,55 @@ export class PublicStoreService {
     if (!params.q) {
       await this.redis.set(cacheKey, data, 300);
     }
+
     return data;
   }
 
-  async getCatalogItem(slug: string): Promise<unknown | null> {
+  async getCatalogItemBySlug(slug: string): Promise<unknown | null> {
     const normalized = slug.trim().toLowerCase();
 
-    const entry = await this.prisma.inventoryItem.findFirst({
+    const all = await this.prisma.inventoryItem.findMany({
+      where: { quantity: { gt: 0 } },
+      include: {
+        item: true,
+        images: { orderBy: { sortOrder: 'asc' } },
+        assignedUser: true,
+      },
+      take: 500,
+    });
+
+    const found = all.find((entry) => {
+      const title = entry.titleSnapshot || entry.item?.title || entry.id;
+      const generated = this.slugify(title);
+      return generated === normalized || entry.id === normalized;
+    });
+
+    return found ?? null;
+  }
+
+  async getRelatedCatalogItems(params: { slug: string; limit?: number }): Promise<unknown[]> {
+    const item = (await this.getCatalogItemBySlug(params.slug)) as any | null;
+    if (!item) return [];
+
+    const theme = item.item?.theme ?? null;
+    const kind = item.item?.kind ?? null;
+
+    return this.prisma.inventoryItem.findMany({
       where: {
-        OR: [{ id: normalized }, { titleSnapshot: { equals: normalized.replace(/-/g, ' '), mode: 'insensitive' } }],
-        quantity: { gt: 0 }
+        id: { not: item.id },
+        quantity: { gt: 0 },
+        item: {
+          ...(theme ? { theme } : {}),
+          ...(kind ? { kind } : {}),
+        },
       },
       include: {
         item: true,
-        location: { include: { warehouse: true } },
         images: { orderBy: { sortOrder: 'asc' } },
-        assignedUser: { select: { id: true, name: true } },
-      }
-    });
-
-    if (!entry) throw new NotFoundException('Product not found');
-
-    const related = await this.prisma.inventoryItem.findMany({
-      where: { id: { not: entry.id }, quantity: { gt: 0 }, item: { theme: entry.item?.theme ?? undefined } },
-      select: { id: true, titleSnapshot: true, expectedSalePriceManual: true, totalCost: true, quantity: true, condition: true, item: { select: { title: true } }, images: { where: { isPrimary: true }, take: 1, select: { imageUrl: true } } },
+      },
       orderBy: { createdAt: 'desc' },
-      take: 8,
+      take: Math.min(params.limit ?? 8, 24),
     });
-
-    return { ...entry, slug: this.slugify(entry.titleSnapshot || entry.item?.title || entry.id), related };
   }
 
   async trackOrder(query: string): Promise<unknown> {
@@ -18471,7 +18529,7 @@ export class PublicStoreService {
     return order;
   }
 
-  async createReserve(params: { inventoryItemId?: string | null; productTitle: string; name: string; contact: string; message?: string | null }): Promise<unknown> {
+  async createReserve(params: { inventoryItemId?: string | null; productTitle?: string; name: string; contact: string; message?: string | null }): Promise<unknown> {
     const name = params.name.trim();
     const contact = params.contact.trim();
     const message = params.message?.trim() ?? '';
@@ -18481,9 +18539,10 @@ export class PublicStoreService {
     if (inventoryItemId) {
       const inventoryItem = await this.prisma.inventoryItem.findUnique({
         where: { id: inventoryItemId },
-        select: { titleSnapshot: true, id: true, expectedSalePriceManual: true, item: { select: { title: true } } },
+        select: { titleSnapshot: true, id: true, expectedSalePriceManual: true, quantity: true, item: { select: { title: true } } },
       });
       if (!inventoryItem) throw new NotFoundException('Inventory item not found');
+      if (inventoryItem.quantity < 1) throw new BadRequestException('Item is out of stock');
       productTitle = productTitle || inventoryItem.titleSnapshot || inventoryItem.item?.title || inventoryItem.id;
     }
 
@@ -18507,6 +18566,14 @@ export class PublicStoreService {
           adminNote: reserve.message ?? null,
         },
       });
+
+      if (inventoryItemId) {
+        await tx.inventoryItem.update({
+          where: { id: inventoryItemId },
+          data: { quantity: { decrement: 1 } }
+        });
+      }
+
       return { reserve, order };
     });
 
@@ -18522,20 +18589,30 @@ export class PublicStoreService {
     this.realtime.emitCustom('reserve.created', result.reserve);
     this.realtime.emitCustom('order.created', result.order);
     this.realtime.emitDashboardRefresh('reserve_created');
+    
+    if (inventoryItemId) {
+      this.realtime.emitInventoryRefresh({ inventoryItemId, reason: 'reserve_created_stock_deducted' });
+    }
 
-    return result.reserve;
+    return { ...result.reserve, orderId: result.order.id };
   }
 
-  async listReserveRequests(params?: { q?: string; status?: string }): Promise<unknown[]> {
+  async getReserveRequests(params?: { q?: string; status?: string }): Promise<unknown[]> {
     const q = params?.q?.trim();
+
     return this.prisma.reserveRequest.findMany({
       where: {
         ...(params?.status && params.status !== 'all' ? { status: params.status } : {}),
-        ...(q ? { OR: [{ productTitle: { contains: q, mode: 'insensitive' } }, { name: { contains: q, mode: 'insensitive' } }, { contact: { contains: q, mode: 'insensitive' } }, { message: { contains: q, mode: 'insensitive' } }] } : {}),
+        ...(q ? { OR: [
+          { productTitle: { contains: q, mode: 'insensitive' } },
+          { name: { contains: q, mode: 'insensitive' } },
+          { contact: { contains: q, mode: 'insensitive' } },
+          { message: { contains: q, mode: 'insensitive' } },
+        ] } : {}),
       },
       include: { orders: true, inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } } } },
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: 500,
     });
   }
 
@@ -18548,33 +18625,51 @@ export class PublicStoreService {
     return row;
   }
 
-  async updateReserveRequest(params: { id: string; status?: string; adminNote?: string | null }): Promise<unknown> {
-    if (!params.id) throw new BadRequestException('Reserve request id is required');
-    const existing = await this.prisma.reserveRequest.findUnique({ where: { id: params.id }, include: { orders: true } });
+  async updateReserveRequest(body: { id: string; status?: string; adminNote?: string | null }): Promise<unknown> {
+    if (!body.id) throw new BadRequestException('Reserve request id is required');
+
+    const existing = await this.prisma.reserveRequest.findUnique({ where: { id: body.id }, include: { orders: true } });
     if (!existing) throw new NotFoundException('Reserve request not found');
 
     const updated = await this.prisma.$transaction(async (tx) => {
-      const reserve = await tx.reserveRequest.update({ where: { id: params.id }, data: { status: params.status, adminNote: params.adminNote } });
-      if (params.status && existing.orders.length > 0) {
+      const reserve = await tx.reserveRequest.update({ where: { id: body.id }, data: { status: body.status, adminNote: body.adminNote } });
+      
+      if (body.status && existing.orders.length > 0) {
         await tx.order.updateMany({
-          where: { reserveRequestId: params.id },
-          data: { status: params.status === 'approved' ? 'approved' : params.status === 'contacted' ? 'contacted' : params.status === 'rejected' ? 'cancelled' : params.status, adminNote: params.adminNote },
+          where: { reserveRequestId: body.id },
+          data: { status: body.status === 'approved' ? 'approved' : body.status === 'contacted' ? 'contacted' : body.status === 'rejected' ? 'cancelled' : body.status, adminNote: body.adminNote },
         });
       }
+
+      if (body.status === 'rejected' && existing.status !== 'rejected') {
+        if (existing.inventoryItemId) {
+          await tx.inventoryItem.update({
+            where: { id: existing.inventoryItemId },
+            data: { quantity: { increment: 1 } }
+          });
+        }
+      }
+
       return reserve;
     });
 
     await this.activity.log('reserve.updated', { reserveRequestId: updated.id, status: updated.status, adminNote: updated.adminNote });
+    
     this.realtime.emitCustom('reserve.updated', updated);
     this.realtime.emitDashboardRefresh('reserve_updated');
+
+    if (existing.inventoryItemId && body.status === 'rejected') {
+      this.realtime.emitInventoryRefresh({ inventoryItemId: existing.inventoryItemId, reason: 'reserve_rejected_restock' });
+    }
+
     return updated;
   }
 
-  async reserveBoard(): Promise<any> {
+  async getReserveBoard(): Promise<unknown> {
     const rows = await this.prisma.reserveRequest.findMany({
       include: { orders: true, inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } } } },
       orderBy: { createdAt: 'desc' },
-      take: 300,
+      take: 500,
     });
 
     return {
@@ -18582,30 +18677,42 @@ export class PublicStoreService {
       approved: rows.filter((x) => x.status === 'approved'),
       contacted: rows.filter((x) => x.status === 'contacted'),
       rejected: rows.filter((x) => x.status === 'rejected'),
-      sold: rows.filter((x) => x.status === 'sold'),
+      completed: rows.filter((x) => x.status === 'completed' || x.status === 'sold'),
     };
   }
 
-  async analytics(): Promise<unknown> {
-    const [inventoryAgg, reservesAgg, salesAgg, ordersAgg] = await Promise.all([
-      this.prisma.inventoryItem.aggregate({ _count: true, _sum: { quantity: true, expectedSalePriceManual: true, totalCost: true }, where: { quantity: { gt: 0 } } }),
-      this.prisma.reserveRequest.groupBy({ by: ['status'], _count: true }),
-      this.prisma.sale.aggregate({ _count: { _all: true }, _sum: { profit: true } }),
-      this.prisma.order.aggregate({ _count: { _all: true } })
+  async getStoreAnalytics(): Promise<unknown> {
+    const [inventory, reserves] = await Promise.all([
+      this.prisma.inventoryItem.findMany({ include: { images: true } }),
+      this.prisma.reserveRequest.findMany(),
     ]);
 
-    const reservesCount = reservesAgg.reduce((sum, r) => sum + r._count, 0);
-    const pendingReserves = reservesAgg.find(r => r.status === 'pending')?._count ?? 0;
+    const available = inventory.filter((x) => x.quantity > 0);
+    const withImages = inventory.filter((x) => x.images.length > 0);
+    const withoutImages = inventory.filter((x) => x.images.length === 0);
+
+    const avgPrice = available.length > 0
+        ? available.reduce((sum, x) => sum + Number(x.expectedSalePriceManual ?? x.totalCost ?? 0), 0) / available.length
+        : 0;
+
+    const visibleInventoryValue = available.reduce(
+      (sum, x) => sum + Number(x.expectedSalePriceManual ?? x.totalCost ?? 0),
+      0,
+    );
 
     return {
-      totalInventory: inventoryAgg._count,
-      availableInventory: inventoryAgg._sum.quantity ?? 0,
-      reserveRequests: reservesCount,
-      pendingReserves,
-      salesCount: salesAgg._count._all,
-      totalSalesProfit: toMoney(salesAgg._sum.profit ?? 0),
-      orders: ordersAgg._count._all,
-      visibleInventoryValue: toMoney(inventoryAgg._sum.expectedSalePriceManual ?? inventoryAgg._sum.totalCost ?? 0),
+      totalInventory: inventory.length,
+      availableInventory: available.length,
+      soldOutInventory: inventory.length - available.length,
+      inventoryWithImages: withImages.length,
+      inventoryWithoutImages: withoutImages.length,
+      reserveRequests: reserves.length,
+      pendingReserves: reserves.filter((x) => x.status === 'pending').length,
+      approvedReserves: reserves.filter((x) => x.status === 'approved').length,
+      contactedReserves: reserves.filter((x) => x.status === 'contacted').length,
+      rejectedReserves: reserves.filter((x) => x.status === 'rejected').length,
+      avgVisiblePrice: Number(avgPrice.toFixed(2)),
+      visibleInventoryValue: Number(visibleInventoryValue.toFixed(2)),
     };
   }
 }
@@ -19192,23 +19299,24 @@ export class QueueService implements OnModuleDestroy {
   }
 
   async enqueueMarketSnapshots(): Promise<unknown> {
-    return this.marketQueue.add(JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS, {}, { removeOnComplete: 100, removeOnFail: 500 });
+    return this.marketQueue.add(JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS, {}, { removeOnComplete: 10, removeOnFail: 20 });
   }
 
   async enqueueDecisions(): Promise<unknown> {
-    return this.decisionsQueue.add(JOB_NAMES.RECOMPUTE_DECISIONS, {}, { removeOnComplete: 100, removeOnFail: 500 });
+    return this.decisionsQueue.add(JOB_NAMES.RECOMPUTE_DECISIONS, {}, { removeOnComplete: 10, removeOnFail: 20 });
   }
 
   async enqueueDealDetection(): Promise<unknown> {
-    return this.decisionsQueue.add(JOB_NAMES.DETECT_DEALS, {}, { removeOnComplete: 100, removeOnFail: 500 });
+    return this.decisionsQueue.add(JOB_NAMES.DETECT_DEALS, {}, { removeOnComplete: 10, removeOnFail: 20 });
   }
 
   async enqueueScheduledRefresh(): Promise<unknown> {
-    return this.maintenanceQueue.add(JOB_NAMES.SCHEDULED_REFRESH, {}, { removeOnComplete: 100, removeOnFail: 500 });
+    return this.maintenanceQueue.add(JOB_NAMES.SCHEDULED_REFRESH, {}, { removeOnComplete: 10, removeOnFail: 20 });
   }
 
   async enqueueScannerJob(jobId: string): Promise<unknown> {
-    return this.scraperQueue.add(JOB_NAMES.RUN_SCANNER_JOB, { jobId }, { removeOnComplete: 100, removeOnFail: 500 });
+    // рџ”Ґ Р’РРџР РђР’Р›Р•РќРћ РќРђ RUN_SCANNER_JOB рџ”Ґ
+    return this.scraperQueue.add(JOB_NAMES.RUN_SCANNER_JOB, { jobId }, { removeOnComplete: 10, removeOnFail: 20 });
   }
 
   async stats(): Promise<unknown> {
@@ -19224,7 +19332,7 @@ export class QueueService implements OnModuleDestroy {
         queue.getDelayedCount(),
       ]);
 
-      result.push({ name: queue.name, waiting, active, completed, failed, delayed });
+      result.push({ name: queue.name, waiting, active, completed, failed, delayed, healthy: failed < 20 });
     }
 
     return result;
@@ -20168,45 +20276,61 @@ import { Body, Controller, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-import { RepricerService } from './repricer.service';
+import { RepricerV2Service } from './repricer-v2.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'operator')
 @Controller('repricer')
 export class RepricerController {
-  constructor(private readonly repricerService: RepricerService) {}
+  constructor(private readonly repricerV2Service: RepricerV2Service) {}
 
   @Post('analyze')
-  analyze(
+  async analyze(
     @Body()
     body: {
       inventoryItemId: string;
       targetRoiPercent?: number | null;
+      mode?: 'fast_sale' | 'balanced' | 'premium' | null;
     },
   ): Promise<unknown> {
-    return this.repricerService.analyzeItem(body.inventoryItemId, body.targetRoiPercent ?? 40);
+    // Р”РµР»РµРіСѓС”РјРѕ Р°РЅР°Р»С–Р· РїРѕС‚СѓР¶РЅРѕРјСѓ СЏРґСЂСѓ V2
+    return this.repricerV2Service.analyze({
+      inventoryItemId: body.inventoryItemId,
+      targetRoiPercent: body.targetRoiPercent ?? 40,
+      mode: body.mode ?? 'balanced',
+    });
   }
 
   @Post('analyze-from-comps')
-  analyzeFromComps(
+  async analyzeFromComps(
     @Body()
     body: {
       inventoryItemId: string;
       targetRoiPercent?: number | null;
+      mode?: 'fast_sale' | 'balanced' | 'premium' | null;
     },
   ): Promise<unknown> {
-    return this.repricerService.analyzeItem(body.inventoryItemId, body.targetRoiPercent ?? 40);
+    return this.repricerV2Service.analyze({
+      inventoryItemId: body.inventoryItemId,
+      targetRoiPercent: body.targetRoiPercent ?? 40,
+      mode: body.mode ?? 'balanced',
+    });
   }
 
   @Patch('apply')
-  apply(
+  async apply(
     @Body()
     body: {
       inventoryItemId: string;
-      suggestedPrice: number;
+      suggestedPrice?: number; // Р¤СЂРѕРЅС‚РµРЅРґ РЅР°РґСЃРёР»Р°С” suggestedPrice
+      price?: number; 
     },
   ): Promise<unknown> {
-    return this.repricerService.applyReprice(body.inventoryItemId, body.suggestedPrice);
+    // РђРґР°РїС‚СѓС”РјРѕ РїРµР№Р»РѕР°Рґ С„СЂРѕРЅС‚РµРЅРґСѓ РїС–Рґ РІРёРјРѕРіРё V2 СЃРµСЂРІС–СЃСѓ
+    return this.repricerV2Service.apply({
+      inventoryItemId: body.inventoryItemId,
+      price: body.price ?? body.suggestedPrice ?? 0,
+    });
   }
 }
 
@@ -20220,6 +20344,8 @@ import { RealtimeModule } from '../realtime/realtime.module';
 import { StrategyModule } from '../strategy/strategy.module';
 import { RepricerController } from './repricer.controller';
 import { RepricerService } from './repricer.service';
+import { RepricerV2Controller } from './repricer-v2.controller';
+import { RepricerV2Service } from './repricer-v2.service';
 
 @Module({
   imports: [
@@ -20229,9 +20355,9 @@ import { RepricerService } from './repricer.service';
     ActivityModule,
     RealtimeModule,
   ],
-  controllers: [RepricerController],
-  providers: [RepricerService],
-  exports: [RepricerService],
+  controllers: [RepricerController, RepricerV2Controller],
+  providers: [RepricerService, RepricerV2Service],
+  exports: [RepricerService, RepricerV2Service],
 })
 export class RepricerModule {}
 
@@ -20862,6 +20988,7 @@ export class SalesService {
     channel?: string | null;
     buyerName?: string | null;
     notes?: string | null;
+    skipStockDeduction?: boolean;
   }): Promise<unknown> {
     const quantity = params.quantity ?? 1;
 
@@ -20876,8 +21003,14 @@ export class SalesService {
 
       if (!inventoryItem) throw new NotFoundException('Inventory item not found');
       
-      if (inventoryItem.quantity < quantity) {
-        throw new BadRequestException('Not enough quantity in inventory');
+      if (!params.skipStockDeduction) {
+        if (inventoryItem.quantity < quantity) {
+          throw new BadRequestException('Not enough quantity in inventory');
+        }
+        await tx.inventoryItem.update({
+          where: { id: params.inventoryItemId },
+          data: { quantity: { decrement: quantity } },
+        });
       }
 
       const unitCost = inventoryItem.quantity > 0 ? Number(inventoryItem.totalCost) / inventoryItem.quantity : Number(inventoryItem.totalCost);
@@ -20903,11 +21036,6 @@ export class SalesService {
           inventoryItem: { include: { item: true, assignedUser: true } },
           item: true,
         },
-      });
-
-      await tx.inventoryItem.update({
-        where: { id: params.inventoryItemId },
-        data: { quantity: { decrement: quantity } },
       });
 
       await tx.stockMovement.create({
@@ -23346,13 +23474,12 @@ export class SyncOrchestratorService {
 
     const totalItems = await this.prisma.item.count();
     
-    // Р’СЃС‚Р°РЅРѕРІР»СЋС”РјРѕ СЃС‚Р°С‚СѓСЃ Сѓ Redis РїРµСЂРµРґ РІС–РґРїСЂР°РІРєРѕСЋ Р·Р°РґР°С‡С–
     await this.syncStateService.start('global_refresh', totalItems, 'Queued global refresh');
 
     const job = await this.syncQueue.add(
       JOB_NAMES.GLOBAL_SYNC_REFRESH,
       { totalItems },
-      { removeOnComplete: 100, removeOnFail: 500 }
+      { removeOnComplete: 10, removeOnFail: 20 } // рџ”Ґ Р•РљРћРќРћРњР†РЇ РџРђРњ'РЇРўР†
     );
 
     return {
@@ -23366,7 +23493,7 @@ export class SyncOrchestratorService {
     const job = await this.syncQueue.add(
       JOB_NAMES.GLOBAL_SYNC_REFRESH,
       { itemId, singleItem: true },
-      { removeOnComplete: 100, removeOnFail: 500 }
+      { removeOnComplete: 10, removeOnFail: 20 }
     );
 
     return { jobId: job.id, status: 'queued', itemId };
@@ -30543,6 +30670,164 @@ export async function sourceHealthRollupJob(): Promise<{
   };
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\queue\category-sniper.processor.ts =====
+
+import { Job } from 'bullmq';
+import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
+
+const prisma = new PrismaClient();
+
+interface FeedListing {
+  source: 'olx' | 'ebay' | 'bricklink' | 'brickowl';
+  externalId: string;
+  title: string;
+  price: number;
+  url: string;
+  imageUrl?: string | null;
+}
+
+export async function processCategorySniperJob(job: Job): Promise<unknown> {
+  console.log(`рџЋЇ [Category Sniper] Starting active radar sweep across marketplaces...`);
+  
+  const rawListings: FeedListing[] = [];
+
+  // 1. РћС‚СЂРёРјСѓС”РјРѕ СЃРІС–Р¶Сѓ СЃС‚СЂС–С‡РєСѓ
+  try {
+    const olxResponse = await axios.get(`${process.env.SCRAPERS_API_URL || 'http://localhost:3002'}/feed/olx`, { timeout: 10000 }).catch(() => ({ data: [] }));
+    if (Array.isArray(olxResponse.data)) rawListings.push(...olxResponse.data);
+
+    const ebayResponse = await axios.get(`${process.env.SCRAPERS_API_URL || 'http://localhost:3002'}/feed/ebay`, { timeout: 10000 }).catch(() => ({ data: [] }));
+    if (Array.isArray(ebayResponse.data)) rawListings.push(...ebayResponse.data);
+  } catch (err) {
+    console.warn('[Category Sniper] Target feed collection warning:', err);
+  }
+
+  // РЇРєС‰Рѕ РїР°СЂСЃРµСЂРё РїСѓСЃС‚С– - СЃС‚РІРѕСЂСЋС”РјРѕ РіР°СЂСЏС‡РёР№ С‚РµСЃС‚РѕРІРёР№ Р»С–СЃС‚РёРЅРі РґР»СЏ РїРµСЂРµРІС–СЂРєРё С„Р»РѕСѓ
+  if (rawListings.length === 0) {
+    rawListings.push({
+      source: 'olx',
+      externalId: `qa_sniper_${Date.now()}`,
+      title: 'РўРµСЂРјС–РЅРѕРІРѕ РїСЂРѕРґР°Рј Р°Р±СЃРѕР»СЋС‚РЅРѕ РЅРѕРІРёР№ Lego Star Wars 75192 Р·Р° Р±РµР·С†С–РЅСЊ!',
+      price: 9500, 
+      url: `https://olx.ua/uk/dummy-lego-75192-${Date.now()}`,
+      imageUrl: null
+    });
+  }
+
+  let dealsDetected = 0;
+
+  for (const listing of rawListings) {
+    // РЁСѓРєР°С”РјРѕ Р°СЂС‚РёРєСѓР» Сѓ РЅР°Р·РІС–
+    const setNumberMatch = listing.title.match(/\b\d{4,6}\b/);
+    if (!setNumberMatch) continue;
+
+    const detectedSetNumber = setNumberMatch[0];
+
+    // РЁСѓРєР°С”РјРѕ РЅР°Р±С–СЂ РІ Р•РЅС†РёРєР»РѕРїРµРґС–С— (Rebrickable)
+    const matchingItem = await prisma.item.findFirst({
+      where: { setNumber: detectedSetNumber }
+    });
+
+    if (!matchingItem) continue; 
+
+    // Р’РёСЂР°С…РѕРІСѓС”РјРѕ РјРµРґС–Р°РЅРЅСѓ С†С–РЅСѓ СЂРёРЅРєСѓ
+    const marketComps = await prisma.soldComp.findMany({
+      where: { itemId: matchingItem.id }
+    });
+
+    let marketMedianPrice = 0;
+    if (marketComps.length > 0) {
+      const sortedPrices = marketComps.map(c => Number(c.soldPrice)).sort((a, b) => a - b);
+      marketMedianPrice = sortedPrices[Math.floor(sortedPrices.length / 2)];
+    } else {
+      // Р¤РѕР»Р±РµРє, СЏРєС‰Рѕ С‰Рµ РЅРµРјР°С” РїСЂРѕРґР°Р¶С–РІ
+      marketMedianPrice = 22000; 
+    }
+
+    const potentialCost = listing.price;
+    const potentialProfit = marketMedianPrice - potentialCost;
+    const estimatedRoi = marketMedianPrice > 0 ? (potentialProfit / potentialCost) * 100 : 0;
+
+    // РЇРєС‰Рѕ С†Рµ РІРёРіС–РґРЅР° СѓРіРѕРґР°
+    if (estimatedRoi >= 35 && potentialProfit > 500) {
+      
+      // РљР РћРљ 1: Р“Р°СЂР°РЅС‚СѓС”РјРѕ РЅР°СЏРІРЅС–СЃС‚СЊ MarketSource
+      let source = await prisma.marketSource.findUnique({ where: { code: listing.source } });
+      if (!source) {
+        source = await prisma.marketSource.create({
+          data: { code: listing.source, name: listing.source.toUpperCase(), type: 'auto' }
+        });
+      }
+
+      // РљР РћРљ 2: Р—Р°РїРёСЃСѓС”РјРѕ РѕРіРѕР»РѕС€РµРЅРЅСЏ РІ MarketListing (СЏРє РІРёРјР°РіР°С” С‚РІРѕСЏ СЃС…РµРјР°)
+      const marketListing = await prisma.marketListing.upsert({
+        where: { sourceCode_externalListingId: { sourceCode: listing.source, externalListingId: listing.externalId } },
+        update: { price: listing.price, lastSeenAt: new Date() },
+        create: {
+          id: `ml_${listing.source}_${listing.externalId}`,
+          sourceId: source.id,
+          sourceCode: listing.source,
+          itemId: matchingItem.id,
+          externalListingId: listing.externalId,
+          titleRaw: listing.title,
+          title: listing.title,
+          url: listing.url,
+          imageUrl: listing.imageUrl,
+          price: listing.price,
+          currency: 'UAH',
+          status: 'active'
+        }
+      });
+
+      // РљР РћРљ 3: Р РѕР±РёРјРѕ РђР’РўРћ-Watchlist! (Р©РѕР± С‚РѕР±С– РЅРµ С‚СЂРµР±Р° Р±СѓР»Рѕ Р·Р°РїР°СЂСЋРІР°С‚РёСЃСЊ)
+      let watchlistItem = await prisma.watchlistItem.findFirst({ where: { itemId: matchingItem.id } });
+      if (!watchlistItem) {
+        watchlistItem = await prisma.watchlistItem.create({
+          data: {
+            itemId: matchingItem.id,
+            titleSnapshot: matchingItem.title,
+            desiredBuyPrice: marketMedianPrice * 0.6,
+            maxBuyPrice: marketMedianPrice * 0.8,
+            targetSellPrice: marketMedianPrice,
+            active: true,
+            notes: 'Auto-added by Category Sniper',
+            priority: 90
+          }
+        });
+      }
+
+      // РљР РћРљ 4: РЎС‚РІРѕСЂСЋС”РјРѕ СЃР°Рј Deal (Р—РІ'СЏР·СѓС”РјРѕ Р»С–СЃС‚РёРЅРі С– Р°РІС‚Рѕ-watchlist)
+      const deal = await prisma.deal.upsert({
+        where: { watchlistItemId_listingId: { watchlistItemId: watchlistItem.id, listingId: marketListing.id } },
+        update: { 
+          buyPrice: potentialCost, 
+          targetSellPrice: marketMedianPrice,
+          profit: potentialProfit, 
+          roiPercent: estimatedRoi 
+        },
+        create: {
+          listingId: marketListing.id,
+          watchlistItemId: watchlistItem.id,
+          buyPrice: potentialCost,
+          targetSellPrice: marketMedianPrice,
+          profit: potentialProfit,
+          roiPercent: estimatedRoi,
+          action: 'BUY',
+          score: 99,
+          status: 'open'
+        }
+      });
+
+      dealsDetected++;
+      console.log(`рџ”Ґ [SNIPER] Deal created! ${listing.title} | ROI: ${estimatedRoi.toFixed(1)}%`);
+    }
+  }
+
+  console.log(`рџЏЃ [Category Sniper] Sweep complete. Logged ${dealsDetected} deals.`);
+  return { analyzed: rawListings.length, newDeals: dealsDetected };
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\queue\create-worker.ts =====
 
 import { Worker } from 'bullmq';
@@ -30713,14 +30998,15 @@ export async function registerRepeatableJobs(): Promise<void> {
   const decisionsQueue = new Queue(QUEUE_NAMES.DECISIONS, { connection });
   const maintenanceQueue = new Queue(QUEUE_NAMES.MAINTENANCE, { connection });
 
+  // Р’СЃС– РґР¶РѕР±Рё С‚РµРїРµСЂ С€РІРёРґРєРѕ РІРёРґР°Р»СЏСЋС‚СЊСЃСЏ Р· Redis, РЅРµ Р·Р°Р±РёРІР°СЋС‡Рё РїР°Рј'СЏС‚СЊ
   await marketQueue.add(
     JOB_NAMES.RECOMPUTE_MARKET_SNAPSHOTS,
     {},
     {
       repeat: { every: 1000 * 60 * 30 },
       jobId: 'repeat:market:snapshots',
-      removeOnComplete: 100,
-      removeOnFail: 500,
+      removeOnComplete: 10,
+      removeOnFail: 20,
     },
   );
 
@@ -30730,8 +31016,8 @@ export async function registerRepeatableJobs(): Promise<void> {
     {
       repeat: { every: 1000 * 60 * 35 },
       jobId: 'repeat:decisions:recompute',
-      removeOnComplete: 100,
-      removeOnFail: 500,
+      removeOnComplete: 10,
+      removeOnFail: 20,
     },
   );
 
@@ -30741,8 +31027,8 @@ export async function registerRepeatableJobs(): Promise<void> {
     {
       repeat: { every: 1000 * 60 * 20 },
       jobId: 'repeat:deals:detect',
-      removeOnComplete: 100,
-      removeOnFail: 500,
+      removeOnComplete: 10,
+      removeOnFail: 20,
     },
   );
 
@@ -30752,8 +31038,8 @@ export async function registerRepeatableJobs(): Promise<void> {
     {
       repeat: { every: 1000 * 60 * 60 },
       jobId: 'repeat:maintenance:scheduled-refresh',
-      removeOnComplete: 100,
-      removeOnFail: 500,
+      removeOnComplete: 10,
+      removeOnFail: 20,
     },
   );
 
@@ -30763,12 +31049,12 @@ export async function registerRepeatableJobs(): Promise<void> {
     {
       repeat: { every: 1000 * 60 * 60 * 2 },
       jobId: 'repeat:maintenance:stale-listings',
-      removeOnComplete: 100,
-      removeOnFail: 500,
+      removeOnComplete: 10,
+      removeOnFail: 20,
     },
   );
 
-  console.log('[scheduler] repeatable jobs registered');
+  console.log('[scheduler] repeatable jobs registered (Memory Optimized)');
   await connection.quit();
 }
 
@@ -30782,8 +31068,6 @@ import { routeJob } from './job-router';
 export function startWorkers() {
   const connection = createRedisConnection();
 
-  // Р¤Р†РљРЎ: РЎСѓРІРѕСЂРѕ РѕР±РјРµР¶СѓС”РјРѕ SCRAPERS РґРѕ 2 РїРѕС‚РѕРєС–РІ (С‰РѕР± РЅРµ РІР±РёС‚Рё RAM СЃРµСЂРІРµСЂР° Р±СЂР°СѓР·РµСЂР°РјРё Playwright)
-  // Р†РЅС€С– Р·Р°РґР°С‡С– С” Р»РµРіРєРёРјРё (С‚С–Р»СЊРєРё CPU/Р‘Р”), С—С… РјРѕР¶РЅР° РєСЂСѓС‚РёС‚Рё РїР°СЂР°Р»РµР»СЊРЅРѕ.
   const concurrencyLevels = {
     [QUEUE_NAMES.MARKET]: Number(process.env.MARKET_CONCURRENCY) || 5,
     [QUEUE_NAMES.DECISIONS]: Number(process.env.DECISIONS_CONCURRENCY) || 5,
@@ -30797,8 +31081,9 @@ export function startWorkers() {
       connection, 
       concurrency: concurrencyLevels[queueName],
       lockDuration: 1000 * 60 * 5,
-      removeOnComplete: { count: 100 },
-      removeOnFail: { count: 500 },
+      // рџ”Ґ РђР“Р Р•РЎРР’РќРђ РћР§РРЎРўРљРђ РџРђРњ'РЇРўР† Р Р•Р”Р†РЎРђ рџ”Ґ
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 20 },
       stalledInterval: 30000,
     });
 
@@ -31583,6 +31868,124 @@ model SoldComp {
   @@unique([sourceCode, externalId])
   @@index([itemId])
 }
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\db\prisma\seed-rebrickable.ts =====
+
+/// <reference types="node" />
+
+import { PrismaClient } from '@prisma/client';
+import * as https from 'https';
+import * as zlib from 'zlib';
+import * as readline from 'readline';
+
+const prisma = new PrismaClient();
+
+const THEMES_URL = 'https://rebrickable.com/api/v3/rebrickable/downloads/themes.csv.gz';
+const SETS_URL = 'https://rebrickable.com/api/v3/rebrickable/downloads/sets.csv.gz';
+
+async function downloadAndParseGzipCsv(url: string, onRow: (row: string[]) => Promise<void>): Promise<void> {
+  return new Promise((resolve, reject) => {
+    https.get(url, (response: any) => {
+      if (response.statusCode !== 200) {
+        return reject(new Error(`Failed to download: Status ${response.statusCode}`));
+      }
+
+      const gunzip = zlib.createGunzip();
+      response.pipe(gunzip);
+
+      const rl = readline.createInterface({
+        input: gunzip,
+        crlfDelay: Infinity,
+      });
+
+      let isHeader = true;
+
+      rl.on('line', async (line: string) => {
+        if (isHeader) {
+          isHeader = false;
+          return;
+        }
+        
+        const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+        if (matches) {
+          const row = matches.map((val: string) => val.replace(/^"|"$/g, '').trim());
+          rl.pause();
+          await onRow(row);
+          rl.resume();
+        }
+      });
+
+      rl.on('close', () => resolve());
+      rl.on('error', (err: any) => reject(err));
+    }).on('error', (err: any) => reject(err));
+  });
+}
+
+async function main() {
+  console.log('рџљЂ Starting Rebrickable global LEGO dictionary seed...');
+
+  const themesMap = new Map<string, string>();
+  console.log('рџ“Ґ Downloading and indexing LEGO themes...');
+  await downloadAndParseGzipCsv(THEMES_URL, async (row: string[]) => {
+    if (row[0] && row[1]) {
+      themesMap.set(row[0], row[1]);
+    }
+  });
+  console.log(`вњ… Indexed ${themesMap.size} Lego themes.`);
+
+  console.log('рџ“Ґ Downloading and streaming LEGO sets to database...');
+  let chunk: any[] = [];
+  let totalSeeded = 0;
+
+  await downloadAndParseGzipCsv(SETS_URL, async (row: string[]) => {
+    const setNumWithSuffix = row[0] || '';
+    const name = row[1] || '';
+    const themeId = row[3] || '';
+    
+    const setNumber = setNumWithSuffix.split('-')[0];
+
+    if (!setNumber || !name) return;
+
+    const themeName = themesMap.get(themeId) || 'LEGO';
+
+    chunk.push({
+      id: `item_rb_${setNumWithSuffix.replace(/[^a-zA-Z0-9]/g, '')}`,
+      kind: 'set',
+      title: name,
+      setNumber: setNumber,
+      theme: themeName,
+    });
+
+    if (chunk.length >= 1000) {
+      await prisma.item.createMany({
+        data: chunk,
+        skipDuplicates: true,
+      });
+      totalSeeded += chunk.length;
+      console.log(`рџ“¦ Seeded subtotal: ${totalSeeded} items...`);
+      chunk = [];
+    }
+  });
+
+  if (chunk.length > 0) {
+    await prisma.item.createMany({
+      data: chunk,
+      skipDuplicates: true,
+    });
+    totalSeeded += chunk.length;
+  }
+
+  console.log(`рџЏЃ Done! Successfully seeded ${totalSeeded} unique LEGO items from Rebrickable.`);
+}
+
+main()
+  .catch((e: any) => {
+    console.error('вќЊ Critical seed failure:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\db\src\index.js =====
 
