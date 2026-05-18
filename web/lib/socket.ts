@@ -34,7 +34,7 @@ class SocketManager {
     const wsUrl = appConfig.wsBaseUrl;
 
     this.instance = io(wsUrl, {
-      transports: ['websocket', 'polling'],
+      // 🔥 ФІКС 1: Видалено жорсткий transports. Тепер Socket.io сам почне з polling і плавно перейде на websocket
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -43,6 +43,8 @@ class SocketManager {
       randomizationFactor: 0.5,
       timeout: 20000,
       auth: token ? { token } : undefined,
+      // 🔥 ФІКС 2: Додаємо withCredentials для правильної роботи з налаштуваннями бекенду
+      withCredentials: true,
     });
 
     this.isConnecting = false;

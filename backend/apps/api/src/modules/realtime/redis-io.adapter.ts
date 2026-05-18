@@ -14,16 +14,10 @@ export class RedisIoAdapter extends IoAdapter {
 
   async connectToRedis(): Promise<void> {
     try {
-      // Отримуємо існуючий екземпляр RedisService, щоб не плодити нові з'єднання
       const redisService = this.app.get(RedisService);
       const pubClient = redisService.getClient();
-      
-      // Створюємо дублікат для підписок (вимога socket.io-redis)
       const subClient = pubClient.duplicate();
 
-      // Чекаємо, поки саб-клієнт не підключиться (паб-клієнт вже підключений через OnModuleInit)
-      // Оскільки ми використовуємо ioredis, duplicate() не потребує явного connect(), 
-      // але ми робимо перевірку статусу
       if (subClient.status === 'wait') {
         await subClient.connect();
       }
@@ -31,7 +25,7 @@ export class RedisIoAdapter extends IoAdapter {
       this.adapterConstructor = createAdapter(pubClient, subClient);
       this.logger.log('Successfully connected WebSockets to Redis');
     } catch (err: any) {
-      this.logger.error(`Failed to connect WebSockets to Redis. Falling back to in-memory adapter. Error: ${err.message}`);
+      this.logger.error(`Failed to connect WebSockets to Redis. Error: ${err.message}`);
     }
   }
 
@@ -39,7 +33,9 @@ export class RedisIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        origin: process.env.CORS_ORIGINS?.split(',') || '*',
+        // 🔥 ФІКС: origin: true автоматично повертає домен, з якого прийшов запит (твого фронта). 
+        // Це обходить заборону на використання '*' разом із credentials: true
+        origin: true,
         credentials: true,
       },
     });
