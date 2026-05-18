@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
+import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
 import { PrismaModule } from './modules/prisma/prisma.module';
@@ -60,6 +59,9 @@ import { SuggestionsModule } from './modules/suggestions/suggestions.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { UsersModule } from './modules/users/users.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
+
+// 🔥 ДОДАНО СЮДИ 🔥
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
   imports: [
@@ -121,7 +123,8 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module';
     SuggestionsModule,
     SyncModule,
     UsersModule,
-    WarehouseModule
+    WarehouseModule,
+    MediaModule // 🔥 І СЮДИ ДОДАНО 🔥
   ],
   controllers: [],
   providers: [],
