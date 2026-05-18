@@ -11,7 +11,7 @@ export class RepricerController {
   constructor(private readonly repricerV2Service: RepricerV2Service) {}
 
   @Post('analyze')
-  async analyze(
+  analyze(
     @Body()
     body: {
       inventoryItemId: string;
@@ -19,7 +19,7 @@ export class RepricerController {
       mode?: 'fast_sale' | 'balanced' | 'premium' | null;
     },
   ): Promise<unknown> {
-    // Перевели головний аналітика на ядро V2
+    // Делегуємо аналіз потужному ядру V2
     return this.repricerV2Service.analyze({
       inventoryItemId: body.inventoryItemId,
       targetRoiPercent: body.targetRoiPercent ?? 40,
@@ -28,7 +28,7 @@ export class RepricerController {
   }
 
   @Post('analyze-from-comps')
-  async analyzeFromComps(
+  analyzeFromComps(
     @Body()
     body: {
       inventoryItemId: string;
@@ -44,13 +44,18 @@ export class RepricerController {
   }
 
   @Patch('apply')
-  async apply(
+  apply(
     @Body()
     body: {
       inventoryItemId: string;
-      price: number;
+      suggestedPrice?: number; // Фронтенд надсилає suggestedPrice
+      price?: number; // На всяк випадок залишаємо підтримку прямого price
     },
   ): Promise<unknown> {
-    return this.repricerV2Service.apply(body);
+    // Адаптуємо пейлоад фронтенду під вимоги V2 сервісу
+    return this.repricerV2Service.apply({
+      inventoryItemId: body.inventoryItemId,
+      price: body.price ?? body.suggestedPrice ?? 0,
+    });
   }
 }
