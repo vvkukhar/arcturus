@@ -41,10 +41,9 @@ class SocketManager {
       reconnectionDelayMax: 5000,
       timeout: 20000,
       auth: token ? { token } : undefined,
-      // 🔥 ФІКС 1: Обов'язково передаємо credentials для CORS
-      withCredentials: true,
-      // 🔥 ФІКС 2: Render вимагає починати з polling, щоб закріпити сесію на балансувальнику
-      transports: ['polling', 'websocket'], 
+      // 🔥 ФІКС: ТІЛЬКИ websocket. Жодного polling, ніяких CORS проблем з XMLHttpRequest
+      transports: ['websocket'], 
+      upgrade: false, // Нам не треба апгрейдити, ми зразу на WS
     });
 
     this.instance.on('connect_error', (err) => {

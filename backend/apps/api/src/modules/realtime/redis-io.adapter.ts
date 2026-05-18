@@ -33,9 +33,9 @@ export class RedisIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        // 🔥 ФІКС: origin: true змушує бекенд віддавати точний домен клієнта, а не заборонену '*'
-        origin: true,
-        credentials: true,
+        // 🔥 ФІКС: Дозволяємо все, бо ми юзаємо тільки WS і передаємо токен в auth
+        origin: '*',
+        methods: ['GET', 'POST'],
       },
       allowEIO3: true,
     });
