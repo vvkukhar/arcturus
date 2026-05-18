@@ -38,7 +38,7 @@ export function DealExplainer() {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiFetch<ExplainResult>('/api/ai/explain-deal', {
+      const data = await apiFetch<ExplainResult>('/api/proxy/ai/explain-deal', {
         method: 'POST',
         body: JSON.stringify({ 
           buyPrice: parsedBuy, 
@@ -48,8 +48,8 @@ export function DealExplainer() {
         }),
       });
       setResult(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI Explain failed');
+    } catch (err: any) {
+      setError(err.message || 'AI Explain failed');
     } finally { 
       setLoading(false); 
     }

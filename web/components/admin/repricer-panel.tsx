@@ -28,12 +28,14 @@ export function RepricerPanel() {
   const [result, setResult] = useState<RepricerResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = useCallback(async () => {
     if (loading || !inventoryItemId.trim()) return;
     try {
       setLoading(true);
-      const data = await apiFetch<RepricerResult>('/api/repricer/analyze', {
+      setError(null);
+      const data = await apiFetch<RepricerResult>('/api/proxy/repricer/analyze', {
         method: 'POST',
         body: JSON.stringify({
           inventoryItemId: inventoryItemId.trim(),
@@ -44,8 +46,9 @@ export function RepricerPanel() {
         }),
       });
       setResult(data);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setError(e.message || 'Failed to analyze item');
     } finally { 
       setLoading(false); 
     }
@@ -55,15 +58,17 @@ export function RepricerPanel() {
     if (applying || !result?.suggestedPrice) return;
     try {
       setApplying(true);
-      await apiFetch('/api/repricer/apply', { 
+      setError(null);
+      await apiFetch('/api/proxy/repricer/apply', { 
         method: 'PATCH', 
         body: JSON.stringify({ 
           inventoryItemId: result.inventoryItemId ?? inventoryItemId.trim(), 
           suggestedPrice: result.suggestedPrice 
         }) 
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setError(e.message || 'Failed to apply price');
     } finally { 
       setApplying(false); 
       setResult(null);
@@ -120,6 +125,12 @@ export function RepricerPanel() {
           />
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">
+          {error}
+        </div>
+      )}
 
       <div className="flex gap-3 pt-2">
         <button 

@@ -42,7 +42,7 @@ export function PriceAnalyzer() {
       setError(null);
       setResult(null);
 
-      const data = await apiFetch<AnalyzerResult>('/api/pricing/analyze', {
+      const data = await apiFetch<AnalyzerResult>('/api/proxy/pricing/analyze', {
         method: 'POST',
         body: JSON.stringify({
           buyPrice: parsedBuy,
@@ -131,7 +131,7 @@ export function PriceAnalyzer() {
           </div>
           <div className="bg-[var(--background)]/50 p-4 rounded-2xl border border-[var(--border)]">
             <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Class</div>
-            <div className="text-sm font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 mt-1">{result.classification ?? 'вЂ”'}</div>
+            <div className="text-sm font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 mt-1">{result.classification ?? '—'}</div>
           </div>
         </div>
       )}

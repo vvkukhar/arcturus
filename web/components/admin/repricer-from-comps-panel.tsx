@@ -10,16 +10,20 @@ export function RepricerFromCompsPanel() {
   const [targetRoiPercent, setTargetRoiPercent] = useState('40');
   const [result, setResult] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
     if (!inventoryItemId.trim()) return;
     try {
       setLoading(true);
-      const data = await apiFetch<any>('/api/repricer/analyze-from-comps', {
+      setError(null);
+      const data = await apiFetch<any>('/api/proxy/repricer/analyze-from-comps', {
         method: 'POST',
         body: JSON.stringify({ inventoryItemId: inventoryItemId.trim(), targetRoiPercent: Number(targetRoiPercent) }),
       });
       setResult(data);
+    } catch (err: any) {
+      setError(err.message || 'Analysis failed');
     } finally { 
       setLoading(false); 
     }
@@ -48,9 +52,15 @@ export function RepricerFromCompsPanel() {
         />
       </div>
 
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
       <button 
         onClick={handleAnalyze} 
-        disabled={loading || !inventoryItemId} 
+        disabled={loading || !inventoryItemId.trim()} 
         className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />} Analyze From Comps
@@ -58,7 +68,7 @@ export function RepricerFromCompsPanel() {
 
       {result && (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-5 mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div><div className="text-xs text-slate-500 font-bold">Comps Found</div><div className="text-lg font-bold text-[var(--foreground)]">{result.soldCompCount ?? 0}</div></div>
+          <div><div className="text-xs text-slate-500 font-bold">Comps Found</div><div className="text-lg font-bold text-[var(--foreground)]">{result.compCount ?? 0}</div></div>
           <div><div className="text-xs text-slate-500 font-bold">Market Avg</div><div className="text-lg font-bold text-[var(--foreground)]">{formatMoney(result.marketAverage)}</div></div>
           <div><div className="text-xs text-slate-500 font-bold">Suggested</div><div className="text-lg font-black text-blue-500">{formatMoney(result.suggestedPrice)}</div></div>
         </div>

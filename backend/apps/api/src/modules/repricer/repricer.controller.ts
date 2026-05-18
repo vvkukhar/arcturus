@@ -49,7 +49,7 @@ export class RepricerController {
     body: {
       inventoryItemId: string;
       suggestedPrice?: number; // Фронтенд надсилає suggestedPrice
-      price?: number; // На всяк випадок залишаємо підтримку прямого price
+      price?: number; // Залишаємо підтримку прямого price на всяк випадок
     },
   ): Promise<unknown> {
     // Адаптуємо пейлоад фронтенду під вимоги V2 сервісу
