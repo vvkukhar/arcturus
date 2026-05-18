@@ -31,8 +31,6 @@ class SocketManager {
     this.isConnecting = true;
 
     this.currentToken = token;
-    
-    // Забираємо trailing slash, якщо є
     const wsUrl = appConfig.wsBaseUrl.replace(/\/$/, '');
 
     this.instance = io(wsUrl, {
@@ -43,11 +41,10 @@ class SocketManager {
       reconnectionDelayMax: 5000,
       timeout: 20000,
       auth: token ? { token } : undefined,
-      // 🔥 ФІКС СЬОКЕТІВ: Render ВБИВАЄ прямі WSS підключення. Повертаємо polling як запасний варіант
+      // ВАЖЛИВО: Render/Vercel вимагають polling для ініціалізації
       transports: ['polling', 'websocket'],
-      upgrade: true, // Дозволяємо апгрейд з HTTP на WSS
-      withCredentials: true, // Треба для роботи polling-запитів
-      path: '/socket.io/', // Чітко вказуємо шлях
+      withCredentials: true,
+      path: '/socket.io/',
     });
 
     this.instance.on('connect_error', (err) => {

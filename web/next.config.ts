@@ -24,15 +24,6 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error'] } : false,
   },
-  // 🔥 ФІКС ПРОКСІ: Змушуємо Next.js перекидати всі запити /api/* напряму на бекенд
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_BASE_URL}/:path*`,
-      },
-    ];
-  },
 };
 
 export default nextConfig;

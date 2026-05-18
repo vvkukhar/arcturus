@@ -83,11 +83,10 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
   if (path.startsWith('http')) {
     targetUrl = path;
   } else if (!isServer && path.startsWith('/api/')) {
-    // На клієнті запити залишаємо локальними (Next.js rewrites та API Routes їх перехоплять)
-    // Просто вирізаємо /proxy/, якщо він є, щоб спрацювали rewrites з next.config.ts
-    targetUrl = path.replace('/api/proxy/', '/api/');
+    // На клієнті залишаємо запити як є, щоб вони йшли до Next.js API Routes (включаючи proxy)
+    targetUrl = path;
   } else {
-    // На сервері (Server Components) стукаємо напряму на бекенд для швидкості
+    // На сервері стукаємо напряму на бекенд, вирізаючи /api/proxy/ якщо він є
     let clean = cleanPath;
     if (clean.startsWith('/api/proxy/')) {
       clean = clean.replace('/api/proxy/', '/');

@@ -33,9 +33,9 @@ export class RedisIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        // 🔥 ФІКС: Дозволяємо все, бо ми юзаємо тільки WS і передаємо токен в auth
-        origin: '*',
-        methods: ['GET', 'POST'],
+        // Динамічний origin дозволяє браузеру приймати куки та credentials
+        origin: true,
+        credentials: true,
       },
       allowEIO3: true,
     });
