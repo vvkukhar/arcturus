@@ -31,19 +31,22 @@ class SocketManager {
     this.isConnecting = true;
 
     this.currentToken = token;
-    const wsUrl = appConfig.wsBaseUrl.replace(/\/$/, '');
+    
+    // Завжди зрізаємо /api/v1 з бейз урла для сокетів
+    const wsUrl = appConfig.wsBaseUrl.replace(/\/api(\/v[0-9]+)?\/?$/, '').replace(/\/$/, '');
 
     this.instance = io(wsUrl, {
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
-      randomizationFactor: 0.5,
+      reconnectionDelayMax: 5000,
       timeout: 20000,
       auth: token ? { token } : undefined,
-      transports: ['polling', 'websocket'],
-      withCredentials: true,
+      // 🔥 ФІКС 2: Пробуємо одразу websocket, потім polling. Вимикаємо withCredentials, бо ми юзаємо origin: '*'
+      transports: ['websocket', 'polling'],
+      withCredentials: false,
+      path: '/socket.io/',
     });
 
     this.instance.on('connect_error', (err) => {

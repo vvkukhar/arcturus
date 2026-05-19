@@ -33,10 +33,11 @@ export class RedisIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        origin: (origin: string | undefined, callback: (err: Error | null, origin?: boolean) => void) => {
-          callback(null, true);
-        },
-        credentials: true,
+        // 🔥 ФІКС 1: Робимо вебсокети максимально відкритими, бо авторизація йде через auth: { token }
+        origin: '*',
+        methods: ['GET', 'POST'],
+        // ВАЖЛИВО: Вимикаємо credentials, щоб origin: '*' працював без проблем з CORS
+        credentials: false,
       },
       allowEIO3: true,
     });
