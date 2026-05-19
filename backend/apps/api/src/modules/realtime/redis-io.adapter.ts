@@ -36,13 +36,15 @@ export class RedisIoAdapter extends IoAdapter {
         origin: [
           'https://www.arcturusbuild.com',
           'https://arcturusbuild.com',
-          'http://localhost:3000'
+          'http://localhost:3000',
+          'http://localhost:5173'
         ],
         credentials: true,
-        methods: ['GET', 'POST'],
+        methods: ['GET', 'POST', 'OPTIONS'],
       },
       allowEIO3: true,
       path: '/socket.io/',
+      transports: ['polling', 'websocket'],
     });
     
     if (this.adapterConstructor) {

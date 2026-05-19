@@ -42,7 +42,7 @@ class SocketManager {
       reconnectionDelayMax: 5000,
       timeout: 20000,
       auth: token ? { token } : undefined,
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
       withCredentials: true,
       path: '/socket.io/',
     });

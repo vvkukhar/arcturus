@@ -10,9 +10,16 @@ import * as crypto from 'crypto';
 
 @WebSocketGateway({
   cors: {
-    origin: '*', // ФІКС: Відкриваємо для всіх, як і в main.ts
+    origin: [
+      'https://www.arcturusbuild.com',
+      'https://arcturusbuild.com',
+      'http://localhost:3000',
+      'http://localhost:5173'
+    ],
+    credentials: true,
   },
-  transports: ['websocket', 'polling'],
+  transports: ['polling', 'websocket'],
+  allowEIO3: true,
 })
 export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -54,9 +61,6 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     client.leave('admin_broadcast');
   }
 
-  // ФІКС: Додано "if (!this.server) return;" усюди. 
-  // Тепер, якщо сокети відваляться, це НЕ зламає створення товарів!
-  
   emitCustom(event: string, payload: any) {
     if (!this.server) return;
     this.server.to('admin_broadcast').emit(event, payload);
