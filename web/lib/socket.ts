@@ -32,7 +32,7 @@ class SocketManager {
 
     this.currentToken = token;
     
-    // Завжди зрізаємо /api/v1 з бейз урла для сокетів
+    // Очищаємо базовий URL до чистого домену (без api/v1)
     const wsUrl = appConfig.wsBaseUrl.replace(/\/api(\/v[0-9]+)?\/?$/, '').replace(/\/$/, '');
 
     this.instance = io(wsUrl, {
@@ -43,10 +43,10 @@ class SocketManager {
       reconnectionDelayMax: 5000,
       timeout: 20000,
       auth: token ? { token } : undefined,
-      // 🔥 ФІКС 2: Пробуємо одразу websocket, потім polling. Вимикаємо withCredentials, бо ми юзаємо origin: '*'
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       withCredentials: false,
-      path: '/socket.io/',
+      // 🔥 ФІКС 404: Змінюємо шлях на /api/socket.io/, бо NestJS ховає його за глобальним префіксом
+      path: '/api/socket.io/', 
     });
 
     this.instance.on('connect_error', (err) => {
