@@ -1935,12 +1935,18 @@ import compression from 'compression';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './modules/realtime/redis-io.adapter';
 import { GlobalHttpExceptionFilter } from './common/http-exception.filter';
-import { json, urlencoded } from 'express';
+import { json, urlencoded, Request, Response, NextFunction } from 'express'; // Р”РѕРґР°РЅРѕ С‚РёРїРё Express
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: process.env.NODE_ENV === 'production' ? ['error', 'warn', 'log'] : ['error', 'warn', 'log', 'debug', 'verbose'],
     bufferLogs: true,
+  });
+
+  // рџ”Ґ Р–РћР РЎРўРљРР™ Р”Р•Р‘РђР“: Р›РѕРіСѓС”РјРѕ РІСЃС– РІС…С–РґРЅС– Р·Р°РїРёС‚Рё
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    console.log(`[INCOMING] ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
+    next();
   });
 
   if (process.env.SENTRY_DSN) {
@@ -1975,9 +1981,14 @@ async function bootstrap() {
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
   app.enableCors({
-    origin: '*',
-    methods: '*',
-    allowedHeaders: '*',
+    origin: [
+      'https://www.arcturusbuild.com', 
+      'https://arcturusbuild.com', 
+      'http://localhost:3000'
+    ],
+    credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Accept, Authorization, X-Requested-With',
   });
 
   app.setGlobalPrefix('api');
@@ -19572,16 +19583,10 @@ export class RedisIoAdapter extends IoAdapter {
 
   async connectToRedis(): Promise<void> {
     try {
-      // РћС‚СЂРёРјСѓС”РјРѕ С–СЃРЅСѓСЋС‡РёР№ РµРєР·РµРјРїР»СЏСЂ RedisService, С‰РѕР± РЅРµ РїР»РѕРґРёС‚Рё РЅРѕРІС– Р·'С”РґРЅР°РЅРЅСЏ
       const redisService = this.app.get(RedisService);
       const pubClient = redisService.getClient();
-      
-      // РЎС‚РІРѕСЂСЋС”РјРѕ РґСѓР±Р»С–РєР°С‚ РґР»СЏ РїС–РґРїРёСЃРѕРє (РІРёРјРѕРіР° socket.io-redis)
       const subClient = pubClient.duplicate();
 
-      // Р§РµРєР°С”РјРѕ, РїРѕРєРё СЃР°Р±-РєР»С–С”РЅС‚ РЅРµ РїС–РґРєР»СЋС‡РёС‚СЊСЃСЏ (РїР°Р±-РєР»С–С”РЅС‚ РІР¶Рµ РїС–РґРєР»СЋС‡РµРЅРёР№ С‡РµСЂРµР· OnModuleInit)
-      // РћСЃРєС–Р»СЊРєРё РјРё РІРёРєРѕСЂРёСЃС‚РѕРІСѓС”РјРѕ ioredis, duplicate() РЅРµ РїРѕС‚СЂРµР±СѓС” СЏРІРЅРѕРіРѕ connect(), 
-      // Р°Р»Рµ РјРё СЂРѕР±РёРјРѕ РїРµСЂРµРІС–СЂРєСѓ СЃС‚Р°С‚СѓСЃСѓ
       if (subClient.status === 'wait') {
         await subClient.connect();
       }
@@ -19589,17 +19594,26 @@ export class RedisIoAdapter extends IoAdapter {
       this.adapterConstructor = createAdapter(pubClient, subClient);
       this.logger.log('Successfully connected WebSockets to Redis');
     } catch (err: any) {
-      this.logger.error(`Failed to connect WebSockets to Redis. Falling back to in-memory adapter. Error: ${err.message}`);
+      this.logger.error(`Failed to connect WebSockets to Redis. Error: ${err.message}`);
     }
   }
 
-  createIOServer(port: number, options?: ServerOptions): any {
+createIOServer(port: number, options?: ServerOptions): any {
+    // рџ”Ґ Р¤Р†РљРЎ: РњРё СЃС‚РІРѕСЂСЋС”РјРѕ СЃРµСЂРІРµСЂ С– СЏРІРЅРѕ РІРєР°Р·СѓС”РјРѕ С€Р»СЏС…, СЏРєРёР№ РІР¶Рµ РІСЂР°С…РѕРІСѓС” РїСЂРµС„С–РєСЃ /api
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        origin: process.env.CORS_ORIGINS?.split(',') || '*',
+        origin: [
+          'https://www.arcturusbuild.com', 
+          'https://arcturusbuild.com', 
+          'http://localhost:3000'
+        ],
         credentials: true,
+        methods: ['GET', 'POST'],
       },
+      allowEIO3: true,
+      // РўСѓС‚ РјРё РІРєР°Р·СѓС”РјРѕ С€Р»СЏС…, СЏРєРёР№ РѕС‡С–РєСѓС” РєР»С–С”РЅС‚
+      path: '/api/socket.io/', 
     });
     
     if (this.adapterConstructor) {
@@ -30692,7 +30706,6 @@ export async function processCategorySniperJob(job: Job): Promise<unknown> {
   
   const rawListings: FeedListing[] = [];
 
-  // 1. РћС‚СЂРёРјСѓС”РјРѕ СЃРІС–Р¶Сѓ СЃС‚СЂС–С‡РєСѓ
   try {
     const olxResponse = await axios.get(`${process.env.SCRAPERS_API_URL || 'http://localhost:3002'}/feed/olx`, { timeout: 10000 }).catch(() => ({ data: [] }));
     if (Array.isArray(olxResponse.data)) rawListings.push(...olxResponse.data);
@@ -30703,7 +30716,6 @@ export async function processCategorySniperJob(job: Job): Promise<unknown> {
     console.warn('[Category Sniper] Target feed collection warning:', err);
   }
 
-  // РЇРєС‰Рѕ РїР°СЂСЃРµСЂРё РїСѓСЃС‚С– - СЃС‚РІРѕСЂСЋС”РјРѕ РіР°СЂСЏС‡РёР№ С‚РµСЃС‚РѕРІРёР№ Р»С–СЃС‚РёРЅРі РґР»СЏ РїРµСЂРµРІС–СЂРєРё С„Р»РѕСѓ
   if (rawListings.length === 0) {
     rawListings.push({
       source: 'olx',
@@ -30718,20 +30730,17 @@ export async function processCategorySniperJob(job: Job): Promise<unknown> {
   let dealsDetected = 0;
 
   for (const listing of rawListings) {
-    // РЁСѓРєР°С”РјРѕ Р°СЂС‚РёРєСѓР» Сѓ РЅР°Р·РІС–
     const setNumberMatch = listing.title.match(/\b\d{4,6}\b/);
     if (!setNumberMatch) continue;
 
     const detectedSetNumber = setNumberMatch[0];
 
-    // РЁСѓРєР°С”РјРѕ РЅР°Р±С–СЂ РІ Р•РЅС†РёРєР»РѕРїРµРґС–С— (Rebrickable)
     const matchingItem = await prisma.item.findFirst({
       where: { setNumber: detectedSetNumber }
     });
 
     if (!matchingItem) continue; 
 
-    // Р’РёСЂР°С…РѕРІСѓС”РјРѕ РјРµРґС–Р°РЅРЅСѓ С†С–РЅСѓ СЂРёРЅРєСѓ
     const marketComps = await prisma.soldComp.findMany({
       where: { itemId: matchingItem.id }
     });
@@ -30741,7 +30750,6 @@ export async function processCategorySniperJob(job: Job): Promise<unknown> {
       const sortedPrices = marketComps.map(c => Number(c.soldPrice)).sort((a, b) => a - b);
       marketMedianPrice = sortedPrices[Math.floor(sortedPrices.length / 2)];
     } else {
-      // Р¤РѕР»Р±РµРє, СЏРєС‰Рѕ С‰Рµ РЅРµРјР°С” РїСЂРѕРґР°Р¶С–РІ
       marketMedianPrice = 22000; 
     }
 
@@ -30749,10 +30757,8 @@ export async function processCategorySniperJob(job: Job): Promise<unknown> {
     const potentialProfit = marketMedianPrice - potentialCost;
     const estimatedRoi = marketMedianPrice > 0 ? (potentialProfit / potentialCost) * 100 : 0;
 
-    // РЇРєС‰Рѕ С†Рµ РІРёРіС–РґРЅР° СѓРіРѕРґР°
     if (estimatedRoi >= 35 && potentialProfit > 500) {
       
-      // РљР РћРљ 1: Р“Р°СЂР°РЅС‚СѓС”РјРѕ РЅР°СЏРІРЅС–СЃС‚СЊ MarketSource
       let source = await prisma.marketSource.findUnique({ where: { code: listing.source } });
       if (!source) {
         source = await prisma.marketSource.create({
@@ -30760,27 +30766,35 @@ export async function processCategorySniperJob(job: Job): Promise<unknown> {
         });
       }
 
-      // РљР РћРљ 2: Р—Р°РїРёСЃСѓС”РјРѕ РѕРіРѕР»РѕС€РµРЅРЅСЏ РІ MarketListing (СЏРє РІРёРјР°РіР°С” С‚РІРѕСЏ СЃС…РµРјР°)
-      const marketListing = await prisma.marketListing.upsert({
-        where: { sourceCode_externalListingId: { sourceCode: listing.source, externalListingId: listing.externalId } },
-        update: { price: listing.price, lastSeenAt: new Date() },
-        create: {
-          id: `ml_${listing.source}_${listing.externalId}`,
-          sourceId: source.id,
-          sourceCode: listing.source,
-          itemId: matchingItem.id,
-          externalListingId: listing.externalId,
-          titleRaw: listing.title,
-          title: listing.title,
-          url: listing.url,
-          imageUrl: listing.imageUrl,
-          price: listing.price,
-          currency: 'UAH',
-          status: 'active'
-        }
-      });
+      // рџ”Ґ Р¤Р†РљРЎ 1: РћР±С…РѕРґРёРјРѕ Р±Р°Рі С‚РёРїС–РІ Prisma, СЂРѕР±Р»СЏС‡Рё find + update/create
+      const listingId = `ml_${listing.source}_${listing.externalId}`;
+      let marketListing = await prisma.marketListing.findUnique({ where: { id: listingId } });
+      
+      if (marketListing) {
+        marketListing = await prisma.marketListing.update({
+          where: { id: listingId },
+          data: { price: listing.price, lastSeenAt: new Date(), status: 'active' }
+        });
+      } else {
+        marketListing = await prisma.marketListing.create({
+          data: {
+            id: listingId,
+            sourceId: source.id,
+            sourceCode: listing.source,
+            itemId: matchingItem.id,
+            externalListingId: listing.externalId,
+            externalId: listing.externalId,
+            titleRaw: listing.title,
+            title: listing.title,
+            url: listing.url,
+            imageUrl: listing.imageUrl,
+            price: listing.price,
+            currency: 'UAH',
+            status: 'active'
+          }
+        });
+      }
 
-      // РљР РћРљ 3: Р РѕР±РёРјРѕ РђР’РўРћ-Watchlist! (Р©РѕР± С‚РѕР±С– РЅРµ С‚СЂРµР±Р° Р±СѓР»Рѕ Р·Р°РїР°СЂСЋРІР°С‚РёСЃСЊ)
       let watchlistItem = await prisma.watchlistItem.findFirst({ where: { itemId: matchingItem.id } });
       if (!watchlistItem) {
         watchlistItem = await prisma.watchlistItem.create({
@@ -30797,27 +30811,37 @@ export async function processCategorySniperJob(job: Job): Promise<unknown> {
         });
       }
 
-      // РљР РћРљ 4: РЎС‚РІРѕСЂСЋС”РјРѕ СЃР°Рј Deal (Р—РІ'СЏР·СѓС”РјРѕ Р»С–СЃС‚РёРЅРі С– Р°РІС‚Рѕ-watchlist)
-      const deal = await prisma.deal.upsert({
-        where: { watchlistItemId_listingId: { watchlistItemId: watchlistItem.id, listingId: marketListing.id } },
-        update: { 
-          buyPrice: potentialCost, 
-          targetSellPrice: marketMedianPrice,
-          profit: potentialProfit, 
-          roiPercent: estimatedRoi 
-        },
-        create: {
-          listingId: marketListing.id,
-          watchlistItemId: watchlistItem.id,
-          buyPrice: potentialCost,
-          targetSellPrice: marketMedianPrice,
-          profit: potentialProfit,
-          roiPercent: estimatedRoi,
-          action: 'BUY',
-          score: 99,
-          status: 'open'
-        }
+      // рџ”Ґ Р¤Р†РљРЎ 2: РћР±С…РѕРґРёРјРѕ Р±Р°Рі С‚РёРїС–РІ Prisma РґР»СЏ Deal
+      const existingDeal = await prisma.deal.findFirst({
+        where: { watchlistItemId: watchlistItem.id, listingId: marketListing.id }
       });
+
+      if (existingDeal) {
+        await prisma.deal.update({
+          where: { id: existingDeal.id },
+          data: { 
+            buyPrice: potentialCost, 
+            targetSellPrice: marketMedianPrice,
+            profit: potentialProfit, 
+            roiPercent: estimatedRoi 
+          }
+        });
+      } else {
+        await prisma.deal.create({
+          data: {
+            id: `deal_snip_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            listingId: marketListing.id,
+            watchlistItemId: watchlistItem.id,
+            buyPrice: potentialCost,
+            targetSellPrice: marketMedianPrice,
+            profit: potentialProfit,
+            roiPercent: estimatedRoi,
+            action: 'BUY',
+            score: 99,
+            status: 'open'
+          }
+        });
+      }
 
       dealsDetected++;
       console.log(`рџ”Ґ [SNIPER] Deal created! ${listing.title} | ROI: ${estimatedRoi.toFixed(1)}%`);
@@ -31880,14 +31904,24 @@ import * as readline from 'readline';
 
 const prisma = new PrismaClient();
 
-const THEMES_URL = 'https://rebrickable.com/api/v3/rebrickable/downloads/themes.csv.gz';
-const SETS_URL = 'https://rebrickable.com/api/v3/rebrickable/downloads/sets.csv.gz';
+const THEMES_URL = 'https://cdn.rebrickable.com/media/downloads/themes.csv.gz';
+const SETS_URL = 'https://cdn.rebrickable.com/media/downloads/sets.csv.gz';
+const MINIFIGS_URL = 'https://cdn.rebrickable.com/media/downloads/minifigs.csv.gz';
 
 async function downloadAndParseGzipCsv(url: string, onRow: (row: string[]) => Promise<void>): Promise<void> {
   return new Promise((resolve, reject) => {
-    https.get(url, (response: any) => {
+    https.get(url, async (response: any) => {
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        try {
+          await downloadAndParseGzipCsv(response.headers.location, onRow);
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+        return;
+      }
       if (response.statusCode !== 200) {
-        return reject(new Error(`Failed to download: Status ${response.statusCode}`));
+        return reject(new Error(`Failed to download: Status ${response.statusCode} from ${url}`));
       }
 
       const gunzip = zlib.createGunzip();
@@ -31898,25 +31932,25 @@ async function downloadAndParseGzipCsv(url: string, onRow: (row: string[]) => Pr
         crlfDelay: Infinity,
       });
 
-      let isHeader = true;
-
-      rl.on('line', async (line: string) => {
-        if (isHeader) {
-          isHeader = false;
-          return;
+      // рџ”Ґ РћРЎР¬ РўР•РџР•Р  РўРЈРў Р Р•РђР›Р¬РќРР™ РЎРРќРҐР РћРќРќРР™ Р†РўР•Р РђРўРћР  рџ”Ґ
+      try {
+        let isHeader = true;
+        for await (const line of rl) {
+          if (isHeader) {
+            isHeader = false;
+            continue;
+          }
+          
+          const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+          if (matches) {
+            const row = matches.map((val: string) => val.replace(/^"|"$/g, '').trim());
+            await onRow(row); // Р§РµРєР°С”РјРѕ РЅР° 100%, РїРѕРІРЅРёР№ Backpressure!
+          }
         }
-        
-        const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-        if (matches) {
-          const row = matches.map((val: string) => val.replace(/^"|"$/g, '').trim());
-          rl.pause();
-          await onRow(row);
-          rl.resume();
-        }
-      });
-
-      rl.on('close', () => resolve());
-      rl.on('error', (err: any) => reject(err));
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
     }).on('error', (err: any) => reject(err));
   });
 }
@@ -31933,19 +31967,18 @@ async function main() {
   });
   console.log(`вњ… Indexed ${themesMap.size} Lego themes.`);
 
+  // 1. РЎРўР Р†РњР†РќР“ РљРћРќРЎРўР РЈРљРўРћР Р†Р’
   console.log('рџ“Ґ Downloading and streaming LEGO sets to database...');
   let chunk: any[] = [];
-  let totalSeeded = 0;
+  let totalSetsSeeded = 0;
 
   await downloadAndParseGzipCsv(SETS_URL, async (row: string[]) => {
     const setNumWithSuffix = row[0] || '';
     const name = row[1] || '';
     const themeId = row[3] || '';
-    
     const setNumber = setNumWithSuffix.split('-')[0];
 
     if (!setNumber || !name) return;
-
     const themeName = themesMap.get(themeId) || 'LEGO';
 
     chunk.push({
@@ -31957,25 +31990,52 @@ async function main() {
     });
 
     if (chunk.length >= 1000) {
-      await prisma.item.createMany({
-        data: chunk,
-        skipDuplicates: true,
-      });
-      totalSeeded += chunk.length;
-      console.log(`рџ“¦ Seeded subtotal: ${totalSeeded} items...`);
+      await prisma.item.createMany({ data: chunk, skipDuplicates: true });
+      totalSetsSeeded += chunk.length;
+      console.log(`рџ“¦ Seeded subtotal (Sets): ${totalSetsSeeded} items...`);
       chunk = [];
     }
   });
 
   if (chunk.length > 0) {
-    await prisma.item.createMany({
-      data: chunk,
-      skipDuplicates: true,
+    await prisma.item.createMany({ data: chunk, skipDuplicates: true });
+    totalSetsSeeded += chunk.length;
+    chunk = [];
+  }
+  console.log(`вњ… Done with Sets! Total seeded: ${totalSetsSeeded}`);
+
+  // 2. РЎРўР Р†РњР†РќР“ РњР†РќР†Р¤Р†Р“РЈР РћРљ
+  console.log('рџ“Ґ Downloading and streaming LEGO Minifigures to database...');
+  let totalFigsSeeded = 0;
+
+  await downloadAndParseGzipCsv(MINIFIGS_URL, async (row: string[]) => {
+    const figNum = row[0] || '';
+    const name = row[1] || '';
+
+    if (!figNum || !name) return;
+
+    chunk.push({
+      id: `item_fig_${figNum.replace(/[^a-zA-Z0-9]/g, '')}`,
+      kind: 'minifigure',
+      title: name,
+      setNumber: figNum,
+      theme: 'Minifigures',
     });
-    totalSeeded += chunk.length;
+
+    if (chunk.length >= 1000) {
+      await prisma.item.createMany({ data: chunk, skipDuplicates: true });
+      totalFigsSeeded += chunk.length;
+      console.log(`рџ¤– Seeded subtotal (Minifigs): ${totalFigsSeeded} items...`);
+      chunk = [];
+    }
+  });
+
+  if (chunk.length > 0) {
+    await prisma.item.createMany({ data: chunk, skipDuplicates: true });
+    totalFigsSeeded += chunk.length;
   }
 
-  console.log(`рџЏЃ Done! Successfully seeded ${totalSeeded} unique LEGO items from Rebrickable.`);
+  console.log(`рџЏЃ Global Seed Complete! Successfully injected ${totalSetsSeeded} sets and ${totalFigsSeeded} unique Minifigures into database.`);
 }
 
 main()
