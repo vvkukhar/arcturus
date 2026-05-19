@@ -25,7 +25,7 @@ export class RedisIoAdapter extends IoAdapter {
       this.adapterConstructor = createAdapter(pubClient, subClient);
       this.logger.log('Successfully connected WebSockets to Redis');
     } catch (err: any) {
-      this.logger.error(`Failed to connect WebSockets to Redis. Error: ${err.message}`);
+      this.logger.error(`Failed to connect WebSockets to Redis: ${err.message}`);
     }
   }
 
@@ -33,12 +33,16 @@ export class RedisIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        origin: true,
+        origin: [
+          'https://www.arcturusbuild.com', 
+          'https://arcturusbuild.com', 
+          'http://localhost:3000'
+        ],
         credentials: true,
         methods: ['GET', 'POST'],
       },
       allowEIO3: true,
-      path: '/socket.io/',
+      path: '/socket.io/', // Абсолютно чистий шлях без /api
     });
     
     if (this.adapterConstructor) {
