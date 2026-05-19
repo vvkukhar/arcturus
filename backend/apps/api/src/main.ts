@@ -7,12 +7,18 @@ import compression from 'compression';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './modules/realtime/redis-io.adapter';
 import { GlobalHttpExceptionFilter } from './common/http-exception.filter';
-import { json, urlencoded } from 'express';
+import { json, urlencoded, Request, Response, NextFunction } from 'express'; // Додано типи Express
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: process.env.NODE_ENV === 'production' ? ['error', 'warn', 'log'] : ['error', 'warn', 'log', 'debug', 'verbose'],
     bufferLogs: true,
+  });
+
+  // 🔥 ЖОРСТКИЙ ДЕБАГ: Логуємо всі вхідні запити
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    console.log(`[INCOMING] ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
+    next();
   });
 
   if (process.env.SENTRY_DSN) {
@@ -47,7 +53,11 @@ async function bootstrap() {
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
   app.enableCors({
-    origin: true,
+    origin: [
+      'https://www.arcturusbuild.com', 
+      'https://arcturusbuild.com', 
+      'http://localhost:3000'
+    ],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Accept, Authorization, X-Requested-With',
