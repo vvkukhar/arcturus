@@ -14,7 +14,7 @@ class SocketManager {
 
   public static getSocket(): Socket {
     if (typeof window === 'undefined') {
-      return { on: () => {}, off: () => {}, emit: () => {} } as unknown as Socket;
+      return { on: () => {}, off: () => {}, emit: () => {}, disconnect: () => {} } as unknown as Socket;
     }
 
     const token = this.getCookie('arcturus_admin_token');
@@ -29,12 +29,12 @@ class SocketManager {
 
     if (this.isConnecting) return this.instance as Socket;
     this.isConnecting = true;
-
     this.currentToken = token;
     
     const wsUrl = appConfig.wsBaseUrl.replace(/\/api(\/v[0-9]+)?\/?$/, '').replace(/\/$/, '');
 
     this.instance = io(wsUrl, {
+      path: '/socket.io/',
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -42,13 +42,14 @@ class SocketManager {
       reconnectionDelayMax: 5000,
       timeout: 20000,
       auth: token ? { token } : undefined,
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       withCredentials: true,
-      path: '/socket.io/',
     });
 
-    this.instance.on('connect_error', (err) => {
-      console.warn('[Socket.io] Connection error:', err.message);
+    this.instance.on('connect_error', () => {
+      if (this.instance) {
+        this.instance.io.opts.transports = ['polling', 'websocket'];
+      }
     });
 
     this.isConnecting = false;

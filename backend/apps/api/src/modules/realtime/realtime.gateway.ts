@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
 
 @WebSocketGateway({
+  path: '/socket.io/',
   cors: {
     origin: [
       'https://www.arcturusbuild.com',
@@ -18,7 +19,7 @@ import * as crypto from 'crypto';
     ],
     credentials: true,
   },
-  transports: ['polling', 'websocket'],
+  transports: ['websocket', 'polling'],
   allowEIO3: true,
 })
 export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -33,14 +34,16 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   async handleConnection(client: Socket) {
     try {
-      const rawToken = client.handshake.auth?.token;
+      const rawToken = client.handshake.auth?.token || client.handshake.headers?.authorization;
       
       if (!rawToken) {
         client.disconnect(true);
         return;
       }
 
-      const tokenHash = this.hashToken(rawToken);
+      const cleanToken = rawToken.replace('Bearer ', '');
+      const tokenHash = this.hashToken(cleanToken);
+      
       const session = await this.prisma.userSession.findUnique({
         where: { tokenHash },
         include: { user: true },
