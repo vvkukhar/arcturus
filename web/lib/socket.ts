@@ -31,10 +31,16 @@ class SocketManager {
     this.isConnecting = true;
     this.currentToken = token;
     
-    const wsUrl = appConfig.wsBaseUrl.replace(/\/api(\/v[0-9]+)?\/?$/, '').replace(/\/$/, '');
+    // 🔥 Залізобетонно витягуємо ЛИШЕ домен без /api чи /v1
+    let wsUrl = appConfig.wsBaseUrl;
+    try {
+      wsUrl = new URL(appConfig.wsBaseUrl).origin;
+    } catch (e) {
+      wsUrl = wsUrl.replace(/\/api(\/v[0-9]+)?\/?$/, '').replace(/\/$/, '');
+    }
 
     this.instance = io(wsUrl, {
-      path: '/socket.io/',
+      path: '/api/socket.io/', // 🔥 ТУТ ТЕЖ МАЄ БУТИ /api/socket.io/, як і на бекенді
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,

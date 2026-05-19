@@ -31,7 +31,7 @@ export class RedisIoAdapter extends IoAdapter {
   createIOServer(port: number, options?: ServerOptions): any {
     const server = super.createIOServer(port, {
       ...options,
-      path: '/socket.io/',
+      path: '/socket.io/', // 🔥 Суворо дефолтний шлях
       cors: {
         origin: [
           'https://www.arcturusbuild.com',

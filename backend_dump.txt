@@ -19448,10 +19448,18 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
 
 @WebSocketGateway({
+  path: '/socket.io/',
   cors: {
-    origin: '*', // Р¤Р†РљРЎ: Р’С–РґРєСЂРёРІР°С”РјРѕ РґР»СЏ РІСЃС–С…, СЏРє С– РІ main.ts
+    origin: [
+      'https://www.arcturusbuild.com',
+      'https://arcturusbuild.com',
+      'http://localhost:3000',
+      'http://localhost:5173'
+    ],
+    credentials: true,
   },
   transports: ['websocket', 'polling'],
+  allowEIO3: true,
 })
 export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -19465,14 +19473,16 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   async handleConnection(client: Socket) {
     try {
-      const rawToken = client.handshake.auth?.token;
+      const rawToken = client.handshake.auth?.token || client.handshake.headers?.authorization;
       
       if (!rawToken) {
         client.disconnect(true);
         return;
       }
 
-      const tokenHash = this.hashToken(rawToken);
+      const cleanToken = rawToken.replace('Bearer ', '');
+      const tokenHash = this.hashToken(cleanToken);
+      
       const session = await this.prisma.userSession.findUnique({
         where: { tokenHash },
         include: { user: true },
@@ -19493,9 +19503,6 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     client.leave('admin_broadcast');
   }
 
-  // Р¤Р†РљРЎ: Р”РѕРґР°РЅРѕ "if (!this.server) return;" СѓСЃСЋРґРё. 
-  // РўРµРїРµСЂ, СЏРєС‰Рѕ СЃРѕРєРµС‚Рё РІС–РґРІР°Р»СЏС‚СЊСЃСЏ, С†Рµ РќР• Р·Р»Р°РјР°С” СЃС‚РІРѕСЂРµРЅРЅСЏ С‚РѕРІР°СЂС–РІ!
-  
   emitCustom(event: string, payload: any) {
     if (!this.server) return;
     this.server.to('admin_broadcast').emit(event, payload);
@@ -19592,26 +19599,27 @@ export class RedisIoAdapter extends IoAdapter {
       }
 
       this.adapterConstructor = createAdapter(pubClient, subClient);
-      this.logger.log('Successfully connected WebSockets to Redis');
     } catch (err: any) {
-      this.logger.error(`Failed to connect WebSockets to Redis: ${err.message}`);
+      this.logger.error(err.message);
     }
   }
 
   createIOServer(port: number, options?: ServerOptions): any {
     const server = super.createIOServer(port, {
       ...options,
+      path: '/socket.io/',
       cors: {
         origin: [
           'https://www.arcturusbuild.com',
           'https://arcturusbuild.com',
-          'http://localhost:3000'
+          'http://localhost:3000',
+          'http://localhost:5173'
         ],
         credentials: true,
-        methods: ['GET', 'POST'],
+        methods: ['GET', 'POST', 'OPTIONS'],
       },
       allowEIO3: true,
-      path: '/socket.io/',
+      transports: ['websocket', 'polling'],
     });
     
     if (this.adapterConstructor) {
