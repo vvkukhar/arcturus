@@ -32,7 +32,6 @@ class SocketManager {
 
     this.currentToken = token;
     
-    // Очищаємо базовий URL від будь-яких API суфіксів
     const wsUrl = appConfig.wsBaseUrl.replace(/\/api(\/v[0-9]+)?\/?$/, '').replace(/\/$/, '');
 
     this.instance = io(wsUrl, {
@@ -43,9 +42,9 @@ class SocketManager {
       reconnectionDelayMax: 5000,
       timeout: 20000,
       auth: token ? { token } : undefined,
-      transports: ['websocket', 'polling'], // websocket першим!
+      transports: ['websocket'],
       withCredentials: true,
-      path: '/socket.io/', // Абсолютно чистий шлях
+      path: '/socket.io/',
     });
 
     this.instance.on('connect_error', (err) => {
