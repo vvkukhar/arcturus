@@ -8,16 +8,67 @@ class SocketManager {
 
   private static getCookie(name: string): string | null {
     if (typeof document === 'undefined') return null;
-    const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
-    return match ? decodeURIComponent(match[2]) : null;
+
+    const cookies = document.cookie
+      .split(';')
+      .map((cookie) => cookie.trim());
+
+    for (const cookie of cookies) {
+      if (cookie.startsWith(`${name}=`)) {
+        return decodeURIComponent(cookie.substring(name.length + 1));
+      }
+    }
+
+    return null;
+  }
+
+  private static getToken(): string | null {
+    if (typeof window === 'undefined') return null;
+
+    const cookieToken = this.getCookie('arcturus_admin_token');
+
+    if (cookieToken) {
+      console.log('[SocketManager] Token source: cookie');
+      return cookieToken;
+    }
+
+    const localStorageToken =
+      window.localStorage.getItem('arcturus_admin_token') ||
+      window.localStorage.getItem('admin_token') ||
+      window.localStorage.getItem('token') ||
+      window.localStorage.getItem('accessToken');
+
+    if (localStorageToken) {
+      console.log('[SocketManager] Token source: localStorage');
+      return localStorageToken;
+    }
+
+    const sessionStorageToken =
+      window.sessionStorage.getItem('arcturus_admin_token') ||
+      window.sessionStorage.getItem('admin_token') ||
+      window.sessionStorage.getItem('token') ||
+      window.sessionStorage.getItem('accessToken');
+
+    if (sessionStorageToken) {
+      console.log('[SocketManager] Token source: sessionStorage');
+      return sessionStorageToken;
+    }
+
+    console.warn('[SocketManager] No token found in cookie/localStorage/sessionStorage');
+    return null;
   }
 
   public static getSocket(): Socket {
     if (typeof window === 'undefined') {
-      return { on: () => {}, off: () => {}, emit: () => {}, disconnect: () => {} } as unknown as Socket;
+      return {
+        on: () => {},
+        off: () => {},
+        emit: () => {},
+        disconnect: () => {},
+      } as unknown as Socket;
     }
 
-    const token = this.getCookie('arcturus_admin_token');
+    const token = this.getToken();
 
     if (this.instance) {
       if (token !== this.currentToken) {
@@ -28,15 +79,18 @@ class SocketManager {
       }
     }
 
-    if (this.isConnecting) {
+    if (this.isConnecting && this.instance) {
       console.log('[SocketManager] Connection already in progress, returning existing instance.');
-      return this.instance as Socket;
+      return this.instance;
     }
-    
+
     this.isConnecting = true;
     this.currentToken = token;
-    
-    const wsUrl = appConfig.wsBaseUrl.replace(/\/api(\/v[0-9]+)?\/?$/, '').replace(/\/$/, '');
+
+    const wsUrl = appConfig.wsBaseUrl
+      .replace(/\/api(\/v[0-9]+)?\/?$/, '')
+      .replace(/\/$/, '');
+
     const socketPath = '/socket.io/';
 
     console.log('========== SOCKET CONNECTION INIT ==========');
@@ -54,32 +108,36 @@ class SocketManager {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 30000,
-      auth: token ? { token } : undefined,
+      auth: token ? { token } : {},
+      query: token ? { token } : {},
       transports: ['websocket', 'polling'],
       withCredentials: true,
       forceNew: true,
     });
 
     this.instance.on('connect', () => {
+      this.isConnecting = false;
       console.log('[SOCKET_EVENT] CONNECTED. ID:', this.instance?.id);
     });
 
+    this.instance.on('socket_ready', (payload) => {
+      console.log('[SOCKET_EVENT] SOCKET_READY:', payload);
+    });
+
     this.instance.on('disconnect', (reason) => {
+      this.isConnecting = false;
       console.warn('[SOCKET_EVENT] DISCONNECTED. Reason:', reason);
     });
 
     this.instance.on('connect_error', (err) => {
+      this.isConnecting = false;
+
       console.error('========== SOCKET CRITICAL ERROR ==========');
       console.error('Message:', err.message);
       console.error('Stack:', err.stack);
       console.error('Description:', (err as any).description);
       console.error('Context:', (err as any).context);
       console.error('===========================================');
-      
-      if (this.instance) {
-        console.log('[SOCKET_EVENT] Forcing fallback to polling and websocket');
-        this.instance.io.opts.transports = ['polling', 'websocket'];
-      }
     });
 
     this.instance.io.on('reconnect_attempt', (count) => {
@@ -102,7 +160,6 @@ class SocketManager {
       console.debug(`[SOCKET_EVENT] PACKET_RECEIVED:`, packet);
     });
 
-    this.isConnecting = false;
     return this.instance;
   }
 
