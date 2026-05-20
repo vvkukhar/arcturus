@@ -1,10 +1,11 @@
 import { Global, Module } from '@nestjs/common';
 import { RealtimeGateway } from './realtime.gateway';
-import { RedisIoAdapter } from './redis-io.adapter';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Global()
 @Module({
-  providers: [RealtimeGateway, RedisIoAdapter],
-  exports: [RealtimeGateway, RedisIoAdapter],
+  imports: [PrismaModule],
+  providers: [RealtimeGateway],
+  exports: [RealtimeGateway],
 })
 export class RealtimeModule {}
