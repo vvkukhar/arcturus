@@ -6,7 +6,7 @@ import { RedisService } from '../redis/redis.service';
 
 export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor: any;
-  private readonly logger = new Logger(RedisIoAdapter.name);
+  private readonly logger = new Logger('SocketIO_DEBUG');
 
   constructor(private app: INestApplicationContext) {
     super(app);
@@ -23,15 +23,19 @@ export class RedisIoAdapter extends IoAdapter {
       }
 
       this.adapterConstructor = createAdapter(pubClient, subClient);
+      this.logger.log('Redis adapter connected successfully.');
     } catch (err: any) {
-      this.logger.error(err.message);
+      this.logger.error('Redis adapter connection failed:', err.message);
     }
   }
 
-createIOServer(port: number, options?: ServerOptions): any {
+  createIOServer(port: number, options?: ServerOptions): any {
+    this.logger.log(`Attempting to create Socket.IO server on port ${port}...`);
+    
     const server = super.createIOServer(port, {
       ...options,
-      path: '/api/socket.io/', // 🔥 ТУТ МАЄ БУТИ ТАК САМО, ЯК НА ФРОНТІ
+      // 🔥 КРИТИЧНО: Шлях має бути з префіксом /api/
+      path: '/api/socket.io/', 
       cors: {
         origin: [
           'https://www.arcturusbuild.com',
@@ -45,10 +49,17 @@ createIOServer(port: number, options?: ServerOptions): any {
       allowEIO3: true,
       transports: ['websocket', 'polling'],
     });
-    
+
     if (this.adapterConstructor) {
       server.adapter(this.adapterConstructor);
     }
+
+    // 🕵️‍♂️ ДЕБАГ: Слухаємо помилки на рівні самого сервера Socket.IO
+    server.engine.on('connection_error', (err: any) => {
+      this.logger.error(`[ENGINE_ERROR] Code: ${err.code}, Message: ${err.message}, Req: ${err.req?.url}`);
+    });
+
+    this.logger.log('Socket.IO server created and listening on /api/socket.io/');
     
     return server;
   }
