@@ -74,9 +74,9 @@ async function bootstrap() {
   
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
 
-  const redisIoAdapter = new RedisIoAdapter(app);
-  await redisIoAdapter.connectToRedis();
-  app.useWebSocketAdapter(redisIoAdapter);
+  //const redisIoAdapter = new RedisIoAdapter(app);
+  //await redisIoAdapter.connectToRedis();
+  //app.useWebSocketAdapter(redisIoAdapter);
 
   app.enableShutdownHooks();
 
