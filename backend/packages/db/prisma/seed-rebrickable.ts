@@ -35,7 +35,7 @@ async function downloadAndParseGzipCsv(url: string, onRow: (row: string[]) => Pr
         crlfDelay: Infinity,
       });
 
-      // 🔥 ОСЬ ТЕПЕР ТУТ РЕАЛЬНИЙ СИНХРОННИЙ ІТЕРАТОР 🔥
+// 🔥 ОСЬ ТЕПЕР ТУТ РЕАЛЬНИЙ СИНХРОННИЙ ІТЕРАТОР З ПРАВИЛЬНИМ ПАРСИНГОМ 🔥
       try {
         let isHeader = true;
         for await (const line of rl) {
@@ -44,9 +44,34 @@ async function downloadAndParseGzipCsv(url: string, onRow: (row: string[]) => Pr
             continue;
           }
           
-          const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-          if (matches) {
-            const row = matches.map((val: string) => val.replace(/^"|"$/g, '').trim());
+          // Нормальний парсер CSV замість кривого регулярного виразу
+          const row: string[] = [];
+          let current = '';
+          let insideQuotes = false;
+          
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            const next = line[i + 1];
+            
+            if (char === '"' && insideQuotes && next === '"') {
+              current += '"';
+              i++; // пропускаємо екрановану кавичку
+              continue;
+            }
+            if (char === '"') {
+              insideQuotes = !insideQuotes;
+              continue;
+            }
+            if (char === ',' && !insideQuotes) {
+              row.push(current.replace(/^"|"$/g, '').trim());
+              current = '';
+              continue;
+            }
+            current += char;
+          }
+          row.push(current.replace(/^"|"$/g, '').trim());
+
+          if (row.length > 1) {
             await onRow(row); // Чекаємо на 100%, повний Backpressure!
           }
         }
