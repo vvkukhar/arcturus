@@ -9,9 +9,7 @@ class SocketManager {
   private static getCookie(name: string): string | null {
     if (typeof document === 'undefined') return null;
 
-    const cookies = document.cookie
-      .split(';')
-      .map((cookie) => cookie.trim());
+    const cookies = document.cookie.split(';').map((cookie) => cookie.trim());
 
     for (const cookie of cookies) {
       if (cookie.startsWith(`${name}=`)) {
@@ -28,33 +26,53 @@ class SocketManager {
     const cookieToken = this.getCookie('arcturus_admin_token');
 
     if (cookieToken) {
-      console.log('[SocketManager] Token source: cookie');
+      console.log('[SocketManager] Token source: cookie arcturus_admin_token');
       return cookieToken;
     }
 
-    const localStorageToken =
-      window.localStorage.getItem('arcturus_admin_token') ||
-      window.localStorage.getItem('admin_token') ||
-      window.localStorage.getItem('token') ||
-      window.localStorage.getItem('accessToken');
+    const possibleLocalStorageKeys = [
+      'arcturus_admin_token',
+      'admin_token',
+      'token',
+      'accessToken',
+      'access_token',
+      'authToken',
+      'auth_token',
+    ];
 
-    if (localStorageToken) {
-      console.log('[SocketManager] Token source: localStorage');
-      return localStorageToken;
+    for (const key of possibleLocalStorageKeys) {
+      const value = window.localStorage.getItem(key);
+
+      if (value) {
+        console.log(`[SocketManager] Token source: localStorage ${key}`);
+        return value;
+      }
     }
 
-    const sessionStorageToken =
-      window.sessionStorage.getItem('arcturus_admin_token') ||
-      window.sessionStorage.getItem('admin_token') ||
-      window.sessionStorage.getItem('token') ||
-      window.sessionStorage.getItem('accessToken');
+    const possibleSessionStorageKeys = [
+      'arcturus_admin_token',
+      'admin_token',
+      'token',
+      'accessToken',
+      'access_token',
+      'authToken',
+      'auth_token',
+    ];
 
-    if (sessionStorageToken) {
-      console.log('[SocketManager] Token source: sessionStorage');
-      return sessionStorageToken;
+    for (const key of possibleSessionStorageKeys) {
+      const value = window.sessionStorage.getItem(key);
+
+      if (value) {
+        console.log(`[SocketManager] Token source: sessionStorage ${key}`);
+        return value;
+      }
     }
 
-    console.warn('[SocketManager] No token found in cookie/localStorage/sessionStorage');
+    console.warn('[SocketManager] No token found.');
+    console.warn('[SocketManager] document.cookie:', document.cookie);
+    console.warn('[SocketManager] localStorage keys:', Object.keys(window.localStorage));
+    console.warn('[SocketManager] sessionStorage keys:', Object.keys(window.sessionStorage));
+
     return null;
   }
 
@@ -108,9 +126,20 @@ class SocketManager {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 30000,
-      auth: token ? { token } : {},
-      query: token ? { token } : {},
-      transports: ['websocket', 'polling'],
+
+      auth: token
+        ? {
+            token,
+          }
+        : {},
+
+      query: token
+        ? {
+            token,
+          }
+        : {},
+
+      transports: ['websocket'],
       withCredentials: true,
       forceNew: true,
     });
@@ -150,14 +179,6 @@ class SocketManager {
 
     this.instance.io.on('reconnect_failed', () => {
       console.error(`[SOCKET_EVENT] RECONNECT_FAILED - Max attempts reached`);
-    });
-
-    this.instance.io.on('ping', () => {
-      console.debug(`[SOCKET_EVENT] PING`);
-    });
-
-    this.instance.io.on('packet', (packet) => {
-      console.debug(`[SOCKET_EVENT] PACKET_RECEIVED:`, packet);
     });
 
     return this.instance;
