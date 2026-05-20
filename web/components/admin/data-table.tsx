@@ -1,6 +1,4 @@
-'use client';
-
-import React, { memo } from 'react';
+import React from 'react';
 
 type Column<T> = {
   key: string;
@@ -16,7 +14,7 @@ type Props<T> = {
   getRowKey?: (row: T, index: number) => string;
 };
 
-function DataTableComponent<T>({
+export function DataTable<T>({
   columns,
   rows,
   emptyText = 'No data',
@@ -66,5 +64,3 @@ function DataTableComponent<T>({
     </div>
   );
 }
-
-export const DataTable = memo(DataTableComponent) as typeof DataTableComponent;

@@ -14,8 +14,13 @@ function ReserveFiltersContent({ currentStatus }: Props) {
 
   const setStatus = (status: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (status === 'all') params.delete('status');
-    else params.set('status', status);
+
+    if (status === 'all') {
+      params.delete('status');
+    } else {
+      params.set('status', status);
+    }
+
     router.push(`?${params.toString()}`);
   };
 
