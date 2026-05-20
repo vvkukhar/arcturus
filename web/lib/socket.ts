@@ -40,7 +40,7 @@ class SocketManager {
     }
 
     this.instance = io(wsUrl, {
-      path: '/api/socket.io/', // 🔥 ТУТ ТЕЖ МАЄ БУТИ /api/socket.io/, як і на бекенді
+      path: '/socket.io/', // 🔥 ТУТ ТЕЖ МАЄ БУТИ /api/socket.io/, як і на бекенді
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
