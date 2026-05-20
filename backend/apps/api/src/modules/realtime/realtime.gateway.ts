@@ -1,3 +1,4 @@
+// C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\realtime\realtime.gateway.ts
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -7,17 +8,11 @@ import {
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
-import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
-  path: '/socket.io/', // 🔥 КРИТИЧНО: Шлях має бути з префіксом /api/
+  path: '/api/socket.io/',
   cors: {
-    origin: [
-      'https://www.arcturusbuild.com',
-      'https://arcturusbuild.com',
-      'http://localhost:3000',
-      'http://localhost:5173'
-    ],
+    origin: true,
     credentials: true,
   },
   transports: ['websocket', 'polling'],
@@ -26,8 +21,6 @@ import { Logger } from '@nestjs/common';
 export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
-  
-  private readonly logger = new Logger('Gateway_DEBUG');
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -36,13 +29,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   async handleConnection(client: Socket) {
-    this.logger.log(`[CLIENT_CONNECTING] ID: ${client.id}, Transports: ${client.conn.transport.name}`);
-    
     try {
       const rawToken = client.handshake.auth?.token || client.handshake.headers?.authorization;
       
       if (!rawToken) {
-        this.logger.warn(`[AUTH_FAILED] No token provided for client ${client.id}`);
         client.disconnect(true);
         return;
       }
@@ -56,21 +46,17 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       });
 
       if (!session || !(session as any).user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
-        this.logger.warn(`[AUTH_FAILED] Invalid or expired session for client ${client.id}`);
         client.disconnect(true);
         return;
       }
 
       client.join('admin_broadcast');
-      this.logger.log(`[CLIENT_CONNECTED] Client ${client.id} joined admin_broadcast`);
-    } catch (error: any) {
-      this.logger.error(`[CONNECTION_ERROR] Client ${client.id}: ${error.message}`);
+    } catch (error) {
       client.disconnect(true);
     }
   }
 
   handleDisconnect(client: Socket) {
-    this.logger.log(`[CLIENT_DISCONNECTED] Client ${client.id} left`);
     client.leave('admin_broadcast');
   }
 

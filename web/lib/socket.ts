@@ -1,3 +1,4 @@
+// C:\Users\Vlad\lego_trading_manager\web\lib\socket.ts
 import { io, Socket } from 'socket.io-client';
 import { appConfig } from '@/lib/config';
 
@@ -28,46 +29,29 @@ class SocketManager {
     }
 
     if (this.isConnecting) return this.instance as Socket;
+    
     this.isConnecting = true;
     this.currentToken = token;
-
-    const wsUrl = appConfig.wsBaseUrl;
-    const socketPath = '/api/socket.io'; 
-
-    console.group('SOCKET_CONNECTION_ATTEMPT');
-    console.log('Target URL:', wsUrl);
-    console.log('Path:', socketPath);
-    console.log('Token exists:', !!token);
-    console.groupEnd();
+    
+    const wsUrl = appConfig.wsBaseUrl.replace(/\/api(\/v[0-9]+)?\/?$/, '').replace(/\/$/, '');
 
     this.instance = io(wsUrl, {
-      path: socketPath,
+      path: '/api/socket.io/',
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      timeout: 30000,
+      timeout: 20000,
       auth: token ? { token } : undefined,
       transports: ['websocket', 'polling'],
       withCredentials: true,
-      forceNew: true,
     });
 
-    this.instance.on('connect', () => {
-      console.log('%c[SOCKET_CONNECTED]', 'color: #00ff00', this.instance?.id);
-    });
-
-    this.instance.on('connect_error', (err) => {
-      console.group('%c[SOCKET_CRITICAL_ERROR]', 'color: #ff0000');
-      console.error('Message:', err.message);
-      console.error('Description:', (err as any).description);
-      console.error('Context:', (err as any).context);
-      console.groupEnd();
-    });
-
-    this.instance.io.on('reconnect_attempt', (count) => {
-      console.log(`[SOCKET_RECONNECT] Attempt ${count}`);
+    this.instance.on('connect_error', () => {
+      if (this.instance) {
+        this.instance.io.opts.transports = ['polling', 'websocket'];
+      }
     });
 
     this.isConnecting = false;
@@ -76,6 +60,7 @@ class SocketManager {
 
   public static disconnect(): void {
     if (this.instance) {
+      this.instance.removeAllListeners();
       this.instance.disconnect();
       this.instance = null;
       this.currentToken = null;
