@@ -19446,9 +19446,10 @@ import {
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
+import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
-  path: '/socket.io/',
+  path: '/socket.io/', // рџ”Ґ РљР РРўРР§РќРћ: РЁР»СЏС… РјР°С” Р±СѓС‚Рё Р· РїСЂРµС„С–РєСЃРѕРј /api/
   cors: {
     origin: [
       'https://www.arcturusbuild.com',
@@ -19464,6 +19465,8 @@ import * as crypto from 'crypto';
 export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
+  
+  private readonly logger = new Logger('Gateway_DEBUG');
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -19472,10 +19475,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   async handleConnection(client: Socket) {
+    this.logger.log(`[CLIENT_CONNECTING] ID: ${client.id}, Transports: ${client.conn.transport.name}`);
+    
     try {
       const rawToken = client.handshake.auth?.token || client.handshake.headers?.authorization;
       
       if (!rawToken) {
+        this.logger.warn(`[AUTH_FAILED] No token provided for client ${client.id}`);
         client.disconnect(true);
         return;
       }
@@ -19489,17 +19495,21 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       });
 
       if (!session || !(session as any).user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
+        this.logger.warn(`[AUTH_FAILED] Invalid or expired session for client ${client.id}`);
         client.disconnect(true);
         return;
       }
 
       client.join('admin_broadcast');
-    } catch (error) {
+      this.logger.log(`[CLIENT_CONNECTED] Client ${client.id} joined admin_broadcast`);
+    } catch (error: any) {
+      this.logger.error(`[CONNECTION_ERROR] Client ${client.id}: ${error.message}`);
       client.disconnect(true);
     }
   }
 
   handleDisconnect(client: Socket) {
+    this.logger.log(`[CLIENT_DISCONNECTED] Client ${client.id} left`);
     client.leave('admin_broadcast');
   }
 
@@ -19582,7 +19592,7 @@ import { RedisService } from '../redis/redis.service';
 
 export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor: any;
-  private readonly logger = new Logger(RedisIoAdapter.name);
+  private readonly logger = new Logger('SocketIO_DEBUG');
 
   constructor(private app: INestApplicationContext) {
     super(app);
@@ -19599,15 +19609,19 @@ export class RedisIoAdapter extends IoAdapter {
       }
 
       this.adapterConstructor = createAdapter(pubClient, subClient);
+      this.logger.log('Redis adapter connected successfully.');
     } catch (err: any) {
-      this.logger.error(err.message);
+      this.logger.error('Redis adapter connection failed:', err.message);
     }
   }
 
   createIOServer(port: number, options?: ServerOptions): any {
+    this.logger.log(`Attempting to create Socket.IO server on port ${port}...`);
+    
     const server = super.createIOServer(port, {
       ...options,
-      path: '/socket.io/',
+      // рџ”Ґ РљР РРўРР§РќРћ: РЁР»СЏС… РјР°С” Р±СѓС‚Рё Р· РїСЂРµС„С–РєСЃРѕРј /api/
+      path: '/socket.io/', 
       cors: {
         origin: [
           'https://www.arcturusbuild.com',
@@ -19621,10 +19635,17 @@ export class RedisIoAdapter extends IoAdapter {
       allowEIO3: true,
       transports: ['websocket', 'polling'],
     });
-    
+
     if (this.adapterConstructor) {
       server.adapter(this.adapterConstructor);
     }
+
+    // рџ•µпёЏвЂЌв™‚пёЏ Р”Р•Р‘РђР“: РЎР»СѓС…Р°С”РјРѕ РїРѕРјРёР»РєРё РЅР° СЂС–РІРЅС– СЃР°РјРѕРіРѕ СЃРµСЂРІРµСЂР° Socket.IO
+    server.engine.on('connection_error', (err: any) => {
+      this.logger.error(`[ENGINE_ERROR] Code: ${err.code}, Message: ${err.message}, Req: ${err.req?.url}`);
+    });
+
+    this.logger.log('Socket.IO server created and listening on /api/socket.io/');
     
     return server;
   }

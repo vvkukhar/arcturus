@@ -38,10 +38,8 @@ class SocketManager {
       wsUrl = wsUrl.replace(/\/api(\/v[0-9]+)?\/?$/, '').replace(/\/$/, '');
     }
 
-    console.log('[SOCKET_DEBUG] Attempting connection to:', wsUrl, 'with path /api/socket.io/');
-
     this.instance = io(wsUrl, {
-      path: '/socket.io/', // 🔥 ТУТ МАЄ БУТИ /api/socket.io/
+      path: '/api/socket.io/',
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -49,19 +47,15 @@ class SocketManager {
       reconnectionDelayMax: 5000,
       timeout: 20000,
       auth: token ? { token } : undefined,
-      transports: ['websocket', 'polling'], // Спочатку пробуємо websocket
+      transports: ['websocket', 'polling'],
       withCredentials: true,
     });
 
-    // 🕵️‍♂️ ДЕБАГ НА КЛІЄНТІ
-    this.instance.on('connect', () => console.log('[SOCKET_DEBUG] Connected! ID:', this.instance?.id));
-    this.instance.on('connect_error', (err) => {
-      console.error('[SOCKET_DEBUG] Connection error:', err.message, err);
+    this.instance.on('connect_error', () => {
       if (this.instance) {
-        this.instance.io.opts.transports = ['polling', 'websocket']; // Fallback
+        this.instance.io.opts.transports = ['polling', 'websocket'];
       }
     });
-    this.instance.on('disconnect', (reason) => console.log('[SOCKET_DEBUG] Disconnected:', reason));
 
     this.isConnecting = false;
     return this.instance;
