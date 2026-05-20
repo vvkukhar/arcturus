@@ -20,7 +20,15 @@ export class RealtimeGateway {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
-  private extractToken(client: Socket): string | null {
+private extractToken(client: Socket): string | null {
+    // 1. Спочатку шукаємо токен у куках (оскільки він HttpOnly, браузер сам його передає у headers.cookie)
+    const cookieHeader = client.handshake.headers?.cookie;
+    if (cookieHeader) {
+      const match = cookieHeader.match(/(^| )arcturus_admin_token=([^;]+)/);
+      if (match) return decodeURIComponent(match[2]);
+    }
+
+    // 2. Якщо в куках нема (наприклад, запит з Postman/Mobile), шукаємо в класичних місцях
     const authToken = client.handshake.auth?.token;
 
     const authorizationHeader = client.handshake.headers?.authorization;
