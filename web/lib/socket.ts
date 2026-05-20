@@ -41,7 +41,7 @@ class SocketManager {
     console.log('[SOCKET_DEBUG] Attempting connection to:', wsUrl, 'with path /api/socket.io/');
 
     this.instance = io(wsUrl, {
-      path: '/api/socket.io/', // 🔥 ТУТ МАЄ БУТИ /api/socket.io/
+      path: '/socket.io/', // 🔥 ТУТ МАЄ БУТИ /api/socket.io/
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,

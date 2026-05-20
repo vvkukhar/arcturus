@@ -10,7 +10,7 @@ import * as crypto from 'crypto';
 import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
-  path: '/api/socket.io/', // 🔥 КРИТИЧНО: Шлях має бути з префіксом /api/
+  path: '/socket.io/', // 🔥 КРИТИЧНО: Шлях має бути з префіксом /api/
   cors: {
     origin: [
       'https://www.arcturusbuild.com',
