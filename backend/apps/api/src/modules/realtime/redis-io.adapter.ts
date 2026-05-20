@@ -32,7 +32,7 @@ export class RedisIoAdapter extends IoAdapter {
     
     const server = super.createIOServer(port, {
       ...options,
-      path: '/api/socket.io/',
+      path: '/socket.io/',
       cors: {
         origin: true,
         credentials: true,

@@ -37,7 +37,7 @@ class SocketManager {
     this.currentToken = token;
     
     const wsUrl = appConfig.wsBaseUrl.replace(/\/api(\/v[0-9]+)?\/?$/, '').replace(/\/$/, '');
-    const socketPath = '/api/socket.io/';
+    const socketPath = '/socket.io/';
 
     console.log('========== SOCKET CONNECTION INIT ==========');
     console.log('Target URL:', wsUrl);

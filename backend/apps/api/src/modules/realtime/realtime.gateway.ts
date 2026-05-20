@@ -9,7 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
 
 @WebSocketGateway({
-  path: '/api/socket.io/',
+  path: '/socket.io/',
   cors: {
     origin: true,
     credentials: true,
