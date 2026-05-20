@@ -17,11 +17,10 @@ export async function POST(request: NextRequest) {
   });
 
   if (!response.ok) {
-    // 🔥 Витягуємо РЕАЛЬНУ помилку з бекенду замість хардкоду 500
     const errData = await response.json().catch(() => ({}));
     return NextResponse.json(
       { ok: false, error: errData.message || `Item create failed: ${response.status}` },
-      { status: response.status }, // Повертаємо реальний статус (наприклад, 400)
+      { status: response.status === 500 ? 500 : 400 }, // 🔥 Прокидаємо реальний статус!
     );
   }
 

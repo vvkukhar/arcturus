@@ -1,14 +1,14 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FormEvent, useState, useEffect } from 'react';
+import { FormEvent, useState, useEffect, Suspense } from 'react';
 import { Search, X } from 'lucide-react';
 
 type Props = {
   placeholder?: string;
 };
 
-export function TableSearchForm({ placeholder = 'Search...' }: Props) {
+function TableSearchFormContent({ placeholder = 'Search...' }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [q, setQ] = useState(searchParams.get('q') ?? '');
@@ -57,5 +57,13 @@ export function TableSearchForm({ placeholder = 'Search...' }: Props) {
         </button>
       </div>
     </form>
+  );
+}
+
+export function TableSearchForm(props: Props) {
+  return (
+    <Suspense fallback={<div className="h-[50px] w-full bg-[var(--card)] animate-pulse rounded-2xl border border-[var(--border)]" />}>
+      <TableSearchFormContent {...props} />
+    </Suspense>
   );
 }

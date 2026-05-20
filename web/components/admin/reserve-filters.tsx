@@ -2,24 +2,20 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { Suspense } from 'react';
 
 type Props = {
   currentStatus: string;
 };
 
-export function ReserveFilters({ currentStatus }: Props) {
+function ReserveFiltersContent({ currentStatus }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const setStatus = (status: string) => {
     const params = new URLSearchParams(searchParams.toString());
-
-    if (status === 'all') {
-      params.delete('status');
-    } else {
-      params.set('status', status);
-    }
-
+    if (status === 'all') params.delete('status');
+    else params.set('status', status);
     router.push(`?${params.toString()}`);
   };
 
@@ -51,5 +47,13 @@ export function ReserveFilters({ currentStatus }: Props) {
         );
       })}
     </div>
+  );
+}
+
+export function ReserveFilters(props: Props) {
+  return (
+    <Suspense fallback={<div className="h-10 w-full bg-[var(--card)] animate-pulse rounded-xl border border-[var(--border)]" />}>
+      <ReserveFiltersContent {...props} />
+    </Suspense>
   );
 }
