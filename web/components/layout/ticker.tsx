@@ -20,7 +20,7 @@ interface TickerItem {
 export function Ticker() {
   const { t } = useI18n();
   const [mounted, setMounted] = useState(false);
-  const { data: rawData, mutate } = useSWR<TickerItem[]>('/api/public/catalog?limit=15', swrFetcher);
+  const { data: rawData, mutate } = useSWR<TickerItem[]>('/api/proxy/public/catalog?limit=15', swrFetcher);
 
   useEffect(() => {
     setMounted(true);

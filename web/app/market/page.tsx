@@ -45,7 +45,7 @@ export default function MarketPage() {
   const { t } = useI18n();
   
   const { data: historyData, isLoading: hLoading } = useSWR<HistoryData[]>('/api/profit/monthly', swrFetcher);
-  const { data: catalogData, isLoading: cLoading } = useSWR<CatalogItem[]>('/api/public/catalog?limit=10', swrFetcher);
+  const { data: catalogData, isLoading: cLoading } = useSWR<CatalogItem[]>('/api/proxy/public/catalog?limit=10', swrFetcher);
   const { data: stats, isLoading: sLoading } = useSWR<PortfolioSummary>('/api/portfolio/summary', swrFetcher);
 
   if (hLoading || cLoading || sLoading) {

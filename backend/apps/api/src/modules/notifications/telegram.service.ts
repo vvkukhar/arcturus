@@ -12,7 +12,7 @@ export class TelegramService implements OnModuleInit {
 
   async onModuleInit() {
     if (this.botToken && this.backendUrl) {
-      const webhookUrl = `${this.backendUrl}/api/telegram/webhook`;
+      const webhookUrl = `${this.backendUrl}/api/v1/telegram/webhook`;
       const cacheKey = 'telegram_webhook_set';
       const isSet = await this.redis.get<string>(cacheKey);
 

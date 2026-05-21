@@ -22,7 +22,7 @@ export default function ScreenerPage() {
   const [themeFilter, setThemeFilter] = useState('');
   const [sort, setSort] = useState('roi_desc');
 
-  const { data: rawData, isLoading } = useSWR<ScreenerItem[]>('/api/public/catalog?limit=500', swrFetcher);
+  const { data: rawData, isLoading } = useSWR<ScreenerItem[]>('/api/proxy/public/catalog?limit=500', swrFetcher);
   const data = Array.isArray(rawData) ? rawData : [];
 
   const themes = useMemo(() => {

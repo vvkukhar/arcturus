@@ -14,7 +14,7 @@ import type { DashboardExecutionSummary, DashboardFlowCounters, ReserveRequest, 
 export const revalidate = 0;
 
 async function getDashboardData() {
-  const [
+const [
     executionRes,
     countersRes,
     reservesRes,
@@ -24,9 +24,9 @@ async function getDashboardData() {
   ] = await Promise.allSettled([
     api.get<DashboardExecutionSummary>('/dashboard/execution-summary'),
     api.get<DashboardFlowCounters>('/dashboard/flow-counters'),
-    api.get<ReserveRequest[]>('/public/reserve-requests', { headers: { Authorization: '' } }),
+    api.get<ReserveRequest[]>('/public/reserve-requests'), // 🔥 Прибрали порожній Authorization
     api.get<InventoryItem[]>('/inventory'),
-    api.get<any>('/public/analytics', { headers: { Authorization: '' } }),
+    api.get<any>('/public/analytics'), // 🔥 Прибрали порожній Authorization
     api.get<DealItem[]>('/deals')
   ]);
 
