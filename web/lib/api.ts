@@ -81,9 +81,12 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
   let targetUrl = '';
   if (path.startsWith('http')) {
     targetUrl = path;
-  } else if (!isServer && path.startsWith('/api/proxy/')) {
-    targetUrl = path;
+  } else if (!isServer && cleanPath.startsWith('/api/')) {
+    // ФІКС: Клієнтські запити на /api/* тепер йдуть виключно через Next.js Proxy, 
+    // який сам підчепить токен. Жодного прямого стукання в бекенд з браузера!
+    targetUrl = cleanPath;
   } else {
+    // Серверні запити SSR (або нестандартні) йдуть напряму в NestJS
     let clean = cleanPath;
     if (clean.startsWith('/api/proxy/')) {
       clean = clean.replace('/api/proxy/', '/');
@@ -116,18 +119,11 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
     headers.set('Content-Type', 'application/json');
   }
 
-  if (requireAuth) {
-    let token: string | null = null;
-    if (isServer) {
-      const { cookies } = await import('next/headers');
-      token = (await cookies()).get('arcturus_admin_token')?.value || null;
-    } else {
-      const match = document.cookie.match(/(^|;\s*)arcturus_admin_token=([^;]+)/); // 🔥 Покращений regex для куків
-      token = match ? decodeURIComponent(match[2]) : null;
-    }
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
+  // Додаємо токен ТІЛЬКИ на сервері. На клієнті його підхопить Next.js API route.
+  if (requireAuth && isServer) {
+    const { cookies } = await import('next/headers');
+    const token = (await cookies()).get('arcturus_admin_token')?.value;
+    if (token) headers.set('Authorization', `Bearer ${token}`);
   }
 
   const fetchConfig: RequestInit = {

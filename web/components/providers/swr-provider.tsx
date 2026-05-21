@@ -6,9 +6,17 @@ import { useEffect } from 'react';
 
 export function SWRProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    const handleUnauthorized = () => {
+    const handleUnauthorized = async () => {
+      try {
+        // ФІКС: Жорстко вбиваємо сесію на сервері перед редиректом, 
+        // щоб Middleware не завернув нас назад на дашборд.
+        await fetch('/api/auth/logout', { method: 'POST' });
+      } catch (e) {
+        console.error('Failed to clear session', e);
+      }
       window.location.href = '/login';
     };
+    
     window.addEventListener('arcturus:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('arcturus:unauthorized', handleUnauthorized);
   }, []);
