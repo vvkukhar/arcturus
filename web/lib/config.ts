@@ -12,9 +12,10 @@ const ensureApiV1 = (url: string) => {
   return `${url}/api/v1`;
 };
 
+// web/lib/config.ts
 export const appConfig = {
   name: 'Arcturus',
   adminTitle: 'Arcturus Admin',
-  apiBaseUrl: ensureApiV1(rawApiUrl), // Тепер тут завжди буде /api/v1
-  wsBaseUrl: rawWsUrl,
+  apiBaseUrl: 'https://arcturus-api-idsb.onrender.com', // Без /api/v1 в кінці
+  wsBaseUrl: 'https://arcturus-api-idsb.onrender.com',
 };
