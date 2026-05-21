@@ -82,11 +82,10 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
   if (path.startsWith('http')) {
     targetUrl = path;
   } else if (!isServer && cleanPath.startsWith('/api/')) {
-    // ФІКС: Клієнтські запити на /api/* тепер йдуть виключно через Next.js Proxy, 
-    // який сам підчепить токен. Жодного прямого стукання в бекенд з браузера!
+    // Клієнтський проксі через Next.js
     targetUrl = cleanPath;
   } else {
-    // Серверні запити SSR (або нестандартні) йдуть напряму в NestJS
+    // SSR або прямий запит до NestJS
     let clean = cleanPath;
     if (clean.startsWith('/api/proxy/')) {
       clean = clean.replace('/api/proxy/', '/');
@@ -96,6 +95,21 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
       clean = clean.replace('/api/', '/');
     }
     targetUrl = `${base}${clean}`;
+  }
+
+  // --- ФІКС АВТОРИЗАЦІЇ ---
+  if (requireAuth) {
+    if (isServer) {
+      const { cookies } = await import('next/headers');
+      const token = (await cookies()).get('arcturus_admin_token')?.value;
+      if (token) headers.set('Authorization', `Bearer ${token}`);
+    } else {
+      // Додаємо токен з кук для клієнтських запитів
+      const match = document.cookie.match(/(^|;\s*)arcturus_admin_token=([^;]+)/);
+      if (match) {
+        headers.set('Authorization', `Bearer ${decodeURIComponent(match[2])}`);
+      }
+    }
   }
 
   const requestKey = `${init.method || 'GET'}:${targetUrl}:${typeof init.body === 'string' ? init.body : ''}`;
@@ -119,13 +133,6 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
     headers.set('Content-Type', 'application/json');
   }
 
-  // Додаємо токен ТІЛЬКИ на сервері. На клієнті його підхопить Next.js API route.
-  if (requireAuth && isServer) {
-    const { cookies } = await import('next/headers');
-    const token = (await cookies()).get('arcturus_admin_token')?.value;
-    if (token) headers.set('Authorization', `Bearer ${token}`);
-  }
-
   const fetchConfig: RequestInit = {
     ...init,
     headers,
@@ -147,6 +154,11 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
         let errorData;
         try { errorData = await response.json(); } catch {}
         
+        // Обробка 401 для клієнта
+        if (response.status === 401 && !isServer) {
+          window.dispatchEvent(new CustomEvent('arcturus:unauthorized'));
+        }
+
         throw new APIError(
           response.status,
           errorData?.message || errorData?.error || `HTTP ${response.status}`,
