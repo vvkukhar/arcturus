@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await apiRes.json();
-    const response = NextResponse.json({ ok: true, user: data.user });
+    const response = NextResponse.json({ ok: true, user: data.user, token: data.token });
 
     response.cookies.set('arcturus_admin_token', data.token, {
-      httpOnly: true,
+      httpOnly: false,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',

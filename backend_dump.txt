@@ -2175,7 +2175,8 @@ import { Request, Response } from 'express';
 
 @Catch()
 export class GlobalHttpExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(GlobalHttpExceptionFilter.name);
+  // рџ”Ґ РЎС‚РІРѕСЂСЋС”РјРѕ Р»РѕРіРµСЂ СЃРїРµС†С–Р°Р»СЊРЅРѕ РґР»СЏ HTTP РїРѕРјРёР»РѕРє
+  private readonly logger = new Logger('HTTP_ERROR');
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -2195,6 +2196,10 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       } else {
         message = res as string;
       }
+      
+      // рџ”Ґ РћРЎР¬ РўР•РџР•Р  Р‘Р•РљР•РќР” Р‘РЈР”Р• Р”Р•РўРђР›Р¬РќРћ РџРРЎРђРўР Р’ Р›РћР“Р Р’РЎР† 400-С‚С– РџРћРњРР›РљР рџ”Ґ
+      this.logger.warn(`[${status} ${error}] ${request.method} ${request.url} - Reason: ${Array.isArray(message) ? message.join(', ') : message}`);
+      
     } else if (exception instanceof Error) {
       message = exception.message;
       this.logger.error(`[Unhandled Exception] ${request.method} ${request.url}`, exception.stack);
@@ -2203,7 +2208,7 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       this.logger.error(`[Unhandled Exception] ${request.method} ${request.url}`, String(exception));
     }
 
-    // Р—Р°РІР¶РґРё РїРѕРІРµСЂС‚Р°С”РјРѕ С‡С–С‚РєРёР№ JSON
+    // Р—Р°РІР¶РґРё РїРѕРІРµСЂС‚Р°С”РјРѕ С‡С–С‚РєРёР№ JSON РЅР° С„СЂРѕРЅС‚РµРЅРґ
     response.status(status).json({
       ok: false,
       statusCode: status,
@@ -2472,9 +2477,12 @@ export class ActivityService {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\ai\ai-suggestions.controller.ts =====
 
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AiSuggestionsService } from './ai-suggestions.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('ai')
 export class AiSuggestionsController {
   constructor(private readonly service: AiSuggestionsService) {}
@@ -15083,17 +15091,47 @@ export class OperatorService {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\opportunities\opportunities.controller.ts =====
 
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Param } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { PrismaService } from '../prisma/prisma.service';
+import { OpportunitiesService } from './opportunities.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'operator', 'viewer')
 @Controller('opportunities')
 export class OpportunitiesController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly opportunitiesService: OpportunitiesService
+  ) {}
+
+  @Get('buy')
+  async getBuy(@Query('limit') limit?: string, @Query('minScore') minScore?: string): Promise<unknown[]> {
+    return this.opportunitiesService.getBuyOpportunities({
+      limit: limit ? Number(limit) : 50,
+      minScore: minScore ? Number(minScore) : 0,
+    });
+  }
+
+  @Get('sell')
+  async getSell(@Query('limit') limit?: string, @Query('minScore') minScore?: string): Promise<unknown[]> {
+    return this.opportunitiesService.getSellOpportunities({
+      limit: limit ? Number(limit) : 50,
+      minScore: minScore ? Number(minScore) : 0,
+    });
+  }
+
+  @Get('buy/:id')
+  async getBuyDetail(@Param('id') id: string): Promise<unknown> {
+    return this.opportunitiesService.getBuyOpportunityDetail(id);
+  }
+
+  @Get('sell/:id')
+  async getSellDetail(@Param('id') id: string): Promise<unknown> {
+    return this.opportunitiesService.getSellOpportunityDetail(id);
+  }
 
   @Get('arbitrage')
   async getArbitrage(@Query('limit') limit?: string): Promise<unknown[]> {
@@ -15111,7 +15149,7 @@ export class OpportunitiesController {
       title: d.item.title,
       action: d.action,
       score: d.score,
-      ...d.payloadJson as object
+      ...(d.payloadJson as object)
     }));
   }
 }
@@ -19527,7 +19565,15 @@ export class RealtimeGateway {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
-  private extractToken(client: Socket): string | null {
+private extractToken(client: Socket): string | null {
+    // 1. РЎРїРѕС‡Р°С‚РєСѓ С€СѓРєР°С”РјРѕ С‚РѕРєРµРЅ Сѓ РєСѓРєР°С… (РѕСЃРєС–Р»СЊРєРё РІС–РЅ HttpOnly, Р±СЂР°СѓР·РµСЂ СЃР°Рј Р№РѕРіРѕ РїРµСЂРµРґР°С” Сѓ headers.cookie)
+    const cookieHeader = client.handshake.headers?.cookie;
+    if (cookieHeader) {
+      const match = cookieHeader.match(/(^| )arcturus_admin_token=([^;]+)/);
+      if (match) return decodeURIComponent(match[2]);
+    }
+
+    // 2. РЇРєС‰Рѕ РІ РєСѓРєР°С… РЅРµРјР° (РЅР°РїСЂРёРєР»Р°Рґ, Р·Р°РїРёС‚ Р· Postman/Mobile), С€СѓРєР°С”РјРѕ РІ РєР»Р°СЃРёС‡РЅРёС… РјС–СЃС†СЏС…
     const authToken = client.handshake.auth?.token;
 
     const authorizationHeader = client.handshake.headers?.authorization;
@@ -32114,7 +32160,7 @@ async function downloadAndParseGzipCsv(url: string, onRow: (row: string[]) => Pr
         crlfDelay: Infinity,
       });
 
-      // рџ”Ґ РћРЎР¬ РўР•РџР•Р  РўРЈРў Р Р•РђР›Р¬РќРР™ РЎРРќРҐР РћРќРќРР™ Р†РўР•Р РђРўРћР  рџ”Ґ
+// рџ”Ґ РћРЎР¬ РўР•РџР•Р  РўРЈРў Р Р•РђР›Р¬РќРР™ РЎРРќРҐР РћРќРќРР™ Р†РўР•Р РђРўРћР  Р— РџР РђР’РР›Р¬РќРРњ РџРђР РЎРРќР“РћРњ рџ”Ґ
       try {
         let isHeader = true;
         for await (const line of rl) {
@@ -32123,9 +32169,34 @@ async function downloadAndParseGzipCsv(url: string, onRow: (row: string[]) => Pr
             continue;
           }
           
-          const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-          if (matches) {
-            const row = matches.map((val: string) => val.replace(/^"|"$/g, '').trim());
+          // РќРѕСЂРјР°Р»СЊРЅРёР№ РїР°СЂСЃРµСЂ CSV Р·Р°РјС–СЃС‚СЊ РєСЂРёРІРѕРіРѕ СЂРµРіСѓР»СЏСЂРЅРѕРіРѕ РІРёСЂР°Р·Сѓ
+          const row: string[] = [];
+          let current = '';
+          let insideQuotes = false;
+          
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            const next = line[i + 1];
+            
+            if (char === '"' && insideQuotes && next === '"') {
+              current += '"';
+              i++; // РїСЂРѕРїСѓСЃРєР°С”РјРѕ РµРєСЂР°РЅРѕРІР°РЅСѓ РєР°РІРёС‡РєСѓ
+              continue;
+            }
+            if (char === '"') {
+              insideQuotes = !insideQuotes;
+              continue;
+            }
+            if (char === ',' && !insideQuotes) {
+              row.push(current.replace(/^"|"$/g, '').trim());
+              current = '';
+              continue;
+            }
+            current += char;
+          }
+          row.push(current.replace(/^"|"$/g, '').trim());
+
+          if (row.length > 1) {
             await onRow(row); // Р§РµРєР°С”РјРѕ РЅР° 100%, РїРѕРІРЅРёР№ Backpressure!
           }
         }
