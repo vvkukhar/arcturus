@@ -81,14 +81,14 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
   let targetUrl = '';
   if (path.startsWith('http')) {
     targetUrl = path;
-  } else if (!isServer && path.startsWith('/api/')) {
-    // На клієнті залишаємо запити як є, вони підуть до локального Next.js
+  } else if (!isServer && path.startsWith('/api/proxy/')) {
     targetUrl = path;
   } else {
-    // На сервері стукаємо напряму на бекенд
     let clean = cleanPath;
     if (clean.startsWith('/api/proxy/')) {
       clean = clean.replace('/api/proxy/', '/');
+    } else if (clean.startsWith('/api/v1/')) {
+      clean = clean.replace('/api/v1/', '/');
     } else if (clean.startsWith('/api/')) {
       clean = clean.replace('/api/', '/');
     }
@@ -122,10 +122,12 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
       const { cookies } = await import('next/headers');
       token = (await cookies()).get('arcturus_admin_token')?.value || null;
     } else {
-      const match = document.cookie.match(/(^| )arcturus_admin_token=([^;]+)/);
+      const match = document.cookie.match(/(^|;\s*)arcturus_admin_token=([^;]+)/); // 🔥 Покращений regex для куків
       token = match ? decodeURIComponent(match[2]) : null;
     }
-    if (token) headers.set('Authorization', `Bearer ${token}`);
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
   }
 
   const fetchConfig: RequestInit = {

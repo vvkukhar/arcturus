@@ -6,28 +6,14 @@ class SocketManager {
   private static currentToken: string | null = null;
   private static isConnecting = false;
 
-  private static getCookie(name: string): string | null {
-    if (typeof document === 'undefined') return null;
-
-    const cookies = document.cookie.split(';').map((cookie) => cookie.trim());
-
-    for (const cookie of cookies) {
-      if (cookie.startsWith(`${name}=`)) {
-        return decodeURIComponent(cookie.substring(name.length + 1));
-      }
-    }
-
-    return null;
-  }
-
   private static getToken(): string | null {
     if (typeof window === 'undefined') return null;
 
-    const cookieToken = this.getCookie('arcturus_admin_token');
-
-    if (cookieToken) {
+    // 🔥 Надійний regex для пошуку токена (якщо кука не HttpOnly)
+    const match = document.cookie.match(/(^|;\s*)arcturus_admin_token=([^;]+)/);
+    if (match) {
       console.log('[SocketManager] Token source: cookie arcturus_admin_token');
-      return cookieToken;
+      return decodeURIComponent(match[2]);
     }
 
     const possibleLocalStorageKeys = [
@@ -42,7 +28,6 @@ class SocketManager {
 
     for (const key of possibleLocalStorageKeys) {
       const value = window.localStorage.getItem(key);
-
       if (value) {
         console.log(`[SocketManager] Token source: localStorage ${key}`);
         return value;
@@ -61,18 +46,13 @@ class SocketManager {
 
     for (const key of possibleSessionStorageKeys) {
       const value = window.sessionStorage.getItem(key);
-
       if (value) {
         console.log(`[SocketManager] Token source: sessionStorage ${key}`);
         return value;
       }
     }
 
-    console.warn('[SocketManager] No token found.');
-    console.warn('[SocketManager] document.cookie:', document.cookie);
-    console.warn('[SocketManager] localStorage keys:', Object.keys(window.localStorage));
-    console.warn('[SocketManager] sessionStorage keys:', Object.keys(window.sessionStorage));
-
+    console.warn('[SocketManager] No token found in JS. If cookie is HttpOnly, browser will send it automatically.');
     return null;
   }
 
@@ -109,13 +89,13 @@ class SocketManager {
       .replace(/\/api(\/v[0-9]+)?\/?$/, '')
       .replace(/\/$/, '');
 
+    // 🔥 ШЛЯХ БЕЗ /api/, бо бекенд чекає саме тут
     const socketPath = '/socket.io/';
 
     console.log('========== SOCKET CONNECTION INIT ==========');
     console.log('Target URL:', wsUrl);
     console.log('Path:', socketPath);
     console.log('Token exists:', !!token);
-    console.log('Token length:', token ? token.length : 0);
     console.log('============================================');
 
     this.instance = io(wsUrl, {
@@ -126,21 +106,12 @@ class SocketManager {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 30000,
-
-      auth: token
-        ? {
-            token,
-          }
-        : {},
-
-      query: token
-        ? {
-            token,
-          }
-        : {},
-
-      transports: ['websocket'],
-      withCredentials: true,
+      auth: token ? { token } : {},
+      query: token ? { token } : {},
+      // Спочатку пробуємо websocket, якщо Nginx ріже - падаємо на polling
+      transports: ['websocket', 'polling'], 
+      // 🔥 КРИТИЧНО: змушує браузер відправляти HttpOnly куку на бекенд
+      withCredentials: true, 
       forceNew: true,
     });
 
@@ -160,25 +131,17 @@ class SocketManager {
 
     this.instance.on('connect_error', (err) => {
       this.isConnecting = false;
-
       console.error('========== SOCKET CRITICAL ERROR ==========');
       console.error('Message:', err.message);
-      console.error('Stack:', err.stack);
-      console.error('Description:', (err as any).description);
-      console.error('Context:', (err as any).context);
-      console.error('===========================================');
+      
+      // Fallback на polling, якщо websocket не пробився
+      if (this.instance) {
+        this.instance.io.opts.transports = ['polling', 'websocket'];
+      }
     });
 
     this.instance.io.on('reconnect_attempt', (count) => {
       console.log(`[SOCKET_EVENT] RECONNECT_ATTEMPT #${count}`);
-    });
-
-    this.instance.io.on('reconnect_error', (error) => {
-      console.error(`[SOCKET_EVENT] RECONNECT_ERROR:`, error);
-    });
-
-    this.instance.io.on('reconnect_failed', () => {
-      console.error(`[SOCKET_EVENT] RECONNECT_FAILED - Max attempts reached`);
     });
 
     return this.instance;
