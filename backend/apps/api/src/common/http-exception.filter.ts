@@ -3,7 +3,8 @@ import { Request, Response } from 'express';
 
 @Catch()
 export class GlobalHttpExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(GlobalHttpExceptionFilter.name);
+  // 🔥 Створюємо логер спеціально для HTTP помилок
+  private readonly logger = new Logger('HTTP_ERROR');
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -23,6 +24,10 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       } else {
         message = res as string;
       }
+      
+      // 🔥 ОСЬ ТЕПЕР БЕКЕНД БУДЕ ДЕТАЛЬНО ПИСАТИ В ЛОГИ ВСІ 400-ті ПОМИЛКИ 🔥
+      this.logger.warn(`[${status} ${error}] ${request.method} ${request.url} - Reason: ${Array.isArray(message) ? message.join(', ') : message}`);
+      
     } else if (exception instanceof Error) {
       message = exception.message;
       this.logger.error(`[Unhandled Exception] ${request.method} ${request.url}`, exception.stack);
@@ -31,7 +36,7 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       this.logger.error(`[Unhandled Exception] ${request.method} ${request.url}`, String(exception));
     }
 
-    // Завжди повертаємо чіткий JSON
+    // Завжди повертаємо чіткий JSON на фронтенд
     response.status(status).json({
       ok: false,
       statusCode: status,
