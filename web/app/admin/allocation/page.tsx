@@ -22,8 +22,8 @@ interface CashflowPlan {
 }
 
 export default function AdminAllocationPage() {
-  const { data: allocation, isLoading: aLoading } = useSWR<AllocationData>('/api/allocation', swrFetcher);
-  const { data: cashflow, isLoading: cLoading } = useSWR<CashflowPlan>('/api/allocation/cashflow-plan', swrFetcher);
+const { data: allocation, isLoading: aLoading } = useSWR<AllocationData>('/api/proxy/allocation', swrFetcher);
+  const { data: cashflow, isLoading: cLoading } = useSWR<CashflowPlan>('/api/proxy/allocation/cashflow-plan', swrFetcher);
 
   if (aLoading || cLoading) {
     return (

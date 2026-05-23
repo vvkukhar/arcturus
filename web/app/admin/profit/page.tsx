@@ -44,10 +44,10 @@ interface VelocityStats {
 }
 
 export default function AdminProfitPage() {
-  const { data: summary, isLoading: sLoading } = useSWR<ProfitSummary>('/api/profit/summary', swrFetcher);
-  const { data: monthly = [], isLoading: mLoading } = useSWR<MonthlyProfit[]>('/api/profit/monthly', swrFetcher);
-  const { data: themes = [], isLoading: tLoading } = useSWR<ThemeProfit[]>('/api/profit/by-theme', swrFetcher);
-  const { data: velocity, isLoading: vLoading } = useSWR<VelocityStats>('/api/profit/velocity?days=30', swrFetcher);
+const { data: summary, isLoading: sLoading } = useSWR<ProfitSummary>('/api/proxy/profit/summary', swrFetcher);
+  const { data: monthly = [], isLoading: mLoading } = useSWR<MonthlyProfit[]>('/api/proxy/profit/monthly', swrFetcher);
+  const { data: themes = [], isLoading: tLoading } = useSWR<ThemeProfit[]>('/api/proxy/profit/by-theme', swrFetcher);
+  const { data: velocity, isLoading: vLoading } = useSWR<VelocityStats>('/api/proxy/profit/velocity?days=30', swrFetcher);
 
   if (sLoading || mLoading || tLoading || vLoading) {
     return (

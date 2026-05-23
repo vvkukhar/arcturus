@@ -18,7 +18,7 @@ interface CompRow {
 }
 
 export function CompsPanel() {
-  const { data, mutate } = useSWR<CompRow[]>('/api/comps/sold', swrFetcher);
+  const { data, mutate } = useSWR<CompRow[]>('/api/proxy/comps/sold', swrFetcher);
   const rows = Array.isArray(data) ? data : [];
 
   const [sourceCode, setSourceCode] = useState('');
@@ -41,7 +41,7 @@ export function CompsPanel() {
         throw new Error('Invalid JSON format. Payload must be a valid JSON array.');
       }
 
-      await apiFetch('/api/comps/ingest', {
+      await apiFetch('/api/proxy/comps/ingest', {
         method: 'POST',
         body: JSON.stringify({ sourceCode: sourceCode.trim(), comps }),
       });

@@ -12,6 +12,7 @@ import { SyncOrchestratorService } from './sync-orchestrator.service';
 import { SyncService } from './sync.service';
 import { SyncStateService } from './sync-state.service';
 import { QUEUE_NAMES } from '../queue/queue.constants';
+// 🔥 ДОДАНІ ІМПОРТИ
 import { SyncRunsController } from './sync-runs.controller';
 import { SyncRunsService } from './sync-runs.service';
 
@@ -42,8 +43,8 @@ import { SyncRunsService } from './sync-runs.service';
       name: QUEUE_NAMES.SYNC,
     }),
   ],
-  controllers: [SyncController, SyncRunsController],
-  providers: [SyncService, SyncStateService, SyncOrchestratorService, SyncRunsService],
-  exports: [SyncService, SyncStateService, SyncOrchestratorService, SyncRunsService],
+  controllers: [SyncController, SyncRunsController], // 🔥 ДОДАНО СЮДИ
+  providers: [SyncService, SyncStateService, SyncOrchestratorService, SyncRunsService], // 🔥 ДОДАНО СЮДИ
+  exports: [SyncService, SyncStateService, SyncOrchestratorService, SyncRunsService], // 🔥 ДОДАНО СЮДИ
 })
 export class SyncModule {}

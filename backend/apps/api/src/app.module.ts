@@ -60,6 +60,7 @@ import { SyncModule } from './modules/sync/sync.module';
 import { UsersModule } from './modules/users/users.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { MediaModule } from './modules/media/media.module';
+import { AllocationModule } from './modules/allocation/allocation.module';
 
 @Module({
   imports: [
@@ -123,6 +124,7 @@ import { MediaModule } from './modules/media/media.module';
     UsersModule,
     WarehouseModule,
     MediaModule 
+    AllocationModule
   ],
   controllers: [],
   providers: [],
