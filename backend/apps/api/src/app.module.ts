@@ -123,7 +123,7 @@ import { AllocationModule } from './modules/allocation/allocation.module';
     SyncModule,
     UsersModule,
     WarehouseModule,
-    MediaModule 
+    MediaModule,
     AllocationModule
   ],
   controllers: [],
