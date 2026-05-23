@@ -59,8 +59,6 @@ import { SuggestionsModule } from './modules/suggestions/suggestions.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { UsersModule } from './modules/users/users.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
-
-// 🔥 ДОДАНО СЮДИ 🔥
 import { MediaModule } from './modules/media/media.module';
 
 @Module({
@@ -124,7 +122,7 @@ import { MediaModule } from './modules/media/media.module';
     SyncModule,
     UsersModule,
     WarehouseModule,
-    MediaModule // 🔥 І СЮДИ ДОДАНО 🔥
+    MediaModule 
   ],
   controllers: [],
   providers: [],

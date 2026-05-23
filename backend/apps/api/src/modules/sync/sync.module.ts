@@ -12,6 +12,8 @@ import { SyncOrchestratorService } from './sync-orchestrator.service';
 import { SyncService } from './sync.service';
 import { SyncStateService } from './sync-state.service';
 import { QUEUE_NAMES } from '../queue/queue.constants';
+import { SyncRunsController } from './sync-runs.controller';
+import { SyncRunsService } from './sync-runs.service';
 
 @Module({
   imports: [
@@ -40,8 +42,8 @@ import { QUEUE_NAMES } from '../queue/queue.constants';
       name: QUEUE_NAMES.SYNC,
     }),
   ],
-  controllers: [SyncController],
-  providers: [SyncService, SyncStateService, SyncOrchestratorService],
-  exports: [SyncService, SyncStateService, SyncOrchestratorService],
+  controllers: [SyncController, SyncRunsController],
+  providers: [SyncService, SyncStateService, SyncOrchestratorService, SyncRunsService],
+  exports: [SyncService, SyncStateService, SyncOrchestratorService, SyncRunsService],
 })
 export class SyncModule {}
