@@ -44,7 +44,7 @@ export default function PerformancePage() {
   const { t } = useI18n();
 
   const { data: themeData, isLoading: tLoading } = useSWR<ThemeData[]>('/api/profit/by-theme', swrFetcher);
-  const { data: catalogData, isLoading: cLoading } = useSWR<CatalogData[]>('/api/public/catalog', swrFetcher);
+  const { data: catalogData, isLoading: cLoading } = useSWR<CatalogData[]>('/api/proxy/public/catalog', swrFetcher);
   const { data: stats, isLoading: sLoading } = useSWR<PortfolioData>('/api/portfolio/summary', swrFetcher);
 
   if (tLoading || cLoading || sLoading) {
