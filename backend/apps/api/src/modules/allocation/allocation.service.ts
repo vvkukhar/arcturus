@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { toMoney } from '@arcturus/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AllocationService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getCapitalAllocation(): Promise<unknown> {
+  async getCapitalAllocation(): Promise<any> {
     const [
       inventoryAgg,
       salesAgg,
@@ -58,9 +58,13 @@ export class AllocationService {
         _sum: { amount: true },
       }),
       this.prisma.inventoryItem.findMany({
+        where: { quantity: { gt: 0 } },
         select: {
+          id: true,
           totalCost: true,
           quantity: true,
+          createdAt: true,
+          expectedSalePriceManual: true,
           item: { select: { theme: true } },
           location: { select: { warehouse: { select: { name: true } } } },
         },
@@ -83,6 +87,12 @@ export class AllocationService {
     const byTheme = new Map<string, { cost: number; count: number; units: number }>();
     const byWarehouse = new Map<string, { cost: number; count: number; units: number }>();
 
+    // Калькуляція ризиків ліквідності: шукаємо заморожені активи (старші за 45 днів)
+    let stagnantCapital = 0;
+    const stagnantItems: any[] = [];
+    const now = Date.now();
+    const STAGNANT_THRESHOLD = 45 * 24 * 60 * 60 * 1000; // 45 днів
+
     for (const item of inventoryData) {
       const theme = item.item?.theme ?? 'Unknown';
       const tData = byTheme.get(theme) ?? { cost: 0, count: 0, units: 0 };
@@ -97,6 +107,18 @@ export class AllocationService {
       wData.count += 1;
       wData.units += item.quantity;
       byWarehouse.set(warehouse, wData);
+
+      // Перевірка на заморожений капітал
+      const age = now - new Date(item.createdAt).getTime();
+      if (age > STAGNANT_THRESHOLD) {
+        stagnantCapital += Number(item.totalCost);
+        stagnantItems.push({
+          id: item.id,
+          title: item.titleSnapshot,
+          cost: item.totalCost,
+          ageDays: Math.floor(age / (24 * 60 * 60 * 1000)),
+        });
+      }
     }
 
     return {
@@ -110,6 +132,8 @@ export class AllocationService {
       activeBuyNeed,
       committedProcurementCost,
       receivedProcurementCost,
+      stagnantCapital: toMoney(stagnantCapital),
+      stagnantItems,
       capitalAtWork: toMoney(inventoryCost + committedProcurementCost),
       inventoryCount: inventoryAgg._count,
       inventoryUnits: inventoryAgg._sum.quantity ?? 0,
@@ -130,30 +154,29 @@ export class AllocationService {
         cost: toMoney(group._sum.totalCost ?? group._sum.actualPrice ?? group._sum.plannedPrice ?? 0),
         count: group._count,
       })),
-      byReturnStatus: returnGroups.map((group) => ({
-        status: group.status,
-        refundAmount: toMoney(group._sum.refundAmount ?? 0),
-        count: group._count,
-      })),
-      byExpenseCategory: expenseGroups.map((group) => ({
-        category: group.category,
-        amount: toMoney(group._sum.amount ?? 0),
-        count: group._count,
+      byThemeRatio: Array.from(byTheme.entries()).map(([theme, value]) => ({
+        theme,
+        ratio: inventoryCost > 0 ? toMoney((value.cost / inventoryCost) * 100) : 0,
       })),
     };
   }
 
-  async getCashflowPlan(params?: { monthlyBudget?: number; reinvestPercent?: number }): Promise<unknown> {
-    const monthlyBudget = params?.monthlyBudget ?? 17000;
-    const reinvestPercent = params?.reinvestPercent ?? 80;
+  async getCashflowPlan(params?: { monthlyBudget?: number; reinvestPercent?: number }): Promise<any> {
+    const monthlyBudget = params?.monthlyBudget ?? 50000; // Підвищили капітал по дефолту
+    const reinvestPercent = params?.reinvestPercent ?? 85;
 
-    const stats = (await this.getCapitalAllocation()) as any;
+    const stats = await this.getCapitalAllocation();
 
     const reinvestAmount = toMoney((monthlyBudget * reinvestPercent) / 100);
     const reserveAmount = toMoney(monthlyBudget - reinvestAmount);
 
-    const averageItemCost = stats.inventoryCount > 0 ? stats.inventoryCost / stats.inventoryCount : 1000;
+    const averageItemCost = stats.inventoryCount > 0 ? stats.inventoryCost / stats.inventoryCount : 1500;
     const estimatedNewItems = Math.floor(reinvestAmount / averageItemCost);
+
+    // Розрахунок індексу реінвестування
+    const liquidityPressureIndex = stats.stagnantCapital > 0 
+      ? toMoney((stats.stagnantCapital / stats.inventoryCost) * 100) 
+      : 0;
 
     return {
       monthlyBudget,
@@ -162,14 +185,14 @@ export class AllocationService {
       reserveAmount,
       averageItemCost: toMoney(averageItemCost),
       estimatedNewItems,
+      liquidityPressureIndex,
+      actionRequired: liquidityPressureIndex > 30 ? 'LIQUIDATE_STAGNANT' : 'OPTIMAL_ROUTING',
       currentInventoryCost: stats.inventoryCost,
       committedProcurementCost: stats.committedProcurementCost,
       capitalAtWork: stats.capitalAtWork,
       currentExpectedValue: stats.inventoryExpectedValue,
       currentUnrealizedProfit: stats.unrealizedProfit,
-      grossRealizedProfit: stats.grossRealizedProfit,
-      refundAmount: stats.refundAmount,
-      operatingExpenses: stats.operatingExpenses,
+      stagnantCapital: stats.stagnantCapital,
       realizedProfit: stats.realizedProfit,
     };
   }

@@ -1,4 +1,4 @@
-import type { Job } from 'bullmq';
+import { Job } from 'bullmq';
 import { cleanupOldSnapshotsJob } from '../jobs/cleanup-old-snapshots.job';
 import { detectDealsJob } from '../jobs/detect-deals.job';
 import { markStaleListingsJob } from '../jobs/mark-stale-listings.job';
@@ -8,6 +8,7 @@ import { runScannerJob } from '../jobs/run-scanner-job';
 import { scheduledRefreshJob } from '../jobs/scheduled-refresh.job';
 import { sourceHealthRollupJob } from '../jobs/source-health-rollup.job';
 import { globalSyncRefreshJob } from '../jobs/global-sync-refresh.job';
+import { portfolioRebalancingJob } from '../jobs/portfolio-rebalancing.job'; // <-- ДОДАНО ІМПОРТ
 import { JOB_NAMES } from './queue.constants';
 
 export async function routeJob(job: Job): Promise<unknown> {
@@ -31,6 +32,8 @@ export async function routeJob(job: Job): Promise<unknown> {
       return runScannerJob(job.data.jobId);
     case JOB_NAMES.GLOBAL_SYNC_REFRESH:
       return globalSyncRefreshJob(job.data);
+    case 'portfolio-rebalancing': // <-- Обробили нову задачу ребалансування капіталу
+      return portfolioRebalancingJob();
     default:
       throw new Error(`Unknown job name: ${job.name}`);
   }

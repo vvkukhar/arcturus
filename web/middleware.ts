@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = new Set(['/manifest.json', '/favicon.ico', '/login', '/register']);
+const PUBLIC_PATHS = new Set(['/manifest.json', '/favicon.ico', '/login', '/register', '/store', '/about', '/delivery', '/track']);
 const STATIC_EXTENSION_REGEX = /\.(?!html|json)[^.]+$/i;
 
 export async function middleware(req: NextRequest) {
@@ -16,34 +16,21 @@ export async function middleware(req: NextRequest) {
 
   const token = req.cookies.get('arcturus_admin_token')?.value;
   const isAdminRoute = pathname.startsWith('/admin');
-  const isPublicPath = PUBLIC_PATHS.has(pathname);
-  
-  // Бекенд використовує Opaque Tokens (hex), а не JWT.
-  // Мідлвар лише перевіряє наявність куки. 
-  // Реальна валідація токена проходить в <AuthGate> через /api/auth/me.
   const isAuth = !!token;
-
+  
+  // Якщо юзер на адмінці, але немає токена — на логін
   if (isAdminRoute && !isAuth) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  if (isPublicPath && isAuth && (pathname === '/login' || pathname === '/register')) {
-    return NextResponse.redirect(new URL('/admin/dashboard', req.url));
+  // Якщо авторизований юзер заходить на логін/реєстрацію — на дашборд або акаунт
+  if (isAuth && (pathname === '/login' || pathname === '/register')) {
+    // В ідеалі тут треба перевірити роль через /api/auth/me, 
+    // але для швидкості кидаємо в кабінет, а AuthGate на фронті розрулить
+    return NextResponse.redirect(new URL('/account', req.url));
   }
 
-  const res = NextResponse.next();
-  
-  res.headers.set('X-Arcturus-Auth', isAuth ? '1' : '0');
-  res.headers.set('X-Content-Type-Options', 'nosniff');
-  res.headers.set('X-Frame-Options', 'DENY');
-  res.headers.set('X-XSS-Protection', '1; mode=block');
-  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
-  if (process.env.NODE_ENV === 'production') {
-    res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-  }
-
-  return res;
+  return NextResponse.next();
 }
 
 export const config = {

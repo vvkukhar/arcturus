@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { calculateProfit, calculateRoiPercent, toMoney } from '@arcturus/shared';
+import { toMoney } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,7 +29,7 @@ export class SalesService {
     if (!Number.isFinite(params.sellPrice) || params.sellPrice <= 0) throw new BadRequestException('sellPrice must be positive');
     if (!Number.isInteger(quantity) || quantity <= 0) throw new BadRequestException('quantity must be positive integer');
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const inventoryItem = await tx.inventoryItem.findUnique({
         where: { id: params.inventoryItemId }
       });
@@ -47,10 +47,22 @@ export class SalesService {
       }
 
       const unitCost = inventoryItem.quantity > 0 ? Number(inventoryItem.totalCost) / inventoryItem.quantity : Number(inventoryItem.totalCost);
-      const costBasis = toMoney(unitCost * quantity);
+      let costBasis = toMoney(unitCost * quantity);
       const sellPrice = toMoney(params.sellPrice);
-      const profit = calculateProfit({ revenue: sellPrice, cost: costBasis });
-      const roiPercent = calculateRoiPercent({ profit, cost: costBasis });
+      let profit = calculateProfit({ revenue: sellPrice, cost: costBasis });
+      let roiPercent = calculateRoiPercent({ profit, cost: costBasis });
+
+      let commissionAmount = null;
+      let sellerPayout = null;
+
+      if (inventoryItem.isMarketplace) {
+        commissionAmount = toMoney((sellPrice * inventoryItem.commissionRate) / 100);
+        sellerPayout = toMoney(sellPrice - commissionAmount);
+        
+        costBasis = sellerPayout; 
+        profit = commissionAmount; 
+        roiPercent = 100;
+      }
 
       const sale = await tx.sale.create({
         data: {
@@ -64,6 +76,10 @@ export class SalesService {
           channel: params.channel ?? null,
           buyerName: params.buyerName ?? null,
           notes: params.notes ?? null,
+          isMarketplaceSale: inventoryItem.isMarketplace,
+          commissionAmount,
+          sellerPayout,
+          payoutStatus: inventoryItem.isMarketplace ? 'pending' : 'paid',
         },
         include: {
           inventoryItem: { include: { item: true, assignedUser: true } },
@@ -85,38 +101,49 @@ export class SalesService {
 
       return sale;
     });
+  }
 
-    await this.activity.log('sale.registered', {
-      saleId: result.id,
-      inventoryItemId: params.inventoryItemId,
-      itemId: result.itemId,
-      title: result.inventoryItem.titleSnapshot,
-      sellPrice: result.sellPrice,
-      costBasis: result.costBasis,
-      profit: result.profit,
-      roiPercent: result.roiPercent,
-      quantity,
+  async getPendingPayouts(): Promise<unknown[]> {
+    // Отримуємо запити на виплату, які очікують обробки
+    return this.prisma.payoutRequest.findMany({
+      where: { status: 'pending' },
+      include: { seller: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async markPayoutPaid(payoutRequestId: string): Promise<unknown> {
+    const request = await this.prisma.payoutRequest.findUnique({
+      where: { id: payoutRequestId }
     });
 
-    await this.notifications.createSaleNotification({
-      itemTitle: result.inventoryItem.titleSnapshot,
-      profit: Number(result.profit),
-      targetUserId: result.inventoryItem.assignedUserId ?? null,
+    if (!request) throw new NotFoundException('Payout request not found');
+    if (request.status !== 'pending' && request.status !== 'processing') {
+      throw new BadRequestException('Request is already processed');
+    }
+
+    const updated = await this.prisma.payoutRequest.update({
+      where: { id: payoutRequestId },
+      data: { status: 'paid' },
+      include: { seller: true }
     });
 
-    this.realtime.emitSaleRegistered({
-      id: result.id,
-      title: result.inventoryItem.titleSnapshot,
-      profit: result.profit,
-      sellPrice: result.sellPrice,
-      quantity,
+    await this.activity.log('marketplace.payout_completed', {
+      payoutRequestId: updated.id,
+      amount: updated.amount,
+      sellerId: updated.sellerId,
+      cardData: updated.cardData,
     });
 
-    this.realtime.emitInventoryRefresh({ inventoryItemId: params.inventoryItemId, reason: 'sale_registered' });
-    this.realtime.emitDashboardRefresh('sale_registered');
-    this.realtime.emitOpportunityRefresh('sale_registered');
+    // Надсилаємо системне сповіщення селеру в кабінет
+    await this.notifications.create({
+      title: 'Виплату виконано!',
+      message: `Кошти у розмірі ${formatMoney(updated.amount)} успішно перераховані на вашу картку.`,
+      type: 'payment',
+      targetUserId: updated.sellerId,
+    });
 
-    return result;
+    return updated;
   }
 
   async list(params?: { q?: string; limit?: number; offset?: number }): Promise<unknown[]> {
@@ -162,10 +189,6 @@ export class SalesService {
 
     const totalExpenses = toMoney(expenses.reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0));
     
-    const returnedSalesIds = new Set(
-      returns.filter((row) => ['approved', 'resolved'].includes(row.status)).map((row) => row.saleId),
-    );
-
     const grossProfit = toMoney(sales.reduce((sum, sale) => sum + Number(sale.profit ?? 0), 0));
     const grossRevenue = toMoney(sales.reduce((sum, sale) => sum + Number(sale.sellPrice ?? 0), 0));
     const totalCostBasis = toMoney(sales.reduce((sum, sale) => sum + Number(sale.costBasis ?? 0), 0));
@@ -187,7 +210,6 @@ export class SalesService {
       totalExpenses,
       totalCostBasis,
       salesCount: sales.length,
-      returnedSalesCount: returnedSalesIds.size,
       unitsSold,
       avgRoi,
     };
@@ -196,23 +218,12 @@ export class SalesService {
   async deleteSale(id: string): Promise<unknown> {
     const existing = await this.prisma.sale.findUnique({
       where: { id },
-      include: {
-        returns: true,
-        expenses: true,
-      },
+      include: { returns: true, expenses: true },
     });
 
-    if (!existing) {
-      throw new NotFoundException('Sale not found');
-    }
-
-    if (existing.returns.length > 0) {
-      throw new BadRequestException('Cannot delete sale with active return requests');
-    }
-
-    if (existing.expenses.length > 0) {
-      throw new BadRequestException('Cannot delete sale with active linked expenses');
-    }
+    if (!existing) throw new NotFoundException('Sale not found');
+    if (existing.returns.length > 0) throw new BadRequestException('Cannot delete sale with active returns');
+    if (existing.expenses.length > 0) throw new BadRequestException('Cannot delete sale with linked expenses');
 
     const deleted = await this.prisma.$transaction(async (tx) => {
       await tx.inventoryItem.update({
@@ -238,15 +249,19 @@ export class SalesService {
       });
     });
 
-    await this.activity.log('sale.deleted', {
-      saleId: id,
-      inventoryItemId: existing.inventoryItemId,
-      quantityRestored: existing.quantity,
-    });
-
+    await this.activity.log('sale.deleted', { saleId: id, inventoryItemId: existing.inventoryItemId, quantityRestored: existing.quantity });
     this.realtime.emitInventoryRefresh({ inventoryItemId: existing.inventoryItemId, reason: 'sale_deleted' });
     this.realtime.emitDashboardRefresh('sale_deleted');
 
     return deleted;
   }
+}
+
+// Хелпери для розрахунків фінансів всередині файлу
+function calculateProfit(params: { revenue: number; cost: number }): number {
+  return toMoney(params.revenue - params.cost);
+}
+function calculateRoiPercent(params: { profit: number; cost: number }): number {
+  if (params.cost <= 0) return 0;
+  return Number(((params.profit / params.cost) * 100).toFixed(2));
 }

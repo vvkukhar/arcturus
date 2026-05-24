@@ -95,7 +95,7 @@ export async function resolveItemIdFromTitle(titleRaw: string): Promise<string |
   await ensureIndexBuilt();
 
   const normalizedTitle = cacheKey.replace(/[^a-z0-9]/g, ' ');
-  const setNumberMatch = normalizedTitle.match(/\b\d{4,5}\b/);
+  const setNumberMatch = normalizedTitle.match(/\b([a-zA-Z]{2,4}-?\d{2,5}[a-zA-Z]?|\d{4,7})\b/i);
 
   if (setNumberMatch) {
     const setNumber = setNumberMatch[0];

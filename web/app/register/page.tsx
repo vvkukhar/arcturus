@@ -25,13 +25,14 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading || !formData.name.trim() || !formData.email.trim() || !formData.password.trim() || !formData.inviteCode.trim()) return;
+    // Invite code is now fully optional!
+    if (loading || !formData.name.trim() || !formData.email.trim() || !formData.password.trim()) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      await apiFetch('/api/auth/register', {
+      const response = await apiFetch<any>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify({
           name: formData.name.trim(),
@@ -41,7 +42,13 @@ export default function RegisterPage() {
         }),
       });
 
-      router.push('/admin/dashboard');
+      // Route the user based on the role they were assigned
+      if (response.user?.role === 'admin' || response.user?.role === 'operator') {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/account');
+      }
+      
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
@@ -64,7 +71,7 @@ export default function RegisterPage() {
           <div className="text-center mb-10">
             <h1 className="text-3xl font-black tracking-tight text-[var(--foreground)]">Join Arcturus</h1>
             <p className="mt-3 text-sm font-medium text-slate-500">
-              Enter your invite code to create an operator account.
+              Create an account to sell, scout, and track orders.
             </p>
           </div>
 
@@ -95,7 +102,7 @@ export default function RegisterPage() {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="operator@arcturus.local"
+                  placeholder="user@example.com"
                   className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-4 pl-12 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all focus:border-emerald-500 focus:bg-[var(--card)] focus:outline-none focus:ring-4 focus:ring-emerald-500/10 placeholder:text-slate-400"
                 />
               </div>
@@ -118,16 +125,15 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Invite Code</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Invite Code (Optional)</label>
               <div className="relative">
                 <KeySquare size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  required
                   name="inviteCode"
                   type="password"
                   value={formData.inviteCode}
                   onChange={handleChange}
-                  placeholder="Ask your admin"
+                  placeholder="Leave empty for standard account"
                   className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-4 pl-12 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all focus:border-emerald-500 focus:bg-[var(--card)] focus:outline-none focus:ring-4 focus:ring-emerald-500/10 placeholder:text-slate-400"
                 />
               </div>
@@ -143,7 +149,7 @@ export default function RegisterPage() {
               <Button
                 type="submit"
                 className="w-full h-14 text-base rounded-xl font-black bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-600/20 active:scale-[0.98]"
-                disabled={loading || !formData.name.trim() || !formData.email.trim() || !formData.password.trim() || !formData.inviteCode.trim()}
+                disabled={loading || !formData.name.trim() || !formData.email.trim() || !formData.password.trim()}
               >
                 {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
                 {loading ? 'Creating Account...' : 'Register'}

@@ -7,8 +7,9 @@ export function normalizeTitle(value: string): string {
 }
 
 export function extractSetNumber(value: string): string | null {
-  const match = value.match(/\b\d{4,7}\b/);
-  return match?.[0] ?? null;
+  // Ловить набори (75192) та фіги (njo0012, sw1020, col011a)
+  const match = value.match(/\b([a-zA-Z]{2,4}-?\d{2,5}[a-zA-Z]?|\d{4,7})\b/i);
+  return match ? match[0].toLowerCase() : null;
 }
 
 export function slugify(value: string): string {

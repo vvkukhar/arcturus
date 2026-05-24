@@ -8,7 +8,7 @@ import {
   ChartColumn, ChartNoAxesCombined, ClipboardList, Coins, DatabaseZap,
   Gauge, Handshake, KanbanSquare, MailCheck, Package, ReceiptText,
   RefreshCw, ScanSearch, ScrollText, SearchCheck, Users, Wallet,
-  Globe, ScanBarcode
+  Globe, ScanBarcode, Store
 } from 'lucide-react';
 import { NotificationBadge } from '@/components/admin/notification-badge';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,7 @@ export function AdminSidebar() {
     { href: '/admin/algo', label: 'admin.algo', icon: BrainCircuit },
     { href: '/admin/arbitrage', label: 'admin.arbitrage', icon: Globe },
     { href: '/admin/inventory', label: 'admin.inventory', icon: Package },
+    { href: '/admin/marketplace', label: 'Marketplace', icon: Store },
     { href: '/admin/watchlist', label: 'admin.watchlist', icon: Wallet },
     { href: '/admin/opportunities/buy', label: 'admin.opportunities', icon: ChartColumn },
     { href: '/admin/opportunities/sell', label: 'admin.opportunities', icon: ChartColumn },
@@ -88,7 +89,7 @@ export function AdminSidebar() {
               )}
             >
               <Icon size={18} strokeWidth={active ? 2.5 : 2} />
-              <span>{item.label === 'POS Terminal' ? item.label : t(item.label as any) as string}</span>
+              <span>{item.label === 'POS Terminal' || item.label === 'Marketplace' ? item.label : t(item.label as any) as string}</span>
             </Link>
           );
         })}

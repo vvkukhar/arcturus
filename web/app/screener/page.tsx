@@ -6,6 +6,7 @@ import { useI18n } from '@/components/providers/i18n-provider';
 import { Filter, Search, Download, Loader2 } from 'lucide-react';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney } from '@/lib/format';
+import { ProGate } from '@/components/store/pro-gate';
 
 interface ScreenerItem {
   id: string;

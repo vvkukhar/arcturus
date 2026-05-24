@@ -6,13 +6,16 @@ export class HealthService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getHealth(): Promise<unknown> {
-    // ВАЖЛИВО: Render дуже часто пінгує цей роут. Ми робимо його максимально легким, 
-    // щоб не навантажувати базу і не відвалюватися по тайм-ауту під час деплою.
+    // Перевіряємо, чи працюють основні "артерії"
+    const [snapshotCount, listingCount] = await Promise.all([
+      this.prisma.marketSnapshot.count({ where: { computedAt: { gte: new Date(Date.now() - 3600000) } } }), // за останню годину
+      this.prisma.marketListing.count({ where: { fetchedAt: { gte: new Date(Date.now() - 3600000) } } })
+    ]);
+
     return {
-      status: 'ok',
-      service: 'arcturus-api',
+      status: snapshotCount > 0 ? 'healthy' : 'degraded',
       uptimeSec: Math.round(process.uptime()),
-      env: process.env.NODE_ENV ?? 'development',
+      metrics: { snapshotCount, listingCount },
       time: new Date().toISOString(),
     };
   }

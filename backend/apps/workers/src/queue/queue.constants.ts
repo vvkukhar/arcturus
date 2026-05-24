@@ -16,4 +16,5 @@ export const JOB_NAMES = {
   SOURCE_HEALTH_ROLLUP: 'source-health-rollup',
   CLEANUP_OLD_SNAPSHOTS: 'cleanup-old-snapshots',
   GLOBAL_SYNC_REFRESH: 'global-sync-refresh',
+  PORTFOLIO_REBALANCING: 'portfolio-rebalancing'
 } as const;

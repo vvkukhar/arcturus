@@ -33,7 +33,7 @@ export class PublicStoreService {
     return { createdAt: 'desc' };
   }
 
-  async getCatalog(params: { q?: string; type?: string; availableOnly?: boolean; theme?: string; sort?: string; limit?: number }): Promise<unknown[]> {
+  async getCatalog(params: { q?: string; type?: string; availableOnly?: boolean; theme?: string; sort?: string; limit?: number; seller?: string }): Promise<unknown[]> {
     const cacheKey = `public_catalog:${JSON.stringify(params)}`;
     
     if (!params.q) {
@@ -47,6 +47,12 @@ export class PublicStoreService {
     const data = await this.prisma.inventoryItem.findMany({
       where: {
         quantity: params.availableOnly === true ? { gt: 0 } : undefined,
+        // ФІЛЬТР: Або це наш товар, або він апрувнутий
+        OR: [
+          { isMarketplace: false },
+          { isMarketplace: true, approvalStatus: 'approved' }
+        ],
+        ...(params.seller === 'community' ? { isMarketplace: true } : params.seller === 'arcturus' ? { isMarketplace: false } : {}),
         ...(params.type && params.type !== 'all' ? { item: { kind: params.type } } : {}),
         ...(params.theme ? { item: { theme: { equals: params.theme, mode: 'insensitive' } } } : {}),
         ...(q ? { OR: [
@@ -81,7 +87,7 @@ export class PublicStoreService {
     const normalized = slug.trim().toLowerCase();
 
     const all = await this.prisma.inventoryItem.findMany({
-      where: { quantity: { gt: 0 } },
+      where: { quantity: { gt: 0 }, OR: [{ isMarketplace: false }, { isMarketplace: true, approvalStatus: 'approved' }] },
       include: {
         item: true,
         images: { orderBy: { sortOrder: 'asc' } },
@@ -110,6 +116,7 @@ export class PublicStoreService {
       where: {
         id: { not: item.id },
         quantity: { gt: 0 },
+        OR: [{ isMarketplace: false }, { isMarketplace: true, approvalStatus: 'approved' }],
         item: {
           ...(theme ? { theme } : {}),
           ...(kind ? { kind } : {}),

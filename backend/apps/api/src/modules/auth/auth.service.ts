@@ -7,7 +7,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { User } from '@prisma/client';
 
-export type AuthUser = Pick<User, 'id' | 'name' | 'email' | 'role'>;
+export type AuthUser = Pick<User, 'id' | 'name' | 'email' | 'role' | 'isPro' | 'proExpiresAt'>;
 
 @Injectable()
 export class AuthService {
@@ -42,12 +42,23 @@ export class AuthService {
       name: session.user.name,
       email: session.user.email,
       role: session.user.role,
+      isPro: session.user.isPro,
+      proExpiresAt: session.user.proExpiresAt,
     };
   }
 
   async register(dto: RegisterDto): Promise<{ token: string; user: AuthUser }> {
-    if (dto.inviteCode !== (process.env.ADMIN_INVITE_CODE || 'arcturus-init')) {
-      throw new BadRequestException('Invalid invite code');
+    const adminCode = process.env.ADMIN_INVITE_CODE || 'arcturus-init';
+    
+    // Default role for standard clients, scouts, and marketplace sellers
+    let role = 'viewer'; 
+
+    // If an invite code is provided, check if it's the admin code
+    if (dto.inviteCode && dto.inviteCode.trim() !== '') {
+      if (dto.inviteCode !== adminCode) {
+        throw new BadRequestException('Invalid invite code');
+      }
+      role = 'operator'; // Upgrade to staff
     }
 
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
@@ -57,7 +68,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
-      data: { name: dto.name, email: dto.email, passwordHash: hashedPassword, role: 'operator', active: true },
+      data: { name: dto.name, email: dto.email, passwordHash: hashedPassword, role, active: true },
     });
 
     const rawToken = crypto.randomBytes(32).toString('hex');
@@ -66,7 +77,17 @@ export class AuthService {
 
     await this.prisma.userSession.create({ data: { userId: user.id, tokenHash, expiresAt } });
 
-    return { token: rawToken, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+    return { 
+      token: rawToken, 
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        isPro: user.isPro,
+        proExpiresAt: user.proExpiresAt,
+      } 
+    };
   }
 
   async login(dto: LoginDto): Promise<{ token: string; user: AuthUser }> {
@@ -90,7 +111,17 @@ export class AuthService {
 
     await this.prisma.userSession.create({ data: { userId: user.id, tokenHash, expiresAt } });
 
-    return { token: rawToken, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+    return { 
+      token: rawToken, 
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        isPro: user.isPro,
+        proExpiresAt: user.proExpiresAt,
+      } 
+    };
   }
 
   async logout(rawToken: string): Promise<void> {

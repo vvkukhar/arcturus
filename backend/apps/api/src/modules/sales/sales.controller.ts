@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Query,
-  UseGuards,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -29,6 +21,16 @@ export class SalesController {
       limit: limit ? Number(limit) : 50,
       offset: offset ? Number(offset) : 0,
     });
+  }
+
+  @Get('payouts/pending')
+  getPendingPayouts() {
+    return this.salesService.getPendingPayouts();
+  }
+
+  @Patch('payouts/:id/pay')
+  markPayoutPaid(@Param('id') id: string) {
+    return this.salesService.markPayoutPaid(id);
   }
 
   @Get('stats')

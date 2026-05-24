@@ -373,6 +373,7 @@ bash scripts/ops-healthcheck.sh
   },
   "devDependencies": {
     "@types/uuid": "^10.0.0",
+    "tsx": "^4.22.3",
     "typescript": "^5.7.2"
   }
 }
@@ -1852,9 +1853,9 @@ import { SuggestionsModule } from './modules/suggestions/suggestions.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { UsersModule } from './modules/users/users.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
-
-// рџ”Ґ Р”РћР”РђРќРћ РЎР®Р”Р рџ”Ґ
 import { MediaModule } from './modules/media/media.module';
+import { AllocationModule } from './modules/allocation/allocation.module';
+import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 
 @Module({
   imports: [
@@ -1917,7 +1918,9 @@ import { MediaModule } from './modules/media/media.module';
     SyncModule,
     UsersModule,
     WarehouseModule,
-    MediaModule // рџ”Ґ Р† РЎР®Р”Р Р”РћР”РђРќРћ рџ”Ґ
+    MediaModule,
+    AllocationModule,
+    MarketplaceModule
   ],
   controllers: [],
   providers: [],
@@ -2426,9 +2429,11 @@ export class ActivityController {
 
 import { Global, Module } from '@nestjs/common';
 import { ActivityService } from './activity.service';
+import { ActivityController } from './activity.controller';
 
 @Global()
 @Module({
+  controllers: [ActivityController], // рџ”Ґ Р”РћР”РђРќРћ РЎР®Р”Р
   providers: [ActivityService],
   exports: [ActivityService],
 })
@@ -2483,16 +2488,16 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Controller('ai')
+@Controller('ai/suggestions') // рџ”Ґ Р—РјС–РЅРµРЅРѕ Р· 'ai' РЅР° 'ai/suggestions'
 export class AiSuggestionsController {
   constructor(private readonly service: AiSuggestionsService) {}
 
-  @Get('suggestions')
+  @Get() // рџ”Ґ РџСЂРёР±СЂР°РЅРѕ 'suggestions', Р±Рѕ РІРѕРЅРѕ РІР¶Рµ РІ РєРѕРЅС‚СЂРѕР»РµСЂС–
   getSuggestions() {
     return this.service.getSuggestions();
   }
 
-  @Post('explain-deal')
+  @Post('explain-rules') // рџ”Ґ Р—РјС–РЅРµРЅРѕ, С‰РѕР± РЅРµ РєРѕРЅС„Р»С–РєС‚СѓРІР°С‚Рё Р· OpenAiService
   explainDeal(
     @Body()
     body: {
@@ -3158,7 +3163,7 @@ export class AllocationModule {}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\allocation\allocation.service.ts =====
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { toMoney } from '@arcturus/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -3166,7 +3171,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AllocationService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getCapitalAllocation(): Promise<unknown> {
+  async getCapitalAllocation(): Promise<any> {
     const [
       inventoryAgg,
       salesAgg,
@@ -3218,9 +3223,13 @@ export class AllocationService {
         _sum: { amount: true },
       }),
       this.prisma.inventoryItem.findMany({
+        where: { quantity: { gt: 0 } },
         select: {
+          id: true,
           totalCost: true,
           quantity: true,
+          createdAt: true,
+          expectedSalePriceManual: true,
           item: { select: { theme: true } },
           location: { select: { warehouse: { select: { name: true } } } },
         },
@@ -3243,6 +3252,12 @@ export class AllocationService {
     const byTheme = new Map<string, { cost: number; count: number; units: number }>();
     const byWarehouse = new Map<string, { cost: number; count: number; units: number }>();
 
+    // РљР°Р»СЊРєСѓР»СЏС†С–СЏ СЂРёР·РёРєС–РІ Р»С–РєРІС–РґРЅРѕСЃС‚С–: С€СѓРєР°С”РјРѕ Р·Р°РјРѕСЂРѕР¶РµРЅС– Р°РєС‚РёРІРё (СЃС‚Р°СЂС€С– Р·Р° 45 РґРЅС–РІ)
+    let stagnantCapital = 0;
+    const stagnantItems: any[] = [];
+    const now = Date.now();
+    const STAGNANT_THRESHOLD = 45 * 24 * 60 * 60 * 1000; // 45 РґРЅС–РІ
+
     for (const item of inventoryData) {
       const theme = item.item?.theme ?? 'Unknown';
       const tData = byTheme.get(theme) ?? { cost: 0, count: 0, units: 0 };
@@ -3257,6 +3272,18 @@ export class AllocationService {
       wData.count += 1;
       wData.units += item.quantity;
       byWarehouse.set(warehouse, wData);
+
+      // РџРµСЂРµРІС–СЂРєР° РЅР° Р·Р°РјРѕСЂРѕР¶РµРЅРёР№ РєР°РїС–С‚Р°Р»
+      const age = now - new Date(item.createdAt).getTime();
+      if (age > STAGNANT_THRESHOLD) {
+        stagnantCapital += Number(item.totalCost);
+        stagnantItems.push({
+          id: item.id,
+          title: item.titleSnapshot,
+          cost: item.totalCost,
+          ageDays: Math.floor(age / (24 * 60 * 60 * 1000)),
+        });
+      }
     }
 
     return {
@@ -3270,6 +3297,8 @@ export class AllocationService {
       activeBuyNeed,
       committedProcurementCost,
       receivedProcurementCost,
+      stagnantCapital: toMoney(stagnantCapital),
+      stagnantItems,
       capitalAtWork: toMoney(inventoryCost + committedProcurementCost),
       inventoryCount: inventoryAgg._count,
       inventoryUnits: inventoryAgg._sum.quantity ?? 0,
@@ -3290,30 +3319,29 @@ export class AllocationService {
         cost: toMoney(group._sum.totalCost ?? group._sum.actualPrice ?? group._sum.plannedPrice ?? 0),
         count: group._count,
       })),
-      byReturnStatus: returnGroups.map((group) => ({
-        status: group.status,
-        refundAmount: toMoney(group._sum.refundAmount ?? 0),
-        count: group._count,
-      })),
-      byExpenseCategory: expenseGroups.map((group) => ({
-        category: group.category,
-        amount: toMoney(group._sum.amount ?? 0),
-        count: group._count,
+      byThemeRatio: Array.from(byTheme.entries()).map(([theme, value]) => ({
+        theme,
+        ratio: inventoryCost > 0 ? toMoney((value.cost / inventoryCost) * 100) : 0,
       })),
     };
   }
 
-  async getCashflowPlan(params?: { monthlyBudget?: number; reinvestPercent?: number }): Promise<unknown> {
-    const monthlyBudget = params?.monthlyBudget ?? 17000;
-    const reinvestPercent = params?.reinvestPercent ?? 80;
+  async getCashflowPlan(params?: { monthlyBudget?: number; reinvestPercent?: number }): Promise<any> {
+    const monthlyBudget = params?.monthlyBudget ?? 50000; // РџС–РґРІРёС‰РёР»Рё РєР°РїС–С‚Р°Р» РїРѕ РґРµС„РѕР»С‚Сѓ
+    const reinvestPercent = params?.reinvestPercent ?? 85;
 
-    const stats = (await this.getCapitalAllocation()) as any;
+    const stats = await this.getCapitalAllocation();
 
     const reinvestAmount = toMoney((monthlyBudget * reinvestPercent) / 100);
     const reserveAmount = toMoney(monthlyBudget - reinvestAmount);
 
-    const averageItemCost = stats.inventoryCount > 0 ? stats.inventoryCost / stats.inventoryCount : 1000;
+    const averageItemCost = stats.inventoryCount > 0 ? stats.inventoryCost / stats.inventoryCount : 1500;
     const estimatedNewItems = Math.floor(reinvestAmount / averageItemCost);
+
+    // Р РѕР·СЂР°С…СѓРЅРѕРє С–РЅРґРµРєСЃСѓ СЂРµС–РЅРІРµСЃС‚СѓРІР°РЅРЅСЏ
+    const liquidityPressureIndex = stats.stagnantCapital > 0 
+      ? toMoney((stats.stagnantCapital / stats.inventoryCost) * 100) 
+      : 0;
 
     return {
       monthlyBudget,
@@ -3322,14 +3350,14 @@ export class AllocationService {
       reserveAmount,
       averageItemCost: toMoney(averageItemCost),
       estimatedNewItems,
+      liquidityPressureIndex,
+      actionRequired: liquidityPressureIndex > 30 ? 'LIQUIDATE_STAGNANT' : 'OPTIMAL_ROUTING',
       currentInventoryCost: stats.inventoryCost,
       committedProcurementCost: stats.committedProcurementCost,
       capitalAtWork: stats.capitalAtWork,
       currentExpectedValue: stats.inventoryExpectedValue,
       currentUnrealizedProfit: stats.unrealizedProfit,
-      grossRealizedProfit: stats.grossRealizedProfit,
-      refundAmount: stats.refundAmount,
-      operatingExpenses: stats.operatingExpenses,
+      stagnantCapital: stats.stagnantCapital,
       realizedProfit: stats.realizedProfit,
     };
   }
@@ -3620,7 +3648,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { User } from '@prisma/client';
 
-export type AuthUser = Pick<User, 'id' | 'name' | 'email' | 'role'>;
+export type AuthUser = Pick<User, 'id' | 'name' | 'email' | 'role' | 'isPro' | 'proExpiresAt'>;
 
 @Injectable()
 export class AuthService {
@@ -3655,6 +3683,8 @@ export class AuthService {
       name: session.user.name,
       email: session.user.email,
       role: session.user.role,
+      isPro: session.user.isPro,
+      proExpiresAt: session.user.proExpiresAt,
     };
   }
 
@@ -3679,7 +3709,17 @@ export class AuthService {
 
     await this.prisma.userSession.create({ data: { userId: user.id, tokenHash, expiresAt } });
 
-    return { token: rawToken, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+    return { 
+      token: rawToken, 
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        isPro: user.isPro,
+        proExpiresAt: user.proExpiresAt,
+      } 
+    };
   }
 
   async login(dto: LoginDto): Promise<{ token: string; user: AuthUser }> {
@@ -3703,7 +3743,17 @@ export class AuthService {
 
     await this.prisma.userSession.create({ data: { userId: user.id, tokenHash, expiresAt } });
 
-    return { token: rawToken, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+    return { 
+      token: rawToken, 
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        isPro: user.isPro,
+        proExpiresAt: user.proExpiresAt,
+      } 
+    };
   }
 
   async logout(rawToken: string): Promise<void> {
@@ -3787,23 +3837,59 @@ export class JwtAuthGuard implements CanActivate {
         include: { user: true },
       });
 
-      if (!session || !(session as any).user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
+      if (!session || !session.user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
         throw new UnauthorizedException('Session expired or invalid');
       }
 
-      const user = (session as any).user;
+      const user = session.user;
 
       sessionUser = {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
+        isPro: user.isPro,
+        proExpiresAt: user.proExpiresAt ? new Date(user.proExpiresAt).toISOString() : null,
       };
 
+      // РљРµС€СѓС”РјРѕ СЃРµСЃС–СЋ РєРѕСЂРёСЃС‚СѓРІР°С‡Р° РЅР° 5 С…РІРёР»РёРЅ
       await this.redis.set(cacheKey, sessionUser, 300);
     }
 
+    // Р’С–РґРЅРѕРІР»СЋС”РјРѕ СЂРµР°Р»СЊРЅРёР№ РѕР±'С”РєС‚ РґР°С‚Рё РґР»СЏ РїРµСЂРµРІС–СЂРєРё РїСЂРѕС‚РµСЂРјС–РЅСѓРІР°РЅРЅСЏ РїС–РґРїРёСЃРєРё
+    if (sessionUser.proExpiresAt) {
+      sessionUser.proExpiresAt = new Date(sessionUser.proExpiresAt);
+    }
+
     request.user = sessionUser;
+    return true;
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\auth\pro.guard.ts =====
+
+import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class ProGuard implements CanActivate {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+    const user = request.user;
+
+    if (!user) throw new ForbiddenException('РџРѕС‚СЂС–Р±РЅР° Р°РІС‚РѕСЂРёР·Р°С†С–СЏ');
+    
+    // РђРґРјС–РЅРё РјР°СЋС‚СЊ РґРѕСЃС‚СѓРї РґРѕ РІСЃСЊРѕРіРѕ
+    if (user.role === 'admin' || user.role === 'operator') return true;
+
+    const dbUser = await this.prisma.user.findUnique({ where: { id: user.id } });
+    
+    if (!dbUser?.isPro || (dbUser.proExpiresAt && dbUser.proExpiresAt < new Date())) {
+      throw new ForbiddenException('РџРѕС‚СЂС–Р±РЅР° РїС–РґРїРёСЃРєР° Arcturus PRO');
+    }
+
     return true;
   }
 }
@@ -7303,11 +7389,28 @@ export class DecisionsService {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\docs\docs.controller.ts =====
 
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Version, VERSION_NEUTRAL } from '@nestjs/common';
 
-@Controller('docs-meta')
+@Controller() // рџ”Ґ РџСЂРёР±СЂР°Р»Рё 'docs-meta', С‚РµРїРµСЂ С†РµР№ РєРѕРЅС‚СЂРѕР»РµСЂ РѕР±СЂРѕР±Р»СЏС” РєРѕСЂС–РЅСЊ
 export class DocsController {
-  @Get()
+  
+  @Version(VERSION_NEUTRAL)
+  @Get() // рџ”Ґ Р¦Рµ РѕР±СЂРѕР±РёС‚СЊ 'GET /'
+  root() {
+    return {
+      service: 'Arcturus API',
+      status: 'active',
+      version: '1.0.0',
+      description: 'Institutional LEGO trading engine',
+      endpoints: {
+        health: '/api/health',
+        metrics: '/api/metrics'
+      }
+    };
+  }
+
+  @Version(VERSION_NEUTRAL)
+  @Get('docs-meta') // рџ”Ґ РЎС‚Р°СЂРёР№ РјР°СЂС€СЂСѓС‚ Р·Р°Р»РёС€РёР»Рё РїСЂРѕ РІСЃСЏРє РІРёРїР°РґРѕРє
   meta(): unknown {
     return {
       name: 'Arcturus API',
@@ -10367,13 +10470,16 @@ export class HealthService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getHealth(): Promise<unknown> {
-    // Р’РђР–Р›РР’Рћ: Render РґСѓР¶Рµ С‡Р°СЃС‚Рѕ РїС–РЅРіСѓС” С†РµР№ СЂРѕСѓС‚. РњРё СЂРѕР±РёРјРѕ Р№РѕРіРѕ РјР°РєСЃРёРјР°Р»СЊРЅРѕ Р»РµРіРєРёРј, 
-    // С‰РѕР± РЅРµ РЅР°РІР°РЅС‚Р°Р¶СѓРІР°С‚Рё Р±Р°Р·Сѓ С– РЅРµ РІС–РґРІР°Р»СЋРІР°С‚РёСЃСЏ РїРѕ С‚Р°Р№Рј-Р°СѓС‚Сѓ РїС–Рґ С‡Р°СЃ РґРµРїР»РѕСЋ.
+    // РџРµСЂРµРІС–СЂСЏС”РјРѕ, С‡Рё РїСЂР°С†СЋСЋС‚СЊ РѕСЃРЅРѕРІРЅС– "Р°СЂС‚РµСЂС–С—"
+    const [snapshotCount, listingCount] = await Promise.all([
+      this.prisma.marketSnapshot.count({ where: { computedAt: { gte: new Date(Date.now() - 3600000) } } }), // Р·Р° РѕСЃС‚Р°РЅРЅСЋ РіРѕРґРёРЅСѓ
+      this.prisma.marketListing.count({ where: { fetchedAt: { gte: new Date(Date.now() - 3600000) } } })
+    ]);
+
     return {
-      status: 'ok',
-      service: 'arcturus-api',
+      status: snapshotCount > 0 ? 'healthy' : 'degraded',
       uptimeSec: Math.round(process.uptime()),
-      env: process.env.NODE_ENV ?? 'development',
+      metrics: { snapshotCount, listingCount },
       time: new Date().toISOString(),
     };
   }
@@ -12137,7 +12243,7 @@ export class ItemsService {
                 },
                 {
                   setNumber: {
-                    contains: q,
+                    equals: q,
                     mode: 'insensitive',
                   },
                 },
@@ -13875,6 +13981,440 @@ export class StaleListingPenaltyService {
   }
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\marketplace\marketplace.controller.ts =====
+
+import { Body, Controller, Get, Param, Patch, Post, UseGuards, Req, UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
+import { MarketplaceService } from './marketplace.service';
+
+@Controller('marketplace')
+export class MarketplaceController {
+  constructor(private readonly marketplace: MarketplaceService) {}
+
+  @UseGuards(JwtAuthGuard)
+  @Post('apply')
+  submitApplication(
+    @Req() req: any, 
+    @Body() body: { itemId: string; expectedPrice: number; notes?: string; tradeType: 'c2c' | 'c2b' }
+  ) {
+    return this.marketplace.submitApplication({ ...body, sellerId: req.user.id });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/upload')
+  @UseInterceptors(FilesInterceptor('files', 5)) // Р”РѕР·РІРѕР»СЏС”РјРѕ РґРѕ 5 С„РѕС‚РѕРє
+  uploadImages(
+    @Req() req: any,
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[]
+  ) {
+    return this.marketplace.uploadImages(id, req.user.id, files);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('my-listings')
+  getMyListings(@Req() req: any) {
+    return this.marketplace.getMyListings(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'operator')
+  @Get('queue')
+  getQueue() {
+    return this.marketplace.getPendingQueue();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'operator')
+  @Patch('approve/:id')
+  approve(@Param('id') id: string) {
+    return this.marketplace.approveListing(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'operator')
+  @Patch('reject/:id')
+  reject(@Param('id') id: string, @Body() body: { reason?: string }) {
+    return this.marketplace.rejectListing(id, body.reason);
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\marketplace\marketplace.module.ts =====
+
+import { Module } from '@nestjs/common';
+import { PrismaModule } from '../prisma/prisma.module';
+import { AuthModule } from '../auth/auth.module';
+import { MediaModule } from '../media/media.module';
+import { MarketplaceController } from './marketplace.controller';
+import { MarketplaceService } from './marketplace.service';
+import { ScoutController } from './scout.controller'; // <---
+import { ScoutService } from './scout.service';       // <---
+
+@Module({
+  imports: [PrismaModule, AuthModule, MediaModule],
+  controllers: [MarketplaceController, ScoutController], // <---
+  providers: [MarketplaceService, ScoutService],         // <---
+  exports: [MarketplaceService, ScoutService],           // <---
+})
+export class MarketplaceModule {}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\marketplace\marketplace.service.ts =====
+
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
+import { toMoney } from '@arcturus/shared';
+
+@Injectable()
+export class MarketplaceService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mediaService: MediaService
+  ) {}
+
+  async submitApplication(dto: { itemId: string; expectedPrice: number; sellerId: string; notes?: string; tradeType: 'c2c' | 'c2b' }) {
+    const item = await this.prisma.item.findUnique({ where: { id: dto.itemId } });
+    if (!item) throw new NotFoundException('Catalog item not found');
+
+    const expectedPrice = Number(dto.expectedPrice);
+    const commissionRate = dto.tradeType === 'c2c' ? 5.0 : 0;
+    const initialStatus = dto.tradeType === 'c2b' ? 'pending_buyout' : 'pending';
+
+    return this.prisma.inventoryItem.create({
+      data: {
+        itemId: dto.itemId,
+        titleSnapshot: item.title,
+        purchasePrice: 0,
+        totalCost: 0,
+        quantity: 1,
+        condition: 'used',
+        expectedSalePriceManual: expectedPrice,
+        isMarketplace: true,
+        approvalStatus: initialStatus,
+        sellerId: dto.sellerId,
+        commissionRate,
+        sellerPayout: dto.tradeType === 'c2c' ? expectedPrice * 0.95 : expectedPrice,
+        notes: `[${dto.tradeType.toUpperCase()}] ${dto.notes || ''}`,
+      },
+    });
+  }
+
+  async uploadImages(inventoryItemId: string, sellerId: string, files: Express.Multer.File[]) {
+    const item = await this.prisma.inventoryItem.findUnique({ where: { id: inventoryItemId } });
+    
+    if (!item) throw new NotFoundException('Listing not found');
+    if (item.sellerId !== sellerId) throw new ForbiddenException('Not your listing');
+    if (!files || files.length === 0) throw new BadRequestException('No files provided');
+
+    const uploaded = [];
+    for (const file of files) {
+      const result = await this.mediaService.addInventoryImage({
+        inventoryItemId,
+        file: { buffer: file.buffer, mimetype: file.mimetype },
+      });
+      uploaded.push(result);
+    }
+    
+    return uploaded;
+  }
+
+  async getMyListings(sellerId: string) {
+    return this.prisma.inventoryItem.findMany({
+      where: { isMarketplace: true, sellerId },
+      include: { item: true, images: { orderBy: { sortOrder: 'asc' } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getPendingQueue() {
+    return this.prisma.inventoryItem.findMany({
+      where: { 
+        isMarketplace: true, 
+        approvalStatus: { in: ['pending', 'pending_buyout'] } 
+      },
+      include: { item: true, seller: true, images: { orderBy: { sortOrder: 'asc' } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async approveListing(inventoryItemId: string) {
+    const item = await this.prisma.inventoryItem.findUnique({
+      where: { id: inventoryItemId }
+    });
+
+    if (!item) throw new NotFoundException('Listing not found');
+
+    return this.prisma.$transaction(async (tx) => {
+      // Р›РћР“Р†РљРђ C2B (РЁР’РР”РљРР™ Р’РРљРЈРџ)
+      if (item.approvalStatus === 'pending_buyout') {
+        const updatedItem = await tx.inventoryItem.update({
+          where: { id: inventoryItemId },
+          data: {
+            approvalStatus: 'approved',
+            isMarketplace: false, 
+            purchasePrice: item.sellerPayout || item.expectedSalePriceManual || 0,
+            totalCost: item.sellerPayout || item.expectedSalePriceManual || 0,
+            expectedSalePriceManual: null, 
+            sellerId: null, 
+            notes: `${item.notes || ''} [C2B Processed]`.trim(),
+          },
+        });
+
+        await tx.expense.create({
+          data: {
+            type: 'procurement',
+            category: 'c2b_buyout',
+            amount: toMoney(item.sellerPayout || item.expectedSalePriceManual || 0),
+            inventoryItemId: item.id,
+            description: `C2B Buyout for ${item.titleSnapshot}`,
+          }
+        });
+
+        await tx.repriceFlowItem.create({
+          data: {
+            inventoryItemId: item.id,
+            currentPrice: updatedItem.totalCost,
+            status: 'pending',
+            reason: 'Auto-reprice after C2B Buyout',
+          }
+        });
+
+        return updatedItem;
+      } 
+      
+      // Р›РћР“Р†РљРђ C2C (РњРђР РљР•РўРџР›Р•Р™РЎ)
+      return tx.inventoryItem.update({
+        where: { id: inventoryItemId },
+        data: { approvalStatus: 'approved' },
+      });
+    });
+  }
+
+  async rejectListing(inventoryItemId: string, reason?: string) {
+    return this.prisma.inventoryItem.update({
+      where: { id: inventoryItemId },
+      data: { approvalStatus: 'rejected', quantity: 0, notes: reason },
+    });
+  }
+
+  async getSellerFinance(sellerId: string) {
+    // Р’СЃС– РїСЂРѕРґР°Р¶С– РєРѕСЂРёСЃС‚СѓРІР°С‡Р° СЏРє СЃС‚РѕСЂРѕРЅРЅСЊРѕРіРѕ СЃРµР»РµСЂР°
+    const sales = await this.prisma.sale.findMany({
+      where: { isMarketplaceSale: true, inventoryItem: { sellerId } },
+    });
+
+    // Р’СЃС– Р·Р°РїРёС‚Рё РЅР° РІРёРІРµРґРµРЅРЅСЏ РєРѕС€С‚С–РІ
+    const payoutRequests = await this.prisma.payoutRequest.findMany({
+      where: { sellerId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const totalEarned = sales.reduce((sum, s) => sum + Number(s.sellerPayout || 0), 0);
+    const totalPaid = payoutRequests.filter(p => p.status === 'paid').reduce((sum, p) => sum + Number(p.amount), 0);
+    const processingAmount = payoutRequests.filter(p => p.status === 'pending' || p.status === 'processing').reduce((sum, p) => sum + Number(p.amount), 0);
+    
+    const availableBalance = Math.max(0, toMoney(totalEarned - totalPaid - processingAmount));
+
+    return {
+      availableBalance,
+      processingAmount,
+      totalEarned,
+      payoutRequests,
+    };
+  }
+
+  async requestPayout(sellerId: string, amount: number, cardData: string) {
+    const finance = await this.getSellerFinance(sellerId);
+    const cleanAmount = toMoney(amount);
+
+    if (cleanAmount <= 0 || cleanAmount > finance.availableBalance) {
+      throw new BadRequestException('Insufficient available balance or invalid amount');
+    }
+
+    if (!cardData || cardData.replace(/\s/g, '').length < 16) {
+      throw new BadRequestException('Invalid credit card format');
+    }
+
+    return this.prisma.payoutRequest.create({
+      data: {
+        sellerId,
+        amount: cleanAmount,
+        cardData: cardData.replace(/\s/g, ''),
+        status: 'pending',
+      },
+    });
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\marketplace\scout.controller.ts =====
+
+import { Body, Controller, Get, Param, Patch, Post, UseGuards, Req } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
+import { ScoutService } from './scout.service';
+
+@Controller('scout')
+export class ScoutController {
+  constructor(private readonly scoutService: ScoutService) {}
+
+  // --- Р•РЅРґРїРѕС–РЅС‚Рё РґР»СЏ РЎРєР°СѓС‚С–РІ ---
+
+  @UseGuards(JwtAuthGuard)
+  @Post('submit')
+  submitLead(@Req() req: any, @Body() body: { url: string; notes?: string }) {
+    return this.scoutService.submitLead(req.user.id, body.url, body.notes);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('my-leads')
+  getMyLeads(@Req() req: any) {
+    return this.scoutService.getMyLeads(req.user.id);
+  }
+
+  // --- Р•РЅРґРїРѕС–РЅС‚Рё РґР»СЏ РђРґРјС–РЅС–РІ ---
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'operator')
+  @Get('leads')
+  getAllLeads() {
+    // Р”Р»СЏ Р°РґРјС–РЅРєРё - РїРѕРІРµСЂС‚Р°С”РјРѕ РІСЃС– Р·Р°СЏРІРєРё Р· РґР°РЅРёРјРё РїСЂРѕ СЃРєР°СѓС‚С–РІ
+    return this.scoutService.getAllLeads();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'operator')
+  @Patch('reject/:id')
+  rejectLead(@Param('id') id: string, @Body() body: { adminNote?: string }) {
+    return this.scoutService.rejectLead(id, body.adminNote);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'operator')
+  @Patch('reward/:id')
+  approveAndRewardLead(@Param('id') id: string, @Body() body: { rewardAmount: number }) {
+    return this.scoutService.approveAndRewardLead(id, body.rewardAmount);
+  }
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\marketplace\scout.service.ts =====
+
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { toMoney } from '@arcturus/shared';
+
+@Injectable()
+export class ScoutService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async submitLead(scoutId: string, url: string, notes?: string) {
+    const cleanUrl = url.trim();
+    if (!cleanUrl.startsWith('http')) {
+      throw new BadRequestException('Invalid URL format');
+    }
+
+    const existing = await this.prisma.scoutLead.findFirst({
+      where: { url: cleanUrl }
+    });
+
+    if (existing) {
+      throw new BadRequestException('Р¦РµР№ Р»С–РЅРє РІР¶Рµ Р±СѓРІ Р·Р°РїСЂРѕРїРѕРЅРѕРІР°РЅРёР№ С–РЅС€РёРј СЃРєР°СѓС‚РѕРј.');
+    }
+
+    return this.prisma.scoutLead.create({
+      data: {
+        scoutId,
+        url: cleanUrl,
+        notes,
+        status: 'pending'
+      }
+    });
+  }
+
+  async getMyLeads(scoutId: string) {
+    return this.prisma.scoutLead.findMany({
+      where: { scoutId },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  // --- РњРµС‚РѕРґРё РґР»СЏ Р°РґРјС–РЅРєРё ---
+
+  async getAllLeads() {
+    return this.prisma.scoutLead.findMany({
+      include: { scout: true },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  async rejectLead(leadId: string, adminNote?: string) {
+    return this.prisma.scoutLead.update({
+      where: { id: leadId },
+      data: { status: 'rejected', adminNote }
+    });
+  }
+
+  async approveAndRewardLead(leadId: string, rewardAmount: number) {
+    const lead = await this.prisma.scoutLead.findUnique({ where: { id: leadId } });
+    if (!lead) throw new NotFoundException('Lead not found');
+
+    const amount = toMoney(rewardAmount);
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. РћРЅРѕРІР»СЋС”РјРѕ СЃС‚Р°С‚СѓСЃ Р»С–РґР°
+      const updatedLead = await tx.scoutLead.update({
+        where: { id: leadId },
+        data: { status: 'bought', reward: amount }
+      });
+
+      // 2. РЎС‚РІРѕСЂСЋС”РјРѕ С„С–РєС‚РёРІРЅРёР№ Р°Р№С‚РµРј РґР»СЏ РЅР°СЂР°С…СѓРІР°РЅРЅСЏ РЅР° Р±Р°Р»Р°РЅСЃ, 
+      // СЏРєС‰Рѕ Р№РѕРіРѕ С‰Рµ РЅРµ С–СЃРЅСѓС” (С‰РѕР± РЅРµ Р»Р°РјР°С‚Рё Р·РІ'СЏР·РєРё Sale)
+      let rewardItem = await tx.inventoryItem.findFirst({ 
+        where: { id: 'item_bounty_reward' } 
+      });
+
+      if (!rewardItem) {
+        rewardItem = await tx.inventoryItem.create({
+          data: {
+            id: 'item_bounty_reward',
+            itemId: 'item_unresolved_placeholder', // Р‘Р°Р·РѕРІРёР№ ID
+            titleSnapshot: 'Bounty Reward System Item',
+            purchasePrice: 0,
+            totalCost: 0,
+            quantity: 99999,
+            isMarketplace: true,
+            sellerId: lead.scoutId // РџСЂРёРІ'СЏР·СѓС”РјРѕ РґРѕ СЃРєР°СѓС‚Р°
+          }
+        });
+      }
+
+      // 3. РЎС‚РІРѕСЂСЋС”РјРѕ С„С–РєС‚РёРІРЅРёР№ РїСЂРѕРґР°Р¶ РґР»СЏ Р±Р°Р»Р°РЅСЃСѓ
+      await tx.sale.create({
+        data: {
+          inventoryItemId: rewardItem.id,
+          itemId: rewardItem.itemId,
+          quantity: 1,
+          sellPrice: amount,
+          costBasis: 0,
+          profit: 0,
+          roiPercent: 0,
+          isMarketplaceSale: true,
+          commissionAmount: 0,
+          sellerPayout: amount,
+          payoutStatus: 'pending',
+          buyerName: 'Arcturus Reward System',
+          notes: `Bounty Reward for Lead: ${lead.url}`,
+        }
+      });
+
+      return updatedLead;
+    });
+  }
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\media\media.controller.ts =====
 
 // backend/api/src/modules/media/media.controller.ts
@@ -14676,8 +15216,15 @@ export class TelegramWebhookGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const token = request.headers['x-telegram-bot-api-secret-token'];
+    const configuredToken = process.env.TELEGRAM_SECRET_TOKEN;
     
-    if (!token || token !== process.env.TELEGRAM_SECRET_TOKEN) {
+    // РЇРєС‰Рѕ РІ .env РЅРµРјР°С” С‚РѕРєРµРЅР° вЂ” РїСЂРѕРїСѓСЃРєР°С”РјРѕ Р·Р°РїРёС‚
+    if (!configuredToken) {
+      return true;
+    }
+    
+    // РЇРєС‰Рѕ С‚РѕРєРµРЅ РЅР°Р»Р°С€С‚РѕРІР°РЅРёР№, Р°Р»Рµ С‚РµР»РµРіСЂР°Рј РЅР°РґС–СЃР»Р°РІ РЅРµРїСЂР°РІРёР»СЊРЅРёР№ вЂ” Р±Р»РѕРєСѓС”РјРѕ
+    if (token !== configuredToken) {
       throw new UnauthorizedException('Invalid Telegram Secret Token');
     }
     
@@ -14756,7 +15303,7 @@ export class TelegramService implements OnModuleInit {
 
   async onModuleInit() {
     if (this.botToken && this.backendUrl) {
-      const webhookUrl = `${this.backendUrl}/api/telegram/webhook`;
+      const webhookUrl = `${this.backendUrl}/api/v1/telegram/webhook`;
       const cacheKey = 'telegram_webhook_set';
       const isSet = await this.redis.get<string>(cacheKey);
 
@@ -18528,7 +19075,7 @@ export class PublicStoreService {
     return { createdAt: 'desc' };
   }
 
-  async getCatalog(params: { q?: string; type?: string; availableOnly?: boolean; theme?: string; sort?: string; limit?: number }): Promise<unknown[]> {
+  async getCatalog(params: { q?: string; type?: string; availableOnly?: boolean; theme?: string; sort?: string; limit?: number; seller?: string }): Promise<unknown[]> {
     const cacheKey = `public_catalog:${JSON.stringify(params)}`;
     
     if (!params.q) {
@@ -18542,6 +19089,12 @@ export class PublicStoreService {
     const data = await this.prisma.inventoryItem.findMany({
       where: {
         quantity: params.availableOnly === true ? { gt: 0 } : undefined,
+        // Р¤Р†Р›Р¬РўР : РђР±Рѕ С†Рµ РЅР°С€ С‚РѕРІР°СЂ, Р°Р±Рѕ РІС–РЅ Р°РїСЂСѓРІРЅСѓС‚РёР№
+        OR: [
+          { isMarketplace: false },
+          { isMarketplace: true, approvalStatus: 'approved' }
+        ],
+        ...(params.seller === 'community' ? { isMarketplace: true } : params.seller === 'arcturus' ? { isMarketplace: false } : {}),
         ...(params.type && params.type !== 'all' ? { item: { kind: params.type } } : {}),
         ...(params.theme ? { item: { theme: { equals: params.theme, mode: 'insensitive' } } } : {}),
         ...(q ? { OR: [
@@ -18576,7 +19129,7 @@ export class PublicStoreService {
     const normalized = slug.trim().toLowerCase();
 
     const all = await this.prisma.inventoryItem.findMany({
-      where: { quantity: { gt: 0 } },
+      where: { quantity: { gt: 0 }, OR: [{ isMarketplace: false }, { isMarketplace: true, approvalStatus: 'approved' }] },
       include: {
         item: true,
         images: { orderBy: { sortOrder: 'asc' } },
@@ -18605,6 +19158,7 @@ export class PublicStoreService {
       where: {
         id: { not: item.id },
         quantity: { gt: 0 },
+        OR: [{ isMarketplace: false }, { isMarketplace: true, approvalStatus: 'approved' }],
         item: {
           ...(theme ? { theme } : {}),
           ...(kind ? { kind } : {}),
@@ -21155,15 +21709,7 @@ export class UpdateReturnDto {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\sales\sales.controller.ts =====
 
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Query,
-  UseGuards,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -21186,6 +21732,16 @@ export class SalesController {
       limit: limit ? Number(limit) : 50,
       offset: offset ? Number(offset) : 0,
     });
+  }
+
+  @Get('payouts/pending')
+  getPendingPayouts() {
+    return this.salesService.getPendingPayouts();
+  }
+
+  @Patch('payouts/:id/pay')
+  markPayoutPaid(@Param('id') id: string) {
+    return this.salesService.markPayoutPaid(id);
   }
 
   @Get('stats')
@@ -21240,7 +21796,7 @@ export class SalesModule {}
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\sales\sales.service.ts =====
 
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { calculateProfit, calculateRoiPercent, toMoney } from '@arcturus/shared';
+import { toMoney } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21270,7 +21826,7 @@ export class SalesService {
     if (!Number.isFinite(params.sellPrice) || params.sellPrice <= 0) throw new BadRequestException('sellPrice must be positive');
     if (!Number.isInteger(quantity) || quantity <= 0) throw new BadRequestException('quantity must be positive integer');
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const inventoryItem = await tx.inventoryItem.findUnique({
         where: { id: params.inventoryItemId }
       });
@@ -21288,10 +21844,22 @@ export class SalesService {
       }
 
       const unitCost = inventoryItem.quantity > 0 ? Number(inventoryItem.totalCost) / inventoryItem.quantity : Number(inventoryItem.totalCost);
-      const costBasis = toMoney(unitCost * quantity);
+      let costBasis = toMoney(unitCost * quantity);
       const sellPrice = toMoney(params.sellPrice);
-      const profit = calculateProfit({ revenue: sellPrice, cost: costBasis });
-      const roiPercent = calculateRoiPercent({ profit, cost: costBasis });
+      let profit = calculateProfit({ revenue: sellPrice, cost: costBasis });
+      let roiPercent = calculateRoiPercent({ profit, cost: costBasis });
+
+      let commissionAmount = null;
+      let sellerPayout = null;
+
+      if (inventoryItem.isMarketplace) {
+        commissionAmount = toMoney((sellPrice * inventoryItem.commissionRate) / 100);
+        sellerPayout = toMoney(sellPrice - commissionAmount);
+        
+        costBasis = sellerPayout; 
+        profit = commissionAmount; 
+        roiPercent = 100;
+      }
 
       const sale = await tx.sale.create({
         data: {
@@ -21305,6 +21873,10 @@ export class SalesService {
           channel: params.channel ?? null,
           buyerName: params.buyerName ?? null,
           notes: params.notes ?? null,
+          isMarketplaceSale: inventoryItem.isMarketplace,
+          commissionAmount,
+          sellerPayout,
+          payoutStatus: inventoryItem.isMarketplace ? 'pending' : 'paid',
         },
         include: {
           inventoryItem: { include: { item: true, assignedUser: true } },
@@ -21326,38 +21898,49 @@ export class SalesService {
 
       return sale;
     });
+  }
 
-    await this.activity.log('sale.registered', {
-      saleId: result.id,
-      inventoryItemId: params.inventoryItemId,
-      itemId: result.itemId,
-      title: result.inventoryItem.titleSnapshot,
-      sellPrice: result.sellPrice,
-      costBasis: result.costBasis,
-      profit: result.profit,
-      roiPercent: result.roiPercent,
-      quantity,
+  async getPendingPayouts(): Promise<unknown[]> {
+    // РћС‚СЂРёРјСѓС”РјРѕ Р·Р°РїРёС‚Рё РЅР° РІРёРїР»Р°С‚Сѓ, СЏРєС– РѕС‡С–РєСѓСЋС‚СЊ РѕР±СЂРѕР±РєРё
+    return this.prisma.payoutRequest.findMany({
+      where: { status: 'pending' },
+      include: { seller: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async markPayoutPaid(payoutRequestId: string): Promise<unknown> {
+    const request = await this.prisma.payoutRequest.findUnique({
+      where: { id: payoutRequestId }
     });
 
-    await this.notifications.createSaleNotification({
-      itemTitle: result.inventoryItem.titleSnapshot,
-      profit: Number(result.profit),
-      targetUserId: result.inventoryItem.assignedUserId ?? null,
+    if (!request) throw new NotFoundException('Payout request not found');
+    if (request.status !== 'pending' && request.status !== 'processing') {
+      throw new BadRequestException('Request is already processed');
+    }
+
+    const updated = await this.prisma.payoutRequest.update({
+      where: { id: payoutRequestId },
+      data: { status: 'paid' },
+      include: { seller: true }
     });
 
-    this.realtime.emitSaleRegistered({
-      id: result.id,
-      title: result.inventoryItem.titleSnapshot,
-      profit: result.profit,
-      sellPrice: result.sellPrice,
-      quantity,
+    await this.activity.log('marketplace.payout_completed', {
+      payoutRequestId: updated.id,
+      amount: updated.amount,
+      sellerId: updated.sellerId,
+      cardData: updated.cardData,
     });
 
-    this.realtime.emitInventoryRefresh({ inventoryItemId: params.inventoryItemId, reason: 'sale_registered' });
-    this.realtime.emitDashboardRefresh('sale_registered');
-    this.realtime.emitOpportunityRefresh('sale_registered');
+    // РќР°РґСЃРёР»Р°С”РјРѕ СЃРёСЃС‚РµРјРЅРµ СЃРїРѕРІС–С‰РµРЅРЅСЏ СЃРµР»РµСЂСѓ РІ РєР°Р±С–РЅРµС‚
+    await this.notifications.create({
+      title: 'Р’РёРїР»Р°С‚Сѓ РІРёРєРѕРЅР°РЅРѕ!',
+      message: `РљРѕС€С‚Рё Сѓ СЂРѕР·РјС–СЂС– ${formatMoney(updated.amount)} СѓСЃРїС–С€РЅРѕ РїРµСЂРµСЂР°С…РѕРІР°РЅС– РЅР° РІР°С€Сѓ РєР°СЂС‚РєСѓ.`,
+      type: 'payment',
+      targetUserId: updated.sellerId,
+    });
 
-    return result;
+    return updated;
   }
 
   async list(params?: { q?: string; limit?: number; offset?: number }): Promise<unknown[]> {
@@ -21403,10 +21986,6 @@ export class SalesService {
 
     const totalExpenses = toMoney(expenses.reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0));
     
-    const returnedSalesIds = new Set(
-      returns.filter((row) => ['approved', 'resolved'].includes(row.status)).map((row) => row.saleId),
-    );
-
     const grossProfit = toMoney(sales.reduce((sum, sale) => sum + Number(sale.profit ?? 0), 0));
     const grossRevenue = toMoney(sales.reduce((sum, sale) => sum + Number(sale.sellPrice ?? 0), 0));
     const totalCostBasis = toMoney(sales.reduce((sum, sale) => sum + Number(sale.costBasis ?? 0), 0));
@@ -21428,7 +22007,6 @@ export class SalesService {
       totalExpenses,
       totalCostBasis,
       salesCount: sales.length,
-      returnedSalesCount: returnedSalesIds.size,
       unitsSold,
       avgRoi,
     };
@@ -21437,23 +22015,12 @@ export class SalesService {
   async deleteSale(id: string): Promise<unknown> {
     const existing = await this.prisma.sale.findUnique({
       where: { id },
-      include: {
-        returns: true,
-        expenses: true,
-      },
+      include: { returns: true, expenses: true },
     });
 
-    if (!existing) {
-      throw new NotFoundException('Sale not found');
-    }
-
-    if (existing.returns.length > 0) {
-      throw new BadRequestException('Cannot delete sale with active return requests');
-    }
-
-    if (existing.expenses.length > 0) {
-      throw new BadRequestException('Cannot delete sale with active linked expenses');
-    }
+    if (!existing) throw new NotFoundException('Sale not found');
+    if (existing.returns.length > 0) throw new BadRequestException('Cannot delete sale with active returns');
+    if (existing.expenses.length > 0) throw new BadRequestException('Cannot delete sale with linked expenses');
 
     const deleted = await this.prisma.$transaction(async (tx) => {
       await tx.inventoryItem.update({
@@ -21479,17 +22046,21 @@ export class SalesService {
       });
     });
 
-    await this.activity.log('sale.deleted', {
-      saleId: id,
-      inventoryItemId: existing.inventoryItemId,
-      quantityRestored: existing.quantity,
-    });
-
+    await this.activity.log('sale.deleted', { saleId: id, inventoryItemId: existing.inventoryItemId, quantityRestored: existing.quantity });
     this.realtime.emitInventoryRefresh({ inventoryItemId: existing.inventoryItemId, reason: 'sale_deleted' });
     this.realtime.emitDashboardRefresh('sale_deleted');
 
     return deleted;
   }
+}
+
+// РҐРµР»РїРµСЂРё РґР»СЏ СЂРѕР·СЂР°С…СѓРЅРєС–РІ С„С–РЅР°РЅСЃС–РІ РІСЃРµСЂРµРґРёРЅС– С„Р°Р№Р»Сѓ
+function calculateProfit(params: { revenue: number; cost: number }): number {
+  return toMoney(params.revenue - params.cost);
+}
+function calculateRoiPercent(params: { profit: number; cost: number }): number {
+  if (params.cost <= 0) return 0;
+  return Number(((params.profit / params.cost) * 100).toFixed(2));
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\scanner\scanner-executor.service.ts =====
@@ -24004,6 +24575,9 @@ import { SyncOrchestratorService } from './sync-orchestrator.service';
 import { SyncService } from './sync.service';
 import { SyncStateService } from './sync-state.service';
 import { QUEUE_NAMES } from '../queue/queue.constants';
+// рџ”Ґ Р”РћР”РђРќР† Р†РњРџРћР РўР
+import { SyncRunsController } from './sync-runs.controller';
+import { SyncRunsService } from './sync-runs.service';
 
 @Module({
   imports: [
@@ -24032,9 +24606,9 @@ import { QUEUE_NAMES } from '../queue/queue.constants';
       name: QUEUE_NAMES.SYNC,
     }),
   ],
-  controllers: [SyncController],
-  providers: [SyncService, SyncStateService, SyncOrchestratorService],
-  exports: [SyncService, SyncStateService, SyncOrchestratorService],
+  controllers: [SyncController, SyncRunsController], // рџ”Ґ Р”РћР”РђРќРћ РЎР®Р”Р
+  providers: [SyncService, SyncStateService, SyncOrchestratorService, SyncRunsService], // рџ”Ґ Р”РћР”РђРќРћ РЎР®Р”Р
+  exports: [SyncService, SyncStateService, SyncOrchestratorService, SyncRunsService], // рџ”Ґ Р”РћР”РђРќРћ РЎР®Р”Р
 })
 export class SyncModule {}
 
@@ -26416,7 +26990,7 @@ export async function resolveItemIdFromTitle(titleRaw: string): Promise<string |
   await ensureIndexBuilt();
 
   const normalizedTitle = cacheKey.replace(/[^a-z0-9]/g, ' ');
-  const setNumberMatch = normalizedTitle.match(/\b\d{4,5}\b/);
+  const setNumberMatch = normalizedTitle.match(/\b([a-zA-Z]{2,4}-?\d{2,5}[a-zA-Z]?|\d{4,7})\b/i);
 
   if (setNumberMatch) {
     const setNumber = setNumberMatch[0];
@@ -30368,6 +30942,127 @@ export async function markStaleListingsJob(params?: {
   };
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\jobs\portfolio-rebalancing.job.ts =====
+
+import { prisma } from '../prisma';
+import { toMoney } from '@arcturus/shared';
+
+export async function portfolioRebalancingJob(): Promise<{ liquidated: number; reinvested: number; status: string }> {
+  console.log('вљ–пёЏ Running Automated Capital Rebalancing and Liquidation Engine...');
+
+  // 1. Р—Р±РёСЂР°С”РјРѕ С„С–РЅР°РЅСЃРѕРІСѓ РјРµС‚СЂРёРєСѓ СЃРєР»Р°РґСѓ
+  const activeInventory = await prisma.inventoryItem.findMany({
+    where: { quantity: { gt: 0 }, isMarketplace: false },
+    include: { sales: { orderBy: { createdAt: 'desc' }, take: 1 } }
+  });
+
+  const now = Date.now();
+  const SIXTY_DAYS = 60 * 24 * 60 * 60 * 1000; // 60 РґРЅС–РІ Р·Р°СЃС‚РѕСЋ РєР°РїС–С‚Р°Р»Сѓ
+  let liquidatedCount = 0;
+  let reinvestedCount = 0;
+
+  const dbOperations: any[] = [];
+
+  // 2. Р•С‚Р°Рї СЂРѕР·РїСЂРѕРґР°Р¶Сѓ (Asset Liquidation): Р·Р»РёРІР°С”РјРѕ РјРµСЂС‚РІС– Р°РєС‚РёРІРё Р·Р° СЃРѕР±С–РІР°СЂС‚С–СЃС‚СЋ, С‰РѕР± Р·РІС–Р»СЊРЅРёС‚Рё РєРµС€
+  for (const item of activeInventory) {
+    const age = now - new Date(item.createdAt).getTime();
+    
+    // РЇРєС‰Рѕ РЅР°Р±С–СЂ Р»РµР¶РёС‚СЊ РЅР° СЃРєР»Р°РґС– РїРѕРЅР°Рґ 60 РґРЅС–РІ Р±РµР· СЂСѓС…Сѓ вЂ” РІРјРёРєР°С”РјРѕ Р°РіСЂРµСЃРёРІРЅСѓ СЃС‚СЂР°С‚РµРіС–СЋ РІРёС…РѕРґСѓ
+    if (age > SIXTY_DAYS) {
+      const currentPrice = Number(item.expectedSalePriceManual ?? item.totalCost * 1.4);
+      const liquidationPrice = toMoney(Number(item.totalCost) * 1.05); // РЎС‚Р°РІРёРјРѕ С†С–РЅСѓ РІ +5% РІС–Рґ СЃРѕР±С–РІР°СЂС‚РѕСЃС‚С– РґР»СЏ РјРёС‚С‚С”РІРѕРіРѕ Р·Р»РёРІСѓ
+
+      if (currentPrice > liquidationPrice) {
+        dbOperations.push(
+          prisma.inventoryItem.update({
+            where: { id: item.id },
+            data: { expectedSalePriceManual: liquidationPrice },
+          }),
+          prisma.repriceFlowItem.create({
+            data: {
+              inventoryItemId: item.id,
+              currentPrice,
+              suggestedPrice: liquidationPrice,
+              status: 'listed',
+              reason: `CRITICAL_LIQUIDATION: Asset stale for ${Math.floor(age / (24 * 60 * 60 * 1000))} days`,
+            }
+          }),
+          prisma.activityLog.create({
+            data: {
+              action: 'strategy.auto_liquidation_triggered',
+              payloadJson: { inventoryItemId: item.id, oldPrice: currentPrice, newPrice: liquidationPrice }
+            }
+          })
+        );
+        liquidatedCount++;
+      }
+    }
+  }
+
+  // 3. Р•С‚Р°Рї Р°РІС‚Рѕ-С–РЅРІРµСЃС‚СѓРІР°РЅРЅСЏ (Auto-Reinvestment Pipeline)
+  // РЇРєС‰Рѕ Сѓ РЅР°СЃ РЅР° Р±Р°Р»Р°РЅСЃС– С” РІС–Р»СЊРЅС– РєРѕС€С‚Рё, РїСѓСЃРєР°С”РјРѕ С—С… Сѓ СЂРѕР±РѕС‚Сѓ Р·Р° РїСЂС–РѕСЂРёС‚РµС‚Р°РјРё СЃРїРёСЃРєСѓ СЃРїРѕСЃС‚РµСЂРµР¶РµРЅРЅСЏ
+  const hotDeals = await prisma.deal.findMany({
+    where: { status: 'open', action: 'BUY_NOW' },
+    orderBy: { score: 'desc' },
+    take: 10,
+  });
+
+  if (hotDeals.length > 0) {
+    for (const deal of hotDeals) {
+      // РђРІС‚РѕРјР°С‚РёС‡РЅРѕ СЃС‚РІРѕСЂСЋС”РјРѕ Р·Р°С‚РІРµСЂРґР¶РµРЅРёР№ Р·Р°РєСѓРїС–РІРµР»СЊРЅРёР№ РѕСЂРґРµСЂ РґР»СЏ РЅР°Р№РєСЂР°С‰РёС… СѓРіРѕРґ
+      const existingPo = await prisma.purchaseOrder.findFirst({
+        where: { watchlistItemId: deal.watchlistItemId, status: { in: ['planned', 'approved', 'ordered'] } }
+      });
+
+      if (!existingPo) {
+        const dealKey = `auto_reinvest_${deal.id}_${Date.now()}`;
+        
+        dbOperations.push(
+          prisma.purchaseOrder.create({
+            data: {
+              id: dealKey,
+              itemId: deal.id, // РџРѕСЃРёР»Р°РЅРЅСЏ РЅР° deal/item
+              watchlistItemId: deal.watchlistItemId,
+              titleSnapshot: 'Auto Portfolio Reinvestment',
+              status: 'approved', // РЎС‚Р°С‚СѓСЃ Р·Р°С‚РІРµСЂРґР¶РµРЅРѕ вЂ” РѕРїРµСЂР°С‚РѕСЂ РјРѕР¶Рµ РІС–РґСЂР°Р·Сѓ РѕРїР»Р°С‡СѓРІР°С‚Рё
+              plannedPrice: deal.buyPrice,
+              actualPrice: deal.buyPrice,
+              totalCost: deal.buyPrice,
+              targetSellPrice: deal.targetSellPrice,
+              notes: `AUTO_REINVEST: High-score sniper target (${deal.score} pts)`,
+            }
+          }),
+          prisma.purchaseFlowItem.create({
+            data: {
+              watchlistItemId: deal.watchlistItemId,
+              selectedPrice: deal.buyPrice,
+              status: 'pending',
+              reason: `Portfolio Rebalancer: Auto-routed capital into high-ROI asset`,
+            }
+          })
+        );
+        reinvestedCount++;
+      }
+    }
+  }
+
+  // Р’РёРєРѕРЅСѓС”РјРѕ РІСЃС– РєРѕСЂРёРіСѓРІР°РЅРЅСЏ РїРѕСЂС‚С„РµР»СЏ С‚СЂР°РЅР·Р°РєС†С–Р№РЅРѕ
+  if (dbOperations.length > 0) {
+    const chunkSize = 100;
+    for (let i = 0; i < dbOperations.length; i += chunkSize) {
+      await prisma.$transaction(dbOperations.slice(i, i + chunkSize));
+    }
+  }
+
+  console.log(`рџЏЃ Portfolio Rebalancing Complete. Stale liquidated: ${liquidatedCount}, Capital auto-routed: ${reinvestedCount}`);
+  
+  return {
+    liquidated: liquidatedCount,
+    reinvested: reinvestedCount,
+    status: dbOperations.length > 0 ? 'EXECUTED_ADJUSTMENTS' : 'PORTFOLIO_BALANCED'
+  };
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\jobs\recompute-decisions.job.ts =====
 
 import { prisma } from '../prisma';
@@ -31173,7 +31868,7 @@ export function logJobFailure(job: Job | undefined, error: unknown): void {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\queue\job-router.ts =====
 
-import type { Job } from 'bullmq';
+import { Job } from 'bullmq';
 import { cleanupOldSnapshotsJob } from '../jobs/cleanup-old-snapshots.job';
 import { detectDealsJob } from '../jobs/detect-deals.job';
 import { markStaleListingsJob } from '../jobs/mark-stale-listings.job';
@@ -31183,6 +31878,7 @@ import { runScannerJob } from '../jobs/run-scanner-job';
 import { scheduledRefreshJob } from '../jobs/scheduled-refresh.job';
 import { sourceHealthRollupJob } from '../jobs/source-health-rollup.job';
 import { globalSyncRefreshJob } from '../jobs/global-sync-refresh.job';
+import { portfolioRebalancingJob } from '../jobs/portfolio-rebalancing.job'; // <-- Р”РћР”РђРќРћ Р†РњРџРћР Рў
 import { JOB_NAMES } from './queue.constants';
 
 export async function routeJob(job: Job): Promise<unknown> {
@@ -31206,6 +31902,8 @@ export async function routeJob(job: Job): Promise<unknown> {
       return runScannerJob(job.data.jobId);
     case JOB_NAMES.GLOBAL_SYNC_REFRESH:
       return globalSyncRefreshJob(job.data);
+    case 'portfolio-rebalancing': // <-- РћР±СЂРѕР±РёР»Рё РЅРѕРІСѓ Р·Р°РґР°С‡Сѓ СЂРµР±Р°Р»Р°РЅСЃСѓРІР°РЅРЅСЏ РєР°РїС–С‚Р°Р»Сѓ
+      return portfolioRebalancingJob();
     default:
       throw new Error(`Unknown job name: ${job.name}`);
   }
@@ -31231,6 +31929,7 @@ export const JOB_NAMES = {
   SOURCE_HEALTH_ROLLUP: 'source-health-rollup',
   CLEANUP_OLD_SNAPSHOTS: 'cleanup-old-snapshots',
   GLOBAL_SYNC_REFRESH: 'global-sync-refresh',
+  PORTFOLIO_REBALANCING: 'portfolio-rebalancing'
 } as const;
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\queue\redis-connection.ts =====
@@ -31490,9 +32189,11 @@ model User {
   email                  String?         @unique
   passwordHash           String?
   role                   String          @default("operator")
+  phone                  String?
+  payoutCard             String?
   active                 Boolean         @default(true)
   createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @updatedAt
+  updatedAt              DateTime        @default(now()) @updatedAt
   sessions               UserSession[]
   assignedInventoryItems InventoryItem[]
   assignedWatchlistItems WatchlistItem[]
@@ -31500,6 +32201,13 @@ model User {
   purchaseOrders         PurchaseOrder[]
   expenses               Expense[]
   auditLogs              AuditLog[]
+  sellerItems            InventoryItem[] @relation("SellerItems")
+  
+  // PRO SAAS & BOUNTY SCOUT FIELDS
+  isPro                  Boolean         @default(false)
+  proExpiresAt           DateTime?
+  payoutRequests         PayoutRequest[]
+  scoutLeads             ScoutLead[]
 
   @@index([role, active])
   @@index([active])
@@ -31527,7 +32235,7 @@ model Item {
   imageUrl          String?
   notes             String?
   createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  updatedAt         DateTime           @default(now()) @updatedAt
   inventoryItems    InventoryItem[]
   watchlistItems    WatchlistItem[]
   marketListings    MarketListing[]
@@ -31550,7 +32258,7 @@ model Warehouse {
   address        String?
   active         Boolean           @default(true)
   createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  updatedAt      DateTime          @default(now()) @updatedAt
   locations      StorageLocation[]
   stockMovements StockMovement[]
 
@@ -31567,7 +32275,7 @@ model StorageLocation {
   box            String?
   active         Boolean         @default(true)
   createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  updatedAt      DateTime        @default(now()) @updatedAt
   warehouse      Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   inventoryItems InventoryItem[]
 
@@ -31592,11 +32300,21 @@ model InventoryItem {
   warehouseId             String?
   notes                   String?
   priority                Int               @default(50)
+  
+  // MARKETPLACE FIELDS
+  isMarketplace           Boolean           @default(false) 
+  sellerId                String?            
+  commissionRate          Float             @default(5.0)
+  sellerPayout            Float? 
+  approvalStatus          String            @default("approved") 
+
   assignedUserId          String?
   createdAt               DateTime          @default(now())
-  updatedAt               DateTime          @updatedAt
+  updatedAt               DateTime          @default(now()) @updatedAt
+  
   item                    Item              @relation(fields: [itemId], references: [id], onDelete: Restrict)
   assignedUser            User?             @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  seller                  User?             @relation("SellerItems", fields: [sellerId], references: [id], onDelete: SetNull)
   location                StorageLocation?  @relation(fields: [storageLocationId], references: [id], onDelete: SetNull)
   images                  InventoryImage[]
   sales                   Sale[]
@@ -31611,6 +32329,7 @@ model InventoryItem {
 
   @@index([itemId, quantity])
   @@index([assignedUserId, quantity])
+  @@index([isMarketplace, approvalStatus])
   @@index([warehouseId, storageLocationId])
   @@index([quantity, expectedSalePriceManual])
   @@index([titleSnapshot(ops: raw("gin_trgm_ops"))], type: Gin)
@@ -31641,7 +32360,7 @@ model InventoryImage {
   isPrimary       Boolean       @default(false)
   sortOrder       Int           @default(0)
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([inventoryItemId, isPrimary, sortOrder])
@@ -31659,7 +32378,7 @@ model WatchlistItem {
   notes           String?
   assignedUserId  String?
   createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  updatedAt       DateTime           @default(now()) @updatedAt
   item            Item               @relation(fields: [itemId], references: [id], onDelete: Restrict)
   assignedUser    User?              @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
   purchaseFlows   PurchaseFlowItem[]
@@ -31693,8 +32412,8 @@ model PurchaseOrder {
   notes           String?
   purchasedAt     DateTime?
   receivedAt      DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime       @allowed
+  updatedAt       DateTime       @default(now()) @updatedAt
   item            Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
   watchlistItem   WatchlistItem? @relation(fields: [watchlistItemId], references: [id], onDelete: SetNull)
   inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
@@ -31712,7 +32431,7 @@ model MarketSource {
   type      String          @default("manual")
   enabled   Boolean         @default(true)
   createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  updatedAt DateTime        @default(now()) @updatedAt
   listings  MarketListing[]
   runs      SourceRunLog[]
 
@@ -31743,10 +32462,10 @@ model MarketListing {
   quantityAvailable   Int?
   status              String                 @default("active")
   fetchedAt           DateTime               @default(now())
-  firstSeenAt           DateTime               @default(now())
+  firstSeenAt         DateTime               @default(now())
   lastSeenAt          DateTime               @default(now())
   createdAt           DateTime               @default(now())
-  updatedAt           DateTime               @updatedAt
+  updatedAt           DateTime               @default(now()) @updatedAt
   source              MarketSource           @relation(fields: [sourceId], references: [id], onDelete: Restrict)
   item                Item                   @relation(fields: [itemId], references: [id], onDelete: Restrict)
   deals               Deal[]
@@ -31808,7 +32527,7 @@ model PurchaseFlowItem {
   status          String        @default("pending")
   reason          String?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
@@ -31822,7 +32541,7 @@ model RepriceFlowItem {
   status          String        @default("pending")
   reason          String?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
@@ -31834,7 +32553,7 @@ model ReviewFlowItem {
   status          String        @default("pending")
   reason          String?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
@@ -31852,7 +32571,7 @@ model Deal {
   score           Float
   status          String        @default("open")
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
@@ -31862,27 +32581,34 @@ model Deal {
 }
 
 model Sale {
-  id              String          @id @default(cuid())
-  inventoryItemId String
-  itemId          String
-  quantity        Int             @default(1)
-  sellPrice       Float
-  costBasis       Float
-  profit          Float
-  roiPercent      Float
-  channel         String?
-  buyerName       String?
-  notes           String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  deletedAt       DateTime?
-  inventoryItem   InventoryItem   @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
-  item            Item            @relation(fields: [itemId], references: [id], onDelete: Restrict)
-  orders          Order[]
-  returns         ReturnRequest[]
-  expenses        Expense[]
+  id                String        @id @default(cuid())
+  inventoryItemId   String
+  itemId            String
+  quantity          Int           @default(1)
+  sellPrice         Float
+  costBasis         Float
+  profit            Float
+  roiPercent        Float
+  channel           String?
+  buyerName         String?
+  notes             String?
+  
+  isMarketplaceSale Boolean       @default(false)
+  commissionAmount  Float?
+  sellerPayout      Float?
+  payoutStatus      String?       @default("pending") 
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @default(now()) @updatedAt
+  deletedAt         DateTime?
+  inventoryItem     InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  item              Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  orders            Order[]
+  returns           ReturnRequest[]
+  expenses          Expense[]
 
   @@index([itemId, createdAt])
+  @@index([isMarketplaceSale, payoutStatus])
   @@index([deletedAt])
 }
 
@@ -31900,7 +32626,7 @@ model Order {
   channel          String?
   adminNote        String?
   createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  updatedAt        DateTime        @default(now()) @updatedAt
   deletedAt        DateTime?
   reserveRequest   ReserveRequest? @relation(fields: [reserveRequestId], references: [id], onDelete: SetNull)
   inventoryItem    InventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
@@ -31925,7 +32651,7 @@ model ReturnRequest {
   adminNote       String?
   resolvedAt      DateTime?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   deletedAt       DateTime?
   sale            Sale          @relation(fields: [saleId], references: [id], onDelete: Restrict)
   order           Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
@@ -31949,7 +32675,7 @@ model Expense {
   assignedUserId  String?
   incurredAt      DateTime       @default(now())
   createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  updatedAt       DateTime       @default(now()) @updatedAt
   deletedAt       DateTime?
   inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
@@ -32009,7 +32735,7 @@ model ReserveRequest {
   status          String         @default("pending")
   adminNote       String?
   createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  updatedAt       DateTime       @default(now()) @updatedAt
   inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
   orders          Order[]
 
@@ -32052,7 +32778,7 @@ model UnresolvedMatchQueue {
   status          String        @default("pending")
   resolutionNote  String?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
@@ -32122,6 +32848,188 @@ model SoldComp {
   @@unique([sourceCode, externalId])
   @@index([itemId])
 }
+
+model PayoutRequest {
+  id        String   @id @default(cuid())
+  sellerId  String
+  amount    Float
+  status    String   @default("pending") 
+  cardData  String?  
+  adminNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  seller    User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId, status])
+  @@index([status, createdAt])
+}
+
+model ScoutLead {
+  id          String   @id @default(cuid())
+  scoutId     String
+  url         String
+  notes       String?
+  status      String   @default("pending") 
+  reward      Float    @default(0)         
+  adminNote   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  scout       User     @relation(fields: [scoutId], references: [id], onDelete: Cascade)
+
+  @@index([scoutId, status])
+  @@index([status, createdAt])
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\db\prisma\seed-bricklink-figs.js =====
+
+const { PrismaClient } = require('@prisma/client');
+const fs = require('fs');
+const path = require('path');
+const readline = require('readline');
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('рџљЂ Starting BrickLink Minifigure seed...');
+  
+  // РџР•Р Р•Р’Р†Р , Р©Рћ Р¤РђР™Р› РќРђР—РР’РђР„РўР¬РЎРЇ РЎРђРњР• РўРђРљ
+  const filePath = path.join(__dirname, 'minifigs.txt');
+  
+  if (!fs.existsSync(filePath)) {
+    console.error('вќЊ File minifigs.txt not found in ' + __dirname);
+    process.exit(1);
+  }
+
+  const fileStream = fs.createReadStream(filePath);
+  const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+
+  let isHeader = true;
+  let chunk = [];
+  let totalSeeded = 0;
+
+  for await (const line of rl) {
+    if (isHeader) { isHeader = false; continue; }
+    
+    // Р РѕР·РґС–Р»СЊРЅРёРє РјРѕР¶Рµ Р±СѓС‚Рё \t (tab), СЏРєС‰Рѕ С„Р°Р№Р» Р· СЃР°Р№С‚Сѓ BrickLink
+    const columns = line.split('\t'); 
+    
+    // Р†РЅРґРµРєСЃРё РґР»СЏ СЃС‚Р°РЅРґР°СЂС‚РЅРѕРіРѕ С„Р°Р№Р»Сѓ Minifigures Р· BrickLink
+    const figNum = columns[2]?.trim(); 
+    const name = columns[3]?.trim();
+
+    if (!figNum || !name) continue;
+
+    chunk.push({
+      id: `item_bl_${figNum.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+      kind: 'minifigure',
+      title: name,
+      setNumber: figNum.toLowerCase(),
+      theme: 'Minifigures',
+      conditionDefault: 'used'
+    });
+
+    if (chunk.length >= 1000) {
+      await prisma.item.createMany({ data: chunk, skipDuplicates: true });
+      totalSeeded += chunk.length;
+      console.log(`рџ¤– Seeded subtotal: ${totalSeeded} minifigures...`);
+      chunk = [];
+    }
+  }
+
+  if (chunk.length > 0) {
+    await prisma.item.createMany({ data: chunk, skipDuplicates: true });
+    totalSeeded += chunk.length;
+  }
+
+  console.log(`вњ… Done! Successfully injected ${totalSeeded} BrickLink minifigures.`);
+}
+
+main().catch(console.error).finally(() => prisma.$disconnect());
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\db\prisma\seed-bricklink-figs.ts =====
+
+import { PrismaClient } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as readline from 'readline';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('рџљЂ Starting BrickLink Minifigure seed...');
+  
+  const filePath = path.join(__dirname, 'minifigs.txt');
+  
+  if (!fs.existsSync(filePath)) {
+    console.error('вќЊ File not found! Download Minifigures catalog from BrickLink (Tab delimited text) and save as "minifigs.txt" in the prisma folder.');
+    process.exit(1);
+  }
+
+  const fileStream = fs.createReadStream(filePath);
+  const rl = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity,
+  });
+
+  let isHeader = true;
+  let idIdx = -1;
+  let nameIdx = -1;
+
+  let chunk: any[] = [];
+  let totalSeeded = 0;
+
+  for await (const line of rl) {
+    const columns = line.split('\t');
+    
+    if (isHeader) {
+      idIdx = columns.indexOf('Item No');
+      nameIdx = columns.indexOf('Item Name');
+      isHeader = false;
+      continue;
+    }
+
+    // РЇРєС‰Рѕ С…РµРґРµСЂРё РЅРµ Р·РЅР°Р№РґРµРЅРѕ, РІРёРєРѕСЂРёСЃС‚РѕРІСѓС”РјРѕ СЃС‚Р°РЅРґР°СЂС‚РЅС– С–РЅРґРµРєСЃРё BrickLink (0 - Type, 1 - Category, 2 - Item No, 3 - Item Name)
+    if (idIdx === -1) idIdx = 2;
+    if (nameIdx === -1) nameIdx = 3;
+
+    const setNumber = columns[idIdx]?.trim();
+    const title = columns[nameIdx]?.trim();
+
+    if (!setNumber || !title) continue;
+
+    chunk.push({
+      id: `item_bl_${setNumber.replace(/[^a-zA-Z0-9]/g, '')}`,
+      kind: 'minifigure',
+      title: title,
+      setNumber: setNumber.toLowerCase(),
+      theme: 'Minifigures',
+      conditionDefault: 'used'
+    });
+
+    if (chunk.length >= 1000) {
+      await prisma.item.createMany({ data: chunk, skipDuplicates: true });
+      totalSeeded += chunk.length;
+      console.log(`рџ¤– Seeded subtotal: ${totalSeeded} minifigures...`);
+      chunk = [];
+    }
+  }
+
+  if (chunk.length > 0) {
+    await prisma.item.createMany({ data: chunk, skipDuplicates: true });
+    totalSeeded += chunk.length;
+  }
+
+  console.log(`вњ… Done! Successfully injected ${totalSeeded} BrickLink minifigures.`);
+}
+
+main()
+  .catch((e) => {
+    console.error('вќЊ Seed Failed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\packages\db\prisma\seed-rebrickable.ts =====
 
@@ -32638,8 +33546,9 @@ export function normalizeTitle(value: string): string {
 }
 
 export function extractSetNumber(value: string): string | null {
-  const match = value.match(/\b\d{4,7}\b/);
-  return match?.[0] ?? null;
+  // Р›РѕРІРёС‚СЊ РЅР°Р±РѕСЂРё (75192) С‚Р° С„С–РіРё (njo0012, sw1020, col011a)
+  const match = value.match(/\b([a-zA-Z]{2,4}-?\d{2,5}[a-zA-Z]?|\d{4,7})\b/i);
+  return match ? match[0].toLowerCase() : null;
 }
 
 export function slugify(value: string): string {

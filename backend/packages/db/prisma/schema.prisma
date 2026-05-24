@@ -16,9 +16,11 @@ model User {
   email                  String?         @unique
   passwordHash           String?
   role                   String          @default("operator")
+  phone                  String?
+  payoutCard             String?
   active                 Boolean         @default(true)
   createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @updatedAt
+  updatedAt              DateTime        @default(now()) @updatedAt
   sessions               UserSession[]
   assignedInventoryItems InventoryItem[]
   assignedWatchlistItems WatchlistItem[]
@@ -26,6 +28,13 @@ model User {
   purchaseOrders         PurchaseOrder[]
   expenses               Expense[]
   auditLogs              AuditLog[]
+  sellerItems            InventoryItem[] @relation("SellerItems")
+  
+  // PRO SAAS & BOUNTY SCOUT FIELDS
+  isPro                  Boolean         @default(false)
+  proExpiresAt           DateTime?
+  payoutRequests         PayoutRequest[]
+  scoutLeads             ScoutLead[]
 
   @@index([role, active])
   @@index([active])
@@ -53,7 +62,7 @@ model Item {
   imageUrl          String?
   notes             String?
   createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  updatedAt         DateTime           @default(now()) @updatedAt
   inventoryItems    InventoryItem[]
   watchlistItems    WatchlistItem[]
   marketListings    MarketListing[]
@@ -76,7 +85,7 @@ model Warehouse {
   address        String?
   active         Boolean           @default(true)
   createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  updatedAt      DateTime          @default(now()) @updatedAt
   locations      StorageLocation[]
   stockMovements StockMovement[]
 
@@ -93,7 +102,7 @@ model StorageLocation {
   box            String?
   active         Boolean         @default(true)
   createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  updatedAt      DateTime        @default(now()) @updatedAt
   warehouse      Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   inventoryItems InventoryItem[]
 
@@ -118,11 +127,21 @@ model InventoryItem {
   warehouseId             String?
   notes                   String?
   priority                Int               @default(50)
+  
+  // MARKETPLACE FIELDS
+  isMarketplace           Boolean           @default(false) 
+  sellerId                String?            
+  commissionRate          Float             @default(5.0)
+  sellerPayout            Float? 
+  approvalStatus          String            @default("approved") 
+
   assignedUserId          String?
   createdAt               DateTime          @default(now())
-  updatedAt               DateTime          @updatedAt
+  updatedAt               DateTime          @default(now()) @updatedAt
+  
   item                    Item              @relation(fields: [itemId], references: [id], onDelete: Restrict)
   assignedUser            User?             @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  seller                  User?             @relation("SellerItems", fields: [sellerId], references: [id], onDelete: SetNull)
   location                StorageLocation?  @relation(fields: [storageLocationId], references: [id], onDelete: SetNull)
   images                  InventoryImage[]
   sales                   Sale[]
@@ -137,6 +156,7 @@ model InventoryItem {
 
   @@index([itemId, quantity])
   @@index([assignedUserId, quantity])
+  @@index([isMarketplace, approvalStatus])
   @@index([warehouseId, storageLocationId])
   @@index([quantity, expectedSalePriceManual])
   @@index([titleSnapshot(ops: raw("gin_trgm_ops"))], type: Gin)
@@ -167,7 +187,7 @@ model InventoryImage {
   isPrimary       Boolean       @default(false)
   sortOrder       Int           @default(0)
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([inventoryItemId, isPrimary, sortOrder])
@@ -185,7 +205,7 @@ model WatchlistItem {
   notes           String?
   assignedUserId  String?
   createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  updatedAt       DateTime           @default(now()) @updatedAt
   item            Item               @relation(fields: [itemId], references: [id], onDelete: Restrict)
   assignedUser    User?              @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
   purchaseFlows   PurchaseFlowItem[]
@@ -219,8 +239,8 @@ model PurchaseOrder {
   notes           String?
   purchasedAt     DateTime?
   receivedAt      DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime       @allowed
+  updatedAt       DateTime       @default(now()) @updatedAt
   item            Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
   watchlistItem   WatchlistItem? @relation(fields: [watchlistItemId], references: [id], onDelete: SetNull)
   inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
@@ -238,7 +258,7 @@ model MarketSource {
   type      String          @default("manual")
   enabled   Boolean         @default(true)
   createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  updatedAt DateTime        @default(now()) @updatedAt
   listings  MarketListing[]
   runs      SourceRunLog[]
 
@@ -269,10 +289,10 @@ model MarketListing {
   quantityAvailable   Int?
   status              String                 @default("active")
   fetchedAt           DateTime               @default(now())
-  firstSeenAt           DateTime               @default(now())
+  firstSeenAt         DateTime               @default(now())
   lastSeenAt          DateTime               @default(now())
   createdAt           DateTime               @default(now())
-  updatedAt           DateTime               @updatedAt
+  updatedAt           DateTime               @default(now()) @updatedAt
   source              MarketSource           @relation(fields: [sourceId], references: [id], onDelete: Restrict)
   item                Item                   @relation(fields: [itemId], references: [id], onDelete: Restrict)
   deals               Deal[]
@@ -334,7 +354,7 @@ model PurchaseFlowItem {
   status          String        @default("pending")
   reason          String?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
@@ -348,7 +368,7 @@ model RepriceFlowItem {
   status          String        @default("pending")
   reason          String?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
@@ -360,7 +380,7 @@ model ReviewFlowItem {
   status          String        @default("pending")
   reason          String?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
@@ -378,7 +398,7 @@ model Deal {
   score           Float
   status          String        @default("open")
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
 
@@ -388,27 +408,34 @@ model Deal {
 }
 
 model Sale {
-  id              String          @id @default(cuid())
-  inventoryItemId String
-  itemId          String
-  quantity        Int             @default(1)
-  sellPrice       Float
-  costBasis       Float
-  profit          Float
-  roiPercent      Float
-  channel         String?
-  buyerName       String?
-  notes           String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  deletedAt       DateTime?
-  inventoryItem   InventoryItem   @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
-  item            Item            @relation(fields: [itemId], references: [id], onDelete: Restrict)
-  orders          Order[]
-  returns         ReturnRequest[]
-  expenses        Expense[]
+  id                String        @id @default(cuid())
+  inventoryItemId   String
+  itemId            String
+  quantity          Int           @default(1)
+  sellPrice         Float
+  costBasis         Float
+  profit            Float
+  roiPercent        Float
+  channel           String?
+  buyerName         String?
+  notes             String?
+  
+  isMarketplaceSale Boolean       @default(false)
+  commissionAmount  Float?
+  sellerPayout      Float?
+  payoutStatus      String?       @default("pending") 
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @default(now()) @updatedAt
+  deletedAt         DateTime?
+  inventoryItem     InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  item              Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  orders            Order[]
+  returns           ReturnRequest[]
+  expenses          Expense[]
 
   @@index([itemId, createdAt])
+  @@index([isMarketplaceSale, payoutStatus])
   @@index([deletedAt])
 }
 
@@ -426,7 +453,7 @@ model Order {
   channel          String?
   adminNote        String?
   createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  updatedAt        DateTime        @default(now()) @updatedAt
   deletedAt        DateTime?
   reserveRequest   ReserveRequest? @relation(fields: [reserveRequestId], references: [id], onDelete: SetNull)
   inventoryItem    InventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
@@ -451,7 +478,7 @@ model ReturnRequest {
   adminNote       String?
   resolvedAt      DateTime?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   deletedAt       DateTime?
   sale            Sale          @relation(fields: [saleId], references: [id], onDelete: Restrict)
   order           Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
@@ -475,7 +502,7 @@ model Expense {
   assignedUserId  String?
   incurredAt      DateTime       @default(now())
   createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  updatedAt       DateTime       @default(now()) @updatedAt
   deletedAt       DateTime?
   inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
@@ -535,7 +562,7 @@ model ReserveRequest {
   status          String         @default("pending")
   adminNote       String?
   createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  updatedAt       DateTime       @default(now()) @updatedAt
   inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
   orders          Order[]
 
@@ -578,7 +605,7 @@ model UnresolvedMatchQueue {
   status          String        @default("pending")
   resolutionNote  String?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedAt       DateTime      @default(now()) @updatedAt
   listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
@@ -647,4 +674,35 @@ model SoldComp {
 
   @@unique([sourceCode, externalId])
   @@index([itemId])
+}
+
+model PayoutRequest {
+  id        String   @id @default(cuid())
+  sellerId  String
+  amount    Float
+  status    String   @default("pending") 
+  cardData  String?  
+  adminNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  seller    User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId, status])
+  @@index([status, createdAt])
+}
+
+model ScoutLead {
+  id          String   @id @default(cuid())
+  scoutId     String
+  url         String
+  notes       String?
+  status      String   @default("pending") 
+  reward      Float    @default(0)         
+  adminNote   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  scout       User     @relation(fields: [scoutId], references: [id], onDelete: Cascade)
+
+  @@index([scoutId, status])
+  @@index([status, createdAt])
 }

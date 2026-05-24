@@ -18,19 +18,19 @@ export class RolesGuard implements CanActivate {
         context.getClass(),
       ]) ?? [];
 
-    if (requiredRoles.length === 0) {
-      return true;
-    }
+    if (requiredRoles.length === 0) return true;
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    if (!user) {
-      throw new ForbiddenException('Missing user context');
-    }
+    if (!user) throw new ForbiddenException('Missing user context');
 
+    // Перевірка: адмін має доступ до всього
+    if (user.role === 'admin') return true;
+
+    // Перевірка на конкретну роль
     if (!requiredRoles.includes(user.role)) {
-      throw new ForbiddenException('Insufficient role');
+      throw new ForbiddenException('Insufficient role: access denied');
     }
 
     return true;

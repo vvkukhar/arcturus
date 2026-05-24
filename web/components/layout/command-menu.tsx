@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Package, User, MapPin, LineChart, ShieldCheck } from 'lucide-react';
+import { Search, Package, User, MapPin, ShieldCheck, Tag } from 'lucide-react';
 
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
@@ -11,13 +11,11 @@ export function CommandMenu() {
   const router = useRouter();
 
   const commands = useMemo(() => [
-    { name: 'Catalog', path: '/store/catalog', icon: Package, category: 'Navigation' },
-    { name: 'Market Overview', path: '/market', icon: LineChart, category: 'Trading' },
-    { name: 'Account Dashboard', path: '/account', icon: User, category: 'Account' },
-    { name: 'Order Tracking', path: '/track', icon: MapPin, category: 'Navigation' },
-    { name: 'Authenticity Checks', path: '/authenticity', icon: ShieldCheck, category: 'Information' },
-    { name: 'Sell to Us', path: '/sell', icon: Package, category: 'Information' },
-    { name: 'Delivery', path: '/delivery', icon: Package, category: 'Information' },
+    { name: 'Каталог наборів', path: '/store/catalog', icon: Package, category: 'Магазин' },
+    { name: 'Мій Кабінет', path: '/account', icon: User, category: 'Акаунт' },
+    { name: 'Відстежити замовлення', path: '/track', icon: MapPin, category: 'Магазин' },
+    { name: 'Виставити на продаж (5% комісія)', path: '/sell', icon: Tag, category: 'Маркетплейс' },
+    { name: 'Гарантія якості', path: '/authenticity', icon: ShieldCheck, category: 'Інформація' },
   ], []);
 
   const filteredCommands = useMemo(() => {
@@ -59,7 +57,7 @@ export function CommandMenu() {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Type a command or search..."
+            placeholder="Шукати..."
             className="flex-1 bg-transparent border-none outline-none text-lg text-[var(--foreground)] placeholder-slate-400 font-medium"
           />
           <div className="hidden sm:flex items-center gap-1 text-[10px] font-black text-slate-400 bg-[var(--background)] border border-[var(--border)] px-2.5 py-1.5 rounded-lg shadow-sm">
@@ -69,7 +67,7 @@ export function CommandMenu() {
 
         <div className="max-h-[50vh] overflow-y-auto p-3 custom-scrollbar">
           {filteredCommands.length === 0 ? (
-            <div className="p-12 text-center text-slate-500 font-medium">No results found for "{query}"</div>
+            <div className="p-12 text-center text-slate-500 font-medium">Нічого не знайдено для "{query}"</div>
           ) : (
             <div className="space-y-1">
               {filteredCommands.map((cmd, idx) => {

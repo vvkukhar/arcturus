@@ -51,7 +51,7 @@ export class ItemsService {
                 },
                 {
                   setNumber: {
-                    contains: q,
+                    equals: q,
                     mode: 'insensitive',
                   },
                 },

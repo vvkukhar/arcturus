@@ -40,20 +40,28 @@ export class JwtAuthGuard implements CanActivate {
         include: { user: true },
       });
 
-      if (!session || !(session as any).user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
+      if (!session || !session.user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
         throw new UnauthorizedException('Session expired or invalid');
       }
 
-      const user = (session as any).user;
+      const user = session.user;
 
       sessionUser = {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
+        isPro: user.isPro,
+        proExpiresAt: user.proExpiresAt ? new Date(user.proExpiresAt).toISOString() : null,
       };
 
+      // Кешуємо сесію користувача на 5 хвилин
       await this.redis.set(cacheKey, sessionUser, 300);
+    }
+
+    // Відновлюємо реальний об'єкт дати для перевірки протермінування підписки
+    if (sessionUser.proExpiresAt) {
+      sessionUser.proExpiresAt = new Date(sessionUser.proExpiresAt);
     }
 
     request.user = sessionUser;

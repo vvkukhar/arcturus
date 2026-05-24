@@ -61,6 +61,7 @@ import { UsersModule } from './modules/users/users.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { MediaModule } from './modules/media/media.module';
 import { AllocationModule } from './modules/allocation/allocation.module';
+import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 
 @Module({
   imports: [
@@ -124,7 +125,8 @@ import { AllocationModule } from './modules/allocation/allocation.module';
     UsersModule,
     WarehouseModule,
     MediaModule,
-    AllocationModule
+    AllocationModule,
+    MarketplaceModule
   ],
   controllers: [],
   providers: [],

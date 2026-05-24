@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-export function AuthGate({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
+export function AuthGate({ children, requiredRole }: { children: React.ReactNode, requiredRole?: string }) {
+  const [status, setStatus] = useState<'loading' | 'authorized' | 'forbidden'>('loading');
+  const router = useRouter();
 
   useEffect(() => {
     let mounted = true;
@@ -13,24 +15,29 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       try {
         const response = await fetch('/api/auth/me', { cache: 'no-store' });
         if (!response.ok) throw new Error('Unauthorized');
-        if (mounted) setReady(true);
+        
+        const user = await response.json();
+        
+        if (requiredRole && user.role !== requiredRole && user.role !== 'admin') {
+          setStatus('forbidden');
+        } else {
+          setStatus('authorized');
+        }
       } catch {
-        await fetch('/api/auth/logout', { method: 'POST' });
-        if (mounted) window.location.href = '/login';
+        if (mounted) router.push('/login');
       }
     };
 
     checkAuth();
     return () => { mounted = false; };
-  }, []);
+  }, [requiredRole, router]);
 
-  if (!ready) {
-    return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-[var(--background)] gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-        <div className="text-sm font-bold uppercase tracking-widest text-slate-400">Authenticating...</div>
-      </div>
-    );
+  if (status === 'loading') {
+    return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-blue-600" /></div>;
+  }
+
+  if (status === 'forbidden') {
+    return <div className="p-10 text-center font-bold text-red-500">Access Denied: Insufficient Permissions</div>;
   }
 
   return <>{children}</>;
