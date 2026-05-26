@@ -71,7 +71,7 @@ function ProductCardComponent({ item }: Props) {
               </div>
             </div>
 
-            {/* ФІКС: object-contain та padding p-6 для карток каталогу */}
+            {/* ФІКС: Зменшено відступ (p-2 sm:p-4) для більшого розміру картинки */}
             <div className="relative aspect-square w-full overflow-hidden z-10 bg-white border-b border-[var(--border)]">
               {item.sealed && (
                 <span className="absolute top-4 left-4 z-20 px-3 py-1.5 bg-blue-100/90 text-blue-800 text-[10px] sm:text-xs font-black tracking-wider uppercase rounded-xl backdrop-blur-md shadow-sm border border-blue-200">
@@ -102,7 +102,7 @@ function ProductCardComponent({ item }: Props) {
                   src={imageUrl}
                   alt={title}
                   fill
-                  className="object-contain p-6 mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
+                  className="object-contain p-2 sm:p-4 mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-300">
