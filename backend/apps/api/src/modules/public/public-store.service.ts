@@ -1,3 +1,4 @@
+// call:function_1{"queries":["backend/apps/api/src/modules/public/public-store.service.ts"]}
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { toMoney } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
@@ -47,7 +48,6 @@ export class PublicStoreService {
     const data = await this.prisma.inventoryItem.findMany({
       where: {
         quantity: params.availableOnly === true ? { gt: 0 } : undefined,
-        // ФІЛЬТР: Або це наш товар, або він апрувнутий
         OR: [
           { isMarketplace: false },
           { isMarketplace: true, approvalStatus: 'approved' }
@@ -92,6 +92,7 @@ export class PublicStoreService {
         item: true,
         images: { orderBy: { sortOrder: 'asc' } },
         assignedUser: true,
+        seller: { select: { id: true, name: true } },
       },
       take: 500,
     });
@@ -99,7 +100,10 @@ export class PublicStoreService {
     const found = all.find((entry) => {
       const title = entry.titleSnapshot || entry.item?.title || entry.id;
       const generated = this.slugify(title);
-      return generated === normalized || entry.id === normalized;
+      // ФІКС: Шукаємо точний збіг по новому унікальному посиланню
+      const generatedWithId = `${generated}-${entry.id.slice(-6).toLowerCase()}`;
+      
+      return generated === normalized || entry.id === normalized || generatedWithId === normalized;
     });
 
     return found ?? null;
@@ -131,101 +135,85 @@ export class PublicStoreService {
     });
   }
 
-  async trackOrder(query: string): Promise<unknown> {
-    const normalized = query.trim();
-    if (!normalized) throw new BadRequestException('Tracking query is required');
+  async getSellerProfile(sellerId: string): Promise<unknown> {
+    const seller = await this.prisma.user.findUnique({
+      where: { id: sellerId },
+      select: { id: true, name: true, createdAt: true },
+    });
 
-    const order = await this.prisma.order.findFirst({
-      where: {
-        OR: [
-          { id: normalized },
-          { contact: { contains: normalized } }
-        ]
+    if (!seller) throw new NotFoundException('Seller not found');
+
+    const activeListings = await this.prisma.inventoryItem.findMany({
+      where: { 
+        sellerId, 
+        isMarketplace: true, 
+        approvalStatus: 'approved', 
+        quantity: { gt: 0 } 
       },
-      select: {
-        id: true,
-        status: true,
-        productTitle: true,
-        sellPrice: true,
-        quantity: true,
-        createdAt: true,
+      include: { 
+        item: true, 
+        images: { take: 1, orderBy: { sortOrder: 'asc' } } 
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
+    const soldCount = await this.prisma.sale.count({
+      where: { inventoryItem: { sellerId } }
+    });
 
-    return order;
+    return {
+      seller,
+      stats: {
+        soldCount,
+        activeListings: activeListings.length,
+      },
+      listings: activeListings,
+    };
   }
 
-  async createReserve(params: { inventoryItemId?: string | null; productTitle?: string; name: string; contact: string; message?: string | null }): Promise<unknown> {
-    const name = params.name.trim();
-    const contact = params.contact.trim();
-    const message = params.message?.trim() ?? '';
-    let productTitle = params.productTitle?.trim() ?? '';
-    let inventoryItemId = params.inventoryItemId;
+  async createReserveRequest(body: { inventoryItemId?: string; productTitle?: string; name: string; contact: string; message?: string }): Promise<unknown> {
+    const name = body.name.trim();
+    const contact = body.contact.trim();
+    const message = body.message?.trim() ?? '';
+
+    let productTitle = body.productTitle?.trim() ?? '';
+    let inventoryItemId = body.inventoryItemId;
 
     if (inventoryItemId) {
       const inventoryItem = await this.prisma.inventoryItem.findUnique({
         where: { id: inventoryItemId },
-        select: { titleSnapshot: true, id: true, expectedSalePriceManual: true, quantity: true, item: { select: { title: true } } },
+        include: { item: true },
       });
+
       if (!inventoryItem) throw new NotFoundException('Inventory item not found');
-      if (inventoryItem.quantity < 1) throw new BadRequestException('Item is out of stock');
+
       productTitle = productTitle || inventoryItem.titleSnapshot || inventoryItem.item?.title || inventoryItem.id;
     }
 
     if (!productTitle) throw new BadRequestException('Product title is required');
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const reserve = await tx.reserveRequest.create({
-        data: { inventoryItemId, productTitle, name, contact, message, status: 'pending' },
-      });
-      const order = await tx.order.create({
-        data: {
-          reserveRequestId: reserve.id,
-          inventoryItemId: reserve.inventoryItemId,
-          productTitle: reserve.productTitle,
-          buyerName: reserve.name,
-          contact: reserve.contact,
-          status: 'pending',
-          sellPrice: null, 
-          quantity: 1,
-          channel: 'public_store',
-          adminNote: reserve.message ?? null,
-        },
-      });
-
-      if (inventoryItemId) {
-        await tx.inventoryItem.update({
-          where: { id: inventoryItemId },
-          data: { quantity: { decrement: 1 } }
-        });
-      }
-
-      return { reserve, order };
+    const created = await this.prisma.reserveRequest.create({
+      data: {
+        inventoryItemId,
+        productTitle,
+        name,
+        contact,
+        message,
+        status: 'pending',
+      },
     });
 
-    await this.activity.log('reserve.created', { reserveRequestId: result.reserve.id, orderId: result.order.id, inventoryItemId: result.reserve.inventoryItemId, productTitle: result.reserve.productTitle, name: result.reserve.name, contact: result.reserve.contact });
-    
-    await this.notifications.createReserveNotification({ 
-      reserveId: result.reserve.id,
-      productTitle: result.reserve.productTitle,
-      customerName: result.reserve.name,
-      contact: result.reserve.contact
+    await this.notifications.createReserveNotification({
+      reserveId: created.id,
+      productTitle: created.productTitle,
+      customerName: created.name,
+      contact: created.contact
     });
 
-    this.realtime.emitCustom('reserve.created', result.reserve);
-    this.realtime.emitCustom('order.created', result.order);
+    this.realtime.emitCustom('reserve.created', created);
     this.realtime.emitDashboardRefresh('reserve_created');
-    
-    if (inventoryItemId) {
-      this.realtime.emitInventoryRefresh({ inventoryItemId, reason: 'reserve_created_stock_deducted' });
-    }
 
-    return { ...result.reserve, orderId: result.order.id };
+    return created;
   }
 
   async getReserveRequests(params?: { q?: string; status?: string }): Promise<unknown[]> {
@@ -241,64 +229,33 @@ export class PublicStoreService {
           { message: { contains: q, mode: 'insensitive' } },
         ] } : {}),
       },
-      include: { orders: true, inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } } } },
       orderBy: { createdAt: 'desc' },
       take: 500,
     });
   }
 
-  async getReserveRequest(id: string): Promise<unknown> {
-    const row = await this.prisma.reserveRequest.findUnique({
-      where: { id },
-      include: { orders: true, inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' } } } } },
-    });
-    if (!row) throw new NotFoundException('Reserve request not found');
-    return row;
-  }
-
   async updateReserveRequest(body: { id: string; status?: string; adminNote?: string | null }): Promise<unknown> {
     if (!body.id) throw new BadRequestException('Reserve request id is required');
 
-    const existing = await this.prisma.reserveRequest.findUnique({ where: { id: body.id }, include: { orders: true } });
+    const existing = await this.prisma.reserveRequest.findUnique({ where: { id: body.id } });
     if (!existing) throw new NotFoundException('Reserve request not found');
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const reserve = await tx.reserveRequest.update({ where: { id: body.id }, data: { status: body.status, adminNote: body.adminNote } });
-      
-      if (body.status && existing.orders.length > 0) {
-        await tx.order.updateMany({
-          where: { reserveRequestId: body.id },
-          data: { status: body.status === 'approved' ? 'approved' : body.status === 'contacted' ? 'contacted' : body.status === 'rejected' ? 'cancelled' : body.status, adminNote: body.adminNote },
-        });
-      }
-
-      if (body.status === 'rejected' && existing.status !== 'rejected') {
-        if (existing.inventoryItemId) {
-          await tx.inventoryItem.update({
-            where: { id: existing.inventoryItemId },
-            data: { quantity: { increment: 1 } }
-          });
-        }
-      }
-
-      return reserve;
+    const updated = await this.prisma.reserveRequest.update({
+      where: { id: body.id },
+      data: {
+        status: body.status,
+        adminNote: body.adminNote,
+      },
     });
 
-    await this.activity.log('reserve.updated', { reserveRequestId: updated.id, status: updated.status, adminNote: updated.adminNote });
-    
     this.realtime.emitCustom('reserve.updated', updated);
     this.realtime.emitDashboardRefresh('reserve_updated');
-
-    if (existing.inventoryItemId && body.status === 'rejected') {
-      this.realtime.emitInventoryRefresh({ inventoryItemId: existing.inventoryItemId, reason: 'reserve_rejected_restock' });
-    }
 
     return updated;
   }
 
   async getReserveBoard(): Promise<unknown> {
     const rows = await this.prisma.reserveRequest.findMany({
-      include: { orders: true, inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } } } },
       orderBy: { createdAt: 'desc' },
       take: 500,
     });
@@ -308,7 +265,7 @@ export class PublicStoreService {
       approved: rows.filter((x) => x.status === 'approved'),
       contacted: rows.filter((x) => x.status === 'contacted'),
       rejected: rows.filter((x) => x.status === 'rejected'),
-      completed: rows.filter((x) => x.status === 'completed' || x.status === 'sold'),
+      completed: rows.filter((x) => x.status === 'completed'),
     };
   }
 

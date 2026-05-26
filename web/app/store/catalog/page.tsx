@@ -84,14 +84,15 @@ export default async function CatalogPage(props: Props) {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item: any) => {
             const safeTitle = item.titleSnapshot || item.item?.title || 'Arcturus Custom Item';
-            // ФІКС: Ідеальний генератор
-            const safeSlug = String(safeTitle)
+            const baseSlug = String(safeTitle)
               .trim()
               .toLowerCase()
               .replace(/[^\p{L}\p{N}\s-]/gu, '')
               .replace(/\s+/g, '-')
               .replace(/-+/g, '-')
               .replace(/^-|-$/g, '');
+            // ФІКС: Додаємо унікальний ідентифікатор до посилання
+            const safeSlug = `${baseSlug}-${item.id.slice(-6).toLowerCase()}`;
             
             const safeImage = item.images?.[0]?.imageUrl || item.imageUrl || item.item?.imageUrl || 'https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?w=800&q=80';
             
