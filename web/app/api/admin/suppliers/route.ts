@@ -13,6 +13,6 @@ export async function GET(request: NextRequest) {
     cache: 'no-store',
   });
 
-  if (!res.ok) return NextResponse.json([], { status: 200 });
+  if (!response.ok) return NextResponse.json([], { status: 200 });
   return NextResponse.json(await response.json());
 }
