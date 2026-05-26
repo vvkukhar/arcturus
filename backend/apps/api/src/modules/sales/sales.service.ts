@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { toMoney } from '@arcturus/shared';
+import { toMoney, calculateProfit, calculateRoiPercent } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -58,7 +58,6 @@ export class SalesService {
       if (inventoryItem.isMarketplace) {
         commissionAmount = toMoney((sellPrice * inventoryItem.commissionRate) / 100);
         sellerPayout = toMoney(sellPrice - commissionAmount);
-        
         costBasis = sellerPayout; 
         profit = commissionAmount; 
         roiPercent = 100;
@@ -87,6 +86,25 @@ export class SalesService {
         },
       });
 
+      if (inventoryItem.investorId && inventoryItem.investorProfitShare) {
+        const investorProfit = toMoney(profit * inventoryItem.investorProfitShare);
+        const totalReturn = costBasis + investorProfit;
+        
+        await tx.user.update({
+          where: { id: inventoryItem.investorId },
+          data: { vaultBalance: { increment: totalReturn } }
+        });
+
+        await tx.vaultTransaction.create({
+          data: {
+            userId: inventoryItem.investorId,
+            amount: totalReturn,
+            type: 'return',
+            description: `Sale return & profit share: ${inventoryItem.titleSnapshot}`
+          }
+        });
+      }
+
       await tx.stockMovement.create({
         data: {
           inventoryItemId: params.inventoryItemId,
@@ -104,7 +122,6 @@ export class SalesService {
   }
 
   async getPendingPayouts(): Promise<unknown[]> {
-    // Отримуємо запити на виплату, які очікують обробки
     return this.prisma.payoutRequest.findMany({
       where: { status: 'pending' },
       include: { seller: true },
@@ -114,31 +131,20 @@ export class SalesService {
 
   async markPayoutPaid(payoutRequestId: string): Promise<unknown> {
     const request = await this.prisma.payoutRequest.findUnique({
-      where: { id: payoutRequestId }
-    });
-
-    if (!request) throw new NotFoundException('Payout request not found');
-    if (request.status !== 'pending' && request.status !== 'processing') {
-      throw new BadRequestException('Request is already processed');
-    }
-
-    const updated = await this.prisma.payoutRequest.update({
       where: { id: payoutRequestId },
-      data: { status: 'paid' },
       include: { seller: true }
     });
 
-    await this.activity.log('marketplace.payout_completed', {
-      payoutRequestId: updated.id,
-      amount: updated.amount,
-      sellerId: updated.sellerId,
-      cardData: updated.cardData,
+    if (!request) throw new NotFoundException('Payout request not found');
+
+    const updated = await this.prisma.payoutRequest.update({
+      where: { id: payoutRequestId },
+      data: { status: 'paid', updatedAt: new Date() }
     });
 
-    // Надсилаємо системне сповіщення селеру в кабінет
     await this.notifications.create({
       title: 'Виплату виконано!',
-      message: `Кошти у розмірі ${formatMoney(updated.amount)} успішно перераховані на вашу картку.`,
+      message: `Ваш вивід коштів у розмірі ${updated.amount} ₴ успішно оброблено.`,
       type: 'payment',
       targetUserId: updated.sellerId,
     });
@@ -255,13 +261,4 @@ export class SalesService {
 
     return deleted;
   }
-}
-
-// Хелпери для розрахунків фінансів всередині файлу
-function calculateProfit(params: { revenue: number; cost: number }): number {
-  return toMoney(params.revenue - params.cost);
-}
-function calculateRoiPercent(params: { profit: number; cost: number }): number {
-  if (params.cost <= 0) return 0;
-  return Number(((params.profit / params.cost) * 100).toFixed(2));
 }

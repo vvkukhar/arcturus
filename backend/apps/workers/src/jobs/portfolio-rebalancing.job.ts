@@ -4,28 +4,32 @@ import { toMoney } from '@arcturus/shared';
 export async function portfolioRebalancingJob(): Promise<{ liquidated: number; reinvested: number; status: string }> {
   console.log('⚖️ Running Automated Capital Rebalancing and Liquidation Engine...');
 
-  // 1. Збираємо фінансову метрику складу
   const activeInventory = await prisma.inventoryItem.findMany({
     where: { quantity: { gt: 0 }, isMarketplace: false },
     include: { sales: { orderBy: { createdAt: 'desc' }, take: 1 } }
   });
 
   const now = Date.now();
-  const SIXTY_DAYS = 60 * 24 * 60 * 60 * 1000; // 60 днів застою капіталу
+  const SIXTY_DAYS = 60 * 24 * 60 * 60 * 1000; 
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+  
   let liquidatedCount = 0;
   let reinvestedCount = 0;
-
   const dbOperations: any[] = [];
 
-  // 2. Етап розпродажу (Asset Liquidation): зливаємо мертві активи за собівартістю, щоб звільнити кеш
+  // 1. Asset Liquidation (Capital Velocity)
   for (const item of activeInventory) {
     const age = now - new Date(item.createdAt).getTime();
     
-    // Якщо набір лежить на складі понад 60 днів без руху — вмикаємо агресивну стратегію виходу
     if (age > SIXTY_DAYS) {
+      // Рахуємо, скільки тижнів пройшло з моменту 60 днів застою
+      const weeksOverdue = Math.floor((age - SIXTY_DAYS) / SEVEN_DAYS);
+      const discountMultiplier = Math.max(0.75, 1 - (weeksOverdue * 0.05)); // Максимум -25% від собівартості (Stop-loss)
+      
       const currentPrice = Number(item.expectedSalePriceManual ?? item.totalCost * 1.4);
-      const liquidationPrice = toMoney(Number(item.totalCost) * 1.05); // Ставимо ціну в +5% від собівартості для миттєвого зливу
+      const liquidationPrice = toMoney(Number(item.totalCost) * discountMultiplier);
 
+      // Знижуємо ціну тільки якщо поточна ціна вища за розраховану ліквідаційну
       if (currentPrice > liquidationPrice) {
         dbOperations.push(
           prisma.inventoryItem.update({
@@ -38,13 +42,13 @@ export async function portfolioRebalancingJob(): Promise<{ liquidated: number; r
               currentPrice,
               suggestedPrice: liquidationPrice,
               status: 'listed',
-              reason: `CRITICAL_LIQUIDATION: Asset stale for ${Math.floor(age / (24 * 60 * 60 * 1000))} days`,
+              reason: `CRITICAL_LIQUIDATION: Stale for ${Math.floor(age / (24 * 60 * 60 * 1000))} days. Auto-discounted.`,
             }
           }),
           prisma.activityLog.create({
             data: {
               action: 'strategy.auto_liquidation_triggered',
-              payloadJson: { inventoryItemId: item.id, oldPrice: currentPrice, newPrice: liquidationPrice }
+              payloadJson: { inventoryItemId: item.id, oldPrice: currentPrice, newPrice: liquidationPrice, weeksOverdue }
             }
           })
         );
@@ -53,8 +57,7 @@ export async function portfolioRebalancingJob(): Promise<{ liquidated: number; r
     }
   }
 
-  // 3. Етап авто-інвестування (Auto-Reinvestment Pipeline)
-  // Якщо у нас на балансі є вільні кошти, пускаємо їх у роботу за пріоритетами списку спостереження
+  // 2. Auto-Reinvestment Pipeline
   const hotDeals = await prisma.deal.findMany({
     where: { status: 'open', action: 'BUY_NOW' },
     orderBy: { score: 'desc' },
@@ -63,7 +66,6 @@ export async function portfolioRebalancingJob(): Promise<{ liquidated: number; r
 
   if (hotDeals.length > 0) {
     for (const deal of hotDeals) {
-      // Автоматично створюємо затверджений закупівельний ордер для найкращих угод
       const existingPo = await prisma.purchaseOrder.findFirst({
         where: { watchlistItemId: deal.watchlistItemId, status: { in: ['planned', 'approved', 'ordered'] } }
       });
@@ -75,10 +77,10 @@ export async function portfolioRebalancingJob(): Promise<{ liquidated: number; r
           prisma.purchaseOrder.create({
             data: {
               id: dealKey,
-              itemId: deal.id, // Посилання на deal/item
+              itemId: deal.itemId,
               watchlistItemId: deal.watchlistItemId,
               titleSnapshot: 'Auto Portfolio Reinvestment',
-              status: 'approved', // Статус затверджено — оператор може відразу оплачувати
+              status: 'approved',
               plannedPrice: deal.buyPrice,
               actualPrice: deal.buyPrice,
               totalCost: deal.buyPrice,
@@ -100,7 +102,6 @@ export async function portfolioRebalancingJob(): Promise<{ liquidated: number; r
     }
   }
 
-  // Виконуємо всі коригування портфеля транзакційно
   if (dbOperations.length > 0) {
     const chunkSize = 100;
     for (let i = 0; i < dbOperations.length; i += chunkSize) {
@@ -108,7 +109,7 @@ export async function portfolioRebalancingJob(): Promise<{ liquidated: number; r
     }
   }
 
-  console.log(`🏁 Portfolio Rebalancing Complete. Stale liquidated: ${liquidatedCount}, Capital auto-routed: ${reinvestedCount}`);
+  console.log(`🏁 Portfolio Rebalancing Complete. Stale discounted: ${liquidatedCount}, Capital auto-routed: ${reinvestedCount}`);
   
   return {
     liquidated: liquidatedCount,

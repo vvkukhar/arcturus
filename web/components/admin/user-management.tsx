@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import useSWR from 'swr';
 import type { User } from '@/lib/types';
 import { apiFetch } from '@/lib/api';
-import { Loader2, Plus, UserCircle } from 'lucide-react';
+import { Loader2, Plus, UserCircle, UserX, UserCheck } from 'lucide-react';
 import { StatusPill } from '@/components/admin/status-pill';
 import { swrFetcher } from '@/lib/swr-fetcher';
 
@@ -80,7 +80,28 @@ export function UserManagement() {
                   <div className="text-xs font-mono text-slate-400 mt-0.5">ID: {u.id.slice(0, 8)}...</div>
                 </div>
               </div>
-              <StatusPill value={u.role || 'viewer'} />
+              
+              <div className="flex items-center gap-3">
+                <StatusPill value={u.active ? u.role : 'banned'} />
+                <button 
+                  onClick={async () => {
+                    if (!confirm(`Точно ${u.active ? 'звільнити' : 'поновити'} ${u.name}?`)) return;
+                    try {
+                        await apiFetch(`/api/proxy/users/${u.id}`, {
+                          method: 'PATCH',
+                          body: JSON.stringify({ active: !u.active })
+                        });
+                        mutate();
+                    } catch (e) {
+                        alert('Помилка оновлення статусу користувача');
+                    }
+                  }}
+                  className={`p-2 rounded-lg transition-colors ${u.active ? 'text-red-500 hover:bg-red-50' : 'text-emerald-500 hover:bg-emerald-50'}`}
+                  title={u.active ? "Заблокувати" : "Розблокувати"}
+                >
+                  {u.active ? <UserX size={18} /> : <UserCheck size={18} />}
+                </button>
+              </div>
             </div>
           ))
         )}

@@ -45,15 +45,17 @@ class CommandCenterEngine extends Notifier<CommandCenterEngineState> {
         CommandCenterAction('inventory', i18n.t('cc.inv'), i18n.t('cc.inv.sub'), AppRouter.inventory),
         CommandCenterAction('watchlist', i18n.t('cc.watch'), i18n.t('cc.watch.sub'), AppRouter.watchlist),
         CommandCenterAction('market', i18n.t('cc.market'), i18n.t('cc.market.sub'), AppRouter.market),
-        CommandCenterAction('market_live', i18n.t('cc.marketLive'), i18n.t('cc.marketLive.sub'), '/market-live'),
       ]),
       CommandCenterSection(i18n.t('cc.trading'), [
+        CommandCenterAction('orders', i18n.t('cc.orders'), i18n.t('cc.orders.sub'), AppRouter.orders),
         CommandCenterAction('flows', i18n.t('cc.flows'), i18n.t('cc.flows.sub'), AppRouter.flows),
         CommandCenterAction('purchases', i18n.t('cc.purchases'), i18n.t('cc.purchases.sub'), AppRouter.purchases),
         CommandCenterAction('sales', i18n.t('cc.sales'), i18n.t('cc.sales.sub'), AppRouter.sales),
         CommandCenterAction('deal_eval', i18n.t('cc.dealEval'), i18n.t('cc.dealEval.sub'), AppRouter.dealEvaluator),
       ]),
       CommandCenterSection(i18n.t('cc.system'), [
+        CommandCenterAction('scouts', i18n.t('cc.scouts'), i18n.t('cc.scouts.sub'), AppRouter.scouts),
+        CommandCenterAction('monetization', i18n.t('cc.monetization'), i18n.t('cc.monetization.sub'), AppRouter.monetization),
         CommandCenterAction('analytics', i18n.t('cc.analytics'), i18n.t('cc.analytics.sub'), AppRouter.analytics),
         CommandCenterAction('activity', i18n.t('cc.activity'), i18n.t('cc.activity.sub'), AppRouter.activityLog),
         CommandCenterAction('settings', i18n.t('cc.settings'), i18n.t('cc.settings.sub'), AppRouter.settings),

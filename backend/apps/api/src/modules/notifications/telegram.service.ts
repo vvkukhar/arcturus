@@ -20,7 +20,9 @@ export class TelegramService implements OnModuleInit {
         try {
           await fetch(`${this.apiUrl}${this.botToken}/setWebhook?url=${webhookUrl}`);
           await this.redis.set(cacheKey, webhookUrl, 86400 * 7);
-        } catch (e) {}
+        } catch (e) {
+          console.error('[Telegram] Failed to set webhook', e);
+        }
       }
     }
   }
@@ -36,10 +38,8 @@ export class TelegramService implements OnModuleInit {
         disable_web_page_preview: true,
       };
 
-      if (inlineKeyboard && inlineKeyboard.length > 0) {
-        payload.reply_markup = {
-          inline_keyboard: inlineKeyboard,
-        };
+      if (inlineKeyboard) {
+        payload.reply_markup = { inline_keyboard: inlineKeyboard };
       }
 
       await fetch(`${this.apiUrl}${this.botToken}/sendMessage`, {
@@ -47,24 +47,49 @@ export class TelegramService implements OnModuleInit {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-    } catch (error) {}
+    } catch (error) {
+      console.error('[Telegram] Error sending message', error);
+    }
   }
 
-  async sendDealAlert(params: {
-    title: string;
-    roi: number;
-    profit: number;
-    buyPrice: number;
-    url: string;
-  }): Promise<void> {
-    const text = `🚨 <b>HOT DEAL DETECTED</b> 🚨\n\n📦 <b>${params.title}</b>\n\n💰 Buy: <b>${params.buyPrice} ₴</b>\n📈 Est. Profit: <b>+${params.profit} ₴</b>\n🔥 ROI: <b>${params.roi}%</b>\n\n⚡ Act fast!`;
+  async editMessage(chatId: string, messageId: number, text: string): Promise<void> {
+    await fetch(`${this.apiUrl}${this.botToken}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML' }),
+    });
+  }
+
+  async sendDealAlert(deal: { title: string; roi: number; profit: number; buyPrice: number; url: string; id?: string }) {
+    const text = `🔥 <b>HOT DEAL ALARM</b> 🔥\n\n` +
+                 `📦 <b>${deal.title}</b>\n` +
+                 `💰 Ціна: <b>${deal.buyPrice} ₴</b>\n` +
+                 `📈 ROI: <b>${deal.roi}%</b> (+${deal.profit} ₴)\n\n` +
+                 `Лінк: ${deal.url}`;
     
+    const keyboard = deal.id ? [
+      [
+        { text: '✅ Додати в Закупівлі', callback_data: `deal_buy_${deal.id}` },
+        { text: '❌ Скіп', callback_data: `deal_skip_${deal.id}` }
+      ]
+    ] : [];
+
+    await this.sendMessage(text, keyboard);
+  }
+
+  async sendOrderAlert(order: { id: string; title: string; price: number; client: string; phone: string; note: string }) {
+    const text = `🛒 <b>НОВЕ ЗАМОВЛЕННЯ</b>\n\n` +
+                 `📦 <b>${order.title}</b>\n` +
+                 `💰 Сума: <b>${order.price} ₴</b>\n` +
+                 `👤 Клієнт: ${order.client} (${order.phone})\n` +
+                 `📍 Доставка: ${order.note}`;
+
     const keyboard = [
       [
-        {
-          text: '🛒 Open Listing',
-          url: params.url,
-        }
+        { text: '🚚 Згенерувати ТТН (НП)', callback_data: `order_ttn_${order.id}` },
+      ],
+      [
+        { text: '❌ Скасувати', callback_data: `order_cancel_${order.id}` }
       ]
     ];
 

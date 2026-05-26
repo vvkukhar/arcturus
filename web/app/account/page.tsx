@@ -3,55 +3,108 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { useI18n } from '@/components/providers/i18n-provider';
-import { User, Package, Settings, TrendingUp, Loader2, Store, Clock, CheckCircle2, XCircle, Wallet, ArrowRight, CreditCard } from 'lucide-react';
+import { WalletPanel } from '@/components/account/wallet-panel';
+import { User, Package, Settings, Loader2, Store, Clock, CheckCircle2, XCircle, Wallet, Lock, Mail, Save, Handshake, Check, X } from 'lucide-react';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney } from '@/lib/format';
 import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 export default function AccountPage() {
   const { t } = useI18n();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'orders' | 'listings' | 'wallet' | 'settings'>('listings');
   
-  const [payoutAmount, setPayoutAmount] = useState('');
-  const [payoutCard, setPayoutCard] = useState('');
-  const [isRequesting, setIsRequesting] = useState(false);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
 
-  const { data: user, isLoading: uLoading } = useSWR('/api/auth/me', swrFetcher as any);
+  // Settings State
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profilePassword, setProfilePassword] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  const { data: user, isLoading: uLoading, mutate: mutateUser } = useSWR('/api/auth/me', swrFetcher as any, {
+    onSuccess: (data) => {
+      if (data && !profileName) {
+        setProfileName(data.name || '');
+        setProfileEmail(data.email || '');
+      }
+    }
+  });
+
   const { data: listings, isLoading: lLoading } = useSWR<any[]>('/api/proxy/marketplace/my-listings', swrFetcher);
   const { data: finance, isLoading: fLoading, mutate: mutateFinance } = useSWR<any>('/api/proxy/marketplace/finance', swrFetcher);
+  
+  // Компоненти пропозицій (Offers)
+  const { data: myOffers, mutate: mutateMyOffers } = useSWR<any[]>('/api/proxy/offers/my-offers', swrFetcher);
+  const { data: incomingOffers, mutate: mutateIncomingOffers } = useSWR<any[]>('/api/proxy/offers/incoming', swrFetcher);
 
   if (uLoading || lLoading || fLoading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
   }
 
   const myListings = Array.isArray(listings) ? listings : [];
+  const safeMyOffers = Array.isArray(myOffers) ? myOffers : [];
+  const safeIncomingOffers = Array.isArray(incomingOffers) ? incomingOffers : [];
 
-  const handlePayoutRequest = async (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isRequesting) return;
+    if (isSavingProfile) return;
     try {
-      setIsRequesting(true);
-      await apiFetch('/api/proxy/marketplace/payout', {
-        method: 'POST',
-        body: JSON.stringify({ amount: Number(payoutAmount), cardData: payoutCard }),
+      setIsSavingProfile(true);
+      await apiFetch('/api/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ 
+          name: profileName, 
+          email: profileEmail, 
+          password: profilePassword ? profilePassword : undefined 
+        }),
       });
-      toast.success('Запит на виплату успішно створено!');
-      setPayoutAmount('');
-      setPayoutCard('');
-      mutateFinance();
+      
+      toast.success('Профіль успішно оновлено!');
+      setProfilePassword('');
+      mutateUser();
+      
+      if (profilePassword) {
+        setTimeout(() => {
+          router.push('/login');
+        }, 1500);
+      }
     } catch (err: any) {
-      toast.error(err.message || 'Помилка створення запиту');
+      toast.error(err.message || 'Помилка оновлення профілю');
     } finally {
-      setIsRequesting(false);
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleOfferResponse = async (offerId: string, action: 'accept' | 'reject') => {
+    try {
+      setRespondingId(`${action}-${offerId}`);
+      await apiFetch(`/api/proxy/offers/${offerId}/respond`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action }),
+      });
+      toast.success(action === 'accept' ? 'Пропозицію прийнято!' : 'Пропозицію відхилено');
+      mutateIncomingOffers();
+    } catch (err: any) {
+      toast.error(err.message || 'Не вдалося обробити пропозицію');
+    } finally {
+      setRespondingId(null);
     }
   };
 
   const getStatusBadge = (status: string) => {
-    if (status === 'approved') return <span className="flex items-center gap-1 text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded text-[10px] font-black uppercase"><CheckCircle2 size={12}/> В продажі</span>;
+    if (status === 'approved') return <span className="flex items-center gap-1 text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded text-[10px] font-black uppercase"><CheckCircle2 size={12}/> В продажу</span>;
     if (status === 'rejected') return <span className="flex items-center gap-1 text-red-600 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded text-[10px] font-black uppercase"><XCircle size={12}/> Відхилено</span>;
     return <span className="flex items-center gap-1 text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded text-[10px] font-black uppercase"><Clock size={12}/> Модерація</span>;
+  };
+
+  const getOfferStatusPill = (status: string) => {
+    if (status === 'accepted') return <span className="text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-[10px] font-black uppercase px-2.5 py-1 rounded-md">Прийнято</span>;
+    if (status === 'rejected') return <span className="text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 text-[10px] font-black uppercase px-2.5 py-1 rounded-md">Відхилено</span>;
+    return <span className="text-amber-600 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 text-[10px] font-black uppercase px-2.5 py-1 rounded-md">Очікує</span>;
   };
 
   return (
@@ -67,19 +120,13 @@ export default function AccountPage() {
               <p className="text-slate-500 font-medium mt-1">{user?.email || 'investor@arcturus.store'}</p>
             </div>
           </div>
-          <div className="bg-[var(--card)] px-6 py-4 rounded-2xl border border-[var(--border)] shadow-sm">
-            <p className="text-sm text-slate-500 font-bold mb-1 uppercase tracking-wider">Баланс (Доступно)</p>
-            <div className="flex items-end gap-3">
-              <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{formatMoney(finance?.availableBalance || 0)}</span>
-            </div>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-3 space-y-2">
             {[
               { id: 'listings', icon: Store, label: 'Мої товари' },
-              { id: 'wallet', icon: Wallet, label: 'Гаманець та Виплати' },
+              { id: 'wallet', icon: Wallet, label: 'Гаманець та Офери' },
               { id: 'orders', icon: Package, label: 'Мої покупки' },
               { id: 'settings', icon: Settings, label: 'Налаштування' }
             ].map((tab) => {
@@ -100,7 +147,6 @@ export default function AccountPage() {
             <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden">
               <div className="p-6 md:p-8 flex flex-col min-h-[500px]">
                 
-                {/* --- ТАБ: ТОВАРИ --- */}
                 {activeTab === 'listings' && (
                   <div className="flex-1 space-y-4">
                     <h2 className="text-2xl font-black mb-6">Мої товари на маркетплейсі</h2>
@@ -130,78 +176,63 @@ export default function AccountPage() {
                   </div>
                 )}
 
-                {/* --- ТАБ: ГАМАНЕЦЬ (ФІНАНСИ) --- */}
                 {activeTab === 'wallet' && (
-                  <div className="flex-1 flex flex-col">
-                    <h2 className="text-2xl font-black mb-6">Фінанси та Виплати</h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                      <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-xl">
-                        <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Доступно до виводу</div>
-                        <div className="text-4xl font-black text-emerald-400">{formatMoney(finance?.availableBalance || 0)}</div>
-                        <div className="mt-4 text-xs font-medium text-slate-400">В процесі виплати: {formatMoney(finance?.processingAmount || 0)}</div>
-                      </div>
-                      <div className="p-6 rounded-3xl bg-[var(--background)] border border-[var(--border)]">
-                        <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Всього зароблено</div>
-                        <div className="text-4xl font-black text-[var(--foreground)]">{formatMoney(finance?.totalEarned || 0)}</div>
-                        <div className="mt-4 flex items-center gap-1 text-xs font-bold text-emerald-500">
-                          <TrendingUp size={14} /> Тільки успішні угоди
-                        </div>
-                      </div>
-                    </div>
+                  <div className="flex-1 flex flex-col space-y-10">
+                    <WalletPanel finance={finance} mutateFinance={mutateFinance} />
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      {/* Форма виводу */}
-                      <form onSubmit={handlePayoutRequest} className="bg-[var(--background)] p-6 rounded-3xl border border-[var(--border)] space-y-5">
-                        <h3 className="font-black text-lg">Замовити виплату</h3>
-                        <div>
-                          <label className="text-xs font-black uppercase tracking-widest text-slate-500 block mb-2">Сума (UAH)</label>
-                          <input 
-                            required type="number" min="100" max={finance?.availableBalance || 0}
-                            value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)}
-                            className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder="0.00"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-black uppercase tracking-widest text-slate-500 block mb-2">Номер картки</label>
-                          <div className="relative">
-                            <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                            <input 
-                              required type="text"
-                              value={payoutCard} onChange={e => setPayoutCard(e.target.value)}
-                              className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 pl-12 font-mono font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                              placeholder="0000 0000 0000 0000"
-                            />
-                          </div>
-                        </div>
-                        <button 
-                          type="submit" 
-                          disabled={isRequesting || !payoutAmount || Number(payoutAmount) > (finance?.availableBalance || 0)}
-                          className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black rounded-xl transition-all flex justify-center items-center gap-2 shadow-lg shadow-emerald-600/20"
-                        >
-                          {isRequesting ? <Loader2 className="animate-spin" /> : <ArrowRight />}
-                          Вивести кошти
-                        </button>
-                      </form>
-
-                      {/* Історія запитів */}
+                    <div className="border-t border-[var(--border)] pt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div>
-                        <h3 className="font-black text-lg mb-4">Історія виплат</h3>
-                        <div className="space-y-3 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
-                          {finance?.payoutRequests?.length === 0 ? (
-                            <div className="text-sm font-medium text-slate-400">Немає історії виплат.</div>
+                        <h3 className="font-black text-lg mb-4 flex items-center gap-2"><Handshake size={18} className="text-blue-500"/> Вхідний торг (C2C)</h3>
+                        <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                          {safeIncomingOffers.length === 0 ? (
+                            <p className="text-sm font-medium text-slate-400">Ніхто поки не пропонував меншу ціну за ваші набори.</p>
                           ) : (
-                            finance?.payoutRequests?.map((req: any) => (
-                              <div key={req.id} className="flex items-center justify-between p-4 bg-[var(--background)] rounded-2xl border border-[var(--border)]">
+                            safeIncomingOffers.map((off: any) => (
+                              <div key={off.id} className="p-4 bg-[var(--background)] border border-[var(--border)] rounded-2xl flex flex-col gap-3">
                                 <div>
-                                  <div className="font-black text-[var(--foreground)]">{formatMoney(req.amount)}</div>
-                                  <div className="text-xs font-mono text-slate-500 mt-1">{new Date(req.createdAt).toLocaleDateString()}</div>
+                                  <div className="font-bold text-sm truncate">{off.inventoryItem?.titleSnapshot}</div>
+                                  <div className="text-xs text-slate-500 font-medium mt-0.5">Покупець: {off.buyer?.name}</div>
                                 </div>
-                                <div>
-                                  {req.status === 'pending' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-black uppercase">В обробці</span>}
-                                  {req.status === 'paid' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-black uppercase">Виплачено</span>}
-                                  {req.status === 'rejected' && <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-black uppercase">Відхилено</span>}
+                                <div className="flex justify-between items-center bg-[var(--card)] px-3 py-2 rounded-xl border border-[var(--border)] text-sm">
+                                  <span className="text-slate-500 font-bold">Пропонує:</span>
+                                  <span className="font-black text-indigo-500">{formatMoney(off.amount)}</span>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    disabled={respondingId !== null}
+                                    onClick={() => handleOfferResponse(off.id, 'accept')}
+                                    className="flex-1 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-black text-xs uppercase tracking-wider rounded-xl transition-colors flex justify-center items-center gap-1"
+                                  >
+                                    {respondingId === `accept-${off.id}` ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Прийняти
+                                  </button>
+                                  <button
+                                    disabled={respondingId !== null}
+                                    onClick={() => handleOfferResponse(off.id, 'reject')}
+                                    className="flex-1 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-black text-xs uppercase tracking-wider rounded-xl transition-colors flex justify-center items-center gap-1"
+                                  >
+                                    {respondingId === `reject-${off.id}` ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Відхилити
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="font-black text-lg mb-4">Надіслані пропозиції</h3>
+                        <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                          {safeMyOffers.length === 0 ? (
+                            <p className="text-sm font-medium text-slate-400">Ви ще не пропонували свою ціну на товари інших продавців.</p>
+                          ) : (
+                            safeMyOffers.map((off: any) => (
+                              <div key={off.id} className="p-4 border border-[var(--border)] rounded-2xl flex items-center justify-between gap-4">
+                                <div className="min-w-0">
+                                  <div className="font-bold text-sm truncate">{off.inventoryItem?.titleSnapshot}</div>
+                                  <div className="text-sm font-black text-indigo-500 mt-1">Ви запропонували: {formatMoney(off.amount)}</div>
+                                </div>
+                                <div className="shrink-0">
+                                  {getOfferStatusPill(off.status)}
                                 </div>
                               </div>
                             ))
@@ -221,10 +252,64 @@ export default function AccountPage() {
                 )}
                 
                 {activeTab === 'settings' && (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center py-20 border-2 border-dashed border-[var(--border)] rounded-3xl">
-                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4"><Settings size={28} /></div>
-                    <p className="text-lg font-bold mb-2">Налаштування профілю</p>
-                    <p className="text-slate-500 font-medium">Керування паролем та нотифікаціями скоро з'явиться.</p>
+                  <div className="flex-1 max-w-xl">
+                    <h2 className="text-2xl font-black mb-6">Налаштування профілю</h2>
+                    
+                    <form onSubmit={handleUpdateProfile} className="space-y-5">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Повне Ім'я</label>
+                        <div className="relative">
+                          <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            required
+                            type="text"
+                            value={profileName}
+                            onChange={(e) => setProfileName(e.target.value)}
+                            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-4 pl-12 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all focus:border-blue-500 focus:bg-[var(--card)] focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Email</label>
+                        <div className="relative">
+                          <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            required
+                            type="email"
+                            value={profileEmail}
+                            onChange={(e) => setProfileEmail(e.target.value)}
+                            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-4 pl-12 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all focus:border-blue-500 focus:bg-[var(--card)] focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Новий Пароль (Опціонально)</label>
+                        <div className="relative">
+                          <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            type="password"
+                            value={profilePassword}
+                            onChange={(e) => setProfilePassword(e.target.value)}
+                            placeholder="Залишіть пустим, якщо не змінюєте"
+                            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-4 pl-12 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all focus:border-blue-500 focus:bg-[var(--card)] focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
+                          />
+                        </div>
+                        {profilePassword && <p className="text-xs text-amber-500 font-bold ml-1 mt-1">Зміна пароля вимагатиме повторної авторизації.</p>}
+                      </div>
+
+                      <div className="pt-4">
+                        <button
+                          type="submit"
+                          disabled={isSavingProfile || !profileName.trim() || !profileEmail.trim()}
+                          className="w-full h-14 text-base rounded-xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {isSavingProfile ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+                          Зберегти Зміни
+                        </button>
+                      </div>
+                    </form>
                   </div>
                 )}
               </div>

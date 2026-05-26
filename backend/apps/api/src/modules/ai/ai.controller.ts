@@ -15,6 +15,11 @@ export class AiController {
     return this.aiService.analyzeDeal(body);
   }
 
+  @Post('negotiate')
+  async negotiate(@Body() body: any) {
+    return this.aiService.generateNegotiationScript(body);
+  }
+
   @Get('market-suggestions')
   async getSuggestions() {
     const dummyTrends = { popularThemes: ['Star Wars', 'Ninjago'], volatility: 'low' };

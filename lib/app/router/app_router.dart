@@ -3,6 +3,9 @@ import 'package:lego_trading_manager/features/pos/presentation/pos_terminal_scre
 import 'package:lego_trading_manager/features/auth/presentation/login_screen.dart';
 import 'package:lego_trading_manager/features/auth/presentation/register_screen.dart';
 import 'package:lego_trading_manager/features/core/presentation/root_layout.dart';
+import 'package:lego_trading_manager/features/orders/presentation/orders_screen.dart';
+import 'package:lego_trading_manager/features/scouts/presentation/scouts_screen.dart';
+import 'package:lego_trading_manager/features/monetization/presentation/monetization_screen.dart';
 
 class AppRouter {
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -25,7 +28,10 @@ class AppRouter {
   static const String marketLive = '/market-live';
   static const String pos = '/pos';
   static const String globalSearch = '/global-search';
-  static const String flows = '/flows'; 
+  static const String flows = '/flows';
+  static const String orders = '/orders';
+  static const String scouts = '/scouts';
+  static const String monetization = '/monetization';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     Widget page;
@@ -43,6 +49,15 @@ class AppRouter {
         break;
       case '/pos':
         page = const PosTerminalScreen();
+        break;
+      case '/orders':
+        page = const OrdersScreen();
+        break;
+      case '/scouts':
+        page = const ScoutsScreen();
+        break;
+      case '/monetization':
+        page = const MonetizationScreen();
         break;
       default:
         page = const RootLayout();

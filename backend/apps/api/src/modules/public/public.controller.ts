@@ -51,6 +51,12 @@ export class PublicController {
     });
   }
 
+  // НОВИЙ ЕНДПОІНТ
+  @Get('seller/:id')
+  async getSellerProfile(@Param('id') id: string): Promise<unknown> {
+    return this.publicService.getSellerProfile(id);
+  }
+
   @Post('reserve')
   async createReserveRequest(
     @Body()

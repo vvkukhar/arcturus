@@ -19,7 +19,7 @@ export class PaymentsService {
     private readonly redis: RedisService,
   ) {}
 
-  async createCheckoutSession(orderId: string): Promise<{ url: string }> {
+async createCheckoutSession(orderId: string): Promise<{ url: string }> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
     });
@@ -32,6 +32,7 @@ export class PaymentsService {
       throw new BadRequestException('Invalid order price for checkout');
     }
 
+    // Для LiqPay або Monobank нам треба відправити суму в копійках
     const amountKopecks = toCents(order.sellPrice);
 
     const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
@@ -44,7 +45,7 @@ export class PaymentsService {
         amount: amountKopecks,
         ccy: 980,
         reference: order.id,
-        redirectUrl: `${this.storeUrl}/success`,
+        redirectUrl: `${this.storeUrl}/success?orderId=${order.id}`, // Додали orderId в редірект
         webHookUrl: `${this.apiUrl}/payments/webhook`,
         merchantPaymInfo: {
           reference: order.id,

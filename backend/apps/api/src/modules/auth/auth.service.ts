@@ -50,15 +50,13 @@ export class AuthService {
   async register(dto: RegisterDto): Promise<{ token: string; user: AuthUser }> {
     const adminCode = process.env.ADMIN_INVITE_CODE || 'arcturus-init';
     
-    // Default role for standard clients, scouts, and marketplace sellers
     let role = 'viewer'; 
 
-    // If an invite code is provided, check if it's the admin code
     if (dto.inviteCode && dto.inviteCode.trim() !== '') {
       if (dto.inviteCode !== adminCode) {
         throw new BadRequestException('Invalid invite code');
       }
-      role = 'operator'; // Upgrade to staff
+      role = 'operator';
     }
 
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
@@ -140,5 +138,43 @@ export class AuthService {
     
     await pipeline.exec();
     await this.prisma.userSession.deleteMany({ where: { userId } });
+  }
+
+  // НОВИЙ МЕТОД ДЛЯ ОНОВЛЕННЯ ПРОФІЛЮ
+  async updateProfile(userId: string, dto: { name?: string; email?: string; password?: string }): Promise<AuthUser> {
+    const updateData: any = {};
+    
+    if (dto.name && dto.name.trim() !== '') {
+      updateData.name = dto.name.trim();
+    }
+    
+    if (dto.email && dto.email.trim() !== '') {
+      const existing = await this.prisma.user.findUnique({ where: { email: dto.email.trim() } });
+      if (existing && existing.id !== userId) {
+        throw new BadRequestException('Email already in use by another account');
+      }
+      updateData.email = dto.email.trim();
+    }
+    
+    if (dto.password && dto.password.trim() !== '') {
+      updateData.passwordHash = await bcrypt.hash(dto.password, 10);
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    // Оновлюємо кеш сесій для цього юзера, щоб застосувались нові дані (ім'я/email)
+    await this.invalidateUserSessions(userId);
+
+    return {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      isPro: updatedUser.isPro,
+      proExpiresAt: updatedUser.proExpiresAt,
+    };
   }
 }

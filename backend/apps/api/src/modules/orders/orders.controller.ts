@@ -42,6 +42,16 @@ export class OrdersController {
     return this.ordersService.createFromReserve(body.reserveRequestId);
   }
 
+  @Post('bulk-ttn')
+  generateBulkTTN(@Body() body: { orderIds: string[] }) {
+    return this.ordersService.generateBulkTTN(body.orderIds);
+  }
+
+  @Post('bulk-pdf')
+  getBulkPdf(@Body() body: { orderIds: string[] }) {
+    return this.ordersService.getBulkPdf(body.orderIds);
+  }
+
   @Patch()
   update(@Body() body: UpdateOrderDto) {
     return this.ordersService.update(body);

@@ -28,7 +28,7 @@ export class InventoryController {
     @Query('assignedUserId') assignedUserId?: string,
     @Query('status') status?: string,
     @Query('limit') limit?: string,
-    @Query('offset') offset?: string, // ФІКС: Додали підтримку Offset
+    @Query('offset') offset?: string,
   ): Promise<unknown[]> {
     return this.inventoryService.list({
       q,
@@ -82,5 +82,23 @@ export class InventoryController {
     },
   ): Promise<unknown> {
     return this.inventoryService.bulkDelete(body.ids ?? []);
+  }
+
+  @Post(':id/split')
+  splitItem(
+    @Param('id') id: string,
+    @Body() body: {
+      parts: Array<{
+        itemId: string;
+        titleSnapshot: string;
+        costAllocation: number;
+        expectedSalePriceManual?: number | null;
+        quantity: number;
+        condition: string;
+        sealed: boolean;
+      }>
+    }
+  ): Promise<unknown> {
+    return this.inventoryService.splitItem(id, body.parts);
   }
 }

@@ -73,3 +73,21 @@ final partOutRepositoryProvider = Provider((ref) => ApiRepository<dynamic>(
   '/partout', 
   (map) => map
 ));
+
+final ordersRepositoryProvider = Provider((ref) => ApiRepository<dynamic>(
+  ref.watch(networkCoreProvider), 
+  '/orders', 
+  (map) => map
+));
+
+final scoutsRepositoryProvider = Provider((ref) => ApiRepository<dynamic>(
+  ref.watch(networkCoreProvider), 
+  '/scout/leads', 
+  (map) => map
+));
+
+final monetizationRepositoryProvider = Provider((ref) => ApiRepository<dynamic>(
+  ref.watch(networkCoreProvider), 
+  '/monetization/mystery-boxes', 
+  (map) => map
+));

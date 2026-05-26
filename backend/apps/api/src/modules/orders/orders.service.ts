@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { SalesService } from '../sales/sales.service';
 import { NovaPoshtaService } from '../shipping/nova-poshta.service';
+import { TelegramService } from '../notifications/telegram.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 
@@ -18,11 +19,12 @@ export class OrdersService {
     private readonly realtime: RealtimeGateway,
     private readonly salesService: SalesService,
     private readonly novaPoshta: NovaPoshtaService,
+    private readonly telegram: TelegramService,
   ) {}
 
   async list(params?: { status?: string; q?: string; limit?: number }): Promise<unknown[]> {
     const q = params?.q?.trim();
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
       where: {
         ...(params?.status && params.status !== 'all' ? { status: params.status } : {}),
         ...(q
@@ -48,6 +50,17 @@ export class OrdersService {
       orderBy: { createdAt: 'desc' },
       take: params?.limit ?? 200,
     });
+
+    const phones = orders.map(o => o.contact.replace(/[^\d+]/g, ''));
+    const clients = await this.prisma.clientProfile.findMany({
+      where: { phone: { in: phones } }
+    });
+    
+    return orders.map(o => {
+      const p = o.contact.replace(/[^\d+]/g, '');
+      const c = clients.find(cl => cl.phone === p);
+      return { ...o, clientProfile: c || null };
+    });
   }
 
   async getById(id: string): Promise<unknown> {
@@ -66,7 +79,79 @@ export class OrdersService {
       },
     });
     if (!order) throw new NotFoundException('Order not found');
-    return order;
+
+    const phoneStr = order.contact.replace(/[^\d+]/g, '');
+    const clientProfile = await this.prisma.clientProfile.findUnique({ where: { phone: phoneStr } });
+
+    return { ...order, clientProfile };
+  }
+
+  async generateBulkTTN(orderIds: string[]): Promise<unknown> {
+    if (!orderIds || orderIds.length === 0) throw new BadRequestException('No order IDs provided');
+
+    const orders = await this.prisma.order.findMany({
+      where: { id: { in: orderIds }, status: { in: ['approved', 'contacted'] } },
+    });
+
+    if (orders.length === 0) throw new BadRequestException('No valid orders found for TTN generation');
+
+    const results = [];
+    let successCount = 0;
+
+    for (const order of orders) {
+      if (order.adminNote?.includes('TTN:')) {
+        results.push({ orderId: order.id, status: 'skipped', reason: 'Already has TTN' });
+        continue;
+      }
+
+      try {
+        const parts = order.buyerName.split(' ');
+        const ttn = await this.novaPoshta.createExpressWaybill({
+          orderId: order.id,
+          firstName: parts[0] || 'Клієнт',
+          lastName: parts[1] || '',
+          phone: order.contact.replace(/[^\d+]/g, '').slice(0, 13),
+          cityRecipient: 'Київ',
+          warehouseRecipient: 'Відділення №1',
+          weight: 2.5,
+          cost: order.sellPrice ?? 2000
+        });
+
+        const updatedAdminNote = `${order.adminNote ?? ''} [TTN: ${ttn}]`.trim();
+
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: { adminNote: updatedAdminNote, status: 'sold' }
+        });
+
+        results.push({ orderId: order.id, status: 'success', ttn });
+        successCount++;
+      } catch (err: any) {
+        results.push({ orderId: order.id, status: 'failed', reason: err.message });
+      }
+    }
+
+    await this.activity.log('orders.bulk_ttn_generated', { attempted: orders.length, success: successCount });
+    this.realtime.emitDashboardRefresh('bulk_ttn');
+
+    return { processed: orders.length, success: successCount, results };
+  }
+
+  async getBulkPdf(orderIds: string[]): Promise<{ url: string }> {
+    const orders = await this.prisma.order.findMany({
+      where: { id: { in: orderIds } }
+    });
+
+    const ttns: string[] = [];
+    for (const order of orders) {
+      const match = order.adminNote?.match(/\[TTN:\s*(\d+)\]/);
+      if (match && match[1]) ttns.push(match[1]);
+    }
+
+    if (ttns.length === 0) throw new BadRequestException('No TTNs found for selected orders');
+    
+    const url = await this.novaPoshta.getBulkPdfLink(ttns);
+    return { url };
   }
 
   async create(dto: CreateOrderDto): Promise<unknown> {
@@ -79,9 +164,11 @@ export class OrdersService {
       if (!inventory) throw new NotFoundException('Inventory item not found');
     }
 
-    if (dto.reserveRequestId) {
-      const reserve = await this.prisma.reserveRequest.findUnique({ where: { id: dto.reserveRequestId } });
-      if (!reserve) throw new NotFoundException('Reserve request not found');
+    const phoneStr = dto.contact.replace(/[^\d+]/g, '');
+    const clientProfile = await this.prisma.clientProfile.findUnique({ where: { phone: phoneStr } });
+
+    if (clientProfile && clientProfile.status === 'blacklisted' && dto.channel !== 'paid_upfront') {
+      throw new BadRequestException('Client is blacklisted due to unfulfilled COD orders. 100% upfront payment required.');
     }
 
     const created = await this.prisma.order.create({
@@ -100,19 +187,15 @@ export class OrdersService {
       include: { reserveRequest: true, inventoryItem: true },
     });
 
-    await this.activity.log('order.created', {
-      orderId: created.id,
-      reserveRequestId: created.reserveRequestId,
-      inventoryItemId: created.inventoryItemId,
-      productTitle: created.productTitle,
-      buyerName: created.buyerName,
-    });
-
-    await this.notifications.create({
-      title: 'New order',
-      message: `${created.productTitle} • ${created.buyerName}`,
-      type: 'order',
-      payloadJson: { orderId: created.id },
+    await this.activity.log('order.created', { orderId: created.id });
+    
+    await this.telegram.sendOrderAlert({
+      id: created.id,
+      title: created.productTitle,
+      price: created.sellPrice || 0,
+      client: created.buyerName,
+      phone: created.contact,
+      note: created.adminNote || 'Без коментарів'
     });
 
     this.realtime.emitCustom('order.created', created);
@@ -171,28 +254,13 @@ export class OrdersService {
             where: { id: existing.inventoryItemId },
             data: { quantity: { increment: existing.quantity } }
           });
-          await tx.stockMovement.create({
-            data: {
-              inventoryItemId: existing.inventoryItemId,
-              type: 'order_cancelled_restock',
-              quantity: existing.quantity,
-              reason: `Order cancelled ${existing.id}`,
-            }
-          });
         }
       }
-
       return upd;
     });
 
-    await this.activity.log('order.updated', { orderId: updated.id, status: updated.status });
     this.realtime.emitCustom('order.updated', updated);
     this.realtime.emitDashboardRefresh('order_updated');
-
-    if (updated.inventoryItemId && dto.status === 'cancelled') {
-      this.realtime.emitInventoryRefresh({ inventoryItemId: updated.inventoryItemId, reason: 'order_cancelled_restock' });
-    }
-
     return updated;
   }
 
@@ -225,57 +293,17 @@ export class OrdersService {
 
     const saleId = (sale as any).id;
 
-    let ttn = '';
-    try {
-      if (order.contact.includes('Київ') || order.contact.includes('Львів') || order.contact.includes('Одеса') || order.adminNote?.includes('NP')) {
-         const parts = order.buyerName.split(' ');
-         ttn = await this.novaPoshta.createExpressWaybill({
-           orderId: order.id,
-           firstName: parts[0] || 'Клієнт',
-           lastName: parts[1] || '',
-           phone: order.contact.replace(/[^\d+]/g, '').slice(0, 13),
-           cityRecipient: 'Київ',
-           warehouseRecipient: 'Відділення №1',
-           weight: 2.5,
-           cost: order.sellPrice
-         });
-      }
-    } catch (e) {
-      ttn = 'NP_SYNC_FAILED';
-    }
-
-    const updatedAdminNote = ttn ? `${order.adminNote ?? ''} [TTN: ${ttn}]`.trim() : order.adminNote;
-
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const lockResult = await tx.$queryRaw<Array<{ id: string }>>`
-        SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE
-      `;
-
-      if (!lockResult || lockResult.length === 0) throw new NotFoundException('Order lock failed');
-
-      const upd = await tx.order.update({
-        where: { id },
-        data: { status: 'sold', saleId, adminNote: updatedAdminNote },
-        include: { reserveRequest: true, inventoryItem: true, sale: true },
-      });
-
-      if (order.reserveRequestId) {
-        await tx.reserveRequest.update({
-          where: { id: order.reserveRequestId },
-          data: { status: 'sold' },
-        });
-      }
-      return upd;
+    const updated = await this.prisma.order.update({
+      where: { id },
+      data: { status: 'sold', saleId },
     });
 
-    await this.activity.log('order.completed_as_sale', { orderId: id, saleId, ttn });
     this.realtime.emitCustom('order.sold', updated);
     this.realtime.emitDashboardRefresh('order_sold');
-
     return updated;
   }
 
-  async board(): Promise<{ pending: unknown[]; approved: unknown[]; contacted: unknown[]; sold: unknown[]; cancelled: unknown[]; }> {
+  async board(): Promise<any> {
     const orders = await this.prisma.order.findMany({
       include: {
         inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' } } } },
@@ -286,12 +314,23 @@ export class OrdersService {
       take: 300,
     });
 
+    const phones = orders.map(o => o.contact.replace(/[^\d+]/g, ''));
+    const clients = await this.prisma.clientProfile.findMany({
+      where: { phone: { in: phones } }
+    });
+    
+    const enriched = orders.map(o => {
+      const p = o.contact.replace(/[^\d+]/g, '');
+      const c = clients.find(cl => cl.phone === p);
+      return { ...o, clientProfile: c || null };
+    });
+
     return {
-      pending: orders.filter((order) => order.status === 'pending'),
-      approved: orders.filter((order) => order.status === 'approved'),
-      contacted: orders.filter((order) => order.status === 'contacted'),
-      sold: orders.filter((order) => order.status === 'sold'),
-      cancelled: orders.filter((order) => order.status === 'cancelled'),
+      pending: enriched.filter((order) => order.status === 'pending'),
+      approved: enriched.filter((order) => order.status === 'approved'),
+      contacted: enriched.filter((order) => order.status === 'contacted'),
+      sold: enriched.filter((order) => order.status === 'sold'),
+      cancelled: enriched.filter((order) => order.status === 'cancelled'),
     };
   }
 

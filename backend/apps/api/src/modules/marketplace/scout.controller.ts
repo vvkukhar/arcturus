@@ -8,8 +8,6 @@ import { ScoutService } from './scout.service';
 export class ScoutController {
   constructor(private readonly scoutService: ScoutService) {}
 
-  // --- Ендпоінти для Скаутів ---
-
   @UseGuards(JwtAuthGuard)
   @Post('submit')
   submitLead(@Req() req: any, @Body() body: { url: string; notes?: string }) {
@@ -22,13 +20,16 @@ export class ScoutController {
     return this.scoutService.getMyLeads(req.user.id);
   }
 
-  // --- Ендпоінти для Адмінів ---
+  @UseGuards(JwtAuthGuard)
+  @Get('active-surges')
+  getActiveSurges() {
+    return this.scoutService.getActiveSurges();
+  }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'operator')
   @Get('leads')
   getAllLeads() {
-    // Для адмінки - повертаємо всі заявки з даними про скаутів
     return this.scoutService.getAllLeads();
   }
 
@@ -43,6 +44,6 @@ export class ScoutController {
   @Roles('admin', 'operator')
   @Patch('reward/:id')
   approveAndRewardLead(@Param('id') id: string, @Body() body: { rewardAmount: number }) {
-    return this.scoutService.approveAndRewardLead(id, body.rewardAmount);
+    return this.scoutService.approveLead(id, body.rewardAmount);
   }
 }

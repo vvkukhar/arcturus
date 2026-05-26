@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Req, Res, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Req, Res, HttpCode, HttpStatus, UseGuards, Patch } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -22,7 +22,6 @@ export class AuthController {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    // ФІКС: Повертаємо просто об'єкт, без res.json(), щоб NestJS не крашився
     return { ok: true, user, token };
   }
 
@@ -39,7 +38,6 @@ export class AuthController {
       maxAge: (dto.rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000,
     });
 
-    // ФІКС: Повертаємо просто об'єкт
     return { ok: true, user, token };
   }
 
@@ -53,7 +51,6 @@ export class AuthController {
 
     res.clearCookie('arcturus_admin_token', { path: '/' });
     
-    // ФІКС: Повертаємо просто об'єкт
     return { ok: true };
   }
 
@@ -61,5 +58,15 @@ export class AuthController {
   @Get('me')
   async me(@Req() req: Request & { user: any }) {
     return req.user;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('profile')
+  async updateProfile(
+    @Req() req: Request & { user: any }, 
+    @Body() body: { name?: string; email?: string; password?: string }
+  ) {
+    const updatedUser = await this.authService.updateProfile(req.user.id, body);
+    return { ok: true, user: updatedUser };
   }
 }

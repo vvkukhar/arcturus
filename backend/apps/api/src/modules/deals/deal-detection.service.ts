@@ -14,7 +14,8 @@ export class DealDetectionService {
 
     const activeListings = await this.prisma.marketListing.findMany({
       where: { itemId: { in: uniqueIds }, status: 'active' },
-      select: { id: true, itemId: true, price: true, shippingPrice: true }
+      include: { source: true },
+      select: { id: true, itemId: true, price: true, shippingPrice: true, sellerName: true, sourceCode: true }
     });
 
     if (!activeListings.length) return 0;
@@ -40,6 +41,18 @@ export class DealDetectionService {
     const creates: any[] = [];
 
     for (const listing of activeListings) {
+      // 💥 АНТИ-СКАМ ФІЛЬТР
+      if (listing.sellerName) {
+        const supplier = await this.prisma.supplierProfile.findUnique({
+          where: { sourceCode_externalId: { sourceCode: listing.sourceCode, externalId: listing.sellerName } }
+        });
+        
+        if (supplier?.status === 'blacklisted') {
+          this.logger.warn(`Skipping deal for ${listing.id} - Seller ${listing.sellerName} is blacklisted!`);
+          continue; // Скіпаємо нахуй
+        }
+      }
+
       const listingPrice = Number(listing.price);
       const shippingPrice = Number(listing.shippingPrice || 0);
       const totalAcquisitionCost = listingPrice + shippingPrice;

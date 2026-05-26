@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { InventoryInlineEditor } from '@/components/admin/inventory-inline-editor';
 import { ImageGalleryManager } from '@/components/admin/image-gallery-manager';
 import { ImageUploadForm } from '@/components/admin/image-upload-form';
+import { InventorySplitDialog } from '@/components/admin/inventory-split-dialog';
 import type { InventoryItem } from '@/lib/types';
 
 export default function InventoryItemPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,15 +18,23 @@ export default function InventoryItemPage({ params }: { params: Promise<{ id: st
   if (!item) return <div className="flex h-[calc(100vh-8rem)] items-center justify-center font-bold text-slate-500">Inventory Item Not Found</div>;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-20 animate-fade-in-up">
-      <div className="bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm">
-        <h1 className="text-3xl font-black text-[var(--foreground)]">{item.titleSnapshot}</h1>
-        <p className="mt-1 text-sm text-slate-500 font-mono">ID: {item.id}</p>
+    <div className="space-y-6 max-w-5xl mx-auto pb-20 animate-fade-in-up hardware-accelerated">
+      <div className="bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-[var(--foreground)]">{item.titleSnapshot}</h1>
+          <p className="mt-1 text-sm text-slate-500 font-mono">ID: {item.id}</p>
+        </div>
+        
+        {item.quantity > 0 && (
+          <InventorySplitDialog item={item} />
+        )}
       </div>
+
       <div className="grid gap-6 md:grid-cols-2">
         <InventoryInlineEditor item={item} onSuccessAction={() => mutate()} />
         <ImageUploadForm inventoryItemId={item.id} />
       </div>
+
       <ImageGalleryManager inventoryItemId={item.id} images={item.images ?? []} />
     </div>
   );

@@ -20,16 +20,11 @@ axiosRetry(httpClient, {
   },
 });
 
+// Interceptor для REQUEST (вибір проксі)
 httpClient.interceptors.request.use((config) => {
   config.headers['User-Agent'] = getRandomUserAgent();
-  config.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7';
-  config.headers['Accept-Language'] = 'en-US,en;q=0.9,uk-UA;q=0.8,uk;q=0.7';
-  config.headers['Cache-Control'] = 'max-age=0';
-  config.headers['Upgrade-Insecure-Requests'] = '1';
-  config.headers['Sec-Ch-Ua'] = '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"';
-  config.headers['Sec-Ch-Ua-Mobile'] = '?0';
-  config.headers['Sec-Ch-Ua-Platform'] = '"Windows"';
-
+  // ... (твої стандартні хедери)
+  
   const proxyStr = proxyManager.getRawProxy();
   if (proxyStr) {
     try {
@@ -40,9 +35,31 @@ httpClient.interceptors.request.use((config) => {
         port: parseInt(url.port),
         auth: url.username ? { username: url.username, password: url.password } : undefined
       };
-    } catch {
+      // Додаємо URL проксі в config, щоб потім витягнути його в інтерцепторі відповіді
+      (config as any)._proxyUsed = proxyStr;
+    } catch (e) {
+      console.error('[HttpClient] Failed to set proxy', e);
     }
   }
-
   return config;
 });
+
+// Interceptor для RESPONSE (репортуємо результат)
+httpClient.interceptors.response.use(
+  (response) => {
+    const proxyUsed = (response.config as any)._proxyUsed;
+    proxyManager.reportSuccess(proxyUsed);
+    return response;
+  },
+  (error) => {
+    const proxyUsed = (error.config as any)?._proxyUsed;
+    const status = error.response?.status;
+    
+    // Якщо отримали статус, який вказує на бан або перевантаження
+    if (status === 403 || status === 429 || status === 503) {
+      proxyManager.reportFailure(proxyUsed);
+    }
+    
+    return Promise.reject(error);
+  }
+);

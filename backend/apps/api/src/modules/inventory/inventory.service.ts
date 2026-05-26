@@ -207,4 +207,90 @@ export class InventoryService {
   async exportRows(): Promise<unknown[]> {
     return [];
   }
+
+  async splitItem(inventoryItemId: string, parts: Array<{
+    itemId: string;
+    titleSnapshot: string;
+    costAllocation: number;
+    expectedSalePriceManual?: number | null;
+    quantity: number;
+    condition: string;
+    sealed: boolean;
+  }>): Promise<unknown> {
+    const parent = await this.prisma.inventoryItem.findUnique({ 
+      where: { id: inventoryItemId } 
+    });
+
+    if (!parent) throw new NotFoundException('Parent inventory item not found');
+    if (parent.quantity < 1) throw new BadRequestException('Cannot split an out-of-stock item');
+    if (parts.length === 0) throw new BadRequestException('No parts provided for split');
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const createdParts = [];
+
+      for (const part of parts) {
+        const child = await tx.inventoryItem.create({
+          data: {
+            itemId: part.itemId,
+            titleSnapshot: part.titleSnapshot,
+            purchasePrice: toMoney(part.costAllocation),
+            totalCost: toMoney(part.costAllocation),
+            quantity: part.quantity,
+            condition: part.condition,
+            sealed: part.sealed,
+            expectedSalePriceManual: part.expectedSalePriceManual ? toMoney(part.expectedSalePriceManual) : null,
+            source: parent.source,
+            purchaseUrl: parent.purchaseUrl,
+            warehouseId: parent.warehouseId,
+            storageLocationId: parent.storageLocationId,
+            notes: `[PART-OUT] Split from bundle ID: ${parent.id}`,
+          },
+          include: { item: true }
+        });
+        createdParts.push(child);
+
+        await tx.stockMovement.create({
+          data: {
+            inventoryItemId: child.id,
+            warehouseId: parent.warehouseId,
+            toStorageLocationId: parent.storageLocationId,
+            type: 'bundle_split_in',
+            quantity: part.quantity,
+            reason: `Generated from splitting bundle ${parent.id}`,
+          }
+        });
+      }
+
+      const updatedParent = await tx.inventoryItem.update({
+        where: { id: parent.id },
+        data: {
+          quantity: { decrement: 1 },
+          notes: (parent.notes ? parent.notes + '\n' : '') + `[SPLIT into ${createdParts.length} distinct parts on ${new Date().toLocaleDateString()}]`,
+        }
+      });
+
+      await tx.stockMovement.create({
+        data: {
+          inventoryItemId: parent.id,
+          warehouseId: parent.warehouseId,
+          fromStorageLocationId: parent.storageLocationId,
+          type: 'bundle_split_out',
+          quantity: 1,
+          reason: `Split into ${createdParts.length} parts`,
+        }
+      });
+
+      return { parent: updatedParent, parts: createdParts };
+    });
+
+    await this.activity.log('inventory.bundle_split', {
+      parentInventoryId: inventoryItemId,
+      partsCreated: parts.length,
+    });
+
+    this.realtime.emitInventoryRefresh({ inventoryItemId, reason: 'bundle_split' });
+    this.realtime.emitDashboardRefresh('inventory_bundle_split');
+
+    return result;
+  }
 }

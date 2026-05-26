@@ -7,7 +7,7 @@ import { useSidebar } from '../providers/sidebar-provider';
 import { 
   LineChart, Activity, Filter, BarChart2, Clock, 
   FileText, PieChart, Wallet, Heart, TrendingUp, Package, 
-  HelpCircle, ShieldCheck, X, ScanBarcode
+  HelpCircle, ShieldCheck, X, ScanBarcode, Crown, Target, Gift
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +22,7 @@ export function Sidebar() {
       items: [
         { name: 'sidebar.market', path: '/market', icon: LineChart },
         { name: 'sidebar.screener', path: '/screener', icon: Filter },
+        { name: 'PRO Deals', path: '/deals', icon: Target },
         { name: 'sidebar.indices', path: '/indices', icon: BarChart2 },
         { name: 'sidebar.orderbook', path: '/orderbook', icon: Activity },
       ]
@@ -40,16 +41,17 @@ export function Sidebar() {
         { name: 'sidebar.dashboard', path: '/account', icon: Wallet },
         { name: 'sidebar.watchlist', path: '/account/watchlist', icon: Heart },
         { name: 'sidebar.performance', path: '/account/performance', icon: TrendingUp },
+        { name: 'Arcturus PRO', path: '/pro', icon: Crown },
       ]
     },
     {
       title: 'sidebar.platform',
       items: [
         { name: 'nav.catalog', path: '/store/catalog', icon: Package },
+        { name: 'Mystery Boxes', path: '/store/mystery-boxes', icon: Gift }, // <-- ДОДАНО
         { name: 'sidebar.sell', path: '/sell', icon: Package },
         { name: 'nav.auth', path: '/authenticity', icon: ShieldCheck },
         { name: 'footer.faq', path: '/faq', icon: HelpCircle },
-        { name: 'POS Terminal', path: '/admin/pos', icon: ScanBarcode }
       ]
     }
   ];
@@ -84,12 +86,16 @@ export function Sidebar() {
                 {section.items.map((item, iIdx) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.path || (pathname?.startsWith(`${item.path}/`) && item.path !== '/');
+                  const isSpecial = item.name.includes('PRO') || item.name.includes('Mystery');
+                  
                   return (
                     <Link href={item.path} key={iIdx} onClick={() => setIsOpen(false)}
-                      className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all", isActive ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-600 dark:text-slate-400 hover:bg-[var(--background)] hover:text-[var(--foreground)]")}
+                      className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all duration-200", isActive ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-600 dark:text-slate-400 hover:bg-[var(--background)] hover:text-[var(--foreground)]")}
                     >
-                      <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-                      <span>{item.name === 'POS Terminal' ? item.name : t(item.name as any)}</span>
+                      <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={isSpecial && !isActive ? 'text-purple-500' : ''} />
+                      <span className={isSpecial && !isActive ? 'text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600' : ''}>
+                        {item.name.includes('PRO') || item.name.includes('Mystery') ? item.name : t(item.name as any)}
+                      </span>
                     </Link>
                   );
                 })}

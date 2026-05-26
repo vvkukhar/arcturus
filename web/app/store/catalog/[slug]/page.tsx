@@ -1,12 +1,13 @@
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { Package, ArrowLeft, ShieldCheck, Truck } from 'lucide-react';
+import { Package, ArrowLeft, ShieldCheck, Truck, User } from 'lucide-react';
 import Link from 'next/link';
 import { appConfig } from '@/lib/config';
 import { formatMoney } from '@/lib/format';
 import { Metadata, ResolvingMetadata } from 'next';
 import { AddToCartButton } from './add-to-cart-button';
 import { ConversionEngine } from '@/components/store/conversion-engine';
+import { ProductPageOfferButton } from './product-page-offer-button';
 
 interface ProductDetail {
   id: string;
@@ -20,6 +21,7 @@ interface ProductDetail {
   images: { id: string; imageUrl: string; isPrimary: boolean }[];
   itemId?: string;
   sealed?: boolean;
+  seller?: { id: string; name: string };
 }
 
 export const revalidate = 60;
@@ -88,7 +90,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         : 'https://schema.org/UsedCondition',
       seller: {
         '@type': 'Organization',
-        name: 'Arcturus Premium LEGO'
+        name: product.seller ? product.seller.name : 'Arcturus Premium LEGO'
       }
     },
     aggregateRating: {
@@ -139,6 +141,22 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             {formatMoney(product.sellPrice)}
           </div>
 
+          {/* БЛОК ПРОДАВЦЯ C2C */}
+          {product.seller && (
+            <div className="flex items-center gap-4 p-4 rounded-2xl bg-[var(--background)] border border-[var(--border)] mb-8">
+              <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                <User size={24} />
+              </div>
+              <div className="flex-1">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Перевірений продавець</div>
+                <div className="font-bold text-lg text-[var(--foreground)] leading-tight">{product.seller.name}</div>
+              </div>
+              <Link href={`/seller/${product.seller.id}`} className="px-5 py-2.5 bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] font-bold rounded-xl text-sm hover:border-indigo-500 hover:text-indigo-600 transition-colors shadow-sm">
+                Профіль
+              </Link>
+            </div>
+          )}
+
           {product.description && (
             <div className="mb-10 space-y-4">
               <h3 className="text-lg font-black tracking-tight">Опис</h3>
@@ -148,15 +166,27 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             </div>
           )}
 
-          <div className="space-y-4 mb-12">
-            <AddToCartButton product={{
-              id: product.id,
-              title: product.title,
-              price: product.sellPrice,
-              imageUrl: displayImage,
-              theme: product.theme,
-              isAvailable: product.isAvailable
-            }} />
+          <div className="flex flex-col sm:flex-row gap-4 mb-12 w-full">
+            <div className="flex-1">
+              <AddToCartButton product={{
+                id: product.id,
+                title: product.title,
+                price: product.sellPrice,
+                imageUrl: displayImage,
+                theme: product.theme,
+                isAvailable: product.isAvailable
+              }} />
+            </div>
+            
+            {product.isAvailable && product.sellPrice > 0 && (
+              <div className="flex-1">
+                <ProductPageOfferButton 
+                  inventoryItemId={product.id}
+                  productTitle={product.title}
+                  currentPrice={product.sellPrice}
+                />
+              </div>
+            )}
           </div>
 
           <ConversionEngine itemId={product.id} />
@@ -164,7 +194,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <div className="grid grid-cols-2 gap-4 mt-8">
             <div className="flex items-center gap-3 p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)]">
               <ShieldCheck className="h-6 w-6 text-blue-500 shrink-0" />
-              <span className="text-sm font-bold">Оригінальний товар Arcturus</span>
+              <span className="text-sm font-bold">Оригінальний товар</span>
             </div>
             <div className="flex items-center gap-3 p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)]">
               <Truck className="h-6 w-6 text-emerald-500 shrink-0" />

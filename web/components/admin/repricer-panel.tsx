@@ -127,9 +127,9 @@ export function RepricerPanel() {
         </button>
       </div>
 
-      {result && (
+{result && (
         <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--background)] p-5 mt-4 animate-in fade-in zoom-in-95 duration-300">
-          <div className="grid grid-cols-2 gap-4 mb-5 pb-5 border-b border-[var(--border)]">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5 pb-5 border-b border-[var(--border)]">
             <div>
               <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1 flex items-center gap-1">
                 Suggested Price <ShieldCheck size={12} className="text-blue-500"/>
@@ -143,6 +143,19 @@ export function RepricerPanel() {
               <div className={`text-2xl font-black ${result.roiPercent && result.roiPercent >= 20 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'}`}>
                 {formatPercent(result.roiPercent)}
               </div>
+            </div>
+            {/* НОВІ МЕТРИКИ */}
+            <div className="hidden lg:block">
+              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">
+                Floor Price
+              </div>
+              <div className="text-lg font-bold text-slate-600 dark:text-slate-400">{formatMoney(result.floorPrice)}</div>
+            </div>
+            <div className="hidden lg:block">
+              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">
+                Stretch Price
+              </div>
+              <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{formatMoney(result.stretchPrice)}</div>
             </div>
           </div>
           

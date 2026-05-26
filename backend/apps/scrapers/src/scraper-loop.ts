@@ -44,7 +44,6 @@ async function runAll() {
     }
   }
 
-  // ФІКС: Безпечний перезапуск браузера ПІСЛЯ завершення всіх скраперів, щоб очистити пам'ять
   await browserManager.restart();
 }
 
@@ -57,15 +56,14 @@ async function main() {
     try {
       await runAll();
     } catch (error) {
-      console.error('[Scraper Loop Fatal Error]:', error);
+      console.error(error);
     }
     if (isShuttingDown) break;
     await new Promise((res) => setTimeout(res, interval));
   }
 }
 
-main().catch(async (error) => {
-  console.error('[Scraper Loop Exit]:', error);
+main().catch(async () => {
   await browserManager.close();
   await prisma.$disconnect();
   process.exit(1);

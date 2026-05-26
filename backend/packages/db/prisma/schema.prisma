@@ -11,16 +11,28 @@ datasource db {
 }
 
 model User {
-  id                     String          @id @default(cuid())
+  id                     String             @id @default(cuid())
   name                   String
-  email                  String?         @unique
+  email                  String?            @unique
   passwordHash           String?
-  role                   String          @default("operator")
+  role                   String             @default("operator")
   phone                  String?
   payoutCard             String?
-  active                 Boolean         @default(true)
-  createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @default(now()) @updatedAt
+  active                 Boolean            @default(true)
+  isPro                  Boolean            @default(false)
+  proExpiresAt           DateTime?
+  points                 Int                @default(0)
+  apiKey                 String?            @unique
+  apiTier                String?            @default("none") 
+  vaultBalance           Float              @default(0)
+  
+  referralCode           String?            @unique
+  referredById           String?
+  affiliateBalance       Float              @default(0)
+
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @default(now()) @updatedAt
+  
   sessions               UserSession[]
   assignedInventoryItems InventoryItem[]
   assignedWatchlistItems WatchlistItem[]
@@ -28,16 +40,122 @@ model User {
   purchaseOrders         PurchaseOrder[]
   expenses               Expense[]
   auditLogs              AuditLog[]
-  sellerItems            InventoryItem[] @relation("SellerItems")
-  
-  // PRO SAAS & BOUNTY SCOUT FIELDS
-  isPro                  Boolean         @default(false)
-  proExpiresAt           DateTime?
+  sellerItems            InventoryItem[]    @relation("SellerItems")
   payoutRequests         PayoutRequest[]
   scoutLeads             ScoutLead[]
+  offersMade             Offer[]            @relation("OffersMade")
+  wantedItems            WantedItem[]
+  pointTransactions      PointTransaction[]
+  bids                   Bid[]
+  vaultTransactions      VaultTransaction[]
+  fundedItems            InventoryItem[]    @relation("InvestorItems")
+  b2bWebhooks            B2bWebhook[]
+  liveBids               LiveBid[]
+  
+  referredUsers          User[]             @relation("UserReferrals")
+  referrer               User?              @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  affiliateRewards       AffiliateReward[]
 
   @@index([role, active])
   @@index([active])
+  @@index([apiKey])
+  @@index([referralCode])
+}
+
+model AffiliateReward {
+  id          String   @id @default(cuid())
+  userId      String
+  sourceId    String   
+  sourceType  String   
+  amount      Float
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model B2bWebhook {
+  id        String   @id @default(cuid())
+  userId    String
+  url       String
+  event     String   
+  secret    String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, event])
+}
+
+model LiveStream {
+  id          String        @id @default(cuid())
+  title       String
+  videoUrl    String?
+  status      String        @default("offline") 
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime      @default(now())
+  auctions    LiveAuction[]
+
+  @@index([status])
+}
+
+model LiveAuction {
+  id              String        @id @default(cuid())
+  streamId        String
+  inventoryItemId String
+  startPrice      Float
+  currentPrice    Float
+  highestBidderId String?
+  status          String        @default("pending") 
+  startedAt       DateTime?
+  endsAt          DateTime?
+  createdAt       DateTime      @default(now())
+  stream          LiveStream    @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  bids            LiveBid[]
+
+  @@index([streamId, status])
+}
+
+model LiveBid {
+  id            String      @id @default(cuid())
+  liveAuctionId String
+  userId        String
+  amount        Float
+  createdAt     DateTime    @default(now())
+  auction       LiveAuction @relation(fields: [liveAuctionId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([liveAuctionId, amount])
+}
+
+model ScoutSurge {
+  id          String   @id @default(cuid())
+  itemId      String?
+  theme       String?
+  multiplier  Float    @default(1.0)
+  reason      String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  item        Item?    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([itemId])
+}
+
+model VaultTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Float
+  type        String   
+  description String
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
 }
 
 model UserSession {
@@ -71,6 +189,8 @@ model Item {
   soldComps         SoldComp[]
   sales             Sale[]
   purchaseOrders    PurchaseOrder[]
+  wantedItems       WantedItem[]
+  scoutSurges       ScoutSurge[]
 
   @@unique([setNumber, kind])
   @@index([kind, theme])
@@ -127,21 +247,22 @@ model InventoryItem {
   warehouseId             String?
   notes                   String?
   priority                Int               @default(50)
-  
-  // MARKETPLACE FIELDS
-  isMarketplace           Boolean           @default(false) 
-  sellerId                String?            
+  isMarketplace           Boolean           @default(false)
+  sellerId                String?
   commissionRate          Float             @default(5.0)
-  sellerPayout            Float? 
-  approvalStatus          String            @default("approved") 
-
+  sellerPayout            Float?
+  approvalStatus          String            @default("approved")
+  boostedUntil            DateTime?
   assignedUserId          String?
+  isAuction               Boolean           @default(false)
+  investorId              String?           
+  investorProfitShare     Float?            
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @default(now()) @updatedAt
-  
   item                    Item              @relation(fields: [itemId], references: [id], onDelete: Restrict)
   assignedUser            User?             @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
   seller                  User?             @relation("SellerItems", fields: [sellerId], references: [id], onDelete: SetNull)
+  investor                User?             @relation("InvestorItems", fields: [investorId], references: [id], onDelete: SetNull)
   location                StorageLocation?  @relation(fields: [storageLocationId], references: [id], onDelete: SetNull)
   images                  InventoryImage[]
   sales                   Sale[]
@@ -153,12 +274,19 @@ model InventoryItem {
   purchaseOrders          PurchaseOrder[]
   returns                 ReturnRequest[]
   expenses                Expense[]
+  offers                  Offer[]
+  auction                 Auction?
+  liveAuctions            LiveAuction[]
+  mysteryBoxId            String?
+  mysteryBox              MysteryBox?       @relation(fields: [mysteryBoxId], references: [id], onDelete: SetNull)
 
   @@index([itemId, quantity])
   @@index([assignedUserId, quantity])
   @@index([isMarketplace, approvalStatus])
   @@index([warehouseId, storageLocationId])
   @@index([quantity, expectedSalePriceManual])
+  @@index([boostedUntil])
+  @@index([investorId])
   @@index([titleSnapshot(ops: raw("gin_trgm_ops"))], type: Gin)
 }
 
@@ -239,7 +367,7 @@ model PurchaseOrder {
   notes           String?
   purchasedAt     DateTime?
   receivedAt      DateTime?
-  createdAt       DateTime       @allowed
+  createdAt       DateTime       @default(now())
   updatedAt       DateTime       @default(now()) @updatedAt
   item            Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
   watchlistItem   WatchlistItem? @relation(fields: [watchlistItemId], references: [id], onDelete: SetNull)
@@ -408,10 +536,10 @@ model Deal {
 }
 
 model Sale {
-  id                String        @id @default(cuid())
+  id                String          @id @default(cuid())
   inventoryItemId   String
   itemId            String
-  quantity          Int           @default(1)
+  quantity          Int             @default(1)
   sellPrice         Float
   costBasis         Float
   profit            Float
@@ -419,17 +547,15 @@ model Sale {
   channel           String?
   buyerName         String?
   notes             String?
-  
-  isMarketplaceSale Boolean       @default(false)
+  isMarketplaceSale Boolean         @default(false)
   commissionAmount  Float?
   sellerPayout      Float?
-  payoutStatus      String?       @default("pending") 
-
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @default(now()) @updatedAt
+  payoutStatus      String?         @default("pending")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @default(now()) @updatedAt
   deletedAt         DateTime?
-  inventoryItem     InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
-  item              Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  inventoryItem     InventoryItem   @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  item              Item            @relation(fields: [itemId], references: [id], onDelete: Restrict)
   orders            Order[]
   returns           ReturnRequest[]
   expenses          Expense[]
@@ -452,6 +578,9 @@ model Order {
   quantity         Int             @default(1)
   channel          String?
   adminNote        String?
+  isDropship       Boolean         @default(false)
+  sourceListingId  String?
+  supplierCost     Float?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @default(now()) @updatedAt
   deletedAt        DateTime?
@@ -463,6 +592,7 @@ model Order {
 
   @@index([status, createdAt])
   @@index([deletedAt])
+  @@index([isDropship])
 }
 
 model ReturnRequest {
@@ -680,8 +810,8 @@ model PayoutRequest {
   id        String   @id @default(cuid())
   sellerId  String
   amount    Float
-  status    String   @default("pending") 
-  cardData  String?  
+  status    String   @default("pending")
+  cardData  String?
   adminNote String?
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -692,17 +822,149 @@ model PayoutRequest {
 }
 
 model ScoutLead {
-  id          String   @id @default(cuid())
-  scoutId     String
-  url         String
-  notes       String?
-  status      String   @default("pending") 
-  reward      Float    @default(0)         
-  adminNote   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
-  scout       User     @relation(fields: [scoutId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  scoutId   String
+  url       String
+  notes     String?
+  status    String   @default("pending")
+  reward    Float    @default(0)
+  adminNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  scout     User     @relation(fields: [scoutId], references: [id], onDelete: Cascade)
 
   @@index([scoutId, status])
   @@index([status, createdAt])
+}
+
+model Offer {
+  id              String        @id @default(cuid())
+  inventoryItemId String
+  buyerId         String
+  amount          Float
+  status          String        @default("pending")
+  message         String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  buyer           User          @relation("OffersMade", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryItemId, status])
+  @@index([buyerId, status])
+}
+
+model WantedItem {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  maxPrice  Float?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId, active])
+  @@index([userId, active])
+}
+
+model Auction {
+  id              String        @id @default(cuid())
+  inventoryItemId String        @unique
+  sellerId        String
+  startPrice      Float
+  currentPrice    Float
+  highestBidderId String?
+  endsAt          DateTime
+  status          String        @default("active")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  bids            Bid[]
+
+  @@index([status, endsAt])
+}
+
+model Bid {
+  id        String   @id @default(cuid())
+  auctionId String
+  bidderId  String
+  amount    Float
+  createdAt DateTime @default(now())
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  bidder    User     @relation(fields: [bidderId], references: [id], onDelete: Cascade)
+
+  @@index([auctionId, amount])
+}
+
+model PointTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Int
+  type        String
+  description String
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model SupplierProfile {
+  id         String   @id @default(cuid())
+  sourceCode String
+  externalId String
+  name       String?
+  phone      String?
+  trustScore Int      @default(50)
+  status     String   @default("neutral")
+  notes      String?
+  dealsCount Int      @default(0)
+  fraudCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@unique([sourceCode, externalId])
+  @@index([status, trustScore])
+}
+
+model PromotedListing {
+  id              String        @id @default(cuid())
+  inventoryItemId String        @unique
+  sellerId        String
+  multiplier      Float         @default(2.0)
+  expiresAt       DateTime
+  cost            Float
+  createdAt       DateTime      @default(now())
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  seller          User          @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model MysteryBox {
+  id            String          @id @default(cuid())
+  title         String
+  description   String
+  price         Float
+  totalValue    Float
+  tier          String          @default("gold")
+  isSold        Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  buyerId       String?
+  items         InventoryItem[] 
+  buyer         User?           @relation(fields: [buyerId], references: [id])
+}
+
+model ClientProfile {
+  id            String   @id @default(cuid())
+  phone         String   @unique
+  name          String?
+  fraudScore    Int      @default(0)
+  status        String   @default("neutral")
+  totalOrders   Int      @default(0)
+  refusedCount  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([phone, status])
 }

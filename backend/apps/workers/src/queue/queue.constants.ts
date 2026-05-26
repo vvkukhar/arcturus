@@ -16,5 +16,14 @@ export const JOB_NAMES = {
   SOURCE_HEALTH_ROLLUP: 'source-health-rollup',
   CLEANUP_OLD_SNAPSHOTS: 'cleanup-old-snapshots',
   GLOBAL_SYNC_REFRESH: 'global-sync-refresh',
-  PORTFOLIO_REBALANCING: 'portfolio-rebalancing'
+  PORTFOLIO_REBALANCING: 'portfolio-rebalancing',
+  SURGE_PRICING: 'surge-pricing',
+  C2C_STORAGE_FEE: 'c2c-storage-fee',
+  DUTCH_AUCTION: 'dutch-auction',
+  LOGISTICS_SENTINEL: 'logistics-sentinel',
+  MONOPOLY_SQUEEZE: 'monopoly-squeeze',
+  ZERO_TOUCH_MATCHER: 'zero-touch-matcher',
+  AI_SMM_BROADCASTER: 'ai-smm-broadcaster',
+  LTV_MAXIMIZER: 'ltv-maximizer',
+  SURGE_SCOUTS: 'surge-scouts',
 } as const;

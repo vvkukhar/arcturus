@@ -1,267 +1,138 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
+import { Queue } from 'bullmq';
+import { InjectQueue } from '@nestjs/bullmq';
+import { QUEUE_NAMES, JOB_NAMES } from '../queue/queue.constants';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class RealtimeGateway {
+  private readonly logger = new Logger(RealtimeGateway.name);
   private server: Server | null = null;
+  private itemRooms = new Map<string, Set<string>>();
+  private surgeInterval: NodeJS.Timeout | null = null;
 
-  constructor(private readonly prisma: PrismaService) {
-    console.log('[RealtimeGateway] INITIALIZED AS RAW SOCKET SERVICE');
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue(QUEUE_NAMES.MARKET) private readonly marketQueue: Queue
+  ) {}
 
   public setServer(server: Server): void {
     this.server = server;
-    console.log('[RealtimeGateway] RAW SOCKET.IO SERVER ATTACHED');
+    this.startSurgePricingCron();
+  }
+
+  private startSurgePricingCron() {
+    if (this.surgeInterval) clearInterval(this.surgeInterval);
+    this.surgeInterval = setInterval(() => {
+      const activeSessions = Array.from(this.itemRooms.entries())
+        .map(([itemId, clients]) => [itemId, clients.size] as [string, number])
+        .filter(([_, size]) => size >= 3);
+
+      if (activeSessions.length > 0) {
+        this.marketQueue.add(JOB_NAMES.SURGE_PRICING, { activeSessions }, { removeOnComplete: 5, removeOnFail: 10 });
+      }
+    }, 1000 * 60 * 5);
   }
 
   private hashToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
-private extractToken(client: Socket): string | null {
-    // 1. Спочатку шукаємо токен у куках (оскільки він HttpOnly, браузер сам його передає у headers.cookie)
+  private extractToken(client: Socket): string | null {
     const cookieHeader = client.handshake.headers?.cookie;
     if (cookieHeader) {
       const match = cookieHeader.match(/(^| )arcturus_admin_token=([^;]+)/);
       if (match) return decodeURIComponent(match[2]);
     }
-
-    // 2. Якщо в куках нема (наприклад, запит з Postman/Mobile), шукаємо в класичних місцях
-    const authToken = client.handshake.auth?.token;
-
-    const authorizationHeader = client.handshake.headers?.authorization;
-    const headerToken = Array.isArray(authorizationHeader)
-      ? authorizationHeader[0]
-      : authorizationHeader;
-
-    const queryToken = client.handshake.query?.token;
-    const queryTokenString = Array.isArray(queryToken)
-      ? queryToken[0]
-      : queryToken;
-
-    const rawToken = authToken || headerToken || queryTokenString;
-
-    if (!rawToken || typeof rawToken !== 'string') {
-      return null;
-    }
-
+    const rawToken = client.handshake.auth?.token || client.handshake.headers?.authorization;
+    if (!rawToken || typeof rawToken !== 'string') return null;
     return rawToken.replace('Bearer ', '').trim();
   }
 
   async handleConnection(client: Socket): Promise<void> {
-    console.log(`[RealtimeGateway] CONNECTION_ATTEMPT: ${client.id}`);
-    console.log(`[RealtimeGateway] HEADERS:`, JSON.stringify(client.handshake.headers));
-    console.log(`[RealtimeGateway] AUTH:`, JSON.stringify(client.handshake.auth));
-    console.log(`[RealtimeGateway] QUERY:`, JSON.stringify(client.handshake.query));
+    const cleanToken = this.extractToken(client);
+
+    client.on('join_item_room', (itemId: string) => {
+      client.join(`item_${itemId}`);
+      if (!this.itemRooms.has(itemId)) this.itemRooms.set(itemId, new Set());
+      this.itemRooms.get(itemId)!.add(client.id);
+      
+      this.server?.to(`item_${itemId}`).emit('viewers_update', this.itemRooms.get(itemId)!.size);
+    });
+
+    client.on('leave_item_room', (itemId: string) => {
+      client.leave(`item_${itemId}`);
+      if (this.itemRooms.has(itemId)) {
+        this.itemRooms.get(itemId)!.delete(client.id);
+        this.server?.to(`item_${itemId}`).emit('viewers_update', this.itemRooms.get(itemId)!.size);
+      }
+    });
+
+    if (!cleanToken) return;
 
     try {
-      const cleanToken = this.extractToken(client);
-
-      if (!cleanToken) {
-        console.error(`[RealtimeGateway] CONNECTION_REJECTED: No token provided for ${client.id}`);
-        client.disconnect(true);
-        return;
-      }
-
       const tokenHash = this.hashToken(cleanToken);
-      console.log(`[RealtimeGateway] TOKEN_HASH: ${tokenHash}`);
-
       const session = await this.prisma.userSession.findUnique({
         where: { tokenHash },
         include: { user: true },
       });
 
-      if (!session) {
-        console.error(`[RealtimeGateway] CONNECTION_REJECTED: Session not found for ${client.id}`);
-        client.disconnect(true);
+      if (!session || !(session as any).user?.active || (session.expiresAt && session.expiresAt.getTime() < Date.now())) {
         return;
       }
-
-      if (!(session as any).user?.active) {
-        console.error(`[RealtimeGateway] CONNECTION_REJECTED: User inactive for ${client.id}`);
-        client.disconnect(true);
-        return;
-      }
-
-      if (session.expiresAt && session.expiresAt.getTime() < Date.now()) {
-        console.error(`[RealtimeGateway] CONNECTION_REJECTED: Session expired for ${client.id}`);
-        client.disconnect(true);
-        return;
-      }
-
-      console.log(
-        `[RealtimeGateway] CONNECTION_SUCCESS: User ${(session as any).user.email} joined admin_broadcast (${client.id})`,
-      );
 
       client.join('admin_broadcast');
-
-      client.emit('socket_ready', {
-        ok: true,
-        socketId: client.id,
-        timestamp: Date.now(),
-      });
-    } catch (error) {
-      console.error(`[RealtimeGateway] CONNECTION_ERROR for ${client.id}:`, error);
-      client.disconnect(true);
-    }
+    } catch (error) {}
   }
 
-  handleDisconnect(client: Socket, reason?: string): void {
-    console.log(`[RealtimeGateway] DISCONNECTED: ${client.id}${reason ? ` Reason: ${reason}` : ''}`);
-    client.leave('admin_broadcast');
+  handleDisconnect(client: Socket): void {
+    this.itemRooms.forEach((clients, itemId) => {
+      if (clients.has(client.id)) {
+        clients.delete(client.id);
+        this.server?.to(`item_${itemId}`).emit('viewers_update', clients.size);
+      }
+    });
   }
 
   emitCustom(event: string, payload: any): void {
-    console.log(`[RealtimeGateway] EMIT_CUSTOM: ${event}`, payload);
-
-    if (!this.server) {
-      console.warn('[RealtimeGateway] EMIT_SKIPPED: Socket.IO server is not attached');
-      return;
-    }
-
-    this.server.to('admin_broadcast').emit(event, payload);
+    this.server?.to('admin_broadcast').emit(event, payload);
   }
 
   emitDashboardRefresh(reason: string): void {
-    console.log(`[RealtimeGateway] EMIT_DASHBOARD_REFRESH: ${reason}`);
-
-    if (!this.server) {
-      console.warn('[RealtimeGateway] EMIT_DASHBOARD_REFRESH_SKIPPED: Socket.IO server is not attached');
-      return;
-    }
-
-    this.server.to('admin_broadcast').emit('dashboard_refresh', {
-      reason,
-      timestamp: Date.now(),
-    });
+    this.server?.to('admin_broadcast').emit('dashboard_refresh', { reason, timestamp: Date.now() });
   }
 
   emitFlowRefresh(flow: string): void {
-    console.log(`[RealtimeGateway] EMIT_FLOW_REFRESH: ${flow}`);
-
-    if (!this.server) {
-      console.warn('[RealtimeGateway] EMIT_FLOW_REFRESH_SKIPPED: Socket.IO server is not attached');
-      return;
-    }
-
-    this.server.to('admin_broadcast').emit('flow_refresh', {
-      flow,
-      timestamp: Date.now(),
-    });
+    this.server?.to('admin_broadcast').emit('flow_refresh', { flow, timestamp: Date.now() });
   }
 
   emitInventoryRefresh(payload: any): void {
-    console.log(`[RealtimeGateway] EMIT_INVENTORY_REFRESH:`, payload);
-
-    if (!this.server) {
-      console.warn('[RealtimeGateway] EMIT_INVENTORY_REFRESH_SKIPPED: Socket.IO server is not attached');
-      return;
-    }
-
-    this.server.to('admin_broadcast').emit('inventory_updated', {
-      ...payload,
-      timestamp: Date.now(),
-    });
+    this.server?.to('admin_broadcast').emit('inventory_updated', { ...payload, timestamp: Date.now() });
   }
 
   emitInventoryUpdated(payload: any): void {
-    console.log(`[RealtimeGateway] EMIT_INVENTORY_UPDATED:`, payload);
-
-    if (!this.server) {
-      console.warn('[RealtimeGateway] EMIT_INVENTORY_UPDATED_SKIPPED: Socket.IO server is not attached');
-      return;
-    }
-
-    this.server.to('admin_broadcast').emit('inventory_updated', {
-      ...payload,
-      timestamp: Date.now(),
-    });
+    this.server?.to('admin_broadcast').emit('inventory_updated', { ...payload, timestamp: Date.now() });
   }
 
   emitWatchlistUpdated(payload: any): void {
-    console.log(`[RealtimeGateway] EMIT_WATCHLIST_UPDATED:`, payload);
-
-    if (!this.server) {
-      console.warn('[RealtimeGateway] EMIT_WATCHLIST_UPDATED_SKIPPED: Socket.IO server is not attached');
-      return;
-    }
-
-    this.server.to('admin_broadcast').emit('watchlist_updated', {
-      ...payload,
-      timestamp: Date.now(),
-    });
+    this.server?.to('admin_broadcast').emit('watchlist_updated', { ...payload, timestamp: Date.now() });
   }
 
   emitWatchlistRefresh(payload: any): void {
-    console.log(`[RealtimeGateway] EMIT_WATCHLIST_REFRESH:`, payload);
-
-    if (!this.server) {
-      console.warn('[RealtimeGateway] EMIT_WATCHLIST_REFRESH_SKIPPED: Socket.IO server is not attached');
-      return;
-    }
-
-    this.server.to('admin_broadcast').emit('watchlist_updated', {
-      ...payload,
-      timestamp: Date.now(),
-    });
-  }
-
-  emitSaleRegistered(payload: any): void {
-    console.log(`[RealtimeGateway] EMIT_SALE_REGISTERED:`, payload);
-
-    if (!this.server) {
-      console.warn('[RealtimeGateway] EMIT_SALE_REGISTERED_SKIPPED: Socket.IO server is not attached');
-      return;
-    }
-
-    this.server.to('admin_broadcast').emit('sale_registered', {
-      ...payload,
-      timestamp: Date.now(),
-    });
+    this.server?.to('admin_broadcast').emit('watchlist_updated', { ...payload, timestamp: Date.now() });
   }
 
   emitOpportunityRefresh(reason: string): void {
-    console.log(`[RealtimeGateway] EMIT_OPPORTUNITY_REFRESH: ${reason}`);
-
-    if (!this.server) {
-      console.warn('[RealtimeGateway] EMIT_OPPORTUNITY_REFRESH_SKIPPED: Socket.IO server is not attached');
-      return;
-    }
-
-    this.server.to('admin_broadcast').emit('opportunity_refresh', {
-      reason,
-      timestamp: Date.now(),
-    });
+    this.server?.to('admin_broadcast').emit('opportunity_refresh', { reason, timestamp: Date.now() });
   }
 
   emitItemRefresh(itemId: string, reason: string): void {
-    console.log(`[RealtimeGateway] EMIT_ITEM_REFRESH: ${itemId}, ${reason}`);
-
-    if (!this.server) {
-      console.warn('[RealtimeGateway] EMIT_ITEM_REFRESH_SKIPPED: Socket.IO server is not attached');
-      return;
-    }
-
-    this.server.to('admin_broadcast').emit('item_refresh', {
-      itemId,
-      reason,
-      timestamp: Date.now(),
-    });
+    this.server?.to('admin_broadcast').emit('item_refresh', { itemId, reason, timestamp: Date.now() });
   }
 
   emitListingsRefresh(payload: any): void {
-    console.log(`[RealtimeGateway] EMIT_LISTINGS_REFRESH:`, payload);
-
-    if (!this.server) {
-      console.warn('[RealtimeGateway] EMIT_LISTINGS_REFRESH_SKIPPED: Socket.IO server is not attached');
-      return;
-    }
-
-    this.server.emit('listings_refresh', {
-      ...payload,
-      timestamp: Date.now(),
-    });
+    this.server?.emit('listings_refresh', { ...payload, timestamp: Date.now() });
   }
 }

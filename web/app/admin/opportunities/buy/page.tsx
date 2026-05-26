@@ -4,6 +4,7 @@ import { DataTable } from '@/components/admin/data-table';
 import { SectionCard } from '@/components/admin/section-card';
 import { StatusPill } from '@/components/admin/status-pill';
 import { TableSearchForm } from '@/components/admin/table-search-form';
+import { AiNegotiateButton } from '@/components/admin/ai-negotiate-button'; // <--- ДОДАНО
 import { api } from '@/lib/api';
 import { formatMoney, formatPercent } from '@/lib/format';
 import type { OpportunityItem } from '@/lib/types';
@@ -98,22 +99,16 @@ export default async function AdminBuyOpportunitiesPage({ searchParams }: Props)
               render: (row) => <span className="font-black text-emerald-600 dark:text-emerald-400">{formatPercent(row.roi)}</span>,
             },
             {
-              key: 'strategy',
-              header: 'Strategy & Source',
-              render: (row) => (
-                <div className="flex flex-col gap-1.5">
-                  <span className="inline-flex w-fit px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-[var(--foreground)] text-[var(--background)]">
-                    {row.flipStrategy ?? '—'}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{row.sourceCode ?? '—'}</span>
-                </div>
-              ),
-            },
-            {
               key: 'actions',
               header: '',
               render: (row) => (
                 <div className="flex items-center justify-end gap-2">
+                  {/* 💥 Асьо наша кнопка AI Торгу */}
+                  <AiNegotiateButton 
+                    title={row.title} 
+                    currentPrice={row.totalBuy ?? 0} 
+                    targetPrice={row.totalBuy ? row.totalBuy * 0.85 : 0} // Намагаємось збити ще 15%
+                  />
                   <Link
                     href={`/admin/opportunities/buy/${row.itemId}`}
                     className="inline-flex items-center justify-center rounded-xl bg-[var(--background)] border border-[var(--border)] px-4 py-2 text-xs font-bold text-[var(--foreground)] transition-all hover:bg-slate-200 dark:hover:bg-slate-800 active:scale-95"

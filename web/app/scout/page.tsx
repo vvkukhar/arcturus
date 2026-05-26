@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Target, Link as LinkIcon, ArrowRight, Loader2, DollarSign, Crosshair } from 'lucide-react';
+import Link from 'next/link';
+import { Target, Link as LinkIcon, Loader2, DollarSign, Crosshair, Trophy, Flame } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
 import { swrFetcher } from '@/lib/swr-fetcher';
@@ -11,10 +12,13 @@ import { formatMoney } from '@/lib/format';
 export default function ScoutPage() {
   const { data: user, isLoading: uLoading } = useSWR('/api/auth/me', swrFetcher);
   const { data: leads, mutate } = useSWR<any[]>('/api/proxy/marketplace/scout/my-leads', swrFetcher);
+  const { data: surges } = useSWR<any[]>('/api/proxy/marketplace/scout/active-surges', swrFetcher);
 
   const [url, setUrl] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const safeSurges = Array.isArray(surges) ? surges : [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,13 +49,41 @@ export default function ScoutPage() {
     <main className="min-h-screen py-16 px-4 bg-[var(--background)]">
       <div className="max-w-4xl mx-auto space-y-8">
         
-        <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+          <div className="absolute right-0 top-0 hidden md:block">
+            <Link href="/scout/leaderboard" className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded-xl font-black text-sm hover:scale-105 transition-transform border border-amber-200 dark:border-amber-800">
+              <Trophy size={16} /> Зал Слави
+            </Link>
+          </div>
+
           <div className="inline-flex items-center justify-center p-4 bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 rounded-2xl mb-6">
             <Target size={40} />
           </div>
           <h1 className="text-4xl md:text-6xl font-black text-[var(--foreground)] mb-4 tracking-tight">Arcturus Bounty</h1>
-          <p className="text-lg text-slate-500 font-medium">Знаходьте недооцінені набори LEGO на маркетплейсах. Ми викупаємо їх — ви отримуєте % на свій баланс.</p>
+          <p className="text-lg text-slate-500 font-medium">Знаходьте недооцінені набори LEGO на маркетплейсах. Ми викупуємо їх — ви отримуєте % на свій баланс.</p>
+          
+          <div className="mt-6 md:hidden flex justify-center">
+            <Link href="/scout/leaderboard" className="flex items-center gap-2 px-6 py-3 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded-xl font-black text-sm hover:scale-105 transition-transform">
+              <Trophy size={18} /> Відкрити Зал Слави
+            </Link>
+          </div>
         </div>
+
+        {safeSurges.length > 0 && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 p-6 rounded-[2rem] animate-in fade-in slide-in-from-bottom-4 shadow-sm">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-black uppercase tracking-widest mb-4">
+              <Flame size={20} className="animate-pulse" /> Гарячий попит (Surge Multiplier)
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              {safeSurges.map(surge => (
+                <div key={surge.id} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-red-100 dark:border-red-900 flex justify-between items-center">
+                  <div className="text-sm font-bold text-slate-800 dark:text-slate-200">{surge.reason}</div>
+                  <div className="text-lg font-black text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40 px-3 py-1 rounded-lg">x{surge.multiplier.toFixed(1)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
           <div className="md:col-span-2 bg-[var(--card)] p-8 rounded-[2.5rem] border border-[var(--border)] shadow-xl">
@@ -78,7 +110,7 @@ export default function ScoutPage() {
                 />
               </div>
               <button disabled={loading} type="submit" className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-xl transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2">
-                {loading ? <Loader2 className="animate-spin" /> : <Target size={20} />} Відправити скаутам
+                {loading ? <Loader2 className="animate-spin" /> : <Target size={20} />} Відправити аналітикам
               </button>
             </form>
           </div>

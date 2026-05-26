@@ -37,15 +37,19 @@ export class NotificationsService {
     });
   }
 
-  async createReserveNotification(data: { reserveId: string; productTitle: string; customerName: string; contact: string }) {
-    const msg = `🔔 <b>НОВИЙ РЕЗЕРВ</b>\n\n📦 Товар: ${data.productTitle}\n👤 Клієнт: ${data.customerName}\n📱 Контакт: ${data.contact}`;
+async createReserveNotification(data: { reserveId: string; productTitle: string; customerName: string; contact: string }) {
+    const msg = `🔔 <b>Новий резерв</b>\n\n📦 Товар: ${data.productTitle}\n👤 Клієнт: ${data.customerName}\n📞 Контакт: ${data.contact}`;
+    
+    // Створюємо клавіатуру з двома кнопками
     const keyboard = [
       [
         { text: '✅ Підтвердити', callback_data: `reserve_approve_${data.reserveId}` },
         { text: '❌ Відхилити', callback_data: `reserve_reject_${data.reserveId}` }
       ]
     ];
+
     await this.telegram.sendMessage(msg, keyboard);
+    
     return this.create({
       title: 'Новий резерв',
       message: `${data.productTitle} • ${data.customerName}`,

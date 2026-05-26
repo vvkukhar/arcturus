@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -62,6 +61,18 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { MediaModule } from './modules/media/media.module';
 import { AllocationModule } from './modules/allocation/allocation.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
+import { AuctionsModule } from './modules/auctions/auctions.module';
+import { GamificationModule } from './modules/gamification/gamification.module';
+import { SuppliersModule } from './modules/suppliers/suppliers.module';
+import { MonetizationModule } from './modules/monetization/monetization.module';
+import { ClientsModule } from './modules/clients/clients.module';
+import { ProModule } from './modules/pro/pro.module';
+import { VaultModule } from './modules/vault/vault.module';
+import { B2bModule } from './modules/b2b/b2b.module';
+import { FeedsModule } from './modules/feeds/feeds.module';
+import { DropshipModule } from './modules/dropship/dropship.module';
+import { LiveModule } from './modules/live/live.module';
+import { SyndicateModule } from './modules/syndicate/syndicate.module';
 
 @Module({
   imports: [
@@ -126,9 +137,19 @@ import { MarketplaceModule } from './modules/marketplace/marketplace.module';
     WarehouseModule,
     MediaModule,
     AllocationModule,
-    MarketplaceModule
+    MarketplaceModule,
+    AuctionsModule,
+    GamificationModule,
+    SuppliersModule,
+    MonetizationModule,
+    ClientsModule,
+    ProModule,
+    VaultModule,
+    B2bModule,
+    FeedsModule,
+    DropshipModule,
+    LiveModule,
+    SyndicateModule
   ],
-  controllers: [],
-  providers: [],
 })
 export class AppModule {}

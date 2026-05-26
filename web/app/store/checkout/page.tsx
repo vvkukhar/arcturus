@@ -22,7 +22,7 @@ export default function CheckoutPage() {
   const [branch, setBranch] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const handleCheckout = useCallback(async (e: React.FormEvent) => {
+const handleCheckout = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (isProcessing || items.length === 0) return;
     
@@ -30,7 +30,6 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
-      // 1. FAANG-level: Валідація стоку перед самою транзакцією
       await validateStock();
       const currentItems = useCart.getState().items;
       
@@ -38,7 +37,7 @@ export default function CheckoutPage() {
         throw new Error('Деякі товари щойно розкупили. Кошик оновлено.');
       }
 
-      // 2. Створюємо резерви та замовлення в БД
+      // Створюємо масив замовлень для кожного товару
       const requests = currentItems.map(item => 
         apiFetch<ApiResponse<any>>('/api/store/contact', {
           method: 'POST',
@@ -47,7 +46,6 @@ export default function CheckoutPage() {
             productTitle: item.title,
             name: buyerName.trim(),
             contact: contactInfo.trim(),
-            // Записуємо дані доставки в повідомлення для оператора
             message: `Order from Cart (Qty: ${item.quantity}). Delivery: ${city}, ${branch}`
           }),
         })
@@ -55,7 +53,6 @@ export default function CheckoutPage() {
 
       const results = await Promise.all(requests);
       
-      // Витягуємо ID замовлення (через оновлений бекенд)
       const firstResponseData = results[0]?.data;
       const orderId = firstResponseData?.orderId || firstResponseData?.id;
 
@@ -63,7 +60,7 @@ export default function CheckoutPage() {
         throw new Error('Не вдалося згенерувати ID замовлення на сервері.');
       }
 
-      // 3. Ініціюємо платіжну сесію Monobank
+      // Викликаємо API для створення сесії оплати
       const checkoutResponse = await apiFetch<ApiResponse<{ url: string }>>('/api/store/checkout', {
         method: 'POST',
         body: JSON.stringify({ orderId }),
@@ -72,10 +69,9 @@ export default function CheckoutPage() {
       const paymentUrl = checkoutResponse?.data?.url || (checkoutResponse as any)?.url;
 
       if (paymentUrl) {
-        clearCart(); // Очищаємо кошик тільки якщо маємо лінку на оплату
-        window.location.href = paymentUrl;
+        clearCart(); 
+        window.location.href = paymentUrl; // Перекидаємо на Monobank
       } else {
-        // Fallback якщо платіжка вимкнена (наприклад, для тестування)
         clearCart();
         router.replace(`/success?orderId=${orderId}`);
       }

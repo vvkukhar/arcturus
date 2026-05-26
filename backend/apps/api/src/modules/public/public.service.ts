@@ -47,6 +47,10 @@ export class PublicService {
     const data = await this.prisma.inventoryItem.findMany({
       where: {
         quantity: params.availableOnly === true ? { gt: 0 } : undefined,
+        OR: [
+          { isMarketplace: false },
+          { isMarketplace: true, approvalStatus: 'approved' }
+        ],
         ...(params.type && params.type !== 'all' ? { item: { kind: params.type } } : {}),
         ...(params.theme ? { item: { theme: { equals: params.theme, mode: 'insensitive' } } } : {}),
         ...(q ? { OR: [
@@ -81,11 +85,12 @@ export class PublicService {
     const normalized = slug.trim().toLowerCase();
 
     const all = await this.prisma.inventoryItem.findMany({
-      where: { quantity: { gt: 0 } },
+      where: { quantity: { gt: 0 }, OR: [{ isMarketplace: false }, { isMarketplace: true, approvalStatus: 'approved' }] },
       include: {
         item: true,
         images: { orderBy: { sortOrder: 'asc' } },
         assignedUser: true,
+        seller: { select: { id: true, name: true } }, // Підтягуємо інфу про продавця
       },
       take: 500,
     });
@@ -110,6 +115,7 @@ export class PublicService {
       where: {
         id: { not: item.id },
         quantity: { gt: 0 },
+        OR: [{ isMarketplace: false }, { isMarketplace: true, approvalStatus: 'approved' }],
         item: {
           ...(theme ? { theme } : {}),
           ...(kind ? { kind } : {}),
@@ -122,6 +128,43 @@ export class PublicService {
       orderBy: { createdAt: 'desc' },
       take: Math.min(params.limit ?? 8, 24),
     });
+  }
+
+  // НОВИЙ МЕТОД ДЛЯ ПРОФІЛЮ ПРОДАВЦЯ
+  async getSellerProfile(sellerId: string): Promise<unknown> {
+    const seller = await this.prisma.user.findUnique({
+      where: { id: sellerId },
+      select: { id: true, name: true, createdAt: true },
+    });
+
+    if (!seller) throw new NotFoundException('Seller not found');
+
+    const activeListings = await this.prisma.inventoryItem.findMany({
+      where: { 
+        sellerId, 
+        isMarketplace: true, 
+        approvalStatus: 'approved', 
+        quantity: { gt: 0 } 
+      },
+      include: { 
+        item: true, 
+        images: { take: 1, orderBy: { sortOrder: 'asc' } } 
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const soldCount = await this.prisma.sale.count({
+      where: { inventoryItem: { sellerId } }
+    });
+
+    return {
+      seller,
+      stats: {
+        soldCount,
+        activeListings: activeListings.length,
+      },
+      listings: activeListings,
+    };
   }
 
   async createReserveRequest(body: { inventoryItemId?: string; productTitle?: string; name: string; contact: string; message?: string }): Promise<unknown> {

@@ -1,8 +1,8 @@
 x-logging: &default-logging
   driver: "json-file"
   options:
-    max-size: "20m"
-    max-file: "5"
+    max-size: "50m"
+    max-file: "10"
 
 services:
   postgres:
@@ -13,13 +13,13 @@ services:
     command: 
       - "postgres"
       - "-c"
-      - "max_connections=500"
+      - "max_connections=1000"
       - "-c"
-      - "shared_buffers=1GB"
+      - "shared_buffers=2GB"
       - "-c"
-      - "effective_cache_size=3GB"
+      - "effective_cache_size=6GB"
       - "-c"
-      - "maintenance_work_mem=256MB"
+      - "maintenance_work_mem=512MB"
       - "-c"
       - "checkpoint_completion_target=0.9"
       - "-c"
@@ -28,7 +28,6 @@ services:
       - "default_statistics_target=100"
     volumes:
       - arcturus_pg_data:/var/lib/postgresql/data
-      - ./backups:/backups
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -47,7 +46,7 @@ services:
       - "--requirepass"
       - "${REDIS_PASSWORD}"
       - "--maxmemory"
-      - "1gb"
+      - "2gb"
       - "--maxmemory-policy"
       - "allkeys-lru"
       - "--tcp-keepalive"
@@ -63,11 +62,11 @@ services:
 
   api:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: apps/api/Dockerfile
     container_name: arcturus_api
     restart: always
-    env_file: .env.production
+    env_file: ./backend/.env.production
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,37 +74,58 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:4000:4000"
-    command: sh -c "npx prisma generate && npx prisma migrate deploy && node apps/api/dist/main.js"
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && node apps/api/dist/src/main.js"
     logging: *default-logging
 
   workers:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: apps/workers/Dockerfile
     container_name: arcturus_workers
     restart: always
-    env_file: .env.production
+    env_file: ./backend/.env.production
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     command: sh -c "node apps/workers/dist/main.js"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     logging: *default-logging
 
   scrapers:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: apps/scrapers/Dockerfile
     container_name: arcturus_scrapers
     restart: always
-    env_file: .env.production
+    env_file: ./backend/.env.production
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     command: sh -c "node apps/scrapers/dist/scraper-loop.js"
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    logging: *default-logging
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: arcturus_web
+    restart: always
+    env_file: ./web/.env.production
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
     logging: *default-logging
 
 volumes:

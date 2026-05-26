@@ -1,3 +1,4 @@
+// web/next.config.ts
 import type { NextConfig } from 'next';
 import path from 'path';
 
@@ -18,7 +19,6 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react', 'recharts', 'date-fns'],
-    serverMinification: true,
     scrollRestoration: true,
   },
   compiler: {

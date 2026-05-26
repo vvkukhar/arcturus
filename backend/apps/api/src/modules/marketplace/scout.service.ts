@@ -1,6 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { toMoney } from '@arcturus/shared';
 
 @Injectable()
 export class ScoutService {
@@ -37,7 +36,28 @@ export class ScoutService {
     });
   }
 
-  // --- Методи для адмінки ---
+  async getActiveSurges() {
+    return this.prisma.scoutSurge.findMany({
+      where: { expiresAt: { gt: new Date() } },
+      include: { item: true },
+      orderBy: { multiplier: 'desc' }
+    });
+  }
+
+  async getScoutEfficiency() {
+    return this.prisma.user.findMany({
+      where: { role: 'viewer' }, 
+      select: {
+        id: true,
+        name: true,
+        points: true,
+        _count: {
+          select: { scoutLeads: true }
+        }
+      },
+      orderBy: { points: 'desc' }
+    });
+  }
 
   async getAllLeads() {
     return this.prisma.scoutLead.findMany({
@@ -53,56 +73,43 @@ export class ScoutService {
     });
   }
 
-  async approveAndRewardLead(leadId: string, rewardAmount: number) {
+  async approveLead(leadId: string, baseReward: number) {
     const lead = await this.prisma.scoutLead.findUnique({ where: { id: leadId } });
     if (!lead) throw new NotFoundException('Lead not found');
 
-    const amount = toMoney(rewardAmount);
+    const activeSurges = await this.prisma.scoutSurge.findMany({
+      where: { expiresAt: { gt: new Date() } }
+    });
+
+    let bestMultiplier = 1.0;
+    for (const surge of activeSurges) {
+      if (lead.notes?.toLowerCase().includes(String(surge.theme).toLowerCase()) || 
+          lead.url.includes(String(surge.itemId))) {
+        if (surge.multiplier > bestMultiplier) {
+          bestMultiplier = surge.multiplier;
+        }
+      }
+    }
+
+    const finalReward = Math.round(baseReward * bestMultiplier);
 
     return this.prisma.$transaction(async (tx) => {
-      // 1. Оновлюємо статус ліда
       const updatedLead = await tx.scoutLead.update({
         where: { id: leadId },
-        data: { status: 'bought', reward: amount }
+        data: { status: 'bought', reward: finalReward }
       });
 
-      // 2. Створюємо фіктивний айтем для нарахування на баланс, 
-      // якщо його ще не існує (щоб не ламати зв'язки Sale)
-      let rewardItem = await tx.inventoryItem.findFirst({ 
-        where: { id: 'item_bounty_reward' } 
+      await tx.user.update({
+        where: { id: lead.scoutId },
+        data: { points: { increment: finalReward } }
       });
 
-      if (!rewardItem) {
-        rewardItem = await tx.inventoryItem.create({
-          data: {
-            id: 'item_bounty_reward',
-            itemId: 'item_unresolved_placeholder', // Базовий ID
-            titleSnapshot: 'Bounty Reward System Item',
-            purchasePrice: 0,
-            totalCost: 0,
-            quantity: 99999,
-            isMarketplace: true,
-            sellerId: lead.scoutId // Прив'язуємо до скаута
-          }
-        });
-      }
-
-      // 3. Створюємо фіктивний продаж для балансу
-      await tx.sale.create({
+      await tx.pointTransaction.create({
         data: {
-          inventoryItemId: rewardItem.id,
-          itemId: rewardItem.itemId,
-          quantity: 1,
-          sellPrice: amount,
-          costBasis: 0,
-          profit: 0,
-          roiPercent: 0,
-          isMarketplaceSale: true,
-          commissionAmount: 0,
-          sellerPayout: amount,
-          payoutStatus: 'pending',
-          buyerName: 'Arcturus Reward System',
-          notes: `Bounty Reward for Lead: ${lead.url}`,
+          userId: lead.scoutId,
+          amount: finalReward,
+          type: 'earn',
+          description: `Reward for lead ${leadId} (x${bestMultiplier} multiplier applied)`
         }
       });
 

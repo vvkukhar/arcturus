@@ -1,21 +1,72 @@
+export interface ProxyNode {
+  url: string;
+  failures: number;
+  cooldownUntil: number;
+}
+
 export class ProxyManager {
-  private proxies: string[] = [];
+  private pool: ProxyNode[] = [];
   private currentIndex = 0;
+  private readonly MAX_FAILURES = 3;
+  private readonly COOLDOWN_MS = 15 * 60 * 1000; // 15 хвилин кулдауну для "спаленого" проксі
 
   constructor() {
     const proxyList = process.env.PROXY_LIST?.split(',') || [];
-    this.proxies = proxyList.map(p => p.trim()).filter(Boolean);
+    this.pool = proxyList
+      .map(p => p.trim())
+      .filter(Boolean)
+      .map(url => ({ url, failures: 0, cooldownUntil: 0 }));
   }
 
   public getRawProxy(): string | undefined {
-    if (this.proxies.length === 0) return undefined;
-    const proxyUrl = this.proxies[this.currentIndex];
-    this.currentIndex = (this.currentIndex + 1) % this.proxies.length;
-    return proxyUrl;
+    if (this.pool.length === 0) return undefined;
+
+    const now = Date.now();
+    let attempts = 0;
+
+    // Шукаємо живий проксі, який не в кулдауні
+    while (attempts < this.pool.length) {
+      const proxy = this.pool[this.currentIndex];
+      this.currentIndex = (this.currentIndex + 1) % this.pool.length;
+
+      if (now > proxy.cooldownUntil) {
+        return proxy.url;
+      }
+      attempts++;
+    }
+
+    // Якщо всі в кулдауні, повертаємо null (скрапер піде з твого рідного IP на свій страх і ризик, 
+    // або краще перервати запит)
+    console.warn('[ProxyManager] ⚠️ All proxies are currently in cooldown!');
+    return undefined;
+  }
+
+  public reportFailure(url: string | undefined): void {
+    if (!url) return;
+    
+    const proxy = this.pool.find(p => p.url === url || p.url.includes(url));
+    if (proxy) {
+      proxy.failures += 1;
+      console.warn(`[ProxyManager] Proxy failed: ${proxy.url}. Failure count: ${proxy.failures}`);
+      
+      if (proxy.failures >= this.MAX_FAILURES) {
+        proxy.cooldownUntil = Date.now() + this.COOLDOWN_MS;
+        proxy.failures = 0; // Скидаємо лічильник для наступного разу
+        console.error(`[ProxyManager] 🔴 Proxy burned! Sending to cooldown for 15 mins: ${proxy.url}`);
+      }
+    }
+  }
+
+  public reportSuccess(url: string | undefined): void {
+    if (!url) return;
+    const proxy = this.pool.find(p => p.url === url || p.url.includes(url));
+    if (proxy && proxy.failures > 0) {
+      proxy.failures = 0; // Якщо проксі відпрацював нормально, скидаємо "штрафні" бали
+    }
   }
 
   public getProxyCount(): number {
-    return this.proxies.length;
+    return this.pool.length;
   }
 }
 
