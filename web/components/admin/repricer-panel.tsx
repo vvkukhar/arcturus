@@ -13,6 +13,8 @@ interface RepricerResult {
   classification?: string;
   marketMedian?: string;
   reasons?: string[];
+  floorPrice?: number;
+  stretchPrice?: number;
 }
 
 export function RepricerPanel() {
@@ -127,7 +129,7 @@ export function RepricerPanel() {
         </button>
       </div>
 
-{result && (
+      {result && (
         <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--background)] p-5 mt-4 animate-in fade-in zoom-in-95 duration-300">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5 pb-5 border-b border-[var(--border)]">
             <div>
@@ -144,7 +146,6 @@ export function RepricerPanel() {
                 {formatPercent(result.roiPercent)}
               </div>
             </div>
-            {/* НОВІ МЕТРИКИ */}
             <div className="hidden lg:block">
               <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">
                 Floor Price
