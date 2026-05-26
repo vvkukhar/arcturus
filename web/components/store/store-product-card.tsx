@@ -1,4 +1,4 @@
-// call:function_3{"queries":["web/components/store/store-product-card.tsx"]}
+// call:function_1{"queries":["web/components/store/store-product-card.tsx"]}
 'use client';
 
 import { memo, useState } from 'react';
@@ -32,13 +32,14 @@ function ProductCardComponent({ item }: Props) {
   
   const title = item.titleSnapshot || item.title || item.item?.title || 'Unknown Product';
   
-  // ФІКС: Ідеальний метч slugify з бекендом
+  // ФІКС: Ідеальний, безпомилковий генератор посилань (slug)
   const slug = String(title)
     .trim()
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]+/gu, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
+    .replace(/[^\p{L}\p{N}\s-]/gu, '') // Видаляємо спецсимволи
+    .replace(/\s+/g, '-') // Пробіли в тире
+    .replace(/-+/g, '-') // Кілька тире підряд згортаємо в одне!
+    .replace(/^-|-$/g, ''); // Видаляємо тире по краях
 
   const status = (item.quantity ?? 0) > 0 && isPriced ? 'Available' : 'Sold';
 
@@ -59,11 +60,9 @@ function ProductCardComponent({ item }: Props) {
   return (
     <>
       <TiltCard>
-        <div 
-          onClick={() => setIsModalOpen(true)}
+        <Link 
+          href={`/store/catalog/${slug}`}
           className="group block h-full outline-none cursor-pointer"
-          role="button"
-          tabIndex={0}
         >
           <SpotlightCard className="flex h-full flex-col border border-[var(--border)] bg-[var(--card)] backdrop-blur-xl transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-200 dark:hover:border-blue-900">
             
@@ -94,9 +93,9 @@ function ProductCardComponent({ item }: Props) {
                   >
                     <ShoppingCart size={18} className="w-5 h-5 sm:w-4 sm:h-4" />
                   </button>
-                  <Link href={`/store/catalog/${slug}`} onClick={(e) => e.stopPropagation()} className="hidden sm:flex p-3 bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-[var(--background)] rounded-full shadow-lg transition-colors border border-[var(--border)]">
+                  <div className="hidden sm:flex p-3 bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-[var(--background)] rounded-full shadow-lg transition-colors border border-[var(--border)]">
                     <Eye size={18} />
-                  </Link>
+                  </div>
                 </div>
 
                 {imageUrl ? (
@@ -139,14 +138,13 @@ function ProductCardComponent({ item }: Props) {
               
               <div className="mt-6 flex items-end justify-between border-t border-[var(--border)] pt-4">
                 <div className="text-3xl font-black tracking-tighter text-[var(--foreground)]">
-                  {isPriced ? formatMoney(price) : 'Request'}
+                  {isPriced ? formatMoney(price) : 'Запит'}
                 </div>
               </div>
             </div>
           </SpotlightCard>
-        </div>
+        </Link>
       </TiltCard>
-      <ProductModal item={{...item, titleSnapshot: title, expectedSalePriceManual: price, images: imageUrl ? [{ imageUrl, isPrimary: true, id: '1' }] : []}} isOpen={isModalOpen} onCloseAction={() => setIsModalOpen(false)} />
     </>
   );
 }
