@@ -1,3 +1,4 @@
+// call:function_2{"queries":["web/components/admin/inventory-inline-editor.tsx"]}
 'use client';
 
 import { useState } from 'react';
@@ -25,6 +26,7 @@ export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
   );
   const [condition, setCondition] = useState(item.condition ?? 'used');
   const [sealed, setSealed] = useState(Boolean(item.sealed));
+  const [notes, setNotes] = useState(item.notes ?? '');
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +56,7 @@ export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
           expectedSalePriceManual: parsedExpectedSalePrice,
           condition,
           sealed,
+          notes: notes.trim() || null,
         }),
       });
 
@@ -68,9 +71,9 @@ export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
   const inputClasses = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-blue-500 outline-none transition-all shadow-sm placeholder:text-slate-500";
 
   return (
-    <div className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+    <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Quick Edit</span>
+        <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Quick Edit Configuration</span>
       </div>
       
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-6 lg:grid-cols-7">
@@ -129,6 +132,16 @@ export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
           />
           <span className="font-bold text-[var(--foreground)]">Sealed</span>
         </label>
+      </div>
+
+      <div>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Product description / notes (Visible to buyers)..."
+          rows={2}
+          className={`${inputClasses} resize-none`}
+        />
       </div>
 
       <div className="flex items-center justify-between">

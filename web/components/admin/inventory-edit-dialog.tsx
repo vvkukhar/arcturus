@@ -1,3 +1,4 @@
+// call:function_1{"queries":["web/components/admin/inventory-edit-dialog.tsx"]}
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -21,11 +22,15 @@ export function InventoryEditDialog({ item }: Props) {
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
+  const [titleSnapshot, setTitleSnapshot] = useState(item.titleSnapshot ?? '');
   const [purchasePrice, setPurchasePrice] = useState(String(item.purchasePrice ?? ''));
   const [quantity, setQuantity] = useState(String(item.quantity ?? '1'));
   const [expectedSalePriceManual, setExpectedSalePriceManual] = useState(
     item.expectedSalePriceManual != null ? String(item.expectedSalePriceManual) : '',
   );
+  const [condition, setCondition] = useState(item.condition ?? 'used');
+  const [sealed, setSealed] = useState(Boolean(item.sealed));
+  const [notes, setNotes] = useState(item.notes ?? '');
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,14 +54,19 @@ export function InventoryEditDialog({ item }: Props) {
 
       if (parsedPurchasePrice === null || parsedPurchasePrice < 0) throw new Error('Invalid purchase price');
       if (parsedQuantity === null || parsedQuantity < 1) throw new Error('Quantity must be at least 1');
+      if (!titleSnapshot.trim()) throw new Error('Title is required');
 
       await apiFetch('/api/admin/inventory/update', {
         method: 'PATCH',
         body: JSON.stringify({
           id: item.id,
+          titleSnapshot: titleSnapshot.trim(),
           purchasePrice: parsedPurchasePrice,
           quantity: parsedQuantity,
           expectedSalePriceManual: parsedExpectedSalePrice,
+          condition,
+          sealed,
+          notes: notes.trim() || null,
         }),
       });
 
@@ -82,7 +92,7 @@ export function InventoryEditDialog({ item }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-black tracking-tight text-[var(--foreground)]">Edit Inventory Item</h2>
           <button onClick={handleClose} className="rounded-full p-2 hover:bg-[var(--background)] text-slate-400 transition-colors">
@@ -92,31 +102,70 @@ export function InventoryEditDialog({ item }: Props) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Purchase Price</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Title</label>
             <input
               required
-              type="number"
-              step="0.01"
-              value={purchasePrice}
-              onChange={(e) => setPurchasePrice(e.target.value)}
+              value={titleSnapshot}
+              onChange={(e) => setTitleSnapshot(e.target.value)}
               className={inputClasses}
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Quantity</label>
-            <input
-              required
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              className={inputClasses}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Purchase Price</label>
+              <input
+                required
+                type="number"
+                step="0.01"
+                value={purchasePrice}
+                onChange={(e) => setPurchasePrice(e.target.value)}
+                className={inputClasses}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Quantity</label>
+              <input
+                required
+                type="number"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className={inputClasses}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Condition</label>
+              <select
+                value={condition}
+                onChange={(e) => setCondition(e.target.value)}
+                className={`${inputClasses} cursor-pointer`}
+              >
+                <option value="new">New</option>
+                <option value="used">Used</option>
+                <option value="incomplete">Incomplete</option>
+              </select>
+            </div>
+            
+            <div className="space-y-1.5 flex flex-col justify-end pb-1">
+              <label className="flex items-center gap-2 cursor-pointer p-2 hover:bg-[var(--background)] rounded-xl transition-colors border border-transparent">
+                <input
+                  type="checkbox"
+                  checked={sealed}
+                  onChange={(e) => setSealed(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                />
+                <span className="font-bold text-[var(--foreground)] text-sm">Factory Sealed</span>
+              </label>
+            </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Manual Sell Price</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Manual Sell Price (₴)</label>
             <input
               type="number"
               step="0.01"
@@ -124,6 +173,17 @@ export function InventoryEditDialog({ item }: Props) {
               onChange={(e) => setExpectedSalePriceManual(e.target.value)}
               placeholder="Leave empty to auto-calculate"
               className={inputClasses}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Description / Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Visible to customers on the product page..."
+              rows={3}
+              className={`${inputClasses} resize-none`}
             />
           </div>
 
