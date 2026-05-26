@@ -1,4 +1,4 @@
-// call:function_1{"queries":["web/components/store/store-product-card.tsx"]}
+// call:function_2{"queries":["web/components/store/store-product-card.tsx"]}
 'use client';
 
 import { memo, useState } from 'react';
@@ -32,14 +32,13 @@ function ProductCardComponent({ item }: Props) {
   
   const title = item.titleSnapshot || item.title || item.item?.title || 'Unknown Product';
   
-  // ФІКС: Ідеальний, безпомилковий генератор посилань (slug)
   const slug = String(title)
     .trim()
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]/gu, '') // Видаляємо спецсимволи
-    .replace(/\s+/g, '-') // Пробіли в тире
-    .replace(/-+/g, '-') // Кілька тире підряд згортаємо в одне!
-    .replace(/^-|-$/g, ''); // Видаляємо тире по краях
+    .replace(/[^\p{L}\p{N}\s-]/gu, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 
   const status = (item.quantity ?? 0) > 0 && isPriced ? 'Available' : 'Sold';
 
@@ -64,7 +63,7 @@ function ProductCardComponent({ item }: Props) {
           href={`/store/catalog/${slug}`}
           className="group block h-full outline-none cursor-pointer"
         >
-          <SpotlightCard className="flex h-full flex-col border border-[var(--border)] bg-[var(--card)] backdrop-blur-xl transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-200 dark:hover:border-blue-900">
+          <SpotlightCard className="flex h-full flex-col border border-[var(--border)] bg-[var(--card)] backdrop-blur-xl transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-200 dark:hover:border-blue-900 rounded-[2.5rem]">
             
             <div className="absolute top-4 right-4 z-30 opacity-0 transform translate-y-4 transition-all duration-500 group-hover:opacity-100 group-hover:translate-y-0">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg">
@@ -72,48 +71,47 @@ function ProductCardComponent({ item }: Props) {
               </div>
             </div>
 
-            <div className="relative aspect-square w-full overflow-hidden p-3 z-10">
-              <div className="relative h-full w-full overflow-hidden rounded-[2rem] bg-[var(--background)] transition-colors duration-500 group-hover:bg-blue-50/50 dark:group-hover:bg-blue-900/20 border border-[var(--border)]">
-                {item.sealed && (
-                  <span className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 px-2 py-1 sm:px-2.5 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-400 text-[10px] sm:text-xs font-black tracking-wider uppercase rounded-md">
-                    Sealed
-                  </span>
-                )}
-                
-                <div className="absolute bottom-3 right-3 sm:top-4 sm:right-4 sm:bottom-auto z-20 flex flex-row sm:flex-col gap-2 sm:opacity-0 sm:group-hover:opacity-100 sm:translate-x-4 sm:group-hover:translate-x-0 transition-all duration-300">
-                  <button 
-                    onClick={handleAddToCart}
-                    disabled={inCart || status !== 'Available'}
-                    className={cn(
-                      "p-2.5 sm:p-3 rounded-full shadow-lg transition-colors border border-[var(--border)]",
-                      inCart || status !== 'Available' 
-                        ? "bg-slate-100 text-slate-400 dark:bg-slate-800 cursor-not-allowed"
-                        : "bg-[var(--card)] text-[var(--foreground)] hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white"
-                    )}
-                  >
-                    <ShoppingCart size={18} className="w-5 h-5 sm:w-4 sm:h-4" />
-                  </button>
-                  <div className="hidden sm:flex p-3 bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-[var(--background)] rounded-full shadow-lg transition-colors border border-[var(--border)]">
-                    <Eye size={18} />
-                  </div>
+            {/* ФІКС: Edge-to-edge картинка з білим фоном для ідеального відображення JPEG */}
+            <div className="relative aspect-square w-full overflow-hidden z-10 bg-white border-b border-[var(--border)]">
+              {item.sealed && (
+                <span className="absolute top-4 left-4 z-20 px-3 py-1.5 bg-blue-100/90 text-blue-800 text-[10px] sm:text-xs font-black tracking-wider uppercase rounded-xl backdrop-blur-md shadow-sm border border-blue-200">
+                  Sealed
+                </span>
+              )}
+              
+              <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-2 sm:opacity-0 sm:group-hover:opacity-100 sm:translate-x-4 sm:group-hover:translate-x-0 transition-all duration-300">
+                <button 
+                  onClick={handleAddToCart}
+                  disabled={inCart || status !== 'Available'}
+                  className={cn(
+                    "p-3 rounded-full shadow-lg transition-colors border border-slate-200",
+                    inCart || status !== 'Available' 
+                      ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                      : "bg-white text-slate-900 hover:bg-blue-600 hover:text-white hover:border-blue-600"
+                  )}
+                >
+                  <ShoppingCart size={18} />
+                </button>
+                <div className="hidden sm:flex p-3 bg-white text-slate-900 hover:bg-slate-900 hover:text-white rounded-full shadow-lg transition-colors border border-slate-200">
+                  <Eye size={18} />
                 </div>
-
-                {imageUrl ? (
-                  <Image
-                    src={imageUrl}
-                    alt={title}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-110 mix-blend-multiply dark:mix-blend-normal"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-300 dark:text-slate-700">
-                    <Package size={48} />
-                  </div>
-                )}
               </div>
+
+              {imageUrl ? (
+                <Image
+                  src={imageUrl}
+                  alt={title}
+                  fill
+                  className="object-cover mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-300">
+                  <Package size={48} />
+                </div>
+              )}
             </div>
             
-            <div className="flex flex-1 flex-col p-6 pt-4 z-10">
+            <div className="flex flex-1 flex-col p-6 z-10 bg-[var(--card)]">
               <div className="flex-1">
                 <div className="flex flex-wrap gap-2 mb-3">
                   <Badge
@@ -136,7 +134,7 @@ function ProductCardComponent({ item }: Props) {
                 </h3>
               </div>
               
-              <div className="mt-6 flex items-end justify-between border-t border-[var(--border)] pt-4">
+              <div className="mt-6 flex items-end justify-between border-t border-[var(--border)] pt-5">
                 <div className="text-3xl font-black tracking-tighter text-[var(--foreground)]">
                   {isPriced ? formatMoney(price) : 'Запит'}
                 </div>
@@ -145,6 +143,7 @@ function ProductCardComponent({ item }: Props) {
           </SpotlightCard>
         </Link>
       </TiltCard>
+      <ProductModal item={{...item, titleSnapshot: title, expectedSalePriceManual: price, images: imageUrl ? [{ imageUrl, isPrimary: true, id: '1' }] : []}} isOpen={isModalOpen} onCloseAction={() => setIsModalOpen(false)} />
     </>
   );
 }

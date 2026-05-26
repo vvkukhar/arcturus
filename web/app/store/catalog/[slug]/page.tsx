@@ -1,4 +1,4 @@
-// call:function_1{"queries":["web/app/store/catalog/[slug]/page.tsx"]}
+// call:function_3{"queries":["web/app/store/catalog/[slug]/page.tsx"]}
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Package, ArrowLeft, ShieldCheck, Truck, User, Info, Hash, Tag, Layers } from 'lucide-react';
@@ -69,14 +69,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   if (!product) notFound();
 
-  // ФІКС ЛОГІКИ: Правильно витягуємо ціну з тих полів, що реально віддає бекенд
   const price = product.expectedSalePriceManual ?? product.totalCost ?? product.purchasePrice ?? 0;
   const isAvailable = product.quantity > 0;
   const title = product.titleSnapshot || product.item?.title || 'LEGO Asset';
   const theme = product.item?.theme || 'LEGO';
   const kind = product.item?.kind?.toLowerCase() || 'set';
   
-  // Розумний підбір слів залежно від типу
   const kindLabelUA = kind === 'minifigure' ? 'Мініфігурка' : kind === 'bundle' ? 'Лот / Колекція' : kind === 'part' ? 'Деталь' : 'Набір';
   const priceLabelUA = kind === 'minifigure' ? 'Вартість фігурки' : kind === 'bundle' ? 'Вартість лоту' : 'Вартість набору';
 
@@ -86,7 +84,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-in fade-in duration-700 pb-24 transform-gpu relative">
       
-      {/* Декоративний фон для преміальності */}
       <div className="absolute top-0 left-1/2 w-[800px] h-[600px] bg-indigo-500/10 dark:bg-indigo-500/10 rounded-full blur-[150px] pointer-events-none -translate-x-1/2 -translate-y-1/3" />
       
       <Link href="/store/catalog" className="relative z-10 inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[var(--card)] border border-[var(--border)] text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-900 hover:scale-105 transition-all mb-10 text-[var(--foreground)] shadow-sm">
@@ -96,31 +93,28 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 relative z-10">
         
-        {/* ЛІВА ЧАСТИНА - ПРЕМІАЛЬНЕ ФОТО */}
+        {/* ЛІВА ЧАСТИНА - ПРЕМІАЛЬНЕ ФОТО EDGE-TO-EDGE */}
         <div className="lg:col-span-7">
           <div className="sticky top-28">
-            <div className="relative aspect-square w-full rounded-[3rem] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-black border border-[var(--border)] overflow-hidden shadow-2xl flex items-center justify-center group">
+            <div className="relative aspect-square w-full rounded-[3rem] bg-white border border-[var(--border)] overflow-hidden shadow-2xl flex items-center justify-center group">
               
-              {/* Ледь помітне світіння за картинкою */}
-              <div className="absolute inset-0 bg-blue-500/5 blur-3xl rounded-full scale-75 group-hover:scale-100 transition-transform duration-700" />
-
               {displayImage ? (
                 <Image 
                   src={displayImage} 
                   alt={title} 
                   fill 
-                  className="object-contain p-12 mix-blend-multiply dark:mix-blend-normal drop-shadow-2xl hover:scale-110 transition-transform duration-700 ease-out-expo z-10" 
+                  className="object-cover mix-blend-multiply drop-shadow-2xl hover:scale-105 transition-transform duration-700 ease-out-expo z-10" 
                   priority 
                   sizes="(max-width: 1024px) 100vw, 60vw" 
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-slate-300 dark:text-slate-800 z-10">
+                <div className="flex h-full w-full items-center justify-center text-slate-300 z-10">
                   <Package className="h-32 w-32" />
                 </div>
               )}
               
               <div className="absolute top-6 left-6 z-20 flex flex-col gap-2">
-                <span className="inline-flex items-center px-4 py-2 rounded-xl bg-white/90 dark:bg-black/90 backdrop-blur-md text-xs font-black uppercase tracking-widest text-[var(--foreground)] shadow-sm border border-slate-200/50 dark:border-slate-800/50">
+                <span className="inline-flex items-center px-4 py-2 rounded-xl bg-white/90 backdrop-blur-md text-xs font-black uppercase tracking-widest text-slate-900 shadow-sm border border-slate-200">
                   {theme}
                 </span>
                 {product.sealed && (
@@ -156,7 +150,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             </div>
           </div>
 
-          {/* ХУЙНЯ ВСЯКА (Характеристики) */}
+          {/* ХАРАКТЕРИСТИКИ */}
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-[var(--card)] border border-[var(--border)] p-4 rounded-2xl flex items-start gap-3">
               <Hash className="text-blue-500 w-5 h-5 shrink-0 mt-0.5" />
@@ -174,7 +168,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             </div>
           </div>
 
-          {/* БЛОК ПРОДАВЦЯ C2C */}
           {product.seller && (
             <div className="flex items-center gap-4 p-5 rounded-[1.5rem] bg-[var(--background)] border border-[var(--border)] mb-8 transition-colors hover:bg-[var(--card)] hover:shadow-md group">
               <div className="w-14 h-14 rounded-[1rem] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">

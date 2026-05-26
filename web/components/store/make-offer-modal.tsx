@@ -1,8 +1,9 @@
+// call:function_1{"queries":["web/components/store/make-offer-modal.tsx"]}
 'use client';
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, DollarSign, Loader2, MessageSquare, Award } from 'lucide-react';
+import { X, Loader2, MessageSquare, Award } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatMoney } from '@/lib/format';
@@ -86,7 +87,8 @@ export function MakeOfferModal({ isOpen, onClose, inventoryItemId, productTitle,
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Ваша ціна (UAH)</label>
             <div className="relative">
-              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              {/* ФІКС: Знак гривні замість долара */}
+              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">₴</span>
               <input
                 required
                 type="number"
