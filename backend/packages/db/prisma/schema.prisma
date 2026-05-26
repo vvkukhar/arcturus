@@ -55,6 +55,8 @@ model User {
   referredUsers          User[]             @relation("UserReferrals")
   referrer               User?              @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
   affiliateRewards       AffiliateReward[]
+  promotedListings       PromotedListing[]
+  mysteryBoxesBought     MysteryBox[]
 
   @@index([role, active])
   @@index([active])
@@ -279,6 +281,7 @@ model InventoryItem {
   liveAuctions            LiveAuction[]
   mysteryBoxId            String?
   mysteryBox              MysteryBox?       @relation(fields: [mysteryBoxId], references: [id], onDelete: SetNull)
+  promotedListing         PromotedListing?
 
   @@index([itemId, quantity])
   @@index([assignedUserId, quantity])
