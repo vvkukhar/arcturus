@@ -439,12 +439,20 @@ SENTRY_DSN
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\render.yaml =====
 
+# backend/render.yaml
 services:
+  - type: redis
+    name: arcturus-redis
+    plan: starter
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+
   - type: web
     name: arcturus-api
     env: docker
+    region: frankfurt
     plan: starter
-    rootDir: backend
+    rootDir: .
     dockerfilePath: ./apps/api/Dockerfile
     autoDeploy: true
     healthCheckPath: /api/health
@@ -455,20 +463,52 @@ services:
         value: 4000
       - key: DATABASE_URL
         sync: false
+      - key: DIRECT_URL
+        sync: false
       - key: REDIS_URL
+        fromService:
+          type: redis
+          name: arcturus-redis
+          property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: arcturus-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: arcturus-redis
+          property: port
+      - key: REDIS_PASSWORD
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: ADMIN_BOOTSTRAP_TOKEN
+      - key: ADMIN_TOKEN
         sync: false
       - key: CORS_ORIGINS
         sync: false
+      - key: PUBLIC_STORE_BASE_URL
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: LIQPAY_PUBLIC_KEY
+        sync: false
+      - key: LIQPAY_PRIVATE_KEY
+        sync: false
+      - key: MONOBANK_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
 
   - type: worker
-    name: arcturus-bullmq-workers
+    name: arcturus-workers
     env: docker
+    region: frankfurt
     plan: starter
-    rootDir: backend
+    rootDir: .
     dockerfilePath: ./apps/workers/Dockerfile
     autoDeploy: true
     envVars:
@@ -479,17 +519,35 @@ services:
           type: web
           name: arcturus-api
           envVarKey: DATABASE_URL
-      - key: REDIS_URL
+      - key: DIRECT_URL
         fromService:
           type: web
           name: arcturus-api
-          envVarKey: REDIS_URL
+          envVarKey: DIRECT_URL
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: arcturus-redis
+          property: connectionString
+      - key: WORKER_CONCURRENCY
+        value: "5"
+      - key: TELEGRAM_BOT_TOKEN
+        fromService:
+          type: web
+          name: arcturus-api
+          envVarKey: TELEGRAM_BOT_TOKEN
+      - key: TELEGRAM_CHAT_ID
+        fromService:
+          type: web
+          name: arcturus-api
+          envVarKey: TELEGRAM_CHAT_ID
 
   - type: worker
     name: arcturus-scrapers
     env: docker
+    region: frankfurt
     plan: starter
-    rootDir: backend
+    rootDir: .
     dockerfilePath: ./apps/scrapers/Dockerfile
     autoDeploy: true
     envVars:
@@ -500,8 +558,15 @@ services:
           type: web
           name: arcturus-api
           envVarKey: DATABASE_URL
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: arcturus-redis
+          property: connectionString
       - key: SCRAPER_INTERVAL_MS
         value: "1200000"
+      - key: PROXY_LIST
+        sync: false
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\start-dev.bat =====
 
@@ -727,15 +792,14 @@ volumes:
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\Dockerfile =====
 
+# backend/apps/api/Dockerfile
 FROM node:22-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
-COPY apps/api/package.json ./apps/api/
-COPY apps/workers/package.json ./apps/workers/
-COPY apps/scrapers/package.json ./apps/scrapers/
+COPY package.json package-lock.json* ./
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
-COPY package.json package-lock.json* ./
+COPY apps/api/package.json ./apps/api/
 RUN npm install
 COPY . .
 WORKDIR /app/packages/db
@@ -744,10 +808,6 @@ WORKDIR /app/packages/shared
 RUN npm run build
 WORKDIR /app/apps/api
 RUN npm run build
-WORKDIR /app/apps/workers
-RUN npm run build
-WORKDIR /app/apps/scrapers
-RUN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -755,9 +815,8 @@ RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/api
-RUN chmod +x start-all.sh
 EXPOSE 4000
-CMD ["./start-all.sh"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=../../packages/db/prisma/schema.prisma && node dist/src/main.js"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\global-market-sweep.ts =====
 
@@ -2046,8 +2105,8 @@ async function bootstrap() {
 
   rawIo.on('connection', (socket) => {
     void realtimeGateway.handleConnection(socket);
-    socket.on('disconnect', (reason) => {
-      realtimeGateway.handleDisconnect(socket, reason);
+    socket.on('disconnect', () => {
+      realtimeGateway.handleDisconnect(socket);
     });
   });
 
@@ -3238,6 +3297,7 @@ export class AllocationService {
         where: { quantity: { gt: 0 } },
         select: {
           id: true,
+          titleSnapshot: true,
           totalCost: true,
           quantity: true,
           createdAt: true,
@@ -3264,11 +3324,10 @@ export class AllocationService {
     const byTheme = new Map<string, { cost: number; count: number; units: number }>();
     const byWarehouse = new Map<string, { cost: number; count: number; units: number }>();
 
-    // Калькуляція ризиків ліквідності: шукаємо заморожені активи (старші за 45 днів)
     let stagnantCapital = 0;
     const stagnantItems: any[] = [];
     const now = Date.now();
-    const STAGNANT_THRESHOLD = 45 * 24 * 60 * 60 * 1000; // 45 днів
+    const STAGNANT_THRESHOLD = 45 * 24 * 60 * 60 * 1000;
 
     for (const item of inventoryData) {
       const theme = item.item?.theme ?? 'Unknown';
@@ -3285,7 +3344,6 @@ export class AllocationService {
       wData.units += item.quantity;
       byWarehouse.set(warehouse, wData);
 
-      // Перевірка на заморожений капітал
       const age = now - new Date(item.createdAt).getTime();
       if (age > STAGNANT_THRESHOLD) {
         stagnantCapital += Number(item.totalCost);
@@ -3339,7 +3397,7 @@ export class AllocationService {
   }
 
   async getCashflowPlan(params?: { monthlyBudget?: number; reinvestPercent?: number }): Promise<any> {
-    const monthlyBudget = params?.monthlyBudget ?? 50000; // Підвищили капітал по дефолту
+    const monthlyBudget = params?.monthlyBudget ?? 50000;
     const reinvestPercent = params?.reinvestPercent ?? 85;
 
     const stats = await this.getCapitalAllocation();
@@ -3350,7 +3408,6 @@ export class AllocationService {
     const averageItemCost = stats.inventoryCount > 0 ? stats.inventoryCost / stats.inventoryCount : 1500;
     const estimatedNewItems = Math.floor(reinvestAmount / averageItemCost);
 
-    // Розрахунок індексу реінвестування
     const liquidityPressureIndex = stats.stagnantCapital > 0 
       ? toMoney((stats.stagnantCapital / stats.inventoryCost) * 100) 
       : 0;
@@ -6327,8 +6384,7 @@ export class DealDetectionService {
 
     const activeListings = await this.prisma.marketListing.findMany({
       where: { itemId: { in: uniqueIds }, status: 'active' },
-      include: { source: true },
-      select: { id: true, itemId: true, price: true, shippingPrice: true, sellerName: true, sourceCode: true }
+      select: { id: true, itemId: true, price: true, shippingPrice: true, sellerName: true, sourceCode: true, url: true, imageUrl: true }
     });
 
     if (!activeListings.length) return 0;
@@ -6354,7 +6410,6 @@ export class DealDetectionService {
     const creates: any[] = [];
 
     for (const listing of activeListings) {
-      // 💥 АНТИ-СКАМ ФІЛЬТР
       if (listing.sellerName) {
         const supplier = await this.prisma.supplierProfile.findUnique({
           where: { sourceCode_externalId: { sourceCode: listing.sourceCode, externalId: listing.sellerName } }
@@ -6362,7 +6417,7 @@ export class DealDetectionService {
         
         if (supplier?.status === 'blacklisted') {
           this.logger.warn(`Skipping deal for ${listing.id} - Seller ${listing.sellerName} is blacklisted!`);
-          continue; // Скіпаємо нахуй
+          continue;
         }
       }
 
@@ -16421,9 +16476,11 @@ import { TelegramService } from './telegram.service';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramWebhookService } from './telegram-webhook.service';
 import { NotificationsController } from './notifications.controller';
+import { ShippingModule } from '../shipping/shipping.module';
 
 @Global()
 @Module({
+  imports: [ShippingModule],
   controllers: [TelegramWebhookController, NotificationsController],
   providers: [NotificationsService, TelegramService, TelegramWebhookService],
   exports: [NotificationsService, TelegramService, TelegramWebhookService],
@@ -21859,21 +21916,22 @@ export class QueueBoardModule implements NestModule {
 export const QUEUE_NAMES = {
   MARKET: 'market',
   DECISIONS: 'decisions',
-  SCRAPER: 'scrapers', // ФІКС: Було 'scraper' (додали 's')
+  SCRAPER: 'scrapers',
   MAINTENANCE: 'maintenance',
   SYNC: 'sync',
 } as const;
 
 export const JOB_NAMES = {
-  RECOMPUTE_MARKET_SNAPSHOTS: 'recompute-market-snapshots', // ФІКС: Було з підкресленнями
+  RECOMPUTE_MARKET_SNAPSHOTS: 'recompute-market-snapshots',
   RECOMPUTE_DECISIONS: 'recompute-decisions',
   DETECT_DEALS: 'detect-deals',
   MARK_STALE_LISTINGS: 'mark-stale-listings',
   SOURCE_HEALTH_ROLLUP: 'source-health-rollup',
   CLEANUP_OLD_SNAPSHOTS: 'cleanup-old-snapshots',
   SCHEDULED_REFRESH: 'scheduled-refresh',
-  RUN_SCANNER_JOB: 'run-scanner', // ФІКС: Було 'run_scanner_job'
+  RUN_SCANNER_JOB: 'run-scanner',
   GLOBAL_SYNC_REFRESH: 'global-sync-refresh',
+  SURGE_PRICING: 'surge-pricing',
 } as const;
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\queue\queue.controller.ts =====
@@ -22254,12 +22312,19 @@ export class RealtimeGateway {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\realtime\realtime.module.ts =====
 
 import { Global, Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { RealtimeGateway } from './realtime.gateway';
 import { PrismaModule } from '../prisma/prisma.module';
+import { QUEUE_NAMES } from '../queue/queue.constants';
 
 @Global()
 @Module({
-  imports: [PrismaModule],
+  imports: [
+    PrismaModule,
+    BullModule.registerQueue({
+      name: QUEUE_NAMES.MARKET,
+    }),
+  ],
   providers: [RealtimeGateway],
   exports: [RealtimeGateway],
 })
@@ -27341,7 +27406,7 @@ export class VaultService {
 
       const inv = await tx.inventoryItem.create({
         data: {
-          itemId: deal.itemId,
+          itemId: deal.watchlistItem.itemId,
           titleSnapshot: deal.watchlistItem.titleSnapshot,
           purchasePrice: deal.buyPrice,
           totalCost: deal.buyPrice,
@@ -27356,7 +27421,7 @@ export class VaultService {
 
       await tx.purchaseOrder.create({
         data: {
-          itemId: deal.itemId,
+          itemId: deal.watchlistItem.itemId,
           watchlistItemId: deal.watchlistItemId,
           inventoryItemId: inv.id,
           titleSnapshot: deal.watchlistItem.titleSnapshot,
@@ -28902,24 +28967,27 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arcturus?schema=publi
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\Dockerfile =====
 
-FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS deps
+# backend/apps/scrapers/Dockerfile
+FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS builder
 WORKDIR /app
-COPY package*.json ./
+COPY package.json package-lock.json* ./
+COPY packages/db/package.json ./packages/db/
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/scrapers/package.json ./apps/scrapers/
 RUN npm install
-
-FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS build
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+WORKDIR /app/packages/db
+RUN npx prisma generate
+WORKDIR /app/packages/shared
+RUN npm run build
+WORKDIR /app/apps/scrapers
 RUN npm run build
 
 FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/package*.json ./
+COPY --from=builder /app /app
+WORKDIR /app/apps/scrapers
 CMD ["node", "dist/scraper-loop.js"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\package.json =====
@@ -32506,26 +32574,29 @@ module.exports = {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\Dockerfile =====
 
-# Використовуємо образ Playwright, який має вбудовані бібліотеки для браузерів!
-FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS deps
+# backend/apps/workers/Dockerfile
+FROM node:22-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
+RUN apk add --no-cache openssl
+COPY package.json package-lock.json* ./
+COPY packages/db/package.json ./packages/db/
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/workers/package.json ./apps/workers/
 RUN npm install
-
-FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS build
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+WORKDIR /app/packages/db
+RUN npx prisma generate
+WORKDIR /app/packages/shared
+RUN npm run build
+WORKDIR /app/apps/workers
 RUN npm run build
 
-FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
+RUN apk add --no-cache openssl
 ENV NODE_ENV=production
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/package*.json ./
-
+COPY --from=builder /app /app
+WORKDIR /app/apps/workers
 CMD ["node", "dist/main.js"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\package.json =====
@@ -33133,19 +33204,13 @@ export function calculatePriceVolatility(prices: number[]): number {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\jobs\ai-smm-broadcaster.job.ts =====
 
 import { prisma } from '../prisma';
-import { OpenAiService } from '@arcturus/api/src/modules/ai/openai.service';
-import { TelegramService } from '@arcturus/api/src/modules/notifications/telegram.service';
-import { ConfigService } from '@nestjs/config';
-import { RedisService } from '@arcturus/api/src/modules/redis/redis.service';
 
 export async function aiSmmBroadcasterJob(): Promise<{ postsGenerated: number }> {
-  const config = new ConfigService();
-  const ai = new OpenAiService(config);
-  const redis = new RedisService();
-  const telegram = new TelegramService(redis);
-
   const publicChannelId = process.env.TELEGRAM_PUBLIC_CHANNEL_ID;
-  if (!publicChannelId) return { postsGenerated: 0 };
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const openAiKey = process.env.OPENAI_API_KEY;
+
+  if (!publicChannelId || !botToken || !openAiKey) return { postsGenerated: 0 };
 
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -33164,8 +33229,13 @@ export async function aiSmmBroadcasterJob(): Promise<{ postsGenerated: number }>
   const storeUrl = process.env.PUBLIC_STORE_BASE_URL || 'https://arcturus.store';
 
   for (const item of hotItems) {
-    const cacheKey = `smm_posted_${item.id}`;
-    const alreadyPosted = await redis.get(cacheKey);
+    const alreadyPosted = await prisma.activityLog.findFirst({
+      where: { 
+        action: 'marketing.smm_post_published', 
+        payloadJson: { path: ['inventoryItemId'], equals: item.id } 
+      }
+    });
+    
     if (alreadyPosted) continue;
 
     const price = item.expectedSalePriceManual ?? item.totalCost;
@@ -33177,13 +33247,22 @@ export async function aiSmmBroadcasterJob(): Promise<{ postsGenerated: number }>
 Додай емодзі, створи FOMO (що набір всього один і його заберуть за хвилини). Українською мовою. Без хештегів.`;
 
     try {
-      const response = await ai['openai'].chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.8,
+      const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openAiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.8,
+        })
       });
 
-      const text = response.choices[0].message.content?.trim();
+      if (!aiRes.ok) continue;
+      const aiData = await aiRes.json();
+      const text = aiData.choices[0]?.message?.content?.trim();
       if (!text) continue;
 
       const itemSlug = item.titleSnapshot.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
@@ -33200,7 +33279,7 @@ export async function aiSmmBroadcasterJob(): Promise<{ postsGenerated: number }>
 
       if (item.images.length > 0) {
         payload.photo = item.images[0].imageUrl;
-        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -33208,14 +33287,13 @@ export async function aiSmmBroadcasterJob(): Promise<{ postsGenerated: number }>
       } else {
         payload.text = text;
         delete payload.caption;
-        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
       }
 
-      await redis.set(cacheKey, 'true', 30 * 24 * 60 * 60);
       postsGenerated++;
       
       await prisma.activityLog.create({
@@ -33887,10 +33965,6 @@ export async function globalSyncRefreshJob(
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\jobs\logistics-sentinel.job.ts =====
 
 import { prisma } from '../prisma';
-import { NovaPoshtaService } from '@arcturus/api/src/modules/shipping/nova-poshta.service';
-import { NotificationsService } from '@arcturus/api/src/modules/notifications/notifications.service';
-import { ActivityService } from '@arcturus/api/src/modules/activity/activity.service';
-import { RealtimeGateway } from '@arcturus/api/src/modules/realtime/realtime.gateway';
 
 export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts: number }> {
   const thirtyDaysAgo = new Date();
@@ -33917,8 +33991,6 @@ export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts:
     }
   }
 
-  // To avoid circular dependency in workers standalone, we fetch NP directly if needed,
-  // but assuming DI resolution or manual fetch for workers.
   const npApiKey = process.env.NOVA_POSHTA_API_KEY;
   if (!npApiKey || ttns.length === 0) return { tracked: 0, alerts: 0 };
 
@@ -33954,7 +34026,7 @@ export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts:
         if (diffDays >= 3) {
           await prisma.notification.create({
             data: {
-              title: 'вљ пёЏ Logistics Alert: Abandoned Package',
+              title: '⚠️ Logistics Alert: Abandoned Package',
               message: `Order ${order.id.slice(-6)} (${order.buyerName}) has been sitting at the branch for ${Math.floor(diffDays)} days. TTN: ${doc.Number}`,
               type: 'logistics_alert',
               payloadJson: { orderId: order.id, ttn: doc.Number, diffDays }
@@ -33972,13 +34044,13 @@ export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts:
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\jobs\ltv-maximizer.job.ts =====
 
 import { prisma } from '../prisma';
-import { TelegramService } from '@arcturus/api/src/modules/notifications/telegram.service';
-import { RedisService } from '@arcturus/api/src/modules/redis/redis.service';
 
 export async function ltvMaximizerJob(): Promise<{ messagesSent: number }> {
-  const redis = new RedisService();
-  const telegram = new TelegramService(redis);
   let messagesSent = 0;
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const adminChatId = process.env.TELEGRAM_CHAT_ID;
+
+  if (!botToken || !adminChatId) return { messagesSent: 0 };
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
@@ -33999,8 +34071,11 @@ export async function ltvMaximizerJob(): Promise<{ messagesSent: number }> {
     if (!order.contact.includes('@')) continue; 
     
     const tgUsername = order.contact;
-    const cacheKey = `ltv_sent_${tgUsername}`;
-    const alreadySent = await redis.get(cacheKey);
+    
+    const alreadySent = await prisma.activityLog.findFirst({
+      where: { action: 'marketing.ltv_sent', payloadJson: { path: ['tgUsername'], equals: tgUsername } }
+    });
+    
     if (alreadySent) continue;
 
     const favoriteTheme = order.inventoryItem?.item?.theme;
@@ -34010,19 +34085,30 @@ export async function ltvMaximizerJob(): Promise<{ messagesSent: number }> {
 
     if (recommendation) {
       const price = recommendation.expectedSalePriceManual ?? recommendation.totalCost;
-      const discountPrice = Math.round(price * 0.95); // 5% personal discount
+      const discountPrice = Math.round(price * 0.95);
 
       const msg = `Вітаю, ${order.buyerName.split(' ')[0]}! 👋\n\n` +
                   `Ви купували у нас набір серії ${favoriteTheme}. Ми щойно отримали ексклюзивний <b>${recommendation.titleSnapshot}</b>.\n\n` +
                   `Для вас як для нашого клієнта є персональна знижка 5%. Віддамо за <b>${discountPrice} ₴</b> замість ${price} ₴.\n\n` +
                   `Забронювати для вас? Напишіть "+" у відповідь.`;
 
-      const adminChatId = process.env.TELEGRAM_CHAT_ID;
-      if (adminChatId) {
-        await telegram.sendMessage(`[LTV AI] Пропоную надіслати клієнту ${tgUsername}:\n\n${msg}`);
-      }
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: adminChatId,
+          text: `[LTV AI] Пропоную надіслати клієнту ${tgUsername}:\n\n${msg}`,
+          parse_mode: 'HTML'
+        })
+      });
 
-      await redis.set(cacheKey, 'true', 60 * 24 * 60 * 60); 
+      await prisma.activityLog.create({
+        data: {
+          action: 'marketing.ltv_sent',
+          payloadJson: { tgUsername, recommendationId: recommendation.id }
+        }
+      });
+      
       messagesSent++;
     }
   }
@@ -34062,13 +34148,10 @@ export async function markStaleListingsJob(params?: {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\jobs\monopoly-squeeze.job.ts =====
 
 import { prisma } from '../prisma';
-import { toMoney } from '@arcturus/shared';
-import { NotificationsService } from '@arcturus/api/src/modules/notifications/notifications.service';
 
 export async function monopolySqueezeJob(): Promise<{ squeezedSets: number }> {
   let squeezedSets = 0;
   const dbOperations = [];
-  const notificationsService = new NotificationsService(prisma, null as any, null as any); 
 
   const candidateItems = await prisma.inventoryItem.groupBy({
     by: ['itemId'],
@@ -34145,7 +34228,10 @@ export async function monopolySqueezeJob(): Promise<{ squeezedSets: number }> {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\jobs\portfolio-rebalancing.job.ts =====
 
 import { prisma } from '../prisma';
-import { toMoney } from '@arcturus/shared';
+
+function toMoney(value: number): number {
+  return Number.isFinite(value) ? Number(value.toFixed(2)) : 0;
+}
 
 export async function portfolioRebalancingJob(): Promise<{ liquidated: number; reinvested: number; status: string }> {
   console.log('⚖️ Running Automated Capital Rebalancing and Liquidation Engine...');
@@ -34163,19 +34249,16 @@ export async function portfolioRebalancingJob(): Promise<{ liquidated: number; r
   let reinvestedCount = 0;
   const dbOperations: any[] = [];
 
-  // 1. Asset Liquidation (Capital Velocity)
   for (const item of activeInventory) {
     const age = now - new Date(item.createdAt).getTime();
     
     if (age > SIXTY_DAYS) {
-      // Рахуємо, скільки тижнів пройшло з моменту 60 днів застою
       const weeksOverdue = Math.floor((age - SIXTY_DAYS) / SEVEN_DAYS);
-      const discountMultiplier = Math.max(0.75, 1 - (weeksOverdue * 0.05)); // Максимум -25% від собівартості (Stop-loss)
+      const discountMultiplier = Math.max(0.75, 1 - (weeksOverdue * 0.05)); 
       
       const currentPrice = Number(item.expectedSalePriceManual ?? item.totalCost * 1.4);
       const liquidationPrice = toMoney(Number(item.totalCost) * discountMultiplier);
 
-      // Знижуємо ціну тільки якщо поточна ціна вища за розраховану ліквідаційну
       if (currentPrice > liquidationPrice) {
         dbOperations.push(
           prisma.inventoryItem.update({
@@ -34203,15 +34286,17 @@ export async function portfolioRebalancingJob(): Promise<{ liquidated: number; r
     }
   }
 
-  // 2. Auto-Reinvestment Pipeline
   const hotDeals = await prisma.deal.findMany({
     where: { status: 'open', action: 'BUY_NOW' },
     orderBy: { score: 'desc' },
     take: 10,
+    include: { watchlistItem: true }
   });
 
   if (hotDeals.length > 0) {
     for (const deal of hotDeals) {
+      if (!deal.watchlistItem) continue; 
+      
       const existingPo = await prisma.purchaseOrder.findFirst({
         where: { watchlistItemId: deal.watchlistItemId, status: { in: ['planned', 'approved', 'ordered'] } }
       });
@@ -34223,7 +34308,7 @@ export async function portfolioRebalancingJob(): Promise<{ liquidated: number; r
           prisma.purchaseOrder.create({
             data: {
               id: dealKey,
-              itemId: deal.itemId,
+              itemId: deal.watchlistItem.itemId,
               watchlistItemId: deal.watchlistItemId,
               titleSnapshot: 'Auto Portfolio Reinvestment',
               status: 'approved',
@@ -34904,13 +34989,11 @@ export async function surgePricingJob(activeSessionsMap: Map<string, number>): P
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\jobs\surge-scouts.job.ts =====
 
 import { prisma } from '../prisma';
-import { TelegramService } from '@arcturus/api/src/modules/notifications/telegram.service';
-import { RedisService } from '@arcturus/api/src/modules/redis/redis.service';
 
 export async function surgeScoutsJob(): Promise<{ surgesCreated: number }> {
   let surgesCreated = 0;
-  const redis = new RedisService();
-  const telegram = new TelegramService(redis);
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const adminChatId = process.env.TELEGRAM_CHAT_ID;
 
   await prisma.scoutSurge.deleteMany({
     where: { expiresAt: { lt: new Date() } }
@@ -34946,13 +35029,19 @@ export async function surgeScoutsJob(): Promise<{ surgesCreated: number }> {
         }
       });
 
-      const message = `🔥 <b>СУПЕР-БАУНТІ АКТИВОВАНО!</b> 🔥\n\n` +
-                      `Нам терміново потрібен набір: <b>${reserve.productTitle}</b>\n` +
-                      `Клієнти вже чекають!\n\n` +
-                      `Коефіцієнт винагороди: <b>x${multiplier}</b> 💰\n` +
-                      `Діє наступні 24 години. Шукайте лінки на OLX та кидайте сюди!`;
+      if (botToken && adminChatId) {
+        const message = `🔥 <b>СУПЕР-БАУНТІ АКТИВОВАНО!</b> 🔥\n\n` +
+                        `Нам терміново потрібен набір: <b>${reserve.productTitle}</b>\n` +
+                        `Клієнти вже чекають!\n\n` +
+                        `Коефіцієнт винагороди: <b>x${multiplier}</b> 💰\n` +
+                        `Діє наступні 24 години. Шукайте лінки на OLX та кидайте сюди!`;
 
-      await telegram.sendMessage(message);
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: adminChatId, text: message, parse_mode: 'HTML' })
+        }).catch(() => {});
+      }
       surgesCreated++;
     }
   }
@@ -34978,13 +35067,19 @@ export async function surgeScoutsJob(): Promise<{ surgesCreated: number }> {
         }
       });
 
-      const message = `🎯 <b>ПРІОРИТЕТНА ЦІЛЬ</b> 🎯\n\n` +
-                      `Шукаємо: <b>${watch.titleSnapshot}</b>\n` +
-                      `Серія: ${watch.item.theme || 'LEGO'}\n\n` +
-                      `Коефіцієнт винагороди: <b>x2.0</b> 💰\n` +
-                      `Ліміт часу: 24 години.`;
+      if (botToken && adminChatId) {
+        const message = `🎯 <b>ПРІОРИТЕТНА ЦІЛЬ</b> 🎯\n\n` +
+                        `Шукаємо: <b>${watch.titleSnapshot}</b>\n` +
+                        `Серія: ${watch.item.theme || 'LEGO'}\n\n` +
+                        `Коефіцієнт винагороди: <b>x2.0</b> 💰\n` +
+                        `Ліміт часу: 24 години.`;
 
-      await telegram.sendMessage(message);
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: adminChatId, text: message, parse_mode: 'HTML' })
+        }).catch(() => {});
+      }
       surgesCreated++;
     }
   }
@@ -35626,6 +35721,8 @@ model User {
   referredUsers          User[]             @relation("UserReferrals")
   referrer               User?              @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
   affiliateRewards       AffiliateReward[]
+  promotedListings       PromotedListing[]
+  mysteryBoxesBought     MysteryBox[]
 
   @@index([role, active])
   @@index([active])
@@ -35850,6 +35947,7 @@ model InventoryItem {
   liveAuctions            LiveAuction[]
   mysteryBoxId            String?
   mysteryBox              MysteryBox?       @relation(fields: [mysteryBoxId], references: [id], onDelete: SetNull)
+  promotedListing         PromotedListing?
 
   @@index([itemId, quantity])
   @@index([assignedUserId, quantity])

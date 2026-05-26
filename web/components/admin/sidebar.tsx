@@ -1,3 +1,4 @@
+// web/components/admin/sidebar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -8,7 +9,7 @@ import {
   ChartColumn, ChartNoAxesCombined, ClipboardList, Coins, DatabaseZap,
   Gauge, Handshake, KanbanSquare, MailCheck, Package, ReceiptText,
   RefreshCw, ScanSearch, ScrollText, SearchCheck, Users, Wallet,
-  Globe, ScanBarcode, Store, CornerDownLeft
+  Globe, ScanBarcode, Store, CornerDownLeft, Shield
 } from 'lucide-react';
 import { NotificationBadge } from '@/components/admin/notification-badge';
 import { cn } from '@/lib/utils';
@@ -22,7 +23,7 @@ const items = [
     { href: '/admin/algo', label: 'admin.algo', icon: BrainCircuit },
     { href: '/admin/arbitrage', label: 'admin.arbitrage', icon: Globe },
     { href: '/admin/inventory', label: 'admin.inventory', icon: Package },
-    { href: '/admin/suppliers', label: 'Supplier CRM', icon: Shield }, // <-- ДОДАНО СЮДИ
+    { href: '/admin/suppliers', label: 'Supplier CRM', icon: Shield },
     { href: '/admin/watchlist', label: 'admin.watchlist', icon: Wallet },
     { href: '/admin/opportunities/buy', label: 'admin.opportunities', icon: ChartColumn },
     { href: '/admin/opportunities/sell', label: 'admin.opportunities', icon: ChartColumn },
@@ -41,7 +42,7 @@ const items = [
     { href: '/admin/profit', label: 'admin.profit', icon: Coins },
     { href: '/admin/allocation', label: 'sidebar.portfolio', icon: ChartNoAxesCombined },
     { href: '/admin/reserves', label: 'admin.reserves', icon: MailCheck },
-    { href: '/admin/orders', label: 'Orders List', icon: Package }, // <-- ДОДАНО СЮДИ замість старого лінку
+    { href: '/admin/orders', label: 'Orders List', icon: Package },
     { href: '/admin/orders/board', label: 'admin.orders', icon: KanbanSquare },
     { href: '/admin/returns', label: 'Returns & Refunds', icon: CornerDownLeft }, 
     { href: '/admin/sales', label: 'admin.sales', icon: ReceiptText },
@@ -93,7 +94,7 @@ const items = [
               )}
             >
               <Icon size={18} strokeWidth={active ? 2.5 : 2} />
-              <span>{['POS Terminal', 'Marketplace', 'Returns & Refunds', 'Marketplace Payouts'].includes(item.label) ? item.label : t(item.label as any) as string}</span>
+              <span>{['POS Terminal', 'Marketplace', 'Returns & Refunds', 'Marketplace Payouts', 'Supplier CRM', 'Demand Heatmap', 'Orders List'].includes(item.label) ? item.label : t(item.label as any) as string}</span>
             </Link>
           );
         })}
