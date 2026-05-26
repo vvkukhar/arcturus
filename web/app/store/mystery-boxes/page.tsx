@@ -1,3 +1,4 @@
+// web/app/store/mystery-boxes/page.tsx
 'use client';
 
 import useSWR from 'swr';
@@ -93,7 +94,7 @@ export default function MysteryBoxesPage() {
                   </div>
                   <div className="flex justify-between items-center pt-3 border-t border-[var(--border)]">
                     <span className="text-xs font-bold text-slate-500 flex items-center gap-1"><ShieldCheck size={14}/> Гарантована цінність ринку:</span>
-                    <span className="text-sm font-black text-emerald-500">> {formatMoney(box.price * 1.3)}</span>
+                    <span className="text-sm font-black text-emerald-500">&gt; {formatMoney(box.price * 1.3)}</span>
                   </div>
                 </div>
 

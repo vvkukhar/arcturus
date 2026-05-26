@@ -1,11 +1,9 @@
 import { prisma } from '../prisma';
-import { TelegramService } from '@arcturus/api/src/modules/notifications/telegram.service';
-import { RedisService } from '@arcturus/api/src/modules/redis/redis.service';
 
 export async function surgeScoutsJob(): Promise<{ surgesCreated: number }> {
   let surgesCreated = 0;
-  const redis = new RedisService();
-  const telegram = new TelegramService(redis);
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const adminChatId = process.env.TELEGRAM_CHAT_ID;
 
   await prisma.scoutSurge.deleteMany({
     where: { expiresAt: { lt: new Date() } }
@@ -41,13 +39,19 @@ export async function surgeScoutsJob(): Promise<{ surgesCreated: number }> {
         }
       });
 
-      const message = `🔥 <b>СУПЕР-БАУНТІ АКТИВОВАНО!</b> 🔥\n\n` +
-                      `Нам терміново потрібен набір: <b>${reserve.productTitle}</b>\n` +
-                      `Клієнти вже чекають!\n\n` +
-                      `Коефіцієнт винагороди: <b>x${multiplier}</b> 💰\n` +
-                      `Діє наступні 24 години. Шукайте лінки на OLX та кидайте сюди!`;
+      if (botToken && adminChatId) {
+        const message = `🔥 <b>СУПЕР-БАУНТІ АКТИВОВАНО!</b> 🔥\n\n` +
+                        `Нам терміново потрібен набір: <b>${reserve.productTitle}</b>\n` +
+                        `Клієнти вже чекають!\n\n` +
+                        `Коефіцієнт винагороди: <b>x${multiplier}</b> 💰\n` +
+                        `Діє наступні 24 години. Шукайте лінки на OLX та кидайте сюди!`;
 
-      await telegram.sendMessage(message);
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: adminChatId, text: message, parse_mode: 'HTML' })
+        }).catch(() => {});
+      }
       surgesCreated++;
     }
   }
@@ -73,13 +77,19 @@ export async function surgeScoutsJob(): Promise<{ surgesCreated: number }> {
         }
       });
 
-      const message = `🎯 <b>ПРІОРИТЕТНА ЦІЛЬ</b> 🎯\n\n` +
-                      `Шукаємо: <b>${watch.titleSnapshot}</b>\n` +
-                      `Серія: ${watch.item.theme || 'LEGO'}\n\n` +
-                      `Коефіцієнт винагороди: <b>x2.0</b> 💰\n` +
-                      `Ліміт часу: 24 години.`;
+      if (botToken && adminChatId) {
+        const message = `🎯 <b>ПРІОРИТЕТНА ЦІЛЬ</b> 🎯\n\n` +
+                        `Шукаємо: <b>${watch.titleSnapshot}</b>\n` +
+                        `Серія: ${watch.item.theme || 'LEGO'}\n\n` +
+                        `Коефіцієнт винагороди: <b>x2.0</b> 💰\n` +
+                        `Ліміт часу: 24 години.`;
 
-      await telegram.sendMessage(message);
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: adminChatId, text: message, parse_mode: 'HTML' })
+        }).catch(() => {});
+      }
       surgesCreated++;
     }
   }

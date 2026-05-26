@@ -1,5 +1,8 @@
 import { prisma } from '../prisma';
-import { toMoney } from '@arcturus/shared';
+
+function toMoney(value: number): number {
+  return Number.isFinite(value) ? Number(value.toFixed(2)) : 0;
+}
 
 export async function portfolioRebalancingJob(): Promise<{ liquidated: number; reinvested: number; status: string }> {
   console.log('⚖️ Running Automated Capital Rebalancing and Liquidation Engine...');
@@ -17,19 +20,16 @@ export async function portfolioRebalancingJob(): Promise<{ liquidated: number; r
   let reinvestedCount = 0;
   const dbOperations: any[] = [];
 
-  // 1. Asset Liquidation (Capital Velocity)
   for (const item of activeInventory) {
     const age = now - new Date(item.createdAt).getTime();
     
     if (age > SIXTY_DAYS) {
-      // Рахуємо, скільки тижнів пройшло з моменту 60 днів застою
       const weeksOverdue = Math.floor((age - SIXTY_DAYS) / SEVEN_DAYS);
-      const discountMultiplier = Math.max(0.75, 1 - (weeksOverdue * 0.05)); // Максимум -25% від собівартості (Stop-loss)
+      const discountMultiplier = Math.max(0.75, 1 - (weeksOverdue * 0.05)); 
       
       const currentPrice = Number(item.expectedSalePriceManual ?? item.totalCost * 1.4);
       const liquidationPrice = toMoney(Number(item.totalCost) * discountMultiplier);
 
-      // Знижуємо ціну тільки якщо поточна ціна вища за розраховану ліквідаційну
       if (currentPrice > liquidationPrice) {
         dbOperations.push(
           prisma.inventoryItem.update({
@@ -57,15 +57,17 @@ export async function portfolioRebalancingJob(): Promise<{ liquidated: number; r
     }
   }
 
-  // 2. Auto-Reinvestment Pipeline
   const hotDeals = await prisma.deal.findMany({
     where: { status: 'open', action: 'BUY_NOW' },
     orderBy: { score: 'desc' },
     take: 10,
+    include: { watchlistItem: true }
   });
 
   if (hotDeals.length > 0) {
     for (const deal of hotDeals) {
+      if (!deal.watchlistItem) continue; 
+      
       const existingPo = await prisma.purchaseOrder.findFirst({
         where: { watchlistItemId: deal.watchlistItemId, status: { in: ['planned', 'approved', 'ordered'] } }
       });
@@ -77,7 +79,7 @@ export async function portfolioRebalancingJob(): Promise<{ liquidated: number; r
           prisma.purchaseOrder.create({
             data: {
               id: dealKey,
-              itemId: deal.itemId,
+              itemId: deal.watchlistItem.itemId,
               watchlistItemId: deal.watchlistItemId,
               titleSnapshot: 'Auto Portfolio Reinvestment',
               status: 'approved',

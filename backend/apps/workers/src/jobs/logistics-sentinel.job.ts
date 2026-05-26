@@ -1,8 +1,4 @@
 import { prisma } from '../prisma';
-import { NovaPoshtaService } from '@arcturus/api/src/modules/shipping/nova-poshta.service';
-import { NotificationsService } from '@arcturus/api/src/modules/notifications/notifications.service';
-import { ActivityService } from '@arcturus/api/src/modules/activity/activity.service';
-import { RealtimeGateway } from '@arcturus/api/src/modules/realtime/realtime.gateway';
 
 export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts: number }> {
   const thirtyDaysAgo = new Date();
@@ -29,8 +25,6 @@ export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts:
     }
   }
 
-  // To avoid circular dependency in workers standalone, we fetch NP directly if needed,
-  // but assuming DI resolution or manual fetch for workers.
   const npApiKey = process.env.NOVA_POSHTA_API_KEY;
   if (!npApiKey || ttns.length === 0) return { tracked: 0, alerts: 0 };
 
@@ -66,7 +60,7 @@ export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts:
         if (diffDays >= 3) {
           await prisma.notification.create({
             data: {
-              title: 'вљ пёЏ Logistics Alert: Abandoned Package',
+              title: '⚠️ Logistics Alert: Abandoned Package',
               message: `Order ${order.id.slice(-6)} (${order.buyerName}) has been sitting at the branch for ${Math.floor(diffDays)} days. TTN: ${doc.Number}`,
               type: 'logistics_alert',
               payloadJson: { orderId: order.id, ttn: doc.Number, diffDays }

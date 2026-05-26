@@ -1,11 +1,8 @@
 import { prisma } from '../prisma';
-import { toMoney } from '@arcturus/shared';
-import { NotificationsService } from '@arcturus/api/src/modules/notifications/notifications.service';
 
 export async function monopolySqueezeJob(): Promise<{ squeezedSets: number }> {
   let squeezedSets = 0;
   const dbOperations = [];
-  const notificationsService = new NotificationsService(prisma, null as any, null as any); 
 
   const candidateItems = await prisma.inventoryItem.groupBy({
     by: ['itemId'],
