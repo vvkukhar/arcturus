@@ -72,8 +72,8 @@ async function bootstrap() {
 
   rawIo.on('connection', (socket) => {
     void realtimeGateway.handleConnection(socket);
-    socket.on('disconnect', (reason) => {
-      realtimeGateway.handleDisconnect(socket, reason);
+    socket.on('disconnect', () => {
+      realtimeGateway.handleDisconnect(socket);
     });
   });
 

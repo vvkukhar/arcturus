@@ -14,8 +14,7 @@ export class DealDetectionService {
 
     const activeListings = await this.prisma.marketListing.findMany({
       where: { itemId: { in: uniqueIds }, status: 'active' },
-      include: { source: true },
-      select: { id: true, itemId: true, price: true, shippingPrice: true, sellerName: true, sourceCode: true }
+      select: { id: true, itemId: true, price: true, shippingPrice: true, sellerName: true, sourceCode: true, url: true, imageUrl: true }
     });
 
     if (!activeListings.length) return 0;
@@ -41,7 +40,6 @@ export class DealDetectionService {
     const creates: any[] = [];
 
     for (const listing of activeListings) {
-      // 💥 АНТИ-СКАМ ФІЛЬТР
       if (listing.sellerName) {
         const supplier = await this.prisma.supplierProfile.findUnique({
           where: { sourceCode_externalId: { sourceCode: listing.sourceCode, externalId: listing.sellerName } }
@@ -49,7 +47,7 @@ export class DealDetectionService {
         
         if (supplier?.status === 'blacklisted') {
           this.logger.warn(`Skipping deal for ${listing.id} - Seller ${listing.sellerName} is blacklisted!`);
-          continue; // Скіпаємо нахуй
+          continue;
         }
       }
 

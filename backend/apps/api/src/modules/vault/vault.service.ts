@@ -93,7 +93,7 @@ export class VaultService {
 
       const inv = await tx.inventoryItem.create({
         data: {
-          itemId: deal.itemId,
+          itemId: deal.watchlistItem.itemId,
           titleSnapshot: deal.watchlistItem.titleSnapshot,
           purchasePrice: deal.buyPrice,
           totalCost: deal.buyPrice,
@@ -108,7 +108,7 @@ export class VaultService {
 
       await tx.purchaseOrder.create({
         data: {
-          itemId: deal.itemId,
+          itemId: deal.watchlistItem.itemId,
           watchlistItemId: deal.watchlistItemId,
           inventoryItemId: inv.id,
           titleSnapshot: deal.watchlistItem.titleSnapshot,

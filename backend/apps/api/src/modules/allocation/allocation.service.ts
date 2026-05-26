@@ -61,6 +61,7 @@ export class AllocationService {
         where: { quantity: { gt: 0 } },
         select: {
           id: true,
+          titleSnapshot: true,
           totalCost: true,
           quantity: true,
           createdAt: true,
@@ -87,11 +88,10 @@ export class AllocationService {
     const byTheme = new Map<string, { cost: number; count: number; units: number }>();
     const byWarehouse = new Map<string, { cost: number; count: number; units: number }>();
 
-    // Калькуляція ризиків ліквідності: шукаємо заморожені активи (старші за 45 днів)
     let stagnantCapital = 0;
     const stagnantItems: any[] = [];
     const now = Date.now();
-    const STAGNANT_THRESHOLD = 45 * 24 * 60 * 60 * 1000; // 45 днів
+    const STAGNANT_THRESHOLD = 45 * 24 * 60 * 60 * 1000;
 
     for (const item of inventoryData) {
       const theme = item.item?.theme ?? 'Unknown';
@@ -108,7 +108,6 @@ export class AllocationService {
       wData.units += item.quantity;
       byWarehouse.set(warehouse, wData);
 
-      // Перевірка на заморожений капітал
       const age = now - new Date(item.createdAt).getTime();
       if (age > STAGNANT_THRESHOLD) {
         stagnantCapital += Number(item.totalCost);
@@ -162,7 +161,7 @@ export class AllocationService {
   }
 
   async getCashflowPlan(params?: { monthlyBudget?: number; reinvestPercent?: number }): Promise<any> {
-    const monthlyBudget = params?.monthlyBudget ?? 50000; // Підвищили капітал по дефолту
+    const monthlyBudget = params?.monthlyBudget ?? 50000;
     const reinvestPercent = params?.reinvestPercent ?? 85;
 
     const stats = await this.getCapitalAllocation();
@@ -173,7 +172,6 @@ export class AllocationService {
     const averageItemCost = stats.inventoryCount > 0 ? stats.inventoryCost / stats.inventoryCount : 1500;
     const estimatedNewItems = Math.floor(reinvestAmount / averageItemCost);
 
-    // Розрахунок індексу реінвестування
     const liquidityPressureIndex = stats.stagnantCapital > 0 
       ? toMoney((stats.stagnantCapital / stats.inventoryCost) * 100) 
       : 0;
