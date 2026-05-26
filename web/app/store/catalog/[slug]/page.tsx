@@ -9,6 +9,7 @@ import { Metadata, ResolvingMetadata } from 'next';
 import { AddToCartButton } from './add-to-cart-button';
 import { ConversionEngine } from '@/components/store/conversion-engine';
 import { ProductPageOfferButton } from './product-page-offer-button';
+import { cn } from '@/lib/utils';
 
 interface ProductDetail {
   id: string;
@@ -93,29 +94,34 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 relative z-10">
         
-        {/* ЛІВА ЧАСТИНА - ПРЕМІАЛЬНЕ ФОТО EDGE-TO-EDGE */}
+        {/* ЛІВА ЧАСТИНА - ФОТО */}
         <div className="lg:col-span-7">
           <div className="sticky top-28">
-            <div className="relative aspect-square w-full rounded-[3rem] bg-white border border-[var(--border)] overflow-hidden shadow-2xl flex items-center justify-center group">
+            <div className={cn(
+              "relative aspect-square w-full rounded-[3rem] border border-[var(--border)] overflow-hidden shadow-2xl flex items-center justify-center group transition-colors duration-500",
+              displayImage ? "bg-white" : "bg-slate-100 dark:bg-slate-900"
+            )}>
               
+              <div className="absolute inset-0 bg-blue-500/5 blur-3xl rounded-full scale-75 group-hover:scale-100 transition-transform duration-700" />
+
               {displayImage ? (
                 <Image 
                   src={displayImage} 
                   alt={title} 
                   fill 
-                  // ФІКС: Зменшено відступи (p-4 sm:p-8) і ПРИБРАНО drop-shadow-2xl, щоб не було квадратних контурів
-                  className="object-contain p-4 sm:p-8 mix-blend-multiply hover:scale-105 transition-transform duration-700 ease-out-expo z-10" 
+                  className="object-contain p-4 sm:p-8 mix-blend-multiply drop-shadow-2xl hover:scale-105 transition-transform duration-700 ease-out-expo z-10" 
                   priority 
                   sizes="(max-width: 1024px) 100vw, 60vw" 
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-slate-300 z-10">
-                  <Package className="h-32 w-32" />
+                <div className="flex flex-col h-full w-full items-center justify-center text-slate-300 dark:text-slate-600 z-10">
+                  <Package className="h-24 w-24 mb-4" strokeWidth={1} />
+                  <span className="font-bold uppercase tracking-widest text-xs">Зображення очікується</span>
                 </div>
               )}
               
               <div className="absolute top-6 left-6 z-20 flex flex-col gap-2">
-                <span className="inline-flex items-center px-4 py-2 rounded-xl bg-white/90 backdrop-blur-md text-xs font-black uppercase tracking-widest text-slate-900 shadow-sm border border-slate-200">
+                <span className="inline-flex items-center px-4 py-2 rounded-xl bg-[var(--card)]/90 backdrop-blur-md text-xs font-black uppercase tracking-widest text-[var(--foreground)] shadow-sm border border-[var(--border)]">
                   {theme}
                 </span>
                 {product.sealed && (
@@ -151,7 +157,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             </div>
           </div>
 
-          {/* ХАРАКТЕРИСТИКИ */}
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-[var(--card)] border border-[var(--border)] p-4 rounded-2xl flex items-start gap-3">
               <Hash className="text-blue-500 w-5 h-5 shrink-0 mt-0.5" />
