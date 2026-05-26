@@ -1,3 +1,4 @@
+// call:function_5{"queries":["web/app/sitemap.ts"]}
 import { MetadataRoute } from 'next';
 import { appConfig } from '@/lib/config';
 
@@ -22,11 +23,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (res.ok) {
       const items = await res.json();
       items.forEach((item: any) => {
-        const slug = item.titleSnapshot
-          ?.toLowerCase()
+        // ФІКС: Ідеальний метч slugify з бекендом
+        const slug = String(item.titleSnapshot || item.item?.title || item.id)
+          .trim()
+          .toLowerCase()
           .replace(/[^\p{L}\p{N}\s-]+/gu, '')
           .replace(/\s+/g, '-')
-          .replace(/-+/g, '-') || item.id;
+          .replace(/-+/g, '-');
           
         urls.push({
           url: `${baseUrl}/store/catalog/${slug}`,

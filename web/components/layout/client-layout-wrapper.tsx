@@ -1,3 +1,4 @@
+// call:function_1{"queries":["web/components/layout/client-layout-wrapper.tsx"]}
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -5,7 +6,6 @@ import dynamic from 'next/dynamic';
 import { useEffect } from 'react';
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { Ticker } from "@/components/layout/ticker";
 import { Sidebar } from "@/components/layout/sidebar";
 import { initAnalytics, pageview } from '@/lib/analytics';
 
@@ -31,7 +31,7 @@ export function ClientLayoutWrapper({ children }: { children: React.ReactNode })
   return (
     <>
       <div className="sticky top-0 z-40 w-full transform-gpu">
-        <Ticker />
+        {/* Тікер вирізано */}
         <Navbar />
       </div>
       <div className="flex flex-1 w-full mx-auto relative transform-gpu">

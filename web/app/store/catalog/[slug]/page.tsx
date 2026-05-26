@@ -1,3 +1,4 @@
+// call:function_4{"queries":["web/app/store/catalog/[slug]/page.tsx"]}
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Package, ArrowLeft, ShieldCheck, Truck, User } from 'lucide-react';
@@ -43,7 +44,8 @@ export async function generateMetadata(
 
   if (!product) return { title: 'Not Found | Arcturus' };
 
-  const primaryImage = product.images.find(img => img.isPrimary)?.imageUrl || product.images[0]?.imageUrl;
+  const images = product.images || [];
+  const primaryImage = images.find(img => img.isPrimary)?.imageUrl || images[0]?.imageUrl;
 
   return {
     title: `${product.title} | Arcturus Premium LEGO`,
@@ -63,7 +65,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   if (!product) notFound();
 
-  const displayImage = product.images.find(img => img.isPrimary)?.imageUrl || product.images[0]?.imageUrl;
+  const images = product.images || [];
+  const displayImage = images.find(img => img.isPrimary)?.imageUrl || images[0]?.imageUrl;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -76,7 +79,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       '@type': 'Brand',
       name: 'LEGO'
     },
-    itemCondition: product.condition.toLowerCase().includes('new') || product.sealed 
+    itemCondition: product.condition?.toLowerCase().includes('new') || product.sealed 
       ? 'https://schema.org/NewCondition' 
       : 'https://schema.org/UsedCondition',
     offers: {
@@ -85,7 +88,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       priceCurrency: 'UAH',
       price: product.sellPrice,
       availability: product.isAvailable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-      itemCondition: product.condition.toLowerCase().includes('new') || product.sealed 
+      itemCondition: product.condition?.toLowerCase().includes('new') || product.sealed 
         ? 'https://schema.org/NewCondition' 
         : 'https://schema.org/UsedCondition',
       seller: {
@@ -113,7 +116,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <div className="space-y-6">
           <div className="relative aspect-square w-full rounded-[3rem] bg-[var(--card)] border border-[var(--border)] overflow-hidden shadow-sm">
             {displayImage ? (
-              <Image src={displayImage} alt={product.title} fill className="object-cover" priority sizes="(max-width: 1024px) 100vw, 50vw" />
+              <Image src={displayImage} alt={product.title} fill className="object-cover mix-blend-multiply dark:mix-blend-normal" priority sizes="(max-width: 1024px) 100vw, 50vw" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-slate-300">
                 <Package className="h-24 w-24" />
@@ -170,6 +173,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <div className="flex-1">
               <AddToCartButton product={{
                 id: product.id,
+                itemId: product.itemId,
                 title: product.title,
                 price: product.sellPrice,
                 imageUrl: displayImage,

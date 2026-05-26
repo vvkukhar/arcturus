@@ -1,3 +1,4 @@
+// call:function_2{"queries":["web/app/store/catalog/page.tsx"]}
 import { Metadata } from 'next';
 import { Filter, Search } from 'lucide-react';
 import { ProductCard } from '@/components/store/product-card';
@@ -73,7 +74,6 @@ export default async function CatalogPage(props: Props) {
               ))}
             </select>
           </div>
-          {/* ВИПРАВЛЕНО: Додали кнопку замість JS події onChange */}
           <button type="submit" className="h-12 px-6 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors">
             Знайти
           </button>
@@ -84,8 +84,15 @@ export default async function CatalogPage(props: Props) {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item: any) => {
             const safeTitle = item.titleSnapshot || item.item?.title || 'Arcturus Custom Item';
-            const safeSlug = String(safeTitle).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-            const safeImage = item.imageUrl || item.item?.imageUrl || 'https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?w=800&q=80';
+            // ФІКС: Ідеальний метч slugify з бекендом
+            const safeSlug = String(safeTitle)
+              .trim()
+              .toLowerCase()
+              .replace(/[^\p{L}\p{N}\s-]+/gu, '')
+              .replace(/\s+/g, '-')
+              .replace(/-+/g, '-');
+            
+            const safeImage = item.images?.[0]?.imageUrl || item.imageUrl || item.item?.imageUrl || 'https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?w=800&q=80';
             
             return (
               <ProductCard 

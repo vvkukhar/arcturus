@@ -1,5 +1,7 @@
+// call:function_3{"queries":["web/components/store/store-product-card.tsx"]}
 'use client';
 
+import { memo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -9,31 +11,38 @@ import { ArrowUpRight, ShoppingCart, Eye, Package } from 'lucide-react';
 import { SpotlightCard } from '@/components/store/spotlight-card';
 import { TiltCard } from '@/components/store/tilt-card';
 import { useCart } from '@/lib/store/cart';
-import { useState } from 'react';
 import { ProductModal } from './product-modal';
 
 type Props = {
   item: any;
 };
 
-export function StoreProductCard({ item }: Props) {
+function ProductCardComponent({ item }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const addItem = useCart((state) => state.addItem);
   const items = useCart((state) => state.items);
   
   const inCart = items.some((i) => i.id === item.id);
-  const price = item.expectedSalePriceManual;
+  const price = item.expectedSalePriceManual ?? item.sellPrice ?? item.totalCost;
   const isPriced = price != null && price > 0;
   
   const imageUrl = Array.isArray(item.images) && item.images.length > 0
     ? (item.images.find((img: any) => img.isPrimary) ?? item.images[0]).imageUrl
     : item.imageUrl;
   
-  const title = item.titleSnapshot || item.item?.title || 'Unknown Product';
-  const slug = title.toLowerCase().replaceAll(' ', '-') || item.id;
+  const title = item.titleSnapshot || item.title || item.item?.title || 'Unknown Product';
+  
+  // ФІКС: Ідеальний метч slugify з бекендом
+  const slug = String(title)
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]+/gu, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
   const status = (item.quantity ?? 0) > 0 && isPriced ? 'Available' : 'Sold';
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (!inCart && status === 'Available' && price) {
@@ -85,9 +94,9 @@ export function StoreProductCard({ item }: Props) {
                   >
                     <ShoppingCart size={18} className="w-5 h-5 sm:w-4 sm:h-4" />
                   </button>
-                  <div className="hidden sm:flex p-3 bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-[var(--background)] rounded-full shadow-lg transition-colors border border-[var(--border)]">
+                  <Link href={`/store/catalog/${slug}`} onClick={(e) => e.stopPropagation()} className="hidden sm:flex p-3 bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-[var(--background)] rounded-full shadow-lg transition-colors border border-[var(--border)]">
                     <Eye size={18} />
-                  </div>
+                  </Link>
                 </div>
 
                 {imageUrl ? (
@@ -137,7 +146,9 @@ export function StoreProductCard({ item }: Props) {
           </SpotlightCard>
         </div>
       </TiltCard>
-      <ProductModal item={item} isOpen={isModalOpen} onCloseAction={() => setIsModalOpen(false)} />
+      <ProductModal item={{...item, titleSnapshot: title, expectedSalePriceManual: price, images: imageUrl ? [{ imageUrl, isPrimary: true, id: '1' }] : []}} isOpen={isModalOpen} onCloseAction={() => setIsModalOpen(false)} />
     </>
   );
 }
+
+export const ProductCard = memo(ProductCardComponent, (prev, next) => prev.item.id === next.item.id);
