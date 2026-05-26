@@ -1,8 +1,10 @@
+// call:function_1{"queries":["web/components/layout/footer.tsx"]}
 'use client';
 
 import Link from 'next/link';
 import { useI18n } from '../providers/i18n-provider';
 import { Package, Instagram, Twitter, Mail } from 'lucide-react';
+import { LegalFooter } from './legal-footer';
 
 export function Footer() {
   const { t } = useI18n();
@@ -71,6 +73,10 @@ export function Footer() {
             &copy; {currentYear} {t('footer.company' as any)}. {t('footer.rights' as any)}
           </p>
         </div>
+
+        {/* ДОДАЄМО СЮДИ LEGAL FOOTER ДЛЯ LIQPAY */}
+        <LegalFooter />
+
       </div>
     </footer>
   );
