@@ -1,3 +1,4 @@
+// call:function_1{"queries":["web/lib/types.ts"]}
 export type UserRole = 'admin' | 'operator' | 'viewer' | string;
 
 export interface User {
@@ -25,6 +26,9 @@ export interface InventoryItem {
   quantity: number;
   condition: string;
   sealed: boolean;
+  notes?: string | null;
+  source?: string | null;
+  purchaseUrl?: string | null;
   images?: InventoryImage[];
   assignedUser?: User | null;
   createdAt?: string;
