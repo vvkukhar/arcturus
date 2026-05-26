@@ -1,3 +1,4 @@
+// call:function_1{"queries":["web/components/admin/image-upload-form.tsx"]}
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -7,6 +8,53 @@ import { Loader2, UploadCloud } from 'lucide-react';
 
 type Props = {
   inventoryItemId: string;
+};
+
+// НАТИВНИЙ КОМПРЕСОР ЗОБРАЖЕНЬ (HTML5 Canvas)
+const compressImage = async (file: File, maxWidth = 1920): Promise<File> => {
+  if (!file.type.startsWith('image/')) return file;
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+                type: 'image/webp',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              reject(new Error('Canvas to Blob failed'));
+            }
+          },
+          'image/webp',
+          0.85 // Якість 85% - ідеальний баланс
+        );
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
 };
 
 export function ImageUploadForm({ inventoryItemId }: Props) {
@@ -24,9 +72,12 @@ export function ImageUploadForm({ inventoryItemId }: Props) {
       setLoading(true);
       setError(null);
 
+      // СТИСКАЄМО ФОТО ПЕРЕД ВІДПРАВКОЮ
+      const compressedFile = await compressImage(file);
+
       const formData = new FormData();
       formData.append('inventoryItemId', inventoryItemId);
-      formData.append('file', file);
+      formData.append('file', compressedFile);
 
       const response = await fetch('/api/admin/media/inventory-image', {
         method: 'POST',
@@ -66,12 +117,12 @@ export function ImageUploadForm({ inventoryItemId }: Props) {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
+            accept="image/jpeg,image/png,image/webp,image/avif,image/heic"
             onChange={(e) => {
               setError(null);
               setFile(e.target.files?.[0] ?? null);
             }}
-            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors"
+            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors cursor-pointer"
           />
         </div>
 
