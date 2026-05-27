@@ -29,14 +29,19 @@ export default async function CatalogPage(props: Props) {
     if (typeof resolvedParams.q === 'string') query.set('q', resolvedParams.q);
     if (typeof resolvedParams.theme === 'string') query.set('theme', resolvedParams.theme);
 
-    const res = await fetch(`${appConfig.apiBaseUrl}/public/catalog?${query.toString()}`, {
-      cache: 'no-store'
-    });
+    const [catalogRes, themesRes] = await Promise.all([
+      fetch(`${appConfig.apiBaseUrl}/public/catalog?${query.toString()}`, { cache: 'no-store' }),
+      fetch(`${appConfig.apiBaseUrl}/public/themes`, { next: { revalidate: 3600 } })
+    ]);
 
-    if (res.ok) {
-      const data = await res.json();
+    if (catalogRes.ok) {
+      const data = await catalogRes.json();
       items = Array.isArray(data) ? data : [];
-      themes = Array.from(new Set(items.map((i: any) => i?.item?.theme || 'LEGO').filter(Boolean))).sort() as string[];
+    }
+
+    if (themesRes.ok) {
+      const data = await themesRes.json();
+      themes = Array.isArray(data) ? data : [];
     }
   } catch (err) {
     console.error('Catalog fetch error:', err);
@@ -92,7 +97,7 @@ export default async function CatalogPage(props: Props) {
       </div>
 
       {items.length > 0 ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item: any) => {
             const safeTitle = item.titleSnapshot || item.item?.title || 'Arcturus Custom Item';
             const baseSlug = String(safeTitle)

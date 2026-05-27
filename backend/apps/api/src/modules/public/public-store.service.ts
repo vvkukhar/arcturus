@@ -30,7 +30,17 @@ export class PublicStoreService {
     if (sort === 'price_desc') return { expectedSalePriceManual: 'desc' };
     if (sort === 'title_asc') return { titleSnapshot: 'asc' };
     if (sort === 'title_desc') return { titleSnapshot: 'desc' };
-    return { createdAt: 'desc' };
+    return { expectedSalePriceManual: 'asc' };
+  }
+
+  async getThemes(): Promise<string[]> {
+    const items = await this.prisma.item.findMany({
+      where: { theme: { not: null } },
+      select: { theme: true },
+      distinct: ['theme'],
+      orderBy: { theme: 'asc' },
+    });
+    return items.map((i) => i.theme).filter(Boolean) as string[];
   }
 
   async getCatalog(params: { q?: string; type?: string; availableOnly?: boolean; theme?: string; sort?: string; limit?: number; seller?: string }): Promise<unknown[]> {
@@ -113,6 +123,15 @@ export class PublicStoreService {
       },
       take: 500,
     });
+
+    const exactIdMatch = all.find(entry => normalized === entry.id.toLowerCase());
+    if (exactIdMatch) return exactIdMatch;
+
+    const fullSuffixMatch = all.find(entry => normalized.endsWith(`-${entry.id.toLowerCase()}`));
+    if (fullSuffixMatch) return fullSuffixMatch;
+
+    const partialSuffixMatch = all.find(entry => normalized.endsWith(`-${entry.id.slice(-6).toLowerCase()}`));
+    if (partialSuffixMatch) return partialSuffixMatch;
 
     const slugMatch = all.find((entry) => {
       const title = entry.titleSnapshot || entry.item?.title || entry.id;

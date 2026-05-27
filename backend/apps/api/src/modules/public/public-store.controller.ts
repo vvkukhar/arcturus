@@ -36,6 +36,11 @@ export class PublicStoreController {
     });
   }
 
+  @Get('themes')
+  getThemes(): Promise<string[]> {
+    return this.publicStoreService.getThemes();
+  }
+
   @Get('catalog/:slug')
   getCatalogItem(@Param('slug') slug: string): Promise<unknown> {
     return this.publicStoreService.getCatalogItemBySlug(slug);
