@@ -17,7 +17,7 @@ export function Navbar() {
   const { toggle } = useSidebar();
   const [mounted, setMounted] = useState(false);
   
-  const { data: user, isLoading } = useSWR<any>('/api/auth/me', swrFetcher);
+  const { data: user, isLoading } = useSWR('/api/auth/me', swrFetcher);
 
   useEffect(() => {
     setMounted(true);
@@ -44,7 +44,7 @@ export function Navbar() {
               <Menu size={24} />
             </button>
 
-            <Link href="/store" className="group flex items-center gap-2 outline-none">
+            <Link href="/" className="group flex items-center gap-2 outline-none">
               <div className="rounded-lg bg-slate-900 p-1.5 text-white transition-transform group-hover:scale-105 dark:bg-blue-600 md:p-2 lg:rounded-xl">
                 <Package className="h-5 w-5 md:h-6 md:w-6" aria-hidden="true" />
               </div>
@@ -103,7 +103,7 @@ export function Navbar() {
               </Link>
             )}
 
-            {!isLoading && !!user && mounted && (
+            {!isLoading && user && mounted && (
               <Link href="/account" className="rounded-full p-2 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/50 sm:flex md:p-2.5 mx-1" aria-label="Account">
                 <User className="h-5 w-5 md:h-6 md:w-6" aria-hidden="true" />
               </Link>

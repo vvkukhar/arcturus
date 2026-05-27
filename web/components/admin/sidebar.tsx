@@ -1,104 +1,140 @@
-// web/components/admin/sidebar.tsx
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useI18n } from '@/components/providers/i18n-provider';
-import {
-  Activity, AlertTriangle, BadgeDollarSign, Bell, Boxes, BrainCircuit,
-  ChartColumn, ChartNoAxesCombined, ClipboardList, Coins, DatabaseZap,
-  Gauge, Handshake, KanbanSquare, MailCheck, Package, ReceiptText,
-  RefreshCw, ScanSearch, ScrollText, SearchCheck, Users, Wallet,
-  Globe, ScanBarcode, Store, CornerDownLeft, Shield, Flame
+import { useI18n } from '../providers/i18n-provider';
+import { useSidebar } from '../providers/sidebar-provider';
+import useSWR from 'swr';
+import { swrFetcher } from '@/lib/swr-fetcher';
+import { 
+  LineChart, Activity, Filter, BarChart2, Clock, 
+  FileText, PieChart, Wallet, Heart, TrendingUp, Package, 
+  HelpCircle, ShieldCheck, X, Crown, Target, Gift, Vault
 } from 'lucide-react';
-import { NotificationBadge } from '@/components/admin/notification-badge';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
-export function AdminSidebar() {
-  const pathname = usePathname();
+export function Sidebar() {
   const { t } = useI18n();
+  const pathname = usePathname();
+  const { isOpen, setIsOpen } = useSidebar();
+  const [isMounted, setIsMounted] = useState(false);
+  const { data: user } = useSWR('/api/auth/me', swrFetcher);
 
-const items = [
-    { href: '/admin/dashboard', label: 'admin.dashboard', icon: Gauge },
-    { href: '/admin/algo', label: 'admin.algo', icon: BrainCircuit },
-    { href: '/admin/arbitrage', label: 'admin.arbitrage', icon: Globe },
-    { href: '/admin/inventory', label: 'admin.inventory', icon: Package },
-    { href: '/admin/suppliers', label: 'Supplier CRM', icon: Shield },
-    { href: '/admin/watchlist', label: 'admin.watchlist', icon: Wallet },
-    { href: '/admin/opportunities/buy', label: 'admin.opportunities', icon: ChartColumn },
-    { href: '/admin/opportunities/sell', label: 'admin.opportunities', icon: ChartColumn },
-    { href: '/admin/flows/purchase', label: 'admin.flows', icon: Boxes },
-    { href: '/admin/flows/reprice', label: 'admin.flows', icon: RefreshCw },
-    { href: '/admin/flows/review', label: 'admin.flows', icon: ClipboardList },
-    { href: '/admin/repricer', label: 'sidebar.valuation', icon: BadgeDollarSign },
-    { href: '/admin/pos', label: 'POS Terminal', icon: ScanBarcode },
-    { href: '/admin/scanner', label: 'admin.scanner', icon: ScanSearch },
-    { href: '/admin/operator/unresolved', label: 'nav.auth', icon: SearchCheck },
-    { href: '/admin/sources/health', label: 'sidebar.analytics', icon: Activity },
-    { href: '/admin/sources/runs', label: 'sidebar.analytics', icon: DatabaseZap },
-    { href: '/admin/sources/errors', label: 'admin.sync', icon: AlertTriangle },
-    { href: '/admin/sync', label: 'admin.sync', icon: RefreshCw },
-    { href: '/admin/planning/daily', label: 'sidebar.reports', icon: ClipboardList },
-    { href: '/admin/profit', label: 'admin.profit', icon: Coins },
-    { href: '/admin/allocation', label: 'sidebar.portfolio', icon: ChartNoAxesCombined },
-    { href: '/admin/reserves', label: 'admin.reserves', icon: MailCheck },
-    { href: '/admin/orders', label: 'Orders List', icon: Package },
-    { href: '/admin/orders/board', label: 'admin.orders', icon: KanbanSquare },
-    { href: '/admin/returns', label: 'Returns & Refunds', icon: CornerDownLeft }, 
-    { href: '/admin/sales', label: 'admin.sales', icon: ReceiptText },
-    { href: '/admin/payouts', label: 'Marketplace Payouts', icon: Coins }, 
-    { href: '/admin/notifications', label: 'account.sysPref', icon: Bell },
-    { href: '/admin/collaboration', label: 'admin.collab', icon: Handshake },
-    { href: '/admin/activity', label: 'admin.activity', icon: ScrollText },
-    { href: '/admin/opportunities/demand', label: 'Demand Heatmap', icon: Flame },
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'operator';
+  const isPro = isAdmin || user?.isPro;
+  const isAuth = !!user;
+
+  const menu = [
+    {
+      title: 'sidebar.trading',
+      show: true,
+      items: [
+        { name: 'sidebar.market', path: '/market', icon: LineChart, show: true },
+        { name: 'sidebar.screener', path: '/screener', icon: Filter, show: isPro },
+        { name: 'PRO Deals', path: '/deals', icon: Target, show: isPro },
+        { name: 'sidebar.indices', path: '/indices', icon: BarChart2, show: true },
+        { name: 'sidebar.orderbook', path: '/orderbook', icon: Activity, show: true },
+      ]
+    },
+    {
+      title: 'sidebar.analytics',
+      show: isAdmin,
+      items: [
+        { name: 'sidebar.valuation', path: '/valuation', icon: PieChart, show: isAdmin },
+        { name: 'sidebar.historical', path: '/historical', icon: Clock, show: isAdmin },
+        { name: 'sidebar.reports', path: '/reports', icon: FileText, show: isAdmin },
+      ]
+    },
+    {
+      title: 'sidebar.portfolio',
+      show: isAuth,
+      items: [
+        { name: 'sidebar.dashboard', path: '/account', icon: Wallet, show: isAuth },
+        { name: 'sidebar.watchlist', path: '/account/watchlist', icon: Heart, show: isAuth },
+        { name: 'sidebar.performance', path: '/account/performance', icon: TrendingUp, show: isAuth },
+        { name: 'Arcturus Vault', path: '/vault', icon: Vault, show: isPro },
+        { name: 'Arcturus PRO', path: '/pro', icon: Crown, show: isAuth },
+      ]
+    },
+    {
+      title: 'sidebar.platform',
+      show: true,
+      items: [
+        { name: 'nav.catalog', path: '/store/catalog', icon: Package, show: true },
+        { name: 'Mystery Boxes', path: '/store/mystery-boxes', icon: Gift, show: true },
+        { name: 'sidebar.sell', path: '/sell', icon: Package, show: true },
+        { name: 'nav.auth', path: '/authenticity', icon: ShieldCheck, show: true },
+        { name: 'footer.faq', path: '/faq', icon: HelpCircle, show: true },
+      ]
+    }
   ];
 
   return (
-    <aside className="w-72 shrink-0 border-r border-[var(--border)] bg-[var(--card)] flex flex-col h-screen transition-colors duration-300">
-      <div className="border-b border-[var(--border)] px-6 py-6">
-        <Link className="block outline-none" href="/store">
-          <div className="text-2xl font-black tracking-tight text-[var(--foreground)] hover:text-blue-600 transition-colors">Arcturus</div>
-        </Link>
-        <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-blue-500">Control Panel</div>
-      </div>
+    <>
+      <div 
+        className={cn("fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] transition-opacity duration-300 lg:hidden", isOpen ? "opacity-100" : "opacity-0 pointer-events-none")} 
+        onClick={() => setIsOpen(false)} 
+      />
 
-      <div className="border-b border-[var(--border)] px-4 py-4">
-        <div className="grid grid-cols-3 gap-2">
-          <Link className="relative flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--background)] p-2.5 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800" href="/admin/notifications">
-            <Bell className="text-slate-500 dark:text-slate-400" size={18} />
-            <NotificationBadge />
+      <aside 
+        className={cn(
+          "fixed inset-y-0 left-0 z-[70] w-[280px] bg-[var(--card)] border-r border-[var(--border)] shadow-2xl flex flex-col transform transition-transform duration-300 ease-out-expo lg:sticky lg:top-20 lg:h-[calc(100dvh-5rem)] lg:translate-x-0 lg:shadow-none", 
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex items-center justify-between p-6 border-b border-[var(--border)] lg:hidden">
+          <Link href="/" className="font-extrabold text-xl flex items-center gap-2 text-[var(--foreground)] outline-none">
+            <Package className="text-blue-600" size={24} />
+            Terminal
           </Link>
-          <Link className="flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--background)] p-2.5 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800" href="/admin/collaboration">
-            <Users className="text-slate-500 dark:text-slate-400" size={18} />
-          </Link>
-          <Link className="flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--background)] p-2.5 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800" href="/admin/scanner">
-            <ScanSearch className="text-slate-500 dark:text-slate-400" size={18} />
-          </Link>
+          <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:bg-[var(--background)] hover:text-slate-600 rounded-full transition-colors">
+            <X size={20} />
+          </button>
         </div>
-      </div>
 
-      <nav className="flex-1 overflow-y-auto space-y-1 p-3 custom-scrollbar">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const active = pathname === item.href || (pathname?.startsWith(`${item.href}/`) && item.href !== '/admin');
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+          {menu.filter(s => s.show).map((section, idx) => {
+            const visibleItems = section.items.filter(i => i.show);
+            if (visibleItems.length === 0) return null;
 
-          return (
-            <Link 
-              key={item.href} 
-              href={item.href} 
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200", 
-                active 
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" 
-                  : "text-slate-600 dark:text-slate-400 hover:bg-[var(--background)] hover:text-[var(--foreground)]"
-              )}
-            >
-              <Icon size={18} strokeWidth={active ? 2.5 : 2} />
-              <span>{['POS Terminal', 'Marketplace', 'Returns & Refunds', 'Marketplace Payouts', 'Supplier CRM', 'Demand Heatmap', 'Orders List'].includes(item.label) ? item.label : t(item.label as any) as string}</span>
-            </Link>
-          );
-        })}
-      </nav>
-    </aside>
+            return (
+              <div key={idx}>
+                <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 px-3">
+                  {isMounted ? t(section.title as any) : '...'}
+                </h4>
+                <div className="space-y-1">
+                  {visibleItems.map((item, iIdx) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.path || (pathname?.startsWith(`${item.path}/`) && item.path !== '/');
+                    const isSpecial = item.name.includes('PRO') || item.name.includes('Mystery') || item.name.includes('Vault');
+                    
+                    return (
+                      <Link href={item.path} key={iIdx} onClick={() => setIsOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 border border-transparent outline-none", 
+                          isActive 
+                            ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" 
+                            : "text-slate-600 dark:text-slate-400 hover:bg-[var(--background)] hover:text-[var(--foreground)] hover:border-[var(--border)]"
+                        )}
+                      >
+                        <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={isSpecial && !isActive ? 'text-purple-500' : ''} />
+                        <span className={isSpecial && !isActive ? 'text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600' : ''}>
+                          {isMounted && (item.name.includes('PRO') || item.name.includes('Mystery') || item.name.includes('Vault')) ? item.name : isMounted ? t(item.name as any) : '...'}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </aside>
+    </>
   );
 }

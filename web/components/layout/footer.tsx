@@ -1,4 +1,3 @@
-// call:function_1{"queries":["web/components/layout/footer.tsx"]}
 'use client';
 
 import Link from 'next/link';
@@ -15,7 +14,7 @@ export function Footer() {
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12">
           <div className="col-span-1 md:col-span-1">
-            <Link href="/store" className="flex items-center gap-2 mb-4 group outline-none">
+            <Link href="/" className="flex items-center gap-2 mb-4 group outline-none">
               <div className="bg-slate-900 dark:bg-blue-600 text-white p-1.5 rounded-lg group-hover:scale-105 transition-transform">
                 <Package size={20} />
               </div>
@@ -74,7 +73,6 @@ export function Footer() {
           </p>
         </div>
 
-        {/* ДОДАЄМО СЮДИ LEGAL FOOTER ДЛЯ LIQPAY */}
         <LegalFooter />
 
       </div>
