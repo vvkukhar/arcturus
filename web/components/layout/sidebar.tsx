@@ -19,7 +19,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { isOpen, setIsOpen } = useSidebar();
   const [isMounted, setIsMounted] = useState(false);
-  const { data: user } = useSWR('/api/auth/me', swrFetcher);
+  const { data: user } = useSWR<any>('/api/auth/me', swrFetcher);
 
   useEffect(() => {
     setIsMounted(true);

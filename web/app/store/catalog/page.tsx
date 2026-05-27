@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
-import { Filter, Search, Blocks } from 'lucide-react';
+import { Blocks } from 'lucide-react';
 import { ProductCard } from '@/components/store/store-product-card';
+import { CatalogFilters } from '@/components/store/catalog-filters';
 import { appConfig } from '@/lib/config';
 import Link from 'next/link';
 
@@ -22,16 +23,19 @@ export default async function CatalogPage(props: Props) {
   let items: any[] = [];
   let themes: string[] = [];
 
+  const initialQuery = typeof resolvedParams.q === 'string' ? resolvedParams.q : '';
+  const initialTheme = typeof resolvedParams.theme === 'string' ? resolvedParams.theme : '';
+
   try {
     const query = new URLSearchParams();
     query.set('availableOnly', 'true');
     
-    if (typeof resolvedParams.q === 'string') query.set('q', resolvedParams.q);
-    if (typeof resolvedParams.theme === 'string') query.set('theme', resolvedParams.theme);
+    if (initialQuery) query.set('q', initialQuery);
+    if (initialTheme) query.set('theme', initialTheme);
 
     const [catalogRes, themesRes] = await Promise.all([
       fetch(`${appConfig.apiBaseUrl}/public/catalog?${query.toString()}`, { cache: 'no-store' }),
-      fetch(`${appConfig.apiBaseUrl}/public/themes`, { next: { revalidate: 3600 } })
+      fetch(`${appConfig.apiBaseUrl}/public/themes`, { cache: 'no-store' })
     ]);
 
     if (catalogRes.ok) {
@@ -48,7 +52,7 @@ export default async function CatalogPage(props: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-in fade-in duration-500 transform-gpu min-h-screen">
+    <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8 animate-in fade-in duration-500 transform-gpu min-h-screen">
       
       <div className="relative mb-12 rounded-[3rem] bg-gradient-to-br from-slate-900 to-black dark:from-slate-900 dark:to-slate-950 p-8 sm:p-12 overflow-hidden shadow-2xl border border-slate-800">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
@@ -66,38 +70,12 @@ export default async function CatalogPage(props: Props) {
             </p>
           </div>
           
-          <form method="GET" action="/store/catalog" className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto shrink-0 bg-white/5 backdrop-blur-md p-3 rounded-[2rem] border border-white/10 shadow-xl">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <input 
-                name="q"
-                defaultValue={typeof resolvedParams.q === 'string' ? resolvedParams.q : ''}
-                placeholder="Пошук наборів..." 
-                className="h-14 w-full rounded-2xl border-none bg-white/10 pl-12 pr-4 text-sm font-bold text-white placeholder:text-slate-400 outline-none transition-all focus:bg-white/20 focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="relative flex-1 sm:w-56">
-              <Filter className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <select
-                name="theme"
-                defaultValue={typeof resolvedParams.theme === 'string' ? resolvedParams.theme : ''}
-                className="h-14 w-full appearance-none rounded-2xl border-none bg-white/10 pl-12 pr-4 text-sm font-bold text-white outline-none transition-all focus:bg-white/20 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-              >
-                <option value="" className="text-black">Усі серії</option>
-                {themes.map((theme) => (
-                  <option key={theme} value={theme} className="text-black">{theme}</option>
-                ))}
-              </select>
-            </div>
-            <button type="submit" className="h-14 px-8 rounded-2xl bg-blue-600 text-white font-black hover:bg-blue-500 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-600/30">
-              Знайти
-            </button>
-          </form>
+          <CatalogFilters themes={themes} initialQuery={initialQuery} initialTheme={initialTheme} />
         </div>
       </div>
 
       {items.length > 0 ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
           {items.map((item: any) => {
             const safeTitle = item.titleSnapshot || item.item?.title || 'Arcturus Custom Item';
             const baseSlug = String(safeTitle)
@@ -108,7 +86,7 @@ export default async function CatalogPage(props: Props) {
               .replace(/-+/g, '-')
               .replace(/^-|-$/g, '');
             
-            const safeSlug = `${baseSlug}-id-${item.id}`;
+            const safeSlug = `${baseSlug}--${item.id}`;
             
             const safeImage = item.images?.[0]?.imageUrl || item.imageUrl || item.item?.imageUrl || '';
             
