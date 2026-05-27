@@ -55,7 +55,6 @@ function ProductCardComponent({ item }: Props) {
         >
           <SpotlightCard className="flex h-full flex-col border border-[var(--border)] bg-[var(--card)] transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 hover:border-blue-300 dark:hover:border-blue-700 rounded-[2.5rem] overflow-hidden transform-gpu relative">
             
-            {/* ФІКС: Квадратне велике зображення aspect-square */}
             <div className="relative aspect-square w-full z-10 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900/60 dark:to-slate-900 border-b border-[var(--border)] flex items-center justify-center p-6">
               
               <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 items-start">
@@ -100,7 +99,7 @@ function ProductCardComponent({ item }: Props) {
                 </div>
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-slate-300">
-                  <Package size={64} />
+                  <Package size={48} />
                 </div>
               )}
             </div>
