@@ -30,7 +30,7 @@ export class PublicStoreService {
     if (sort === 'price_desc') return { expectedSalePriceManual: 'desc' };
     if (sort === 'title_asc') return { titleSnapshot: 'asc' };
     if (sort === 'title_desc') return { titleSnapshot: 'desc' };
-    return { expectedSalePriceManual: 'asc' };
+    return { createdAt: 'desc' };
   }
 
   async getCatalog(params: { q?: string; type?: string; availableOnly?: boolean; theme?: string; sort?: string; limit?: number; seller?: string }): Promise<unknown[]> {
@@ -84,8 +84,25 @@ export class PublicStoreService {
   }
 
   async getCatalogItemBySlug(slug: string): Promise<unknown | null> {
-    const normalized = slug.trim().toLowerCase();
+    const parts = slug.split('--');
+    const possibleId = parts.length > 1 ? parts.pop() : null;
 
+    if (possibleId) {
+      const exact = await this.prisma.inventoryItem.findFirst({
+        where: { id: possibleId },
+        include: {
+          item: true,
+          images: { orderBy: { sortOrder: 'asc' } },
+          assignedUser: true,
+          seller: { select: { id: true, name: true } }, 
+        }
+      });
+      if (exact && (exact.quantity > 0 || exact.approvalStatus === 'approved')) {
+        return exact;
+      }
+    }
+
+    const normalized = slug.trim().toLowerCase();
     const all = await this.prisma.inventoryItem.findMany({
       where: { quantity: { gt: 0 }, OR: [{ isMarketplace: false }, { isMarketplace: true, approvalStatus: 'approved' }] },
       include: {
@@ -97,19 +114,10 @@ export class PublicStoreService {
       take: 500,
     });
 
-    const exactIdMatch = all.find(entry => normalized === entry.id.toLowerCase());
-    if (exactIdMatch) return exactIdMatch;
-
-    const fullSuffixMatch = all.find(entry => normalized.endsWith(`-${entry.id.toLowerCase()}`));
-    if (fullSuffixMatch) return fullSuffixMatch;
-
-    const partialSuffixMatch = all.find(entry => normalized.endsWith(`-${entry.id.slice(-6).toLowerCase()}`));
-    if (partialSuffixMatch) return partialSuffixMatch;
-
     const slugMatch = all.find((entry) => {
       const title = entry.titleSnapshot || entry.item?.title || entry.id;
       const generated = this.slugify(title);
-      return generated === normalized;
+      return generated === normalized || entry.id.toLowerCase() === normalized;
     });
 
     return slugMatch ?? null;

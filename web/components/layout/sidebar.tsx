@@ -7,14 +7,23 @@ import { useSidebar } from '../providers/sidebar-provider';
 import { 
   LineChart, Activity, Filter, BarChart2, Clock, 
   FileText, PieChart, Wallet, Heart, TrendingUp, Package, 
-  HelpCircle, ShieldCheck, X, ScanBarcode, Crown, Target, Gift
+  HelpCircle, ShieldCheck, X, ScanBarcode, Crown, Target, Gift,
+  SearchCheck, DatabaseZap, AlertTriangle, RefreshCw, MailCheck,
+  KanbanSquare, CornerDownLeft, ReceiptText, Coins, Bell, Handshake, ScrollText, Flame
 } from 'lucide-react';
+import { NotificationBadge } from '@/components/admin/notification-badge';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
 export function Sidebar() {
   const { t } = useI18n();
   const pathname = usePathname();
   const { isOpen, setIsOpen } = useSidebar();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const menu = [
     {
@@ -48,7 +57,7 @@ export function Sidebar() {
       title: 'sidebar.platform',
       items: [
         { name: 'nav.catalog', path: '/store/catalog', icon: Package },
-        { name: 'Mystery Boxes', path: '/store/mystery-boxes', icon: Gift }, // <-- ДОДАНО
+        { name: 'Mystery Boxes', path: '/store/mystery-boxes', icon: Gift },
         { name: 'sidebar.sell', path: '/sell', icon: Package },
         { name: 'nav.auth', path: '/authenticity', icon: ShieldCheck },
         { name: 'footer.faq', path: '/faq', icon: HelpCircle },
@@ -64,7 +73,10 @@ export function Sidebar() {
       />
 
       <aside 
-        className={cn("fixed inset-y-0 left-0 z-[70] w-72 bg-[var(--card)] border-r border-[var(--border)] shadow-2xl flex flex-col transform transition-transform duration-300 ease-out-expo", isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:static lg:h-[calc(100vh-5rem)]")}
+        className={cn(
+          "fixed inset-y-0 left-0 z-[70] w-[280px] bg-[var(--card)] border-r border-[var(--border)] shadow-2xl flex flex-col transform transition-transform duration-300 ease-out-expo lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] md:lg:top-20 md:lg:h-[calc(100vh-5rem)] lg:translate-x-0 lg:shadow-none", 
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
       >
         <div className="flex items-center justify-between p-6 border-b border-[var(--border)] lg:hidden">
           <span className="font-extrabold text-xl flex items-center gap-2 text-[var(--foreground)]">
@@ -80,7 +92,7 @@ export function Sidebar() {
           {menu.map((section, idx) => (
             <div key={idx}>
               <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 px-3">
-                {t(section.title as any)}
+                {isMounted ? t(section.title as any) : '...'}
               </h4>
               <div className="space-y-1">
                 {section.items.map((item, iIdx) => {
@@ -90,11 +102,16 @@ export function Sidebar() {
                   
                   return (
                     <Link href={item.path} key={iIdx} onClick={() => setIsOpen(false)}
-                      className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all duration-200", isActive ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-600 dark:text-slate-400 hover:bg-[var(--background)] hover:text-[var(--foreground)]")}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 border border-transparent outline-none", 
+                        isActive 
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" 
+                          : "text-slate-600 dark:text-slate-400 hover:bg-[var(--background)] hover:text-[var(--foreground)] hover:border-[var(--border)]"
+                      )}
                     >
                       <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={isSpecial && !isActive ? 'text-purple-500' : ''} />
                       <span className={isSpecial && !isActive ? 'text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600' : ''}>
-                        {item.name.includes('PRO') || item.name.includes('Mystery') ? item.name : t(item.name as any)}
+                        {isMounted && (item.name.includes('PRO') || item.name.includes('Mystery')) ? item.name : isMounted ? t(item.name as any) : '...'}
                       </span>
                     </Link>
                   );
