@@ -1,13 +1,11 @@
-// call:function_3{"queries":["web/components/store/store-product-card.tsx"]}
 'use client';
 
 import { memo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
+import { ShoppingCart, Eye, Package } from 'lucide-react';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { ArrowUpRight, ShoppingCart, Eye, Package } from 'lucide-react';
 import { SpotlightCard } from '@/components/store/spotlight-card';
 import { TiltCard } from '@/components/store/tilt-card';
 import { useCart } from '@/lib/store/cart';
@@ -31,18 +29,7 @@ function ProductCardComponent({ item }: Props) {
     : item.imageUrl;
   
   const title = item.titleSnapshot || item.title || item.item?.title || 'Unknown Product';
-  
-  const baseSlug = String(title)
-    .trim()
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]/gu, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-
-  // ФІКС: Унікальне посилання для кожного товару
-  const slug = `${baseSlug}-${item.id.slice(-6).toLowerCase()}`;
-
+  const slug = item.slug;
   const status = (item.quantity ?? 0) > 0 && isPriced ? 'Available' : 'Sold';
 
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -63,40 +50,41 @@ function ProductCardComponent({ item }: Props) {
     <>
       <TiltCard>
         <Link 
-          href={`/store/catalog/${slug}`}
+          href={`/store/catalog/${slug}`} 
           className="group block h-full outline-none cursor-pointer"
         >
-          <SpotlightCard className="flex h-full flex-col border border-[var(--border)] bg-[var(--card)] backdrop-blur-xl transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-200 dark:hover:border-blue-900 rounded-[2.5rem]">
+          <SpotlightCard className="flex h-full flex-col border border-[var(--border)] bg-[var(--card)] transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-500/50 rounded-[2.5rem] overflow-hidden transform-gpu">
             
-            <div className="absolute top-4 right-4 z-30 opacity-0 transform translate-y-4 transition-all duration-500 group-hover:opacity-100 group-hover:translate-y-0">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg">
-                <ArrowUpRight size={20} />
-              </div>
-            </div>
-
-            <div className="relative aspect-square w-full overflow-hidden z-10 bg-white border-b border-[var(--border)]">
-              {item.sealed && (
-                <span className="absolute top-4 left-4 z-20 px-3 py-1.5 bg-blue-100/90 text-blue-800 text-[10px] sm:text-xs font-black tracking-wider uppercase rounded-xl backdrop-blur-md shadow-sm border border-blue-200">
-                  Sealed
-                </span>
-              )}
+            <div className="relative aspect-[4/3] sm:aspect-square w-full z-10 bg-white rounded-t-[calc(2.5rem-1px)] overflow-hidden border-b border-[var(--border)]">
               
+              <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 items-start">
+                <span className="inline-flex items-center rounded-xl bg-slate-900/90 backdrop-blur-md px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm">
+                  {item.theme}
+                </span>
+                {item.sealed ? (
+                  <span className="inline-flex items-center rounded-xl bg-blue-600/95 backdrop-blur-md px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm border border-blue-500/50">
+                    Нове / Запечатане
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-xl bg-emerald-600/95 backdrop-blur-md px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm border border-emerald-500/50">
+                    Вживане / Ідеал
+                  </span>
+                )}
+              </div>
+
               <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-2 sm:opacity-0 sm:group-hover:opacity-100 sm:translate-x-4 sm:group-hover:translate-x-0 transition-all duration-300">
                 <button 
                   onClick={handleAddToCart}
                   disabled={inCart || status !== 'Available'}
                   className={cn(
-                    "p-3 rounded-full shadow-lg transition-colors border border-slate-200",
+                    "p-3 rounded-full shadow-xl transition-all border border-slate-200/50",
                     inCart || status !== 'Available' 
                       ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                      : "bg-white text-slate-900 hover:bg-blue-600 hover:text-white hover:border-blue-600"
+                      : "bg-white text-slate-900 hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-110 active:scale-95"
                   )}
                 >
-                  <ShoppingCart size={18} />
+                  <ShoppingCart size={18} fill={inCart ? 'currentColor' : 'none'} />
                 </button>
-                <div className="hidden sm:flex p-3 bg-white text-slate-900 hover:bg-slate-900 hover:text-white rounded-full shadow-lg transition-colors border border-slate-200">
-                  <Eye size={18} />
-                </div>
               </div>
 
               {imageUrl ? (
@@ -104,10 +92,11 @@ function ProductCardComponent({ item }: Props) {
                   src={imageUrl}
                   alt={title}
                   fill
-                  className="object-contain p-6 mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
+                  className="object-contain p-6 sm:p-8 mix-blend-multiply transition-transform duration-700 group-hover:scale-110"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-300">
+                <div className="flex h-full w-full items-center justify-center text-slate-300">
                   <Package size={48} />
                 </div>
               )}
@@ -115,30 +104,24 @@ function ProductCardComponent({ item }: Props) {
             
             <div className="flex flex-1 flex-col p-6 z-10 bg-[var(--card)]">
               <div className="flex-1">
-                <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge
-                    className={cn(
-                      'border-transparent shadow-sm px-3 py-1',
-                      status === 'Available' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                    )}
-                  >
-                    <div className={cn("w-1.5 h-1.5 rounded-full mr-1.5", status === 'Available' ? 'bg-emerald-500' : 'bg-slate-400')} />
-                    {status}
-                  </Badge>
-                  {item.condition && (
-                    <Badge className="border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] shadow-sm px-3 py-1">
-                      {item.condition}
-                    </Badge>
-                  )}
-                </div>
-                <h3 className="line-clamp-2 text-xl font-black leading-tight text-[var(--foreground)] transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                <h3 className="line-clamp-2 text-xl font-black leading-tight text-[var(--foreground)] transition-colors group-hover:text-blue-600">
                   {title}
                 </h3>
+                {item.item?.setNumber && (
+                  <p className="mt-2 text-xs font-bold uppercase tracking-widest text-slate-400">
+                    Артикул: {item.item.setNumber}
+                  </p>
+                )}
               </div>
               
               <div className="mt-6 flex items-end justify-between border-t border-[var(--border)] pt-5">
-                <div className="text-3xl font-black tracking-tighter text-[var(--foreground)]">
-                  {isPriced ? formatMoney(price) : 'Запит'}
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                    {status === 'Available' ? 'Доступно' : 'Продано'}
+                  </span>
+                  <span className="text-3xl font-black tracking-tighter text-[var(--foreground)]">
+                    {isPriced ? formatMoney(price) : 'Запит'}
+                  </span>
                 </div>
               </div>
             </div>

@@ -1,4 +1,3 @@
-// call:function_1{"queries":["backend/apps/api/src/modules/public/public-store.service.ts"]}
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { toMoney } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
@@ -69,6 +68,7 @@ export class PublicStoreService {
         totalCost: true,
         quantity: true,
         condition: true,
+        sealed: true,
         item: { select: { title: true, theme: true, setNumber: true, kind: true } },
         images: { where: { isPrimary: true }, take: 1, select: { imageUrl: true } },
       },
@@ -92,20 +92,24 @@ export class PublicStoreService {
         item: true,
         images: { orderBy: { sortOrder: 'asc' } },
         assignedUser: true,
-        seller: { select: { id: true, name: true } },
+        seller: { select: { id: true, name: true } }, 
       },
       take: 500,
     });
 
-    const found = all.find((entry) => {
+    const exactIdMatch = all.find(entry => normalized === entry.id.toLowerCase());
+    if (exactIdMatch) return exactIdMatch;
+
+    const suffixMatch = all.find(entry => normalized.endsWith(`-${entry.id.slice(-6).toLowerCase()}`));
+    if (suffixMatch) return suffixMatch;
+
+    const slugMatch = all.find((entry) => {
       const title = entry.titleSnapshot || entry.item?.title || entry.id;
       const generated = this.slugify(title);
-      const generatedWithId = `${generated}-${entry.id.slice(-6).toLowerCase()}`;
-      
-      return generated === normalized || entry.id === normalized || generatedWithId === normalized;
+      return generated === normalized || entry.id.toLowerCase() === normalized;
     });
 
-    return found ?? null;
+    return slugMatch ?? null;
   }
 
   async trackOrder(query: string): Promise<unknown> {
