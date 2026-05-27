@@ -1,4 +1,3 @@
-// call:function_2{"queries":["web/components/admin/inventory-inline-editor.tsx"]}
 'use client';
 
 import { useState } from 'react';
@@ -68,16 +67,17 @@ export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
     }
   };
 
-  const inputClasses = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-blue-500 outline-none transition-all shadow-sm placeholder:text-slate-500";
+  const inputClasses = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-blue-500 outline-none transition-all shadow-sm placeholder:text-slate-500";
 
   return (
-    <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+    <div className="space-y-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-sm h-full flex flex-col">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Quick Edit Configuration</span>
+        <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Configuration</h2>
       </div>
       
-      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-6 lg:grid-cols-7">
-        <div className="md:col-span-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="sm:col-span-2 lg:col-span-3 space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Title Snapshot</label>
           <input
             value={titleSnapshot}
             onChange={(e) => setTitleSnapshot(e.target.value)}
@@ -86,75 +86,89 @@ export function InventoryInlineEditor({ item, onSuccessAction }: Props) {
           />
         </div>
 
-        <input
-          type="number"
-          step="0.01"
-          value={purchasePrice}
-          onChange={(e) => setPurchasePrice(e.target.value)}
-          className={inputClasses}
-          placeholder="Purchase (₴)"
-        />
-
-        <input
-          type="number"
-          min="1"
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          className={inputClasses}
-          placeholder="Qty"
-        />
-
-        <input
-          type="number"
-          step="0.01"
-          value={expectedSalePriceManual}
-          onChange={(e) => setExpectedSalePriceManual(e.target.value)}
-          className={inputClasses}
-          placeholder="Manual Sell"
-        />
-
-        <select
-          value={condition}
-          onChange={(e) => setCondition(e.target.value)}
-          className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-3 py-2.5 text-sm font-bold focus:bg-[var(--card)] focus:border-blue-500 outline-none cursor-pointer shadow-sm"
-        >
-          <option value="new">New</option>
-          <option value="used">Used</option>
-          <option value="incomplete">Incomplete</option>
-        </select>
-
-        <label className="flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm cursor-pointer hover:bg-[var(--card)] transition-colors">
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Purchase Price (₴)</label>
           <input
-            type="checkbox"
-            checked={sealed}
-            onChange={(e) => setSealed(e.target.checked)}
-            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            type="number"
+            step="0.01"
+            value={purchasePrice}
+            onChange={(e) => setPurchasePrice(e.target.value)}
+            className={inputClasses}
+            placeholder="0.00"
           />
-          <span className="font-bold text-[var(--foreground)]">Sealed</span>
-        </label>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Manual Sell Price (₴)</label>
+          <input
+            type="number"
+            step="0.01"
+            value={expectedSalePriceManual}
+            onChange={(e) => setExpectedSalePriceManual(e.target.value)}
+            className={inputClasses}
+            placeholder="Auto-calculate if empty"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Quantity</label>
+          <input
+            type="number"
+            min="1"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            className={inputClasses}
+            placeholder="1"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Condition</label>
+          <select
+            value={condition}
+            onChange={(e) => setCondition(e.target.value)}
+            className={`${inputClasses} cursor-pointer`}
+          >
+            <option value="new">New</option>
+            <option value="used">Used</option>
+            <option value="incomplete">Incomplete</option>
+          </select>
+        </div>
+
+        <div className="space-y-1.5 flex flex-col justify-end">
+          <label className="flex h-[46px] items-center justify-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2 cursor-pointer hover:bg-[var(--card)] transition-colors shadow-sm">
+            <input
+              type="checkbox"
+              checked={sealed}
+              onChange={(e) => setSealed(e.target.checked)}
+              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-5 w-5"
+            />
+            <span className="font-bold text-[var(--foreground)] text-sm">Factory Sealed</span>
+          </label>
+        </div>
       </div>
 
-      <div>
+      <div className="space-y-1.5 flex-1 flex flex-col">
+        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Product Description / Notes (Visible to buyers)</label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Product description / notes (Visible to buyers)..."
-          rows={2}
-          className={`${inputClasses} resize-none`}
+          placeholder="Detailed description of the item..."
+          className={`${inputClasses} flex-1 resize-none min-h-[120px] custom-scrollbar`}
         />
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          {error && <span className="text-xs font-semibold text-red-600">{error}</span>}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[var(--border)] mt-auto">
+        <div className="w-full sm:w-auto">
+          {error && <span className="text-sm font-bold text-red-600">{error}</span>}
         </div>
         <button
           disabled={loading}
           onClick={handleSave}
-          className="flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-white px-5 py-2 text-sm font-semibold text-white dark:text-slate-900 transition-colors hover:bg-black dark:hover:bg-slate-200 disabled:opacity-50 shadow-sm"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-3.5 text-sm font-bold text-white transition-all hover:bg-blue-700 disabled:opacity-50 shadow-md shadow-blue-600/20 active:scale-95"
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {loading ? 'Saving...' : 'Save Inline'}
+          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+          {loading ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
     </div>

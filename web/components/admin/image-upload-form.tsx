@@ -1,4 +1,3 @@
-// call:function_1{"queries":["web/components/admin/image-upload-form.tsx"]}
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -10,7 +9,6 @@ type Props = {
   inventoryItemId: string;
 };
 
-// НАТИВНИЙ КОМПРЕСОР ЗОБРАЖЕНЬ (HTML5 Canvas)
 const compressImage = async (file: File, maxWidth = 1920): Promise<File> => {
   if (!file.type.startsWith('image/')) return file;
 
@@ -48,7 +46,7 @@ const compressImage = async (file: File, maxWidth = 1920): Promise<File> => {
             }
           },
           'image/webp',
-          0.85 // Якість 85% - ідеальний баланс
+          0.85
         );
       };
       img.onerror = (err) => reject(err);
@@ -72,7 +70,6 @@ export function ImageUploadForm({ inventoryItemId }: Props) {
       setLoading(true);
       setError(null);
 
-      // СТИСКАЄМО ФОТО ПЕРЕД ВІДПРАВКОЮ
       const compressedFile = await compressImage(file);
 
       const formData = new FormData();
@@ -100,20 +97,25 @@ export function ImageUploadForm({ inventoryItemId }: Props) {
   };
 
   return (
-    <div className="space-y-4 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-      <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-slate-500">
-        <UploadCloud className="h-4 w-4" />
-        Upload Media
+    <div className="space-y-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-sm flex flex-col h-full">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+          <UploadCloud className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Upload Media</h2>
+          <p className="text-sm font-medium text-slate-500">Add photos to your listing.</p>
+        </div>
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600 dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleUpload} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div className="w-full flex-1">
+      <form onSubmit={handleUpload} className="flex flex-col gap-4 flex-1">
+        <div className="flex-1 border-2 border-dashed border-[var(--border)] rounded-2xl bg-[var(--background)]/50 p-6 flex flex-col items-center justify-center text-center hover:bg-[var(--card)] transition-colors relative">
           <input
             ref={fileInputRef}
             type="file"
@@ -122,17 +124,22 @@ export function ImageUploadForm({ inventoryItemId }: Props) {
               setError(null);
               setFile(e.target.files?.[0] ?? null);
             }}
-            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors cursor-pointer"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
           />
+          <UploadCloud className="h-12 w-12 text-slate-300 mb-4" />
+          <div className="text-sm font-bold text-[var(--foreground)]">
+            {file ? file.name : 'Click to select or drag and drop'}
+          </div>
+          <div className="text-xs text-slate-400 mt-1 font-medium">JPEG, PNG, WEBP, HEIC</div>
         </div>
 
         <Button
           type="submit"
           disabled={loading || !file}
-          className="w-full sm:w-auto"
+          className="w-full h-14 rounded-xl text-sm font-bold"
         >
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {loading ? 'Uploading...' : 'Upload Image'}
+          {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+          {loading ? 'Uploading & Compressing...' : 'Upload Selected Image'}
         </Button>
       </form>
     </div>

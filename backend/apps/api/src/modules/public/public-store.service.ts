@@ -30,7 +30,7 @@ export class PublicStoreService {
     if (sort === 'price_desc') return { expectedSalePriceManual: 'desc' };
     if (sort === 'title_asc') return { titleSnapshot: 'asc' };
     if (sort === 'title_desc') return { titleSnapshot: 'desc' };
-    return { createdAt: 'desc' };
+    return { expectedSalePriceManual: 'asc' };
   }
 
   async getCatalog(params: { q?: string; type?: string; availableOnly?: boolean; theme?: string; sort?: string; limit?: number; seller?: string }): Promise<unknown[]> {
@@ -100,13 +100,16 @@ export class PublicStoreService {
     const exactIdMatch = all.find(entry => normalized === entry.id.toLowerCase());
     if (exactIdMatch) return exactIdMatch;
 
-    const suffixMatch = all.find(entry => normalized.endsWith(`-${entry.id.slice(-6).toLowerCase()}`));
-    if (suffixMatch) return suffixMatch;
+    const fullSuffixMatch = all.find(entry => normalized.endsWith(`-${entry.id.toLowerCase()}`));
+    if (fullSuffixMatch) return fullSuffixMatch;
+
+    const partialSuffixMatch = all.find(entry => normalized.endsWith(`-${entry.id.slice(-6).toLowerCase()}`));
+    if (partialSuffixMatch) return partialSuffixMatch;
 
     const slugMatch = all.find((entry) => {
       const title = entry.titleSnapshot || entry.item?.title || entry.id;
       const generated = this.slugify(title);
-      return generated === normalized || entry.id.toLowerCase() === normalized;
+      return generated === normalized;
     });
 
     return slugMatch ?? null;

@@ -18,7 +18,7 @@ export default function InventoryItemPage({ params }: { params: Promise<{ id: st
   if (!item) return <div className="flex h-[calc(100vh-8rem)] items-center justify-center font-bold text-slate-500">Inventory Item Not Found</div>;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-20 animate-fade-in-up hardware-accelerated">
+    <div className="space-y-6 max-w-7xl mx-auto pb-20 animate-fade-in-up hardware-accelerated">
       <div className="bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-[var(--foreground)]">{item.titleSnapshot}</h1>
@@ -30,12 +30,18 @@ export default function InventoryItemPage({ params }: { params: Promise<{ id: st
         )}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <InventoryInlineEditor item={item} onSuccessAction={() => mutate()} />
-        <ImageUploadForm inventoryItemId={item.id} />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <InventoryInlineEditor item={item} onSuccessAction={() => mutate()} />
+        </div>
+        <div className="lg:col-span-1">
+          <ImageUploadForm inventoryItemId={item.id} />
+        </div>
       </div>
 
-      <ImageGalleryManager inventoryItemId={item.id} images={item.images ?? []} />
+      <div className="mt-6">
+        <ImageGalleryManager inventoryItemId={item.id} images={item.images ?? []} />
+      </div>
     </div>
   );
 }

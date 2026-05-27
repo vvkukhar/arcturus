@@ -1,4 +1,3 @@
-// call:function_1{"queries":["web/components/store/related-products.tsx"]}
 import { ProductCard } from '@/components/store/store-product-card';
 import { useI18n } from '@/components/providers/i18n-provider';
 
@@ -35,15 +34,15 @@ export function RelatedProducts({ items }: Props) {
         {items.map((item) => {
           const safeTitle = item.titleSnapshot || item.item?.title || 'Unknown Product';
           
-          // Ідеальний метч slugify з бекендом
-          const safeSlug = String(safeTitle)
+          const baseSlug = String(safeTitle)
             .trim()
             .toLowerCase()
             .replace(/[^\p{L}\p{N}\s-]+/gu, '')
             .replace(/\s+/g, '-')
             .replace(/-+/g, '-');
           
-          // Нормалізуємо картинки для сумісності з інтерфейсом ProductCard
+          const safeSlug = `${baseSlug}-${item.id}`;
+          
           const normalizedImages = item.images && item.images.length > 0 
             ? item.images 
             : [{ imageUrl: 'https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?w=800&q=80', isPrimary: true }];

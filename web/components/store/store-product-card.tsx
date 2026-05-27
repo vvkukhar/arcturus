@@ -55,7 +55,7 @@ function ProductCardComponent({ item }: Props) {
         >
           <SpotlightCard className="flex h-full flex-col border border-[var(--border)] bg-[var(--card)] transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-500/50 rounded-[2.5rem] overflow-hidden transform-gpu">
             
-            <div className="relative aspect-[4/3] sm:aspect-square w-full z-10 bg-white rounded-t-[calc(2.5rem-1px)] overflow-hidden border-b border-[var(--border)]">
+            <div className="relative w-full pt-[100%] z-10 bg-white border-b border-[var(--border)]">
               
               <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 items-start">
                 <span className="inline-flex items-center rounded-xl bg-slate-900/90 backdrop-blur-md px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm">
@@ -88,15 +88,17 @@ function ProductCardComponent({ item }: Props) {
               </div>
 
               {imageUrl ? (
-                <Image
-                  src={imageUrl}
-                  alt={title}
-                  fill
-                  className="object-contain p-6 sm:p-8 mix-blend-multiply transition-transform duration-700 group-hover:scale-110"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                />
+                <div className="absolute inset-0 p-6 sm:p-8">
+                  <Image
+                    src={imageUrl}
+                    alt={title}
+                    fill
+                    className="object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-110"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  />
+                </div>
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-slate-300">
+                <div className="absolute inset-0 flex items-center justify-center text-slate-300">
                   <Package size={48} />
                 </div>
               )}

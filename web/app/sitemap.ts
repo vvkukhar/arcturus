@@ -1,4 +1,3 @@
-// call:function_4{"queries":["web/app/sitemap.ts"]}
 import { MetadataRoute } from 'next';
 import { appConfig } from '@/lib/config';
 
@@ -31,8 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           .replace(/-+/g, '-')
           .replace(/^-|-$/g, '');
         
-        // ФІКС: Унікальний Slug
-        const slug = `${baseSlug}-${item.id.slice(-6).toLowerCase()}`;
+        const slug = `${baseSlug}-${item.id}`;
           
         urls.push({
           url: `${baseUrl}/store/catalog/${slug}`,
