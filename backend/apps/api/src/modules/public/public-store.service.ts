@@ -35,7 +35,18 @@ export class PublicStoreService {
 
   async getThemes(): Promise<string[]> {
     const items = await this.prisma.item.findMany({
-      where: { theme: { not: null } },
+      where: { 
+        theme: { not: null },
+        inventoryItems: {
+          some: {
+            quantity: { gt: 0 },
+            OR: [
+              { isMarketplace: false },
+              { isMarketplace: true, approvalStatus: 'approved' }
+            ]
+          }
+        }
+      },
       select: { theme: true },
       distinct: ['theme'],
       orderBy: { theme: 'asc' },
