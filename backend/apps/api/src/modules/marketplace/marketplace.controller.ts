@@ -20,7 +20,7 @@ export class MarketplaceController {
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/upload')
-  @UseInterceptors(FilesInterceptor('files', 5)) // Дозволяємо до 5 фоток
+  @UseInterceptors(FilesInterceptor('files', 5))
   uploadImages(
     @Req() req: any,
     @Param('id') id: string,
@@ -33,6 +33,12 @@ export class MarketplaceController {
   @Get('my-listings')
   getMyListings(@Req() req: any) {
     return this.marketplace.getMyListings(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('finance')
+  getFinance(@Req() req: any) {
+    return this.marketplace.getSellerFinance(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -73,6 +73,8 @@ import { FeedsModule } from './modules/feeds/feeds.module';
 import { DropshipModule } from './modules/dropship/dropship.module';
 import { LiveModule } from './modules/live/live.module';
 import { SyndicateModule } from './modules/syndicate/syndicate.module';
+import { OffersModule } from './modules/offers/offers.module';
+import { WantedModule } from './modules/wanted/wanted.module';
 
 @Module({
   imports: [
@@ -149,7 +151,9 @@ import { SyndicateModule } from './modules/syndicate/syndicate.module';
     FeedsModule,
     DropshipModule,
     LiveModule,
-    SyndicateModule
+    SyndicateModule,
+    OffersModule,
+    WantedModule
   ],
 })
 export class AppModule {}
