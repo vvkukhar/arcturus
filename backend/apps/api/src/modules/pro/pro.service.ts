@@ -6,14 +6,19 @@ import * as crypto from 'crypto';
 
 @Injectable()
 export class ProService {
-  private readonly monoToken = process.env.MONOBANK_TOKEN!;
-  private readonly storeUrl = process.env.PUBLIC_STORE_BASE_URL!;
-  private readonly apiUrl = process.env.API_BASE!;
+  private readonly monoToken = process.env.MONOBANK_TOKEN;
+  private readonly apiUrl = process.env.API_BASE || 'https://arcturus-api-idsb.onrender.com/api/v1';
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService
   ) {}
+
+  // Захищений метод отримання базового URL фронтенду
+  private getStoreUrl(): string {
+    const url = process.env.PUBLIC_STORE_BASE_URL;
+    return url && url !== 'undefined' ? url : 'https://www.arcturusbuild.com';
+  }
 
   async createSubscriptionPayment(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -21,6 +26,27 @@ export class ProService {
 
     const amountKopecks = 50000; 
     const reference = `sub_${userId}_${Date.now()}`;
+    const storeUrl = this.getStoreUrl();
+
+    // Емуляція оплати, якщо немає токена Монобанку
+    if (!this.monoToken || this.monoToken === '') {
+      console.warn('[ProService] MONOBANK_TOKEN is missing. Emulating payment success.');
+      
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { isPro: true, proExpiresAt: expiresAt }
+      });
+      
+      const pipeline = this.redis.getClient().pipeline();
+      const sessions = await this.prisma.userSession.findMany({ where: { userId } });
+      for (const s of sessions) pipeline.del(`session:${s.tokenHash}`);
+      await pipeline.exec();
+      
+      return { url: `${storeUrl}/pro/success` };
+    }
 
     const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
       method: 'POST',
@@ -32,7 +58,7 @@ export class ProService {
         amount: amountKopecks,
         ccy: 980,
         reference,
-        redirectUrl: `${this.storeUrl}/pro/success`,
+        redirectUrl: `${storeUrl}/pro/success`,
         webHookUrl: `${this.apiUrl}/pro/webhook`,
         merchantPaymInfo: {
           reference,

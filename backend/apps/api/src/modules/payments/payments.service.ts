@@ -9,8 +9,7 @@ import * as crypto from 'crypto';
 @Injectable()
 export class PaymentsService {
   private readonly monoToken = process.env.MONOBANK_TOKEN;
-  private readonly storeUrl = process.env.PUBLIC_STORE_BASE_URL!;
-  private readonly apiUrl = process.env.API_BASE!;
+  private readonly apiUrl = process.env.API_BASE || 'https://arcturus-api-idsb.onrender.com/api/v1';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -18,6 +17,11 @@ export class PaymentsService {
     private readonly realtime: RealtimeGateway,
     private readonly redis: RedisService,
   ) {}
+
+  private getStoreUrl(): string {
+    const url = process.env.PUBLIC_STORE_BASE_URL;
+    return url && url !== 'undefined' ? url : 'https://www.arcturusbuild.com';
+  }
 
   async createCheckoutSession(orderId: string): Promise<{ url: string }> {
     const order = await this.prisma.order.findUnique({
@@ -32,14 +36,16 @@ export class PaymentsService {
       throw new BadRequestException('Invalid order price for checkout');
     }
 
-    // Якщо немає токена Монобанку в .env — імітуємо платіж (ідеально для локальної розробки та тесту)
+    const storeUrl = this.getStoreUrl();
+
+    // Якщо немає токена Монобанку в .env — імітуємо платіж
     if (!this.monoToken || this.monoToken === '') {
       console.warn('[PaymentsService] MONOBANK_TOKEN is missing. Emulating payment success redirect.');
       await this.prisma.order.update({
         where: { id: order.id },
         data: { status: 'paid' },
       });
-      return { url: `${this.storeUrl}/success?orderId=${order.id}` };
+      return { url: `${storeUrl}/success?orderId=${order.id}` };
     }
 
     const amountKopecks = toCents(order.sellPrice);
@@ -54,7 +60,7 @@ export class PaymentsService {
         amount: amountKopecks,
         ccy: 980,
         reference: order.id,
-        redirectUrl: `${this.storeUrl}/success?orderId=${order.id}`,
+        redirectUrl: `${storeUrl}/success?orderId=${order.id}`,
         webHookUrl: `${this.apiUrl}/payments/webhook`,
         merchantPaymInfo: {
           reference: order.id,
