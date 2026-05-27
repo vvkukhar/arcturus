@@ -1,4 +1,3 @@
-// call:function_2{"queries":["web/app/sell/page.tsx"]}
 'use client';
 
 import { useState, useRef } from 'react';
@@ -12,7 +11,6 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
-// НАТИВНИЙ КОМПРЕСОР
 const compressImage = async (file: File, maxWidth = 1920): Promise<File> => {
   if (!file.type.startsWith('image/')) return file;
   return new Promise((resolve, reject) => {
@@ -108,7 +106,6 @@ export default function SellPage() {
       if (files.length > 0 && createdItem?.id) {
         const uploadData = new FormData();
         
-        // Стискаємо кожне фото перед відправкою
         for (const f of files) {
           const compressed = await compressImage(f);
           uploadData.append('files', compressed);
@@ -204,12 +201,12 @@ export default function SellPage() {
             ) : (
               <form onSubmit={handleSubmit} className="bg-[var(--card)] p-8 md:p-10 rounded-[2.5rem] border border-[var(--border)] shadow-xl space-y-6">
                 <div>
-                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest ml-1 mb-2 block">Артикул / ID Набору з Бази</label>
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest ml-1 mb-2 block">Артикул / Назва Набору з Бази</label>
                   <input 
                     required
                     value={formData.itemId}
                     onChange={(e) => setFormData({...formData, itemId: e.target.value})}
-                    placeholder="Наприклад: 75192 або item_rb_123"
+                    placeholder="Наприклад: 75192 або Millennium Falcon"
                     className="w-full rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4 font-bold text-[var(--foreground)] focus:ring-2 focus:ring-blue-600 outline-none transition-shadow"
                   />
                 </div>
@@ -241,7 +238,7 @@ export default function SellPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {previewUrls.map((url, i) => (
                       <div key={i} className="relative aspect-square rounded-2xl border border-[var(--border)] overflow-hidden group bg-slate-100 dark:bg-slate-900">
-                        <Image src={url} alt="Preview" fill className="object-cover mix-blend-multiply dark:mix-blend-normal" />
+                        <Image src={url} alt="Preview" fill className="object-contain p-2 mix-blend-multiply dark:mix-blend-normal" />
                         <button
                           type="button"
                           onClick={() => removeFile(i)}

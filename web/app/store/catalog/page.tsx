@@ -48,7 +48,7 @@ export default async function CatalogPage(props: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8 animate-in fade-in duration-500 transform-gpu min-h-screen">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-in fade-in duration-500 transform-gpu min-h-screen">
       
       <div className="relative mb-12 rounded-[3rem] bg-gradient-to-br from-slate-900 to-black dark:from-slate-900 dark:to-slate-950 p-8 sm:p-12 overflow-hidden shadow-2xl border border-slate-800">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
@@ -97,7 +97,7 @@ export default async function CatalogPage(props: Props) {
       </div>
 
       {items.length > 0 ? (
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item: any) => {
             const safeTitle = item.titleSnapshot || item.item?.title || 'Arcturus Custom Item';
             const baseSlug = String(safeTitle)
@@ -108,7 +108,7 @@ export default async function CatalogPage(props: Props) {
               .replace(/-+/g, '-')
               .replace(/^-|-$/g, '');
             
-            const safeSlug = `${baseSlug}--${item.id}`;
+            const safeSlug = `${baseSlug}-id-${item.id}`;
             
             const safeImage = item.images?.[0]?.imageUrl || item.imageUrl || item.item?.imageUrl || '';
             

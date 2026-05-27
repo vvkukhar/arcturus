@@ -105,12 +105,12 @@ export class PublicStoreService {
   }
 
   async getCatalogItemBySlug(slug: string): Promise<unknown | null> {
-    const parts = slug.split('--');
-    const possibleId = parts.length > 1 ? parts.pop() : null;
+    const match = slug.match(/-id-([a-zA-Z0-9_]+)$/i);
+    const extractedId = match ? match[1] : null;
 
-    if (possibleId) {
+    if (extractedId) {
       const exact = await this.prisma.inventoryItem.findFirst({
-        where: { id: possibleId },
+        where: { id: extractedId },
         include: {
           item: true,
           images: { orderBy: { sortOrder: 'asc' } },
@@ -134,15 +134,6 @@ export class PublicStoreService {
       },
       take: 500,
     });
-
-    const exactIdMatch = all.find(entry => normalized === entry.id.toLowerCase());
-    if (exactIdMatch) return exactIdMatch;
-
-    const fullSuffixMatch = all.find(entry => normalized.endsWith(`-${entry.id.toLowerCase()}`));
-    if (fullSuffixMatch) return fullSuffixMatch;
-
-    const partialSuffixMatch = all.find(entry => normalized.endsWith(`-${entry.id.slice(-6).toLowerCase()}`));
-    if (partialSuffixMatch) return partialSuffixMatch;
 
     const slugMatch = all.find((entry) => {
       const title = entry.titleSnapshot || entry.item?.title || entry.id;

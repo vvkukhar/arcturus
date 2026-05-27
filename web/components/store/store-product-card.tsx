@@ -3,7 +3,7 @@
 import { memo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingCart, Eye, Package } from 'lucide-react';
+import { ShoppingCart, Package } from 'lucide-react';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { SpotlightCard } from '@/components/store/spotlight-card';
@@ -58,7 +58,7 @@ function ProductCardComponent({ item }: Props) {
             <div className="relative aspect-square w-full z-10 bg-white rounded-t-[calc(2.5rem-1px)] overflow-hidden border-b border-[var(--border)]">
               
               <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 items-start">
-                <span className="inline-flex items-center rounded-xl bg-slate-900/90 backdrop-blur-md px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm border border-slate-700/50">
+                <span className="inline-flex items-center rounded-xl bg-slate-900/90 backdrop-blur-md px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm">
                   {item.theme}
                 </span>
                 {item.sealed ? (
@@ -77,51 +77,51 @@ function ProductCardComponent({ item }: Props) {
                   onClick={handleAddToCart}
                   disabled={inCart || status !== 'Available'}
                   className={cn(
-                    "p-4 rounded-2xl shadow-2xl transition-all border border-transparent",
+                    "p-3 rounded-full shadow-xl transition-all border border-slate-200/50",
                     inCart || status !== 'Available' 
-                      ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800"
-                      : "bg-blue-600 text-white hover:bg-blue-500 hover:scale-110 active:scale-95 shadow-blue-600/40"
+                      ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                      : "bg-white text-slate-900 hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-110 active:scale-95"
                   )}
                 >
-                  <ShoppingCart size={22} fill={inCart ? 'currentColor' : 'none'} />
+                  <ShoppingCart size={18} fill={inCart ? 'currentColor' : 'none'} />
                 </button>
               </div>
 
               {imageUrl ? (
-                <div className="absolute inset-0 p-8 sm:p-10">
+                <div className="absolute inset-0 p-6 sm:p-8">
                   <Image
                     src={imageUrl}
                     alt={title}
                     fill
-                    className="object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-110 drop-shadow-xl"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-110"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                   />
                 </div>
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-slate-300">
-                  <Package size={64} />
+                <div className="absolute inset-0 flex items-center justify-center text-slate-300">
+                  <Package size={48} />
                 </div>
               )}
             </div>
             
-            <div className="flex flex-1 flex-col p-8 z-10 bg-[var(--card)]">
+            <div className="flex flex-1 flex-col p-6 z-10 bg-[var(--card)]">
               <div className="flex-1">
-                <h3 className="line-clamp-2 text-2xl font-black leading-tight text-[var(--foreground)] transition-colors group-hover:text-blue-600">
+                <h3 className="line-clamp-2 text-xl font-black leading-tight text-[var(--foreground)] transition-colors group-hover:text-blue-600">
                   {title}
                 </h3>
                 {item.item?.setNumber && (
-                  <p className="mt-3 text-xs font-bold uppercase tracking-widest text-slate-400">
-                    Арт: {item.item.setNumber}
+                  <p className="mt-2 text-xs font-bold uppercase tracking-widest text-slate-400">
+                    Артикул: {item.item.setNumber}
                   </p>
                 )}
               </div>
               
-              <div className="mt-8 flex items-end justify-between border-t border-[var(--border)] pt-6">
+              <div className="mt-6 flex items-end justify-between border-t border-[var(--border)] pt-5">
                 <div className="flex flex-col">
-                  <span className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
                     {status === 'Available' ? 'Доступно' : 'Продано'}
                   </span>
-                  <span className="text-4xl font-black tracking-tighter text-[var(--foreground)] leading-none">
+                  <span className="text-3xl font-black tracking-tighter text-[var(--foreground)] leading-none">
                     {isPriced ? formatMoney(price) : 'Запит'}
                   </span>
                 </div>

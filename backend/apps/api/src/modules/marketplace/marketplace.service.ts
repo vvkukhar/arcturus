@@ -11,8 +11,12 @@ export class MarketplaceService {
   ) {}
 
   async submitApplication(dto: { itemId: string; expectedPrice: number; sellerId: string; notes?: string; tradeType: 'c2c' | 'c2b' }) {
-    const item = await this.prisma.item.findUnique({ where: { id: dto.itemId } });
-    if (!item) throw new NotFoundException('Catalog item not found');
+    let item = await this.prisma.item.findUnique({ where: { id: dto.itemId } });
+    if (!item) {
+      item = await this.prisma.item.findFirst({ where: { setNumber: dto.itemId } });
+    }
+    
+    if (!item) throw new NotFoundException('Каталожний набір не знайдено за введеним ID або Артикулом');
 
     const expectedPrice = Number(dto.expectedPrice);
     const commissionRate = dto.tradeType === 'c2c' ? 5.0 : 0;
@@ -20,7 +24,7 @@ export class MarketplaceService {
 
     return this.prisma.inventoryItem.create({
       data: {
-        itemId: dto.itemId,
+        itemId: item.id,
         titleSnapshot: item.title,
         purchasePrice: 0,
         totalCost: 0,
@@ -83,7 +87,6 @@ export class MarketplaceService {
     if (!item) throw new NotFoundException('Listing not found');
 
     return this.prisma.$transaction(async (tx) => {
-      // ЛОГІКА C2B (ШВИДКИЙ ВИКУП)
       if (item.approvalStatus === 'pending_buyout') {
         const updatedItem = await tx.inventoryItem.update({
           where: { id: inventoryItemId },
@@ -120,7 +123,6 @@ export class MarketplaceService {
         return updatedItem;
       } 
       
-      // ЛОГІКА C2C (МАРКЕТПЛЕЙС)
       return tx.inventoryItem.update({
         where: { id: inventoryItemId },
         data: { approvalStatus: 'approved' },
@@ -136,12 +138,10 @@ export class MarketplaceService {
   }
 
   async getSellerFinance(sellerId: string) {
-    // Всі продажі користувача як стороннього селера
     const sales = await this.prisma.sale.findMany({
       where: { isMarketplaceSale: true, inventoryItem: { sellerId } },
     });
 
-    // Всі запити на виведення коштів
     const payoutRequests = await this.prisma.payoutRequest.findMany({
       where: { sellerId },
       orderBy: { createdAt: 'desc' },

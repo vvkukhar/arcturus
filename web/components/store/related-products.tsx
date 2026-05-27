@@ -30,7 +30,7 @@ export function RelatedProducts({ items }: Props) {
       <div className="text-3xl font-black tracking-tight text-[var(--foreground)]">
         {t('related.title' as any)}
       </div>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map((item) => {
           const safeTitle = item.titleSnapshot || item.item?.title || 'Unknown Product';
           
@@ -41,7 +41,7 @@ export function RelatedProducts({ items }: Props) {
             .replace(/\s+/g, '-')
             .replace(/-+/g, '-');
           
-          const safeSlug = `${baseSlug}--${item.id}`;
+          const safeSlug = `${baseSlug}-id-${item.id}`;
           
           const normalizedImages = item.images && item.images.length > 0 
             ? item.images 

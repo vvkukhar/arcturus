@@ -8,7 +8,7 @@ import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymentsService {
-  private readonly monoToken = process.env.MONOBANK_TOKEN!;
+  private readonly monoToken = process.env.MONOBANK_TOKEN;
   private readonly storeUrl = process.env.PUBLIC_STORE_BASE_URL!;
   private readonly apiUrl = process.env.API_BASE!;
 
@@ -19,7 +19,7 @@ export class PaymentsService {
     private readonly redis: RedisService,
   ) {}
 
-async createCheckoutSession(orderId: string): Promise<{ url: string }> {
+  async createCheckoutSession(orderId: string): Promise<{ url: string }> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
     });
@@ -32,7 +32,16 @@ async createCheckoutSession(orderId: string): Promise<{ url: string }> {
       throw new BadRequestException('Invalid order price for checkout');
     }
 
-    // Для LiqPay або Monobank нам треба відправити суму в копійках
+    // Якщо немає токена Монобанку в .env — імітуємо платіж (ідеально для локальної розробки та тесту)
+    if (!this.monoToken || this.monoToken === '') {
+      console.warn('[PaymentsService] MONOBANK_TOKEN is missing. Emulating payment success redirect.');
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: { status: 'paid' },
+      });
+      return { url: `${this.storeUrl}/success?orderId=${order.id}` };
+    }
+
     const amountKopecks = toCents(order.sellPrice);
 
     const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
@@ -45,7 +54,7 @@ async createCheckoutSession(orderId: string): Promise<{ url: string }> {
         amount: amountKopecks,
         ccy: 980,
         reference: order.id,
-        redirectUrl: `${this.storeUrl}/success?orderId=${order.id}`, // Додали orderId в редірект
+        redirectUrl: `${this.storeUrl}/success?orderId=${order.id}`,
         webHookUrl: `${this.apiUrl}/payments/webhook`,
         merchantPaymInfo: {
           reference: order.id,
@@ -94,6 +103,7 @@ async createCheckoutSession(orderId: string): Promise<{ url: string }> {
   }
 
   async getMonoPubKey(): Promise<string> {
+    if (!this.monoToken) return '';
     let pubKeyBase64 = await this.redis.get<string>('mono_pubkey');
     if (!pubKeyBase64) {
       const keyRes = await fetch('https://api.monobank.ua/api/merchant/pubkey', {
@@ -108,6 +118,8 @@ async createCheckoutSession(orderId: string): Promise<{ url: string }> {
   }
 
   async handleWebhook(body: any, xSignBase64?: string): Promise<{ received: boolean }> {
+    if (!this.monoToken) return { received: true };
+
     if (!xSignBase64) throw new BadRequestException('Missing X-Sign header');
 
     let pubKeyBase64 = await this.getMonoPubKey();
@@ -129,7 +141,6 @@ async createCheckoutSession(orderId: string): Promise<{ url: string }> {
   }
 
   private async processSuccessfulPayment(orderId: string, amountTotalKopecks: number): Promise<void> {
-    // ФІКС: Ідемпотентність. Якщо вебхук прийшов вдруге - ігноруємо
     const existingOrder = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!existingOrder || existingOrder.status === 'paid' || existingOrder.status === 'sold') {
       return; 

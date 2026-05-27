@@ -30,7 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           .replace(/-+/g, '-')
           .replace(/^-|-$/g, '');
         
-        const slug = `${baseSlug}--${item.id}`;
+        const slug = `${baseSlug}-id-${item.id}`;
           
         urls.push({
           url: `${baseUrl}/store/catalog/${slug}`,

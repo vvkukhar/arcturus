@@ -4,7 +4,7 @@ import { toMoney } from '@arcturus/shared';
 
 @Injectable()
 export class VaultService {
-  private readonly monoToken = process.env.MONOBANK_TOKEN!;
+  private readonly monoToken = process.env.MONOBANK_TOKEN;
   private readonly apiUrl = process.env.API_BASE!;
 
   constructor(private readonly prisma: PrismaService) {}
@@ -27,6 +27,21 @@ export class VaultService {
   async createDepositLink(userId: string, amount: number) {
     const amountKopecks = toMoney(amount) * 100;
     const reference = `vault_${userId}_${Date.now()}`;
+
+    // Якщо немає токена Монобанку в .env — імітуємо платіж 
+    if (!this.monoToken || this.monoToken === '') {
+       console.warn('[VaultService] MONOBANK_TOKEN is missing. Emulating payment success.');
+       await this.prisma.$transaction([
+        this.prisma.user.update({
+          where: { id: userId },
+          data: { vaultBalance: { increment: amount } }
+        }),
+        this.prisma.vaultTransaction.create({
+          data: { userId, amount: amount, type: 'deposit', description: 'Simulated Local Deposit' }
+        })
+       ]);
+       return { url: `${process.env.PUBLIC_STORE_BASE_URL}/pro/success?reference=${reference}` };
+    }
 
     const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
       method: 'POST',
