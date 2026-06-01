@@ -1,3 +1,4 @@
+// call:function_1{"queries":["web/app/admin/orders/page.tsx"]}
 'use client';
 
 import useSWR from 'swr';
@@ -17,7 +18,7 @@ export default function AdminOrdersListPage() {
   const [processing, setProcessing] = useState(false);
 
   const rows = Array.isArray(orders) ? orders : [];
-  const actionableRows = rows.filter(r => ['approved', 'contacted', 'pending'].includes(r.status));
+  const actionableRows = rows.filter(r => ['approved', 'contacted', 'pending', 'paid'].includes(r.status));
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -37,45 +38,70 @@ export default function AdminOrdersListPage() {
   };
 
   const handleBulkTTN = async () => {
-    if (selectedIds.size === 0 || processing) return;
+    // 🔥 ФІКС: Відправляємо на бекенд тільки ті ID, в яких ще немає ТТН
+    const validIds = Array.from(selectedIds).filter(id => {
+      const order = rows.find(r => r.id === id);
+      return order && !order.adminNote?.includes('[TTN:');
+    });
+
+    if (validIds.length === 0 || processing) {
+      toast.info('Всі обрані замовлення вже мають згенеровані ТТН.');
+      return;
+    }
+
     try {
       setProcessing(true);
       const res = await apiFetch<any>('/api/admin/orders/bulk-ttn', {
         method: 'POST',
-        body: JSON.stringify({ orderIds: Array.from(selectedIds) })
+        body: JSON.stringify({ orderIds: validIds })
       });
       
-      toast.success(`Successfully generated TTNs for ${res.success} orders!`);
+      toast.success(`Успішно згенеровано ТТН для ${res.success} замовлень!`);
       setSelectedIds(new Set());
       mutate();
     } catch (err: any) {
-      toast.error(err.message || 'Bulk logistics failure');
+      // Якщо немає АПІ Ключа, він красиво напише про це у тості
+      toast.error(err.message || 'Помилка при генерації ТТН');
     } finally {
       setProcessing(false);
     }
   };
 
   const handlePrintPDF = async () => {
-    if (selectedIds.size === 0 || processing) return;
+    // 🔥 ФІКС: Відправляємо на друк тільки ті ID, де ТТН вже створено
+    const validIds = Array.from(selectedIds).filter(id => {
+      const order = rows.find(r => r.id === id);
+      return order && order.adminNote?.includes('[TTN:');
+    });
+
+    if (validIds.length === 0 || processing) {
+      toast.error('Оберіть хоча б одне замовлення з уже згенерованою ТТН.');
+      return;
+    }
+
     try {
       setProcessing(true);
       const res = await apiFetch<any>('/api/admin/orders/bulk-pdf', {
         method: 'POST',
-        body: JSON.stringify({ orderIds: Array.from(selectedIds) })
+        body: JSON.stringify({ orderIds: validIds })
       });
       
       if (res.data?.url) {
         window.open(res.data.url, '_blank');
-        toast.success(`Opening PDF for ${selectedIds.size} waybills`);
+        toast.success(`Відкриваємо PDF для ${validIds.length} накладних`);
       } else {
         throw new Error('No URL returned');
       }
     } catch (err: any) {
-      toast.error(err.message || 'PDF generation failure');
+      toast.error(err.message || 'Помилка генерації PDF');
     } finally {
       setProcessing(false);
     }
   };
+
+  const selectedOrders = rows.filter(r => selectedIds.has(r.id));
+  const canGenerateTtn = selectedOrders.some(r => !r.adminNote?.includes('[TTN:'));
+  const canPrintPdf = selectedOrders.some(r => r.adminNote?.includes('[TTN:'));
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 hardware-accelerated pb-10">
@@ -91,23 +117,27 @@ export default function AdminOrdersListPage() {
         </div>
         
         {selectedIds.size > 0 && (
-          <div className="flex gap-2">
-            <button
-              disabled={processing}
-              onClick={handleBulkTTN}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-black px-6 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-50"
-            >
-              {processing ? <Loader2 className="animate-spin" size={16} /> : <Truck size={16} />}
-              Generate {selectedIds.size} TTNs
-            </button>
-            <button
-              disabled={processing}
-              onClick={handlePrintPDF}
-              className="flex items-center gap-2 bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white font-black px-6 py-3.5 rounded-xl text-sm transition-all shadow-lg active:scale-95 disabled:opacity-50"
-            >
-              {processing ? <Loader2 className="animate-spin" size={16} /> : <FileText size={16} />}
-              Print PDF
-            </button>
+          <div className="flex gap-2 animate-in fade-in">
+            {canGenerateTtn && (
+              <button
+                disabled={processing}
+                onClick={handleBulkTTN}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-black px-6 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-50"
+              >
+                {processing ? <Loader2 className="animate-spin" size={16} /> : <Truck size={16} />}
+                Generate TTNs
+              </button>
+            )}
+            {canPrintPdf && (
+              <button
+                disabled={processing}
+                onClick={handlePrintPDF}
+                className="flex items-center gap-2 bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white font-black px-6 py-3.5 rounded-xl text-sm transition-all shadow-lg active:scale-95 disabled:opacity-50"
+              >
+                {processing ? <Loader2 className="animate-spin" size={16} /> : <FileText size={16} />}
+                Print PDF
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -123,7 +153,7 @@ export default function AdminOrdersListPage() {
               header: '',
               className: 'w-10',
               render: (row) => {
-                const isActionable = ['approved', 'contacted', 'pending'].includes(row.status) || row.adminNote?.includes('[TTN:');
+                const isActionable = ['approved', 'contacted', 'pending', 'paid'].includes(row.status) || row.adminNote?.includes('[TTN:');
                 if (!isActionable) return null;
                 return (
                   <input
@@ -141,7 +171,7 @@ export default function AdminOrdersListPage() {
               render: (row) => (
                 <div className="flex flex-col">
                   <span className="font-bold text-[var(--foreground)] text-base line-clamp-1 max-w-sm">{row.productTitle}</span>
-                  <span className="text-xs font-mono text-slate-400 mt-0.5 uppercase tracking-wider">ID: #{row.id.slice(-8)} вЂў {new Date(row.createdAt).toLocaleDateString()}</span>
+                  <span className="text-xs font-mono text-slate-400 mt-0.5 uppercase tracking-wider">ID: #{row.id.slice(-8)} • {new Date(row.createdAt).toLocaleDateString()}</span>
                 </div>
               ),
             },

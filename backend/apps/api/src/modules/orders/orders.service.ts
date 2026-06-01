@@ -1,3 +1,4 @@
+// call:function_1{"queries":["backend/apps/api/src/modules/orders/orders.service.ts"]}
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { toMoney } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
@@ -90,7 +91,8 @@ export class OrdersService {
     if (!orderIds || orderIds.length === 0) throw new BadRequestException('No order IDs provided');
 
     const orders = await this.prisma.order.findMany({
-      where: { id: { in: orderIds }, status: { in: ['approved', 'contacted'] } },
+      // 🔥 ФІКС: Дозволяємо генерацію ТТН для pending, approved, contacted та paid!
+      where: { id: { in: orderIds }, status: { in: ['pending', 'approved', 'contacted', 'paid'] } },
     });
 
     if (orders.length === 0) throw new BadRequestException('No valid orders found for TTN generation');
