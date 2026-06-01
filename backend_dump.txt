@@ -1948,6 +1948,8 @@ import { FeedsModule } from './modules/feeds/feeds.module';
 import { DropshipModule } from './modules/dropship/dropship.module';
 import { LiveModule } from './modules/live/live.module';
 import { SyndicateModule } from './modules/syndicate/syndicate.module';
+import { OffersModule } from './modules/offers/offers.module';
+import { WantedModule } from './modules/wanted/wanted.module';
 
 @Module({
   imports: [
@@ -2024,7 +2026,9 @@ import { SyndicateModule } from './modules/syndicate/syndicate.module';
     FeedsModule,
     DropshipModule,
     LiveModule,
-    SyndicateModule
+    SyndicateModule,
+    OffersModule,
+    WantedModule
   ],
 })
 export class AppModule {}
@@ -15215,7 +15219,7 @@ export class MarketplaceController {
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/upload')
-  @UseInterceptors(FilesInterceptor('files', 5)) // Дозволяємо до 5 фоток
+  @UseInterceptors(FilesInterceptor('files', 5))
   uploadImages(
     @Req() req: any,
     @Param('id') id: string,
@@ -15228,6 +15232,12 @@ export class MarketplaceController {
   @Get('my-listings')
   getMyListings(@Req() req: any) {
     return this.marketplace.getMyListings(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('finance')
+  getFinance(@Req() req: any) {
+    return this.marketplace.getSellerFinance(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -15286,8 +15296,12 @@ export class MarketplaceService {
   ) {}
 
   async submitApplication(dto: { itemId: string; expectedPrice: number; sellerId: string; notes?: string; tradeType: 'c2c' | 'c2b' }) {
-    const item = await this.prisma.item.findUnique({ where: { id: dto.itemId } });
-    if (!item) throw new NotFoundException('Catalog item not found');
+    let item = await this.prisma.item.findUnique({ where: { id: dto.itemId } });
+    if (!item) {
+      item = await this.prisma.item.findFirst({ where: { setNumber: dto.itemId } });
+    }
+    
+    if (!item) throw new NotFoundException('Каталожний набір не знайдено за введеним ID або Артикулом');
 
     const expectedPrice = Number(dto.expectedPrice);
     const commissionRate = dto.tradeType === 'c2c' ? 5.0 : 0;
@@ -15295,7 +15309,7 @@ export class MarketplaceService {
 
     return this.prisma.inventoryItem.create({
       data: {
-        itemId: dto.itemId,
+        itemId: item.id,
         titleSnapshot: item.title,
         purchasePrice: 0,
         totalCost: 0,
@@ -15358,7 +15372,6 @@ export class MarketplaceService {
     if (!item) throw new NotFoundException('Listing not found');
 
     return this.prisma.$transaction(async (tx) => {
-      // ЛОГІКА C2B (ШВИДКИЙ ВИКУП)
       if (item.approvalStatus === 'pending_buyout') {
         const updatedItem = await tx.inventoryItem.update({
           where: { id: inventoryItemId },
@@ -15395,7 +15408,6 @@ export class MarketplaceService {
         return updatedItem;
       } 
       
-      // ЛОГІКА C2C (МАРКЕТПЛЕЙС)
       return tx.inventoryItem.update({
         where: { id: inventoryItemId },
         data: { approvalStatus: 'approved' },
@@ -15411,12 +15423,10 @@ export class MarketplaceService {
   }
 
   async getSellerFinance(sellerId: string) {
-    // Всі продажі користувача як стороннього селера
     const sales = await this.prisma.sale.findMany({
       where: { isMarketplaceSale: true, inventoryItem: { sellerId } },
     });
 
-    // Всі запити на виведення коштів
     const payoutRequests = await this.prisma.payoutRequest.findMany({
       where: { sellerId },
       orderBy: { createdAt: 'desc' },
@@ -18813,9 +18823,8 @@ import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymentsService {
-  private readonly monoToken = process.env.MONOBANK_TOKEN!;
-  private readonly storeUrl = process.env.PUBLIC_STORE_BASE_URL!;
-  private readonly apiUrl = process.env.API_BASE!;
+  private readonly monoToken = process.env.MONOBANK_TOKEN;
+  private readonly apiUrl = process.env.API_BASE || 'https://arcturus-api-idsb.onrender.com/api/v1';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -18824,7 +18833,12 @@ export class PaymentsService {
     private readonly redis: RedisService,
   ) {}
 
-async createCheckoutSession(orderId: string): Promise<{ url: string }> {
+  private getStoreUrl(): string {
+    const url = process.env.PUBLIC_STORE_BASE_URL;
+    return url && url !== 'undefined' ? url : 'https://www.arcturusbuild.com';
+  }
+
+  async createCheckoutSession(orderId: string): Promise<{ url: string }> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
     });
@@ -18837,7 +18851,18 @@ async createCheckoutSession(orderId: string): Promise<{ url: string }> {
       throw new BadRequestException('Invalid order price for checkout');
     }
 
-    // Для LiqPay або Monobank нам треба відправити суму в копійках
+    const storeUrl = this.getStoreUrl();
+
+    // Якщо немає токена Монобанку в .env — імітуємо платіж
+    if (!this.monoToken || this.monoToken === '') {
+      console.warn('[PaymentsService] MONOBANK_TOKEN is missing. Emulating payment success redirect.');
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: { status: 'paid' },
+      });
+      return { url: `${storeUrl}/success?orderId=${order.id}` };
+    }
+
     const amountKopecks = toCents(order.sellPrice);
 
     const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
@@ -18850,7 +18875,7 @@ async createCheckoutSession(orderId: string): Promise<{ url: string }> {
         amount: amountKopecks,
         ccy: 980,
         reference: order.id,
-        redirectUrl: `${this.storeUrl}/success?orderId=${order.id}`, // Додали orderId в редірект
+        redirectUrl: `${storeUrl}/success?orderId=${order.id}`,
         webHookUrl: `${this.apiUrl}/payments/webhook`,
         merchantPaymInfo: {
           reference: order.id,
@@ -18899,6 +18924,7 @@ async createCheckoutSession(orderId: string): Promise<{ url: string }> {
   }
 
   async getMonoPubKey(): Promise<string> {
+    if (!this.monoToken) return '';
     let pubKeyBase64 = await this.redis.get<string>('mono_pubkey');
     if (!pubKeyBase64) {
       const keyRes = await fetch('https://api.monobank.ua/api/merchant/pubkey', {
@@ -18913,6 +18939,8 @@ async createCheckoutSession(orderId: string): Promise<{ url: string }> {
   }
 
   async handleWebhook(body: any, xSignBase64?: string): Promise<{ received: boolean }> {
+    if (!this.monoToken) return { received: true };
+
     if (!xSignBase64) throw new BadRequestException('Missing X-Sign header');
 
     let pubKeyBase64 = await this.getMonoPubKey();
@@ -18934,7 +18962,6 @@ async createCheckoutSession(orderId: string): Promise<{ url: string }> {
   }
 
   private async processSuccessfulPayment(orderId: string, amountTotalKopecks: number): Promise<void> {
-    // ФІКС: Ідемпотентність. Якщо вебхук прийшов вдруге - ігноруємо
     const existingOrder = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!existingOrder || existingOrder.status === 'paid' || existingOrder.status === 'sold') {
       return; 
@@ -19910,14 +19937,19 @@ import * as crypto from 'crypto';
 
 @Injectable()
 export class ProService {
-  private readonly monoToken = process.env.MONOBANK_TOKEN!;
-  private readonly storeUrl = process.env.PUBLIC_STORE_BASE_URL!;
-  private readonly apiUrl = process.env.API_BASE!;
+  private readonly monoToken = process.env.MONOBANK_TOKEN;
+  private readonly apiUrl = process.env.API_BASE || 'https://arcturus-api-idsb.onrender.com/api/v1';
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService
   ) {}
+
+  // Захищений метод отримання базового URL фронтенду
+  private getStoreUrl(): string {
+    const url = process.env.PUBLIC_STORE_BASE_URL;
+    return url && url !== 'undefined' ? url : 'https://www.arcturusbuild.com';
+  }
 
   async createSubscriptionPayment(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -19925,6 +19957,27 @@ export class ProService {
 
     const amountKopecks = 50000; 
     const reference = `sub_${userId}_${Date.now()}`;
+    const storeUrl = this.getStoreUrl();
+
+    // Емуляція оплати, якщо немає токена Монобанку
+    if (!this.monoToken || this.monoToken === '') {
+      console.warn('[ProService] MONOBANK_TOKEN is missing. Emulating payment success.');
+      
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { isPro: true, proExpiresAt: expiresAt }
+      });
+      
+      const pipeline = this.redis.getClient().pipeline();
+      const sessions = await this.prisma.userSession.findMany({ where: { userId } });
+      for (const s of sessions) pipeline.del(`session:${s.tokenHash}`);
+      await pipeline.exec();
+      
+      return { url: `${storeUrl}/pro/success` };
+    }
 
     const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
       method: 'POST',
@@ -19936,7 +19989,7 @@ export class ProService {
         amount: amountKopecks,
         ccy: 980,
         reference,
-        redirectUrl: `${this.storeUrl}/pro/success`,
+        redirectUrl: `${storeUrl}/pro/success`,
         webHookUrl: `${this.apiUrl}/pro/webhook`,
         merchantPaymInfo: {
           reference,
@@ -20970,6 +21023,11 @@ export class PublicStoreController {
     });
   }
 
+  @Get('themes')
+  getThemes(): Promise<string[]> {
+    return this.publicStoreService.getThemes();
+  }
+
   @Get('catalog/:slug')
   getCatalogItem(@Param('slug') slug: string): Promise<unknown> {
     return this.publicStoreService.getCatalogItemBySlug(slug);
@@ -21061,7 +21119,6 @@ export class PublicStoreModule {}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\public\public-store.service.ts =====
 
-// call:function_1{"queries":["backend/apps/api/src/modules/public/public-store.service.ts"]}
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { toMoney } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
@@ -21094,7 +21151,28 @@ export class PublicStoreService {
     if (sort === 'price_desc') return { expectedSalePriceManual: 'desc' };
     if (sort === 'title_asc') return { titleSnapshot: 'asc' };
     if (sort === 'title_desc') return { titleSnapshot: 'desc' };
-    return { createdAt: 'desc' };
+    return { expectedSalePriceManual: 'asc' };
+  }
+
+  async getThemes(): Promise<string[]> {
+    const items = await this.prisma.item.findMany({
+      where: { 
+        theme: { not: null },
+        inventoryItems: {
+          some: {
+            quantity: { gt: 0 },
+            OR: [
+              { isMarketplace: false },
+              { isMarketplace: true, approvalStatus: 'approved' }
+            ]
+          }
+        }
+      },
+      select: { theme: true },
+      distinct: ['theme'],
+      orderBy: { theme: 'asc' },
+    });
+    return items.map((i) => i.theme).filter(Boolean) as string[];
   }
 
   async getCatalog(params: { q?: string; type?: string; availableOnly?: boolean; theme?: string; sort?: string; limit?: number; seller?: string }): Promise<unknown[]> {
@@ -21132,6 +21210,7 @@ export class PublicStoreService {
         totalCost: true,
         quantity: true,
         condition: true,
+        sealed: true,
         item: { select: { title: true, theme: true, setNumber: true, kind: true } },
         images: { where: { isPrimary: true }, take: 1, select: { imageUrl: true } },
       },
@@ -21147,28 +21226,43 @@ export class PublicStoreService {
   }
 
   async getCatalogItemBySlug(slug: string): Promise<unknown | null> {
-    const normalized = slug.trim().toLowerCase();
+    const match = slug.match(/-id-([a-zA-Z0-9_]+)$/i);
+    const extractedId = match ? match[1] : null;
 
+    if (extractedId) {
+      const exact = await this.prisma.inventoryItem.findFirst({
+        where: { id: extractedId },
+        include: {
+          item: true,
+          images: { orderBy: { sortOrder: 'asc' } },
+          assignedUser: true,
+          seller: { select: { id: true, name: true } }, 
+        }
+      });
+      if (exact && (exact.quantity > 0 || exact.approvalStatus === 'approved')) {
+        return exact;
+      }
+    }
+
+    const normalized = slug.trim().toLowerCase();
     const all = await this.prisma.inventoryItem.findMany({
       where: { quantity: { gt: 0 }, OR: [{ isMarketplace: false }, { isMarketplace: true, approvalStatus: 'approved' }] },
       include: {
         item: true,
         images: { orderBy: { sortOrder: 'asc' } },
         assignedUser: true,
-        seller: { select: { id: true, name: true } },
+        seller: { select: { id: true, name: true } }, 
       },
       take: 500,
     });
 
-    const found = all.find((entry) => {
+    const slugMatch = all.find((entry) => {
       const title = entry.titleSnapshot || entry.item?.title || entry.id;
       const generated = this.slugify(title);
-      const generatedWithId = `${generated}-${entry.id.slice(-6).toLowerCase()}`;
-      
-      return generated === normalized || entry.id === normalized || generatedWithId === normalized;
+      return generated === normalized || entry.id.toLowerCase() === normalized;
     });
 
-    return found ?? null;
+    return slugMatch ?? null;
   }
 
   async trackOrder(query: string): Promise<unknown> {
@@ -27296,10 +27390,15 @@ import { toMoney } from '@arcturus/shared';
 
 @Injectable()
 export class VaultService {
-  private readonly monoToken = process.env.MONOBANK_TOKEN!;
-  private readonly apiUrl = process.env.API_BASE!;
+  private readonly monoToken = process.env.MONOBANK_TOKEN;
+  private readonly apiUrl = process.env.API_BASE || 'https://arcturus-api-idsb.onrender.com/api/v1';
 
   constructor(private readonly prisma: PrismaService) {}
+
+  private getStoreUrl(): string {
+    const url = process.env.PUBLIC_STORE_BASE_URL;
+    return url && url !== 'undefined' ? url : 'https://www.arcturusbuild.com';
+  }
 
   async getBalance(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -27319,6 +27418,22 @@ export class VaultService {
   async createDepositLink(userId: string, amount: number) {
     const amountKopecks = toMoney(amount) * 100;
     const reference = `vault_${userId}_${Date.now()}`;
+    const storeUrl = this.getStoreUrl();
+
+    // Якщо немає токена Монобанку в .env — імітуємо платіж 
+    if (!this.monoToken || this.monoToken === '') {
+       console.warn('[VaultService] MONOBANK_TOKEN is missing. Emulating payment success.');
+       await this.prisma.$transaction([
+        this.prisma.user.update({
+          where: { id: userId },
+          data: { vaultBalance: { increment: amount } }
+        }),
+        this.prisma.vaultTransaction.create({
+          data: { userId, amount: amount, type: 'deposit', description: 'Simulated Local Deposit' }
+        })
+       ]);
+       return { url: `${storeUrl}/vault?success=true` };
+    }
 
     const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
       method: 'POST',
@@ -27327,6 +27442,7 @@ export class VaultService {
         amount: amountKopecks,
         ccy: 980,
         reference,
+        redirectUrl: `${storeUrl}/vault`,
         webHookUrl: `${this.apiUrl}/vault/webhook`,
         merchantPaymInfo: { reference, destination: 'Deposit to Arcturus Vault' }
       }),

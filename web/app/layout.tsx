@@ -53,7 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] font-sans antialiased selection:bg-blue-500/30 selection:text-blue-600 dark:selection:text-blue-400">
+      <body suppressHydrationWarning className="min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] font-sans antialiased selection:bg-blue-500/30 selection:text-blue-600 dark:selection:text-blue-400">
         <SWRProvider>
           <ThemeProvider>
             <I18nProvider>
