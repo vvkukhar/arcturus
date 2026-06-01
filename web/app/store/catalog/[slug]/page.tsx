@@ -9,6 +9,7 @@ import { Metadata, ResolvingMetadata } from 'next';
 import { AddToCartButton } from './add-to-cart-button';
 import { ConversionEngine } from '@/components/store/conversion-engine';
 import { ProductPageOfferButton } from './product-page-offer-button';
+import { cn } from '@/lib/utils';
 
 interface ProductDetail {
   id: string;
@@ -105,23 +106,23 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         {/* ЛІВА ЧАСТИНА - ФОТО */}
         <div className="lg:col-span-7">
           <div className="sticky top-28">
-            {/* 🔥 ФІКС: Студійний білий фон, щоб mix-blend-multiply ідеально розчинив рамки фотографії */}
             <div className="relative aspect-square w-full rounded-[3rem] border border-[var(--border)] bg-white overflow-hidden shadow-2xl flex items-center justify-center group transition-colors duration-500">
               
-              <div className="absolute inset-0 bg-gradient-to-br from-white to-slate-100 z-0 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100 z-0 pointer-events-none" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-blue-200 blur-[100px] rounded-full z-0 opacity-40 group-hover:opacity-60 transition-opacity duration-700 pointer-events-none" />
 
               {displayImage ? (
                 <Image 
                   src={displayImage} 
                   alt={title} 
                   fill 
-                  // 🔥 ФІКС: object-contain (щоб влізло повністю), великі відступи (p-8 sm:p-16) і mix-blend-multiply
-                  className="object-contain p-8 sm:p-16 drop-shadow-2xl hover:scale-105 transition-transform duration-700 ease-out-expo z-10 mix-blend-multiply" 
+                  // 🔥 ФІКС ТУТ: Прибрали величезні відступи, поставили p-2 sm:p-4 щоб картинка була на весь екран
+                  className="object-contain p-2 sm:p-4 drop-shadow-2xl hover:scale-105 transition-transform duration-700 ease-out-expo z-10 mix-blend-multiply" 
                   priority 
                   sizes="(max-width: 1024px) 100vw, 60vw" 
                 />
               ) : (
-                <div className="flex flex-col h-full w-full items-center justify-center text-slate-300 z-10">
+                <div className="flex flex-col h-full w-full items-center justify-center text-slate-300 dark:text-slate-400 z-10">
                   <Package className="h-24 w-24 mb-4" strokeWidth={1} />
                   <span className="font-bold uppercase tracking-widest text-xs">Зображення очікується</span>
                 </div>
@@ -171,7 +172,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               </div>
               <div>
                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Артикул</div>
-                <div className="font-black text-lg text-[var(--foreground)] leading-tight mt-0.5">{product.item?.setNumber || 'N/A'}</div>
+                <div className="font-bold text-lg text-[var(--foreground)] leading-tight mt-0.5">{product.item?.setNumber || 'N/A'}</div>
               </div>
             </div>
             <div className="bg-[var(--card)] border border-[var(--border)] p-5 rounded-[1.5rem] shadow-sm flex items-start gap-4 hover:border-purple-500/30 transition-colors group">
