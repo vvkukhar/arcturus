@@ -1,3 +1,4 @@
+// call:function_1{"queries":["web/app/layout.tsx"]}
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -8,6 +9,7 @@ import { SidebarProvider } from "@/components/providers/sidebar-provider";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { ClientLayoutWrapper } from "@/components/layout/client-layout-wrapper";
 import { SWRProvider } from "@/components/providers/swr-provider";
+import { Toaster } from 'sonner'; // 🔥 ДОДАЛИ ІМПОРТ
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -63,6 +65,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <ClientLayoutWrapper>
                       {children}
                     </ClientLayoutWrapper>
+                    {/* 🔥 ДОДАЛИ ВІЗУАЛЬНИЙ ТОСТЕР */}
+                    <Toaster position="top-right" richColors theme="system" />
                   </ToastProvider>
                 </SidebarProvider>
               </CartProvider>

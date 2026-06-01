@@ -38,7 +38,6 @@ export default function AdminOrdersListPage() {
   };
 
   const handleBulkTTN = async () => {
-    // 🔥 ФІКС: Відправляємо на бекенд тільки ті ID, в яких ще немає ТТН
     const validIds = Array.from(selectedIds).filter(id => {
       const order = rows.find(r => r.id === id);
       return order && !order.adminNote?.includes('[TTN:');
@@ -56,11 +55,11 @@ export default function AdminOrdersListPage() {
         body: JSON.stringify({ orderIds: validIds })
       });
       
-      toast.success(`Успішно згенеровано ТТН для ${res.success} замовлень!`);
+      // 🔥 ФІКС ТУТ: res.data?.success
+      toast.success(`Успішно згенеровано ТТН для ${res.data?.success ?? 0} замовлень!`);
       setSelectedIds(new Set());
       mutate();
     } catch (err: any) {
-      // Якщо немає АПІ Ключа, він красиво напише про це у тості
       toast.error(err.message || 'Помилка при генерації ТТН');
     } finally {
       setProcessing(false);
@@ -68,7 +67,6 @@ export default function AdminOrdersListPage() {
   };
 
   const handlePrintPDF = async () => {
-    // 🔥 ФІКС: Відправляємо на друк тільки ті ID, де ТТН вже створено
     const validIds = Array.from(selectedIds).filter(id => {
       const order = rows.find(r => r.id === id);
       return order && order.adminNote?.includes('[TTN:');
