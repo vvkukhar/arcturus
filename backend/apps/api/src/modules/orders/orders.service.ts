@@ -91,7 +91,6 @@ export class OrdersService {
     if (!orderIds || orderIds.length === 0) throw new BadRequestException('No order IDs provided');
 
     const orders = await this.prisma.order.findMany({
-      // 🔥 ФІКС: Дозволяємо генерацію ТТН для pending, approved, contacted та paid!
       where: { id: { in: orderIds }, status: { in: ['pending', 'approved', 'contacted', 'paid'] } },
     });
 
@@ -108,13 +107,18 @@ export class OrdersService {
 
       try {
         const parts = order.buyerName.split(' ');
+        
+        // 🔥 ФІКС ТУТ: Форматуємо телефон для НП (лише цифри, формат 380...)
+        let cleanPhone = order.contact.replace(/[^\d]/g, '');
+        if (cleanPhone.startsWith('0')) cleanPhone = '38' + cleanPhone;
+        if (cleanPhone.length > 12) cleanPhone = cleanPhone.slice(0, 12);
+
         const ttn = await this.novaPoshta.createExpressWaybill({
           orderId: order.id,
           firstName: parts[0] || 'Клієнт',
-          lastName: parts[1] || '',
-          phone: order.contact.replace(/[^\d+]/g, '').slice(0, 13),
-          cityRecipient: 'Київ',
-          warehouseRecipient: 'Відділення №1',
+          lastName: parts.slice(1).join(' ') || 'Покупець',
+          phone: cleanPhone,
+          deliveryString: order.adminNote || '', // Передаємо весь текст адреси
           weight: 2.5,
           cost: order.sellPrice ?? 2000
         });

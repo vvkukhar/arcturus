@@ -16,18 +16,34 @@ export class NovaPoshtaService {
     private readonly activity: ActivityService,
   ) {}
 
+  // 🔥 Хелпер для зручних запитів до АПІ НП
+  private async npRequest(model: string, method: string, props: any = {}) {
+    const res = await fetch(this.apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: this.apiKey,
+        modelName: model,
+        calledMethod: method,
+        methodProperties: props
+      })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.errors.join(', '));
+    return data.data;
+  }
+
   async createExpressWaybill(params: {
     orderId: string;
     firstName: string;
     lastName: string;
     phone: string;
-    cityRecipient: string;
-    warehouseRecipient: string;
+    deliveryString: string;
     weight: number;
     cost: number;
   }): Promise<string> {
     if (!this.apiKey) {
-      throw new BadRequestException('NOVA_POSHTA_API_KEY is missing in environment variables');
+      throw new BadRequestException('NOVA_POSHTA_API_KEY is missing');
     }
 
     const citySender = process.env.NP_CITY_SENDER_REF;
@@ -37,51 +53,70 @@ export class NovaPoshtaService {
     const senderPhone = process.env.NP_SENDER_PHONE;
 
     if (!citySender || !sender || !senderAddress || !contactSender || !senderPhone) {
-      throw new BadRequestException('Не налаштовані всі параметри відправника Нової Пошти (REF коди) у змінних оточення.');
+      throw new BadRequestException('В .env не налаштовано REF-коди відправника НП');
     }
 
-    const payload = {
-      apiKey: this.apiKey,
-      modelName: 'InternetDocument',
-      calledMethod: 'save',
-      methodProperties: {
-        PayerType: 'Recipient',
-        PaymentMethod: 'Cash',
-        DateTime: new Date().toLocaleDateString('uk-UA').replace(/\./g, '.'),
-        CargoType: 'Cargo',
-        VolumeGeneral: '0.01',
-        Weight: params.weight.toString(),
-        ServiceType: 'WarehouseWarehouse',
-        SeatsAmount: '1',
-        Description: `LEGO Order ${params.orderId}`,
-        Cost: params.cost.toString(),
-        CitySender: citySender,
-        Sender: sender,
-        SenderAddress: senderAddress,
-        ContactSender: contactSender,
-        SendersPhone: senderPhone,
-        RecipientCityName: params.cityRecipient,
-        RecipientArea: '',
-        RecipientAreaRegions: '',
-        AddressRecipient: params.warehouseRecipient,
-        RecipientsPhone: params.phone,
-        RecipientName: `${params.firstName} ${params.lastName}`
-      }
-    };
+    // 1. Парсимо `deliveryString` (рядок виду: "... Delivery: Хмельницький, Хмельницька обл., Відділення №28 ...")
+    let cityName = 'Київ';
+    let warehouseStr = '1';
 
-    const response = await fetch(this.apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    if (params.deliveryString && params.deliveryString.includes('Delivery:')) {
+      const deliveryPart = params.deliveryString.split('Delivery:')[1].trim();
+      const parts = deliveryPart.split(',');
+      if (parts.length > 0) cityName = parts[0].trim();
+      
+      const match = deliveryPart.match(/№\s*(\d+)/);
+      if (match) warehouseStr = match[1];
+    }
+
+    // 2. Шукаємо REF Міста
+    const cities = await this.npRequest('Address', 'getCities', { FindByString: cityName });
+    if (!cities || cities.length === 0) throw new BadRequestException(`Місто ${cityName} не знайдено в базі НП`);
+    const cityRef = cities[0].Ref;
+
+    // 3. Шукаємо REF Відділення
+    const warehouses = await this.npRequest('Address', 'getWarehouses', { CityRef: cityRef, FindByString: warehouseStr });
+    if (!warehouses || warehouses.length === 0) throw new BadRequestException(`Відділення №${warehouseStr} не знайдено в місті ${cityName}`);
+    const warehouseRef = warehouses[0].Ref;
+
+    // 4. Створюємо або отримуємо існуючого Контрагента-Отримувача (PrivatePerson)
+    const counterpartyRes = await this.npRequest('Counterparty', 'save', {
+      FirstName: params.firstName,
+      LastName: params.lastName || 'Клієнт',
+      Phone: params.phone, // Формат: 380...
+      Email: '',
+      CounterpartyType: 'PrivatePerson',
+      CounterpartyProperty: 'Recipient'
     });
 
-    const data = await response.json();
-    
-    if (!data.success) {
-      throw new BadRequestException(`Помилка НП: ${data.errors.join(', ')}`);
-    }
+    const recipientRef = counterpartyRes[0].Ref;
+    const contactRecipientRef = counterpartyRes[0].ContactPerson.data[0].Ref;
 
-    return data.data[0].IntDocNumber;
+    // 5. Генеруємо фінальну ТТН
+    const documentRes = await this.npRequest('InternetDocument', 'save', {
+      PayerType: 'Recipient',
+      PaymentMethod: 'Cash',
+      DateTime: new Date().toLocaleDateString('uk-UA').replace(/\./g, '.'),
+      CargoType: 'Cargo',
+      VolumeGeneral: '0.01',
+      Weight: params.weight.toString(),
+      ServiceType: 'WarehouseWarehouse',
+      SeatsAmount: '1',
+      Description: `LEGO Order ${params.orderId.slice(-6)}`,
+      Cost: params.cost.toString(),
+      CitySender: citySender,
+      Sender: sender,
+      SenderAddress: senderAddress,
+      ContactSender: contactSender,
+      SendersPhone: senderPhone,
+      CityRecipient: cityRef,
+      Recipient: recipientRef,
+      RecipientAddress: warehouseRef,
+      ContactRecipient: contactRecipientRef,
+      RecipientsPhone: params.phone,
+    });
+
+    return documentRes[0].IntDocNumber;
   }
 
   async getBulkPdfLink(ttns: string[]): Promise<string> {
@@ -104,7 +139,6 @@ export class NovaPoshtaService {
 
       if (!order) return { ok: true }; 
 
-      // 9, 10, 11 - Отримано
       if (['9', '10', '11'].includes(String(stateId))) {
          if (order.status !== 'sold' && order.status !== 'paid') {
            await this.prisma.$transaction(async (tx) => {
@@ -123,7 +157,6 @@ export class NovaPoshtaService {
          }
       }
 
-      // 103, 104, 106 - Відмова
       if (['103', '104', '106'].includes(String(stateId))) {
          if (order.status !== 'cancelled') {
            await this.prisma.$transaction(async (tx) => {
