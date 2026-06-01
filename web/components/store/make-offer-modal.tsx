@@ -72,8 +72,8 @@ export function MakeOfferModal({ isOpen, onClose, inventoryItemId, productTitle,
         {/* Декоративне неонове світіння */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] pointer-events-none -translate-y-1/2 translate-x-1/2" />
 
-        {/* Кнопка закриття */}
-        <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-[var(--background)] hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 transition-colors z-10">
+        {/* Кнопка закриття (Хрестик) */}
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-[var(--background)] border border-[var(--border)] hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 hover:text-[var(--foreground)] transition-colors z-10">
           <X size={20} />
         </button>
 
@@ -92,7 +92,7 @@ export function MakeOfferModal({ isOpen, onClose, inventoryItemId, productTitle,
         <div className="mb-8 p-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] flex justify-between items-center relative overflow-hidden group">
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-300 dark:bg-slate-700" />
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 pl-2">Поточна ціна</span>
-          <span className="text-2xl font-black text-slate-400 line-through decoration-2 decoration-red-500/50">
+          <span className="text-2xl font-black text-[var(--foreground)]">
             {formatMoney(currentPrice)}
           </span>
         </div>
@@ -138,8 +138,8 @@ export function MakeOfferModal({ isOpen, onClose, inventoryItemId, productTitle,
             </div>
           </div>
 
-          {/* Кнопка відправки */}
-          <div className="pt-2">
+          {/* Кнопки */}
+          <div className="pt-2 flex flex-col gap-3">
             <Button 
               type="submit" 
               disabled={loading || !amount || Number(amount) >= currentPrice} 
@@ -148,6 +148,14 @@ export function MakeOfferModal({ isOpen, onClose, inventoryItemId, productTitle,
               {loading ? <Loader2 className="animate-spin" size={24} /> : <Award size={24} />}
               Надіслати пропозицію
             </Button>
+            
+            <button 
+              type="button" 
+              onClick={onClose}
+              className="w-full py-3 text-sm font-bold text-slate-500 hover:text-[var(--foreground)] transition-colors"
+            >
+              Скасувати
+            </button>
           </div>
         </form>
       </div>
