@@ -9,6 +9,7 @@ import { Metadata, ResolvingMetadata } from 'next';
 import { AddToCartButton } from './add-to-cart-button';
 import { ConversionEngine } from '@/components/store/conversion-engine';
 import { ProductPageOfferButton } from './product-page-offer-button';
+import { cn } from '@/lib/utils';
 
 interface ProductDetail {
   id: string;
@@ -105,7 +106,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         {/* ЛІВА ЧАСТИНА - ФОТО */}
         <div className="lg:col-span-7">
           <div className="sticky top-28">
-            {/* ФІКС: Змінили фон на адаптивний (bg-card), прибрали паддінги, додали світіння */}
             <div className="relative aspect-square w-full rounded-[3rem] border border-[var(--border)] bg-[var(--card)] overflow-hidden shadow-2xl flex items-center justify-center group transition-colors duration-500">
               
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 z-0 pointer-events-none" />
@@ -116,7 +116,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                   src={displayImage} 
                   alt={title} 
                   fill 
-                  // ФІКС: p-2 замість p-8 (зображення на всю ширину)
                   className="object-contain p-2 sm:p-4 drop-shadow-2xl hover:scale-105 transition-transform duration-700 ease-out-expo z-10 mix-blend-multiply dark:mix-blend-normal" 
                   priority 
                   sizes="(max-width: 1024px) 100vw, 60vw" 
@@ -129,11 +128,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               )}
               
               <div className="absolute top-6 left-6 z-20 flex flex-col gap-2">
-                <span className="inline-flex items-center px-4 py-2 rounded-xl bg-[var(--background)]/80 backdrop-blur-md text-xs font-black uppercase tracking-widest text-[var(--foreground)] shadow-md border border-[var(--border)]">
+                {/* 🔥 ФІКС ТУТ: Темний фон, білий текст, розмиття, гарний бордер */}
+                <span className="inline-flex items-center px-4 py-2 rounded-xl bg-black/80 backdrop-blur-md text-xs font-black uppercase tracking-widest text-white shadow-xl border border-white/10">
                   {theme}
                 </span>
                 {product.sealed && (
-                  <span className="inline-flex items-center w-fit px-4 py-2 rounded-xl bg-blue-600/90 backdrop-blur-md text-xs font-black uppercase tracking-widest text-white shadow-md border border-blue-500">
+                  <span className="inline-flex items-center w-fit px-4 py-2 rounded-xl bg-blue-600/90 backdrop-blur-md text-xs font-black uppercase tracking-widest text-white shadow-xl border border-blue-500/50">
                     Sealed
                   </span>
                 )}
