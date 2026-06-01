@@ -196,21 +196,28 @@ export class PublicStoreService {
     return order;
   }
 
-  async createReserve(params: { inventoryItemId?: string | null; productTitle?: string; name: string; contact: string; message?: string | null }): Promise<unknown> {
+  async createReserve(params: { inventoryItemId?: string | null; productTitle?: string; name: string; contact: string; message?: string | null; quantity?: number }): Promise<unknown> {
     const name = params.name.trim();
     const contact = params.contact.trim();
     const message = params.message?.trim() ?? '';
     let productTitle = params.productTitle?.trim() ?? '';
     let inventoryItemId = params.inventoryItemId;
 
+    // 🔥 ФІКС ТУТ: Визначаємо фінальну ціну та кількість
+    let finalPrice: number | null = null;
+    let finalQty = params.quantity && params.quantity > 0 ? params.quantity : 1;
+
     if (inventoryItemId) {
       const inventoryItem = await this.prisma.inventoryItem.findUnique({
         where: { id: inventoryItemId },
-        select: { titleSnapshot: true, id: true, expectedSalePriceManual: true, quantity: true, item: { select: { title: true } } },
+        select: { titleSnapshot: true, id: true, expectedSalePriceManual: true, totalCost: true, quantity: true, item: { select: { title: true } } },
       });
       if (!inventoryItem) throw new NotFoundException('Inventory item not found');
-      if (inventoryItem.quantity < 1) throw new BadRequestException('Item is out of stock');
+      if (inventoryItem.quantity < finalQty) throw new BadRequestException('Item is out of stock');
+      
       productTitle = productTitle || inventoryItem.titleSnapshot || inventoryItem.item?.title || inventoryItem.id;
+      // Беремо ціну з бази і множимо на кількість
+      finalPrice = (inventoryItem.expectedSalePriceManual ?? inventoryItem.totalCost ?? 0) * finalQty;
     }
 
     if (!productTitle) throw new BadRequestException('Product title is required');
@@ -227,8 +234,8 @@ export class PublicStoreService {
           buyerName: reserve.name,
           contact: reserve.contact,
           status: 'pending',
-          sellPrice: null, 
-          quantity: 1,
+          sellPrice: finalPrice, // 🔥 ТЕПЕР ЗАПИСУЄМО РЕАЛЬНУ ЦІНУ
+          quantity: finalQty,    // 🔥 ТЕПЕР ЗАПИСУЄМО РЕАЛЬНУ КІЛЬКІСТЬ
           channel: 'public_store',
           adminNote: reserve.message ?? null,
         },
@@ -237,7 +244,7 @@ export class PublicStoreService {
       if (inventoryItemId) {
         await tx.inventoryItem.update({
           where: { id: inventoryItemId },
-          data: { quantity: { decrement: 1 } }
+          data: { quantity: { decrement: finalQty } }
         });
       }
 

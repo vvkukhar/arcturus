@@ -1,5 +1,7 @@
+// call:function_1{"queries":["web/app/api/store/contact/route.ts"]}
 import { NextRequest, NextResponse } from 'next/server';
 import { appConfig } from '@/lib/config';
+
 export async function POST(request: NextRequest) {
  const body = await request.json();
  const response = await fetch(`${appConfig.apiBaseUrl}/public/reserve`, {
@@ -13,9 +15,11 @@ export async function POST(request: NextRequest) {
    name: body.name,
    contact: body.contact,
    message: body.message,
+   quantity: body.quantity, // 🔥 Додали кількість
   }),
   cache: 'no-store',
  });
+
  if (!response.ok) {
   return NextResponse.json(
    { ok: false, error: `Reserve failed: ${response.status}` },

@@ -46,7 +46,8 @@ const handleCheckout = useCallback(async (e: React.FormEvent) => {
             productTitle: item.title,
             name: buyerName.trim(),
             contact: contactInfo.trim(),
-            message: `Order from Cart (Qty: ${item.quantity}). Delivery: ${city}, ${branch}`
+            message: `Order from Cart (Qty: ${item.quantity}). Delivery: ${city}, ${branch}`,
+            quantity: item.quantity // 🔥 Передаємо кількість на бекенд
           }),
         })
       );
