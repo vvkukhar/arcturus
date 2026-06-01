@@ -25,11 +25,8 @@ model User {
   apiKey                 String?            @unique
   apiTier                String?            @default("none") 
   vaultBalance           Float              @default(0)
-  
   referralCode           String?            @unique
   referredById           String?
-  affiliateBalance       Float              @default(0)
-
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @default(now()) @updatedAt
   
@@ -51,12 +48,12 @@ model User {
   fundedItems            InventoryItem[]    @relation("InvestorItems")
   b2bWebhooks            B2bWebhook[]
   liveBids               LiveBid[]
-  
   referredUsers          User[]             @relation("UserReferrals")
   referrer               User?              @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
   affiliateRewards       AffiliateReward[]
   promotedListings       PromotedListing[]
   mysteryBoxesBought     MysteryBox[]
+  promoCodes             PromoCode[]
 
   @@index([role, active])
   @@index([active])
@@ -64,13 +61,27 @@ model User {
   @@index([referralCode])
 }
 
+model PromoCode {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  discountPercent Int
+  userId          String
+  isUsed          Boolean  @default(false)
+  validUntil      DateTime?
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isUsed])
+  @@index([code])
+}
+
 model AffiliateReward {
   id          String   @id @default(cuid())
   userId      String
   sourceId    String   
   sourceType  String   
-  amount      Float
-  status      String   @default("pending")
+  amount      Int      
+  status      String   @default("credited")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -577,7 +588,7 @@ model Order {
   buyerName        String
   contact          String
   status           String          @default("pending")
-  deliveryStatus   String?         // 🔥 ДОДАНО ДЛЯ ЛАЙВ СТАТУСІВ НП
+  deliveryStatus   String?         
   sellPrice        Float?
   quantity         Int             @default(1)
   channel          String?

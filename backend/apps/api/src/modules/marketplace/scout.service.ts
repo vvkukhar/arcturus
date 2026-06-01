@@ -44,21 +44,6 @@ export class ScoutService {
     });
   }
 
-  async getScoutEfficiency() {
-    return this.prisma.user.findMany({
-      where: { role: 'viewer' }, 
-      select: {
-        id: true,
-        name: true,
-        points: true,
-        _count: {
-          select: { scoutLeads: true }
-        }
-      },
-      orderBy: { points: 'desc' }
-    });
-  }
-
   async getAllLeads() {
     return this.prisma.scoutLead.findMany({
       include: { scout: true },
@@ -73,7 +58,7 @@ export class ScoutService {
     });
   }
 
-  async approveLead(leadId: string, baseReward: number) {
+  async approveLead(leadId: string, baseRewardAC: number) {
     const lead = await this.prisma.scoutLead.findUnique({ where: { id: leadId } });
     if (!lead) throw new NotFoundException('Lead not found');
 
@@ -91,7 +76,7 @@ export class ScoutService {
       }
     }
 
-    const finalReward = Math.round(baseReward * bestMultiplier);
+    const finalReward = Math.round(baseRewardAC * bestMultiplier);
 
     return this.prisma.$transaction(async (tx) => {
       const updatedLead = await tx.scoutLead.update({
@@ -109,7 +94,7 @@ export class ScoutService {
           userId: lead.scoutId,
           amount: finalReward,
           type: 'earn',
-          description: `Reward for lead ${leadId} (x${bestMultiplier} multiplier applied)`
+          description: `Bounty for lead ${leadId} (x${bestMultiplier} multiplier)`
         }
       });
 

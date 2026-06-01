@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
@@ -9,16 +9,13 @@ export class GamificationService {
     private readonly realtime: RealtimeGateway,
   ) {}
 
-  // Нарахування балів за активність (для рейтингу в таблиці лідерів)
   async awardPoints(userId: string, amount: number, description: string) {
     return this.prisma.$transaction(async (tx) => {
-      // Оновлюємо загальний рахунок користувача
       await tx.user.update({
         where: { id: userId },
         data: { points: { increment: amount } },
       });
 
-      // Логуємо подію для історії (щоб адмін бачив за що бали)
       await tx.pointTransaction.create({
         data: {
           userId,
@@ -28,7 +25,6 @@ export class GamificationService {
         },
       });
 
-      // Сповіщаємо скаута в реальному часі
       this.realtime.emitCustom(`user.${userId}.points_updated`, {
         amount,
         description,
@@ -39,7 +35,6 @@ export class GamificationService {
     });
   }
 
-  // Отримання рейтингової таблиці
   async getLeaderboard(limit: number = 10) {
     const users = await this.prisma.user.findMany({
       where: { points: { gt: 0 } },
@@ -57,8 +52,9 @@ export class GamificationService {
 
     return users.map(user => {
       let rank = 'Rookie';
-      if (user.points >= 5000) rank = 'Master Scout';
-      else if (user.points >= 1000) rank = 'Pro Hunter';
+      if (user.points >= 10000) rank = 'Grandmaster';
+      else if (user.points >= 5000) rank = 'Master Scout';
+      else if (user.points >= 1000) rank = 'Hunter';
 
       const successfulLeads = user.scoutLeads.filter(l => l.status === 'bought').length;
 
@@ -70,6 +66,76 @@ export class GamificationService {
         successfulLeads,
         totalLeads: user.scoutLeads.length
       };
+    });
+  }
+
+  async getMyRewards(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        promoCodes: {
+          where: { isUsed: false, validUntil: { gt: new Date() } },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    if (!user) throw new BadRequestException('User not found');
+
+    let rank = 'Rookie';
+    let nextRankPoints = 1000;
+    if (user.points >= 10000) { rank = 'Grandmaster'; nextRankPoints = user.points; }
+    else if (user.points >= 5000) { rank = 'Master Scout'; nextRankPoints = 10000; }
+    else if (user.points >= 1000) { rank = 'Hunter'; nextRankPoints = 5000; }
+
+    return {
+      points: user.points,
+      rank,
+      nextRankPoints,
+      promoCodes: user.promoCodes
+    };
+  }
+
+  async buyPromoCode(userId: string, discountPercent: number) {
+    const costs: Record<number, number> = { 5: 5000, 10: 12000, 15: 25000 };
+    const cost = costs[discountPercent];
+
+    if (!cost) throw new BadRequestException('Invalid discount tier');
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.points < cost) {
+      throw new BadRequestException('Not enough Arcturus Credits (AC)');
+    }
+
+    const code = `ARC-${discountPercent}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const validUntil = new Date();
+    validUntil.setDate(validUntil.getDate() + 30); 
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { points: { decrement: cost } }
+      });
+
+      await tx.pointTransaction.create({
+        data: {
+          userId,
+          amount: -cost,
+          type: 'spend',
+          description: `Purchased ${discountPercent}% discount promo code`
+        }
+      });
+
+      const promo = await tx.promoCode.create({
+        data: {
+          code,
+          discountPercent,
+          userId,
+          validUntil
+        }
+      });
+
+      return promo;
     });
   }
 }

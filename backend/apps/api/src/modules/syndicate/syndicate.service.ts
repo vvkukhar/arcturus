@@ -1,6 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { toMoney } from '@arcturus/shared';
 
 @Injectable()
 export class SyndicateService {
@@ -48,50 +47,29 @@ export class SyndicateService {
 
     if (!user) throw new NotFoundException('User not found');
 
-    const pendingPayouts = await this.prisma.payoutRequest.aggregate({
-      where: { sellerId: userId, adminNote: { contains: 'Affiliate' }, status: 'pending' },
-      _sum: { amount: true }
-    });
+    const totalAC = user.affiliateRewards.reduce((sum, r) => sum + r.amount, 0);
 
     return {
       referralCode: user.referralCode,
-      balance: user.affiliateBalance,
-      pendingPayout: pendingPayouts._sum.amount || 0,
+      totalEarnedAC: totalAC,
+      currentPoints: user.points,
       referralsCount: user.referredUsers.length,
       referrals: user.referredUsers,
       rewards: user.affiliateRewards
     };
   }
 
-  async processSaleCommission(saleId: string) {
-    const sale = await this.prisma.sale.findUnique({
-      where: { id: saleId },
-      include: { 
-        orders: { include: { reserveRequest: true } }
-      }
-    });
-
-    if (!sale) return;
-
-    let buyerUserId = null;
-    if (sale.orders.length > 0 && sale.orders[0].reserveRequest?.name) {
-       // Logic to map order to user if we eventually link user ids to orders.
-       // For now, Syndicate works best with Vault investments where we have absolute user mapping.
-    }
-
-    return true; 
-  }
-
-  async processVaultSuccessFeeCommission(vaultUserId: string, successFeeAmount: number) {
+  async processVaultSuccessFeeCommission(vaultUserId: string, successFeeAmountUAH: number) {
     const investor = await this.prisma.user.findUnique({ where: { id: vaultUserId } });
-    if (!investor?.referredById || successFeeAmount <= 0) return;
+    if (!investor?.referredById || successFeeAmountUAH <= 0) return;
 
-    const cashback = toMoney(successFeeAmount * 0.05); // 5% of Arcturus success fee goes to the referrer
+    // 1 UAH success fee = 10 AC for referrer
+    const pointsReward = Math.round(successFeeAmountUAH * 10); 
 
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: investor.referredById! },
-        data: { affiliateBalance: { increment: cashback } }
+        data: { points: { increment: pointsReward } }
       });
 
       await tx.affiliateReward.create({
@@ -99,23 +77,33 @@ export class SyndicateService {
           userId: investor.referredById!,
           sourceId: vaultUserId,
           sourceType: 'vault_success_fee',
-          amount: cashback,
+          amount: pointsReward,
           status: 'credited'
+        }
+      });
+      
+      await tx.pointTransaction.create({
+        data: {
+          userId: investor.referredById!,
+          amount: pointsReward,
+          type: 'earn',
+          description: 'Syndicate Network Yield (Vault)'
         }
       });
     });
   }
 
-  async processMarketplaceSaleCommission(sellerId: string, commissionAmount: number) {
+  async processMarketplaceSaleCommission(sellerId: string, commissionAmountUAH: number) {
     const seller = await this.prisma.user.findUnique({ where: { id: sellerId } });
-    if (!seller?.referredById || commissionAmount <= 0) return;
+    if (!seller?.referredById || commissionAmountUAH <= 0) return;
 
-    const cashback = toMoney(commissionAmount * 0.10); // 10% of Arcturus marketplace fee
+    // 1 UAH commission = 20 AC for referrer
+    const pointsReward = Math.round(commissionAmountUAH * 20);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: seller.referredById! },
-        data: { affiliateBalance: { increment: cashback } }
+        data: { points: { increment: pointsReward } }
       });
 
       await tx.affiliateReward.create({
@@ -123,51 +111,19 @@ export class SyndicateService {
           userId: seller.referredById!,
           sourceId: sellerId,
           sourceType: 'marketplace_fee',
-          amount: cashback,
+          amount: pointsReward,
           status: 'credited'
         }
       });
-    });
-  }
-
-  async requestAffiliatePayout(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.affiliateBalance < 100) {
-      throw new BadRequestException('Minimum payout is 100 UAH');
-    }
-
-    if (!user.payoutCard) throw new BadRequestException('Please set a payout card in settings');
-
-    return this.prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: userId },
-        data: { affiliateBalance: 0 }
-      });
-
-      return tx.payoutRequest.create({
+      
+      await tx.pointTransaction.create({
         data: {
-          sellerId: userId,
-          amount: user.affiliateBalance,
-          status: 'pending',
-          cardData: user.payoutCard,
-          adminNote: 'Affiliate Program Payout'
+          userId: seller.referredById!,
+          amount: pointsReward,
+          type: 'earn',
+          description: 'Syndicate Network Yield (Marketplace)'
         }
       });
-    });
-  }
-
-  async getPendingAffiliatePayouts() {
-    return this.prisma.payoutRequest.findMany({
-      where: { status: 'pending', adminNote: { contains: 'Affiliate' } },
-      include: { seller: { select: { id: true, name: true, email: true } } },
-      orderBy: { createdAt: 'desc' }
-    });
-  }
-
-  async approvePayout(id: string) {
-    return this.prisma.payoutRequest.update({
-      where: { id },
-      data: { status: 'paid', updatedAt: new Date() }
     });
   }
 }

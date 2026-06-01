@@ -2,8 +2,7 @@
 
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
-import { Network, Users, DollarSign, ArrowRight, Loader2, Copy, Check } from 'lucide-react';
-import { formatMoney } from '@/lib/format';
+import { Network, Users, DollarSign, Loader2, Copy, Check, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
@@ -46,22 +45,20 @@ export default function SyndicatePage() {
         </div>
         <div>
           <h1 className="text-4xl font-black tracking-tight text-[var(--foreground)]">The Syndicate</h1>
-          <p className="font-medium text-slate-500 mt-1">Партнерська мережа Arcturus. Заробляйте на чужих угодах.</p>
+          <p className="font-medium text-slate-500 mt-1">Будуй мережу партнерів та заробляй Arcturus Credits пасивно.</p>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6 mb-10">
-        <div className="bg-[var(--card)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm">
-          <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-2 flex items-center gap-2"><DollarSign size={14}/> Доступний Баланс</div>
-          <div className="text-4xl font-black text-emerald-500">{formatMoney(dash.balance)}</div>
-        </div>
-        <div className="bg-[var(--card)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm">
-          <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-2 flex items-center gap-2"><Users size={14}/> Ваша Мережа</div>
-          <div className="text-4xl font-black text-blue-600">{dash.referralsCount}</div>
-        </div>
-        <div className="bg-[var(--card)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm">
-          <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-2">В обробці</div>
-          <div className="text-4xl font-black text-slate-400">{formatMoney(dash.pendingPayout)}</div>
+      <div className="grid md:grid-cols-2 gap-6 mb-10">
+        <div className="bg-[var(--card)] p-8 rounded-[2rem] border border-[var(--border)] shadow-sm flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-2 flex items-center gap-2"><Zap size={14}/> Всього Зароблено з Мережі</div>
+            <div className="text-4xl font-black text-emerald-500">{dash.totalEarnedAC} <span className="text-lg">AC</span></div>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-2 flex items-center gap-2 justify-end"><Users size={14}/> Реферали</div>
+            <div className="text-4xl font-black text-blue-600">{dash.referralsCount}</div>
+          </div>
         </div>
       </div>
 
@@ -86,13 +83,13 @@ export default function SyndicatePage() {
           )}
 
           <p className="mt-6 text-sm font-medium text-slate-400 max-w-xl">
-            Поширюйте цей лінк. Коли людина зареєструється за ним і почне продавати товари через наш маркетплейс або інвестувати у Vault — ви автоматично отримуватимете % від нашого прибутку назавжди.
+            Поширюйте цей лінк. Коли людина зареєструється за ним і почне продавати товари через наш маркетплейс або інвестувати у Vault — ви автоматично отримуватимете AC на свій баланс назавжди.
           </p>
         </div>
       </div>
 
       <div>
-        <h3 className="text-xl font-black mb-6">Історія Нарахувань</h3>
+        <h3 className="text-xl font-black mb-6">Історія Нарахувань Мережі</h3>
         <div className="bg-[var(--card)] border border-[var(--border)] rounded-[2rem] overflow-hidden shadow-sm">
           {dash.rewards.length === 0 ? (
             <div className="p-10 text-center text-slate-500 font-medium border-2 border-dashed border-[var(--border)] m-4 rounded-2xl">
@@ -103,7 +100,7 @@ export default function SyndicatePage() {
               {dash.rewards.map((r: any) => (
                 <div key={r.id} className="p-4 flex items-center justify-between hover:bg-[var(--background)]/50 transition-colors">
                   <div>
-                    <div className="font-bold text-[var(--foreground)]">+{formatMoney(r.amount)}</div>
+                    <div className="font-black text-emerald-500">+{r.amount} AC</div>
                     <div className="text-xs text-slate-500 mt-1">{r.sourceType === 'marketplace_fee' ? 'З продажу реферала' : 'З прибутку інвестора Vault'}</div>
                   </div>
                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">

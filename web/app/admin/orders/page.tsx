@@ -12,12 +12,11 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 export default function AdminOrdersListPage() {
-  const { data: orders, isLoading, mutate } = useSWR<any[]>('/api/proxy/orders', swrFetcher, { refreshInterval: 10000 }); // Автооновлення для логістики
+  const { data: orders, isLoading, mutate } = useSWR<any[]>('/api/proxy/orders', swrFetcher, { refreshInterval: 10000 }); 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [processing, setProcessing] = useState(false);
   const [showWeightModal, setShowWeightModal] = useState(false);
   
-  // Для модалки з вагами
   const [globalWeight, setGlobalWeight] = useState('2.5');
   const [individualWeights, setIndividualWeights] = useState<Record<string, string>>({});
 
@@ -134,7 +133,6 @@ export default function AdminOrdersListPage() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 hardware-accelerated pb-10 relative">
       
-      {/* Модалка налаштування ваги */}
       {showWeightModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
           <div className="bg-[var(--card)] border border-[var(--border)] rounded-[2rem] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">

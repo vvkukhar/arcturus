@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Trash2, ArrowRight, ShieldCheck, CreditCard, Loader2, Package } from 'lucide-react';
+import { Trash2, ArrowRight, ShieldCheck, CreditCard, Loader2, Package, Tag } from 'lucide-react';
 import { useCart } from '@/lib/store/cart';
 import { formatMoney } from '@/lib/format';
 import { apiFetch } from '@/lib/api';
@@ -17,12 +17,12 @@ export default function CheckoutPage() {
   const [buyerName, setBuyerName] = useState('');
   const [contactInfo, setContactInfo] = useState('');
   
-  // Додано стейт для Нової Пошти
   const [city, setCity] = useState('');
   const [branch, setBranch] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState('');
 
-const handleCheckout = useCallback(async (e: React.FormEvent) => {
+  const handleCheckout = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (isProcessing || items.length === 0) return;
     
@@ -37,7 +37,6 @@ const handleCheckout = useCallback(async (e: React.FormEvent) => {
         throw new Error('Деякі товари щойно розкупили. Кошик оновлено.');
       }
 
-      // Створюємо масив замовлень для кожного товару
       const requests = currentItems.map(item => 
         apiFetch<ApiResponse<any>>('/api/store/contact', {
           method: 'POST',
@@ -47,7 +46,8 @@ const handleCheckout = useCallback(async (e: React.FormEvent) => {
             name: buyerName.trim(),
             contact: contactInfo.trim(),
             message: `Order from Cart (Qty: ${item.quantity}). Delivery: ${city}, ${branch}`,
-            quantity: item.quantity // 🔥 Передаємо кількість на бекенд
+            quantity: item.quantity,
+            promoCode: promoCode.trim() || undefined
           }),
         })
       );
@@ -61,7 +61,6 @@ const handleCheckout = useCallback(async (e: React.FormEvent) => {
         throw new Error('Не вдалося згенерувати ID замовлення на сервері.');
       }
 
-      // Викликаємо API для створення сесії оплати
       const checkoutResponse = await apiFetch<ApiResponse<{ url: string }>>('/api/store/checkout', {
         method: 'POST',
         body: JSON.stringify({ orderId }),
@@ -71,7 +70,7 @@ const handleCheckout = useCallback(async (e: React.FormEvent) => {
 
       if (paymentUrl) {
         clearCart(); 
-        window.location.href = paymentUrl; // Перекидаємо на Monobank
+        window.location.href = paymentUrl;
       } else {
         clearCart();
         router.replace(`/success?orderId=${orderId}`);
@@ -81,7 +80,7 @@ const handleCheckout = useCallback(async (e: React.FormEvent) => {
       setError(err instanceof Error ? err.message : 'Критична помилка при оформленні. Спробуйте ще раз.');
       setIsProcessing(false);
     }
-  }, [items, buyerName, contactInfo, city, branch, isProcessing, clearCart, router, validateStock]);
+  }, [items, buyerName, contactInfo, city, branch, promoCode, isProcessing, clearCart, router, validateStock]);
 
   if (items.length === 0) {
     return (
@@ -128,7 +127,7 @@ const handleCheckout = useCallback(async (e: React.FormEvent) => {
                     value={buyerName} 
                     onChange={(e) => setBuyerName(e.target.value)} 
                     disabled={isProcessing} 
-                    className="w-full h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all disabled:opacity-50" 
+                    className="w-full h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all disabled:opacity-50 text-[var(--foreground)]" 
                     placeholder="Введіть ваше ім'я" 
                   />
                 </div>
@@ -140,7 +139,7 @@ const handleCheckout = useCallback(async (e: React.FormEvent) => {
                     value={contactInfo} 
                     onChange={(e) => setContactInfo(e.target.value)} 
                     disabled={isProcessing} 
-                    className="w-full h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all disabled:opacity-50" 
+                    className="w-full h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all disabled:opacity-50 text-[var(--foreground)]" 
                     placeholder="+380... або @username" 
                   />
                 </div>
@@ -151,6 +150,21 @@ const handleCheckout = useCallback(async (e: React.FormEvent) => {
                   onCitySelect={setCity} 
                   onWarehouseSelect={setBranch} 
                 />
+              </div>
+
+              <div className="pt-4 border-t border-[var(--border)]">
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1 flex items-center gap-1">
+                  <Tag size={12} /> Промокод (Якщо є)
+                </label>
+                <input 
+                  type="text" 
+                  value={promoCode} 
+                  onChange={(e) => setPromoCode(e.target.value)} 
+                  disabled={isProcessing} 
+                  className="w-full md:w-1/2 h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-mono font-bold outline-none transition-all disabled:opacity-50 text-[var(--foreground)]" 
+                  placeholder="ARC-..." 
+                />
+                {promoCode && <p className="text-xs font-bold text-emerald-500 mt-2 text-left">Знижка буде застосована на сторінці оплати</p>}
               </div>
             </form>
           </div>

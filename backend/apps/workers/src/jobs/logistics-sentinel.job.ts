@@ -48,11 +48,10 @@ export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts:
 
   for (const doc of data.data) {
     const stateId = String(doc.StateId);
-    const statusName = doc.StateName; // Отримуємо статус текстом ("Прямує до міста", "Отримано" і тд)
+    const statusName = doc.StateName; 
     const order = ttnMap.get(doc.Number);
     if (!order) continue;
 
-    // Оновлюємо статус в базі для відображення в UI
     if (order.deliveryStatus !== statusName) {
       await prisma.order.update({
         where: { id: order.id },
@@ -60,7 +59,6 @@ export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts:
       });
     }
 
-    // Відстеження покинутих посилок (лежить на відділенні понад 3 дні)
     if (['7', '8'].includes(stateId)) {
       const arrivedDateStr = doc.DateFirstDay;
       if (arrivedDateStr) {
