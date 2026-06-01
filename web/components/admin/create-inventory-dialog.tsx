@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { ItemAutocomplete } from '@/components/admin/item-autocomplete';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
-import { Loader2, Plus, X, Package, DollarSign, Tag, Info } from 'lucide-react';
+import { Loader2, Plus, X, Package, DollarSign, Tag, Info, Layers } from 'lucide-react';
 
 function parseNumber(value: string, fallback: number | null = null): number | null {
   if (!value.trim()) return fallback;
@@ -23,6 +23,11 @@ export function CreateInventoryDialog() {
   const [itemId, setItemId] = useState('');
   const [titleSnapshot, setTitleSnapshot] = useState('');
   
+  // Category & Theme
+  const [kind, setKind] = useState('set');
+  const [theme, setTheme] = useState('');
+
+  // Financials & Condition
   const [purchasePrice, setPurchasePrice] = useState('');
   const [expectedSalePriceManual, setExpectedSalePriceManual] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -38,6 +43,8 @@ export function CreateInventoryDialog() {
     setItemSearch('');
     setItemId('');
     setTitleSnapshot('');
+    setKind('set');
+    setTheme('');
     setPurchasePrice('');
     setExpectedSalePriceManual('');
     setQuantity('1');
@@ -67,13 +74,15 @@ export function CreateInventoryDialog() {
 
       if (parsedPrice === null || parsedPrice < 0) throw new Error('Ціна закупівлі не може бути від\'ємною');
       if (parsedQty === null || parsedQty < 1) throw new Error('Кількість має бути мінімум 1');
-      if (!itemId.trim()) throw new Error('Оберіть товар з каталогу');
+      if (!titleSnapshot.trim()) throw new Error('Введіть назву або оберіть товар з каталогу');
 
       await apiFetch('/api/admin/inventory/create', {
         method: 'POST',
         body: JSON.stringify({ 
-          itemId: itemId.trim(), 
+          itemId: itemId.trim() || undefined, // Якщо кастомний — поле буде пустим, бек створить новий
           titleSnapshot: titleSnapshot.trim(), 
+          kind,
+          theme: theme.trim() || null,
           purchasePrice: parsedPrice,
           expectedSalePriceManual: parsedExpected,
           quantity: parsedQty, 
@@ -106,7 +115,7 @@ export function CreateInventoryDialog() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+      <div className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
         
         {/* Header */}
         <div className="p-6 md:p-8 border-b border-[var(--border)] shrink-0 flex justify-between items-center bg-[var(--background)]/50">
@@ -128,34 +137,61 @@ export function CreateInventoryDialog() {
             </div>
           )}
 
-          {/* Секція: Пошук по каталогу */}
+          {/* Секція: Пошук та Категоризація */}
           <div className="space-y-4">
             <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-blue-500 border-b border-[var(--border)] pb-2">
-              <Package size={16} /> 1. Ідентифікація
+              <Layers size={16} /> 1. Ідентифікація та Категорія
             </h3>
             
-            <ItemAutocomplete 
-              value={itemSearch} 
-              onChangeAction={setItemSearch} 
-              placeholder="Введіть артикул (напр. 75192) або назву набору..."
-              onPickAction={(i) => { 
-                setItemSearch(i.title); 
-                setItemId(i.id); 
-                setTitleSnapshot(i.title); 
-              }} 
-            />
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Артикул або Назва *</label>
+              <ItemAutocomplete 
+                value={itemSearch} 
+                onChangeAction={(val) => {
+                  setItemSearch(val);
+                  setTitleSnapshot(val);
+                  setItemId(''); // Очищаємо ID, якщо користувач вводить кастомну назву
+                }} 
+                placeholder="Введіть артикул (напр. 75192) або назву..."
+                onPickAction={(i) => { 
+                  setItemSearch(i.title); 
+                  setItemId(i.id); 
+                  setTitleSnapshot(i.title); 
+                  setKind(i.kind ?? 'set');
+                  setTheme(i.theme ?? '');
+                }} 
+              />
+            </div>
 
-            {itemId && (
-              <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/40 flex items-center gap-4 animate-in fade-in zoom-in-95">
-                <div className="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
-                  <Package size={24} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Обраний актив</div>
-                  <div className="font-black text-[var(--foreground)] leading-tight truncate text-lg">{titleSnapshot}</div>
-                  <div className="text-xs font-mono text-slate-500 mt-1">{itemId}</div>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Тип активу</label>
+                <select 
+                  value={kind} 
+                  onChange={(e) => setKind(e.target.value)}
+                  className={`${inputClasses} cursor-pointer`}
+                >
+                  <option value="set">Набір (Set)</option>
+                  <option value="minifigure">Мініфігурка (Minifigure)</option>
+                  <option value="bundle">Лот / Колекція (Bundle)</option>
+                  <option value="part">Деталь (Part)</option>
+                </select>
               </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Серія (Theme)</label>
+                <input 
+                  type="text" 
+                  value={theme} 
+                  onChange={(e) => setTheme(e.target.value)} 
+                  placeholder="Star Wars, Ninjago..." 
+                  className={inputClasses} 
+                />
+              </div>
+            </div>
+            {!itemId && titleSnapshot && (
+              <p className="text-[10px] font-bold text-amber-500 ml-1">
+                ⚠️ Ви створюєте новий, невідомий системі товар. Він буде доданий до загального каталогу.
+              </p>
             )}
           </div>
 
@@ -179,7 +215,7 @@ export function CreateInventoryDialog() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Бажана ціна продажу (₴)</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Ціна продажу (₴)</label>
                 <input 
                   type="number" 
                   step="0.01"
@@ -271,7 +307,7 @@ export function CreateInventoryDialog() {
           <Button 
             onClick={handleSubmit} 
             className="px-8 h-12 rounded-xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 active:scale-95 transition-all" 
-            disabled={loading || !itemId || !purchasePrice}
+            disabled={loading || !titleSnapshot || !purchasePrice}
           >
             {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Package className="mr-2 h-5 w-5" />} 
             {loading ? 'Збереження...' : 'Оприбуткувати Актив'}
