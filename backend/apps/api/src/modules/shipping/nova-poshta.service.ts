@@ -113,17 +113,14 @@ export class NovaPoshtaService {
     return documentRes[0].IntDocNumber;
   }
 
+  // 🔥 ФІКС ТУТ: Використовуємо printDocument (стандартна А4 форма, працює безпомилково)
   async getBulkPdfLink(ttns: string[]): Promise<string> {
     if (ttns.length === 0) throw new BadRequestException('No TTNs provided');
     if (!this.apiKey) throw new BadRequestException('NOVA_POSHTA_API_KEY is missing');
     
-    // Формуємо рядок типу orders[]/2045.../orders[]/2045...
     const query = ttns.map(t => `orders[]/${t}`).join('/');
     
-    // 🔥 ФІКС: Додаємо /apiKey/твій_ключ в кінець URL. Це обходить екран логіну!
-    // Ми використовуємо printMarkings100x100 для красивих квадратних наклейок "Зебра" (найпопулярніший формат). 
-    // Якщо хочеш А4 накладні, зміни printMarkings100x100 на printDocument.
-    return `https://my.novaposhta.ua/orders/printMarkings100x100/${query}/type/pdf/apiKey/${this.apiKey}`;
+    return `https://my.novaposhta.ua/orders/printDocument/${query}/type/pdf/apiKey/${this.apiKey}`;
   }
 
   async handleWebhook(payload: any): Promise<{ ok: boolean }> {
