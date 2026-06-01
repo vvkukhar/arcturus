@@ -1,3 +1,4 @@
+// call:function_1{"queries":["web/app/store/catalog/page.tsx"]}
 import { Metadata } from 'next';
 import { Blocks } from 'lucide-react';
 import { ProductCard } from '@/components/store/store-product-card';
@@ -25,6 +26,7 @@ export default async function CatalogPage(props: Props) {
 
   const initialQuery = typeof resolvedParams.q === 'string' ? resolvedParams.q : '';
   const initialTheme = typeof resolvedParams.theme === 'string' ? resolvedParams.theme : '';
+  const initialType = typeof resolvedParams.type === 'string' ? resolvedParams.type : '';
 
   try {
     const query = new URLSearchParams();
@@ -32,6 +34,7 @@ export default async function CatalogPage(props: Props) {
     
     if (initialQuery) query.set('q', initialQuery);
     if (initialTheme) query.set('theme', initialTheme);
+    if (initialType) query.set('type', initialType);
 
     const [catalogRes, themesRes] = await Promise.all([
       fetch(`${appConfig.apiBaseUrl}/public/catalog?${query.toString()}`, { cache: 'no-store' }),
@@ -70,7 +73,7 @@ export default async function CatalogPage(props: Props) {
             </p>
           </div>
           
-          <CatalogFilters themes={themes} initialQuery={initialQuery} initialTheme={initialTheme} />
+          <CatalogFilters themes={themes} initialQuery={initialQuery} initialTheme={initialTheme} initialType={initialType} />
         </div>
       </div>
 
@@ -87,7 +90,6 @@ export default async function CatalogPage(props: Props) {
               .replace(/^-|-$/g, '');
             
             const safeSlug = `${baseSlug}--${item.id}`;
-            
             const safeImage = item.images?.[0]?.imageUrl || item.imageUrl || item.item?.imageUrl || '';
             
             return (
