@@ -1,3 +1,4 @@
+// call:function_1{"queries":["web/components/checkout/nova-poshta-picker.tsx"]}
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -94,7 +95,7 @@ export function NovaPoshtaPicker({ onCitySelect, onWarehouseSelect }: Props) {
     <div className="space-y-5 animate-in fade-in duration-300">
       <div className="space-y-1.5 relative" ref={cityRef}>
         <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
-          <MapPin size={14} /> РњС–СЃС‚Рѕ
+          <MapPin size={14} /> Місто
         </label>
         <div className="relative">
           <input
@@ -105,7 +106,7 @@ export function NovaPoshtaPicker({ onCitySelect, onWarehouseSelect }: Props) {
               if (selectedCity) setSelectedCity(null);
             }}
             onFocus={() => { if (cities.length > 0) setIsCityDropdownOpen(true); }}
-            placeholder="Р’РІРµРґС–С‚СЊ РЅР°Р·РІСѓ РјС–СЃС‚Р°..."
+            placeholder="Введіть назву міста..."
             className="w-full h-14 pl-5 pr-12 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all text-[var(--foreground)]"
           />
           {isSearchingCity && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-blue-500" />}
@@ -133,7 +134,7 @@ export function NovaPoshtaPicker({ onCitySelect, onWarehouseSelect }: Props) {
 
       <div className={cn("space-y-1.5 relative transition-opacity duration-300", !selectedCity ? "opacity-50 pointer-events-none" : "opacity-100")} ref={warehouseRef}>
         <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
-          <Box size={14} /> Р’С–РґРґС–Р»РµРЅРЅСЏ
+          <Box size={14} /> Відділення
         </label>
         <div className="relative">
           <input
@@ -144,7 +145,7 @@ export function NovaPoshtaPicker({ onCitySelect, onWarehouseSelect }: Props) {
               setIsWarehouseDropdownOpen(true);
             }}
             onFocus={() => setIsWarehouseDropdownOpen(true)}
-            placeholder={isLoadingWarehouses ? "Р—Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ РІС–РґРґС–Р»РµРЅСЊ..." : "РћР±РµСЂС–С‚СЊ РІС–РґРґС–Р»РµРЅРЅСЏ..."}
+            placeholder={isLoadingWarehouses ? "Завантаження відділень..." : "Оберіть відділення..."}
             disabled={!selectedCity || isLoadingWarehouses}
             className="w-full h-14 pl-5 pr-12 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all text-[var(--foreground)] disabled:opacity-70"
           />
