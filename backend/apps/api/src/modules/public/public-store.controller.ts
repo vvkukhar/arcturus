@@ -110,4 +110,11 @@ export class PublicStoreController {
   reserveBoard(): Promise<unknown> {
     return this.publicStoreService.getReserveBoard();
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'operator')
+  @Get('reserve-requests/:id/dropship')
+  async getDropshipOptions(@Param('id') id: string) {
+    return this.publicStoreService.getDropshipOptions(id);
+  }
 }

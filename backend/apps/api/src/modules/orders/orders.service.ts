@@ -86,7 +86,6 @@ export class OrdersService {
     return { ...order, clientProfile };
   }
 
-  // 🔥 ФІКС ТУТ: Приймаємо об'єкт з вагою для кожного ордера
   async generateBulkTTN(ordersData: { orderId: string, weight: number }[]): Promise<unknown> {
     if (!ordersData || ordersData.length === 0) throw new BadRequestException('No orders provided');
 
@@ -116,7 +115,7 @@ export class OrdersService {
         if (cleanPhone.length > 12) cleanPhone = cleanPhone.slice(0, 12);
 
         const isPaid = order.status === 'paid' || order.channel === 'paid_upfront';
-        const weight = weightMap.get(order.id) || 2.5; // Дефолтна або вказана вага
+        const weight = weightMap.get(order.id) || 2.5; 
 
         const ttn = await this.novaPoshta.createExpressWaybill({
           orderId: order.id,
@@ -126,7 +125,7 @@ export class OrdersService {
           deliveryString: order.adminNote || '', 
           weight,
           cost: order.sellPrice ?? 2000,
-          isPaid // Передаємо статус оплати для післяплати
+          isPaid 
         });
 
         const updatedAdminNote = `${order.adminNote ?? ''} [TTN: ${ttn}]`.trim();
@@ -135,7 +134,7 @@ export class OrdersService {
           where: { id: order.id },
           data: { 
             adminNote: updatedAdminNote, 
-            status: isPaid ? 'sold' : 'contacted', // Якщо не оплачено, залишаємо contacted до отримання
+            status: isPaid ? 'sold' : 'contacted',
             deliveryStatus: 'Створено' 
           }
         });
@@ -170,9 +169,20 @@ export class OrdersService {
     return { url };
   }
 
-  async create(dto: CreateOrderDto): Promise<unknown> {
+  async create(dto: CreateOrderDto & { promoCode?: string }): Promise<unknown> {
     if (!dto.productTitle?.trim() || !dto.buyerName?.trim() || !dto.contact?.trim()) {
       throw new BadRequestException('productTitle, buyerName, and contact are required');
+    }
+
+    let finalPrice = dto.sellPrice != null ? toMoney(dto.sellPrice) : null;
+    let appliedPromoId = null;
+
+    if (dto.promoCode && finalPrice) {
+      const promo = await this.prisma.promoCode.findUnique({ where: { code: dto.promoCode } });
+      if (promo && !promo.isUsed && (!promo.validUntil || promo.validUntil > new Date())) {
+        finalPrice = toMoney(finalPrice * (1 - promo.discountPercent / 100));
+        appliedPromoId = promo.id;
+      }
     }
 
     if (dto.inventoryItemId) {
@@ -187,20 +197,26 @@ export class OrdersService {
       throw new BadRequestException('Client is blacklisted due to unfulfilled COD orders. 100% upfront payment required.');
     }
 
-    const created = await this.prisma.order.create({
-      data: {
-        reserveRequestId: dto.reserveRequestId ?? null,
-        inventoryItemId: dto.inventoryItemId ?? null,
-        productTitle: dto.productTitle.trim(),
-        buyerName: dto.buyerName.trim(),
-        contact: dto.contact.trim(),
-        sellPrice: dto.sellPrice != null ? toMoney(dto.sellPrice) : null,
-        quantity: dto.quantity ?? 1,
-        channel: dto.channel ?? null,
-        adminNote: dto.adminNote ?? null,
-        status: 'pending',
-      },
-      include: { reserveRequest: true, inventoryItem: true },
+    const created = await this.prisma.$transaction(async (tx) => {
+      if (appliedPromoId) {
+        await tx.promoCode.update({ where: { id: appliedPromoId }, data: { isUsed: true } });
+      }
+
+      return tx.order.create({
+        data: {
+          reserveRequestId: dto.reserveRequestId ?? null,
+          inventoryItemId: dto.inventoryItemId ?? null,
+          productTitle: dto.productTitle.trim(),
+          buyerName: dto.buyerName.trim(),
+          contact: dto.contact.trim(),
+          sellPrice: finalPrice,
+          quantity: dto.quantity ?? 1,
+          channel: dto.channel ?? null,
+          adminNote: dto.adminNote ?? null,
+          status: 'pending',
+        },
+        include: { reserveRequest: true, inventoryItem: true },
+      });
     });
 
     await this.activity.log('order.created', { orderId: created.id });
@@ -292,22 +308,44 @@ export class OrdersService {
 
     if (!order) throw new NotFoundException('Order not found');
     if (order.saleId) return this.getById(order.id);
-    if (!order.inventoryItemId) throw new BadRequestException('Order has no inventory item');
+    if (!order.inventoryItemId && !order.isDropship) throw new BadRequestException('Order has no inventory item');
     if (!order.sellPrice || order.sellPrice <= 0) throw new BadRequestException('Order has no valid sell price');
 
     const isPublicStoreOrder = order.reserveRequestId != null || order.channel === 'public_store';
 
-    const sale = await this.salesService.registerSale({
-      inventoryItemId: order.inventoryItemId,
-      sellPrice: order.sellPrice,
-      quantity: order.quantity,
-      channel: order.channel ?? 'order',
-      buyerName: order.buyerName,
-      notes: order.adminNote ?? null,
-      skipStockDeduction: isPublicStoreOrder, 
-    });
+    let saleId;
 
-    const saleId = (sale as any).id;
+    if (order.isDropship && order.supplierCost) {
+       const profit = order.sellPrice - order.supplierCost;
+       const roi = (profit / order.supplierCost) * 100;
+       
+       const sale = await this.prisma.sale.create({
+         data: {
+           inventoryItemId: 'dropship_item_placeholder', // Dummy or create a specific dropship ghost item
+           itemId: order.inventoryItem?.itemId ?? 'unknown_item_id',
+           quantity: order.quantity,
+           sellPrice: order.sellPrice,
+           costBasis: order.supplierCost,
+           profit: profit,
+           roiPercent: roi,
+           channel: 'dropship',
+           buyerName: order.buyerName,
+           notes: `Zero-touch dropship from listing ${order.sourceListingId}`,
+         }
+       });
+       saleId = sale.id;
+    } else if (order.inventoryItemId) {
+      const sale = await this.salesService.registerSale({
+        inventoryItemId: order.inventoryItemId,
+        sellPrice: order.sellPrice,
+        quantity: order.quantity,
+        channel: order.channel ?? 'order',
+        buyerName: order.buyerName,
+        notes: order.adminNote ?? null,
+        skipStockDeduction: isPublicStoreOrder, 
+      });
+      saleId = (sale as any).id;
+    }
 
     const updated = await this.prisma.order.update({
       where: { id },
@@ -317,6 +355,78 @@ export class OrdersService {
     this.realtime.emitCustom('order.sold', updated);
     this.realtime.emitDashboardRefresh('order_sold');
     return updated;
+  }
+
+  async approveDropship(dto: { reserveRequestId: string, listingId: string, supplierCost: number }) {
+    const reserve = await this.prisma.reserveRequest.findUnique({ where: { id: dto.reserveRequestId } });
+    if (!reserve) throw new NotFoundException('Reserve not found');
+
+    const listing = await this.prisma.marketListing.findUnique({ where: { id: dto.listingId }});
+    if (!listing) throw new NotFoundException('Listing not found');
+
+    let order = await this.prisma.order.findFirst({ where: { reserveRequestId: dto.reserveRequestId }});
+
+    const sellPrice = order?.sellPrice ?? toMoney(dto.supplierCost * 1.35); 
+
+    const result = await this.prisma.$transaction(async (tx) => {
+        if (!order) {
+            order = await tx.order.create({
+                data: {
+                    reserveRequestId: reserve.id,
+                    productTitle: reserve.productTitle,
+                    buyerName: reserve.name,
+                    contact: reserve.contact,
+                    status: 'approved',
+                    sellPrice: sellPrice,
+                    quantity: 1,
+                    channel: 'dropship',
+                    isDropship: true,
+                    sourceListingId: listing.id,
+                    supplierCost: dto.supplierCost,
+                    adminNote: reserve.message
+                }
+            });
+        } else {
+            order = await tx.order.update({
+                where: { id: order.id },
+                data: {
+                    status: 'approved',
+                    isDropship: true,
+                    sourceListingId: listing.id,
+                    supplierCost: dto.supplierCost,
+                }
+            });
+        }
+
+        await tx.reserveRequest.update({
+            where: { id: reserve.id },
+            data: { status: 'approved', adminNote: `Approved for dropship via listing ${listing.id}` }
+        });
+
+        await tx.purchaseOrder.create({
+            data: {
+                itemId: listing.itemId,
+                titleSnapshot: listing.title,
+                sourceCode: listing.sourceCode,
+                sourceUrl: listing.url,
+                status: 'planned',
+                plannedPrice: dto.supplierCost,
+                targetSellPrice: order.sellPrice,
+                quantity: 1,
+                notes: `DROPSHIP for order ${order.id}. Ship directly to client: ${order.buyerName}, ${order.contact}, ${order.adminNote}`
+            }
+        });
+
+        await tx.decisionSnapshot.updateMany({
+            where: { contextType: 'zero_touch', contextId: reserve.id },
+            data: { executionStatus: 'executed' }
+        });
+
+        return order;
+    });
+
+    this.realtime.emitDashboardRefresh('dropship_approved');
+    return result;
   }
 
   async board(): Promise<any> {

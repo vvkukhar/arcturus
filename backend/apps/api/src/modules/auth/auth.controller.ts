@@ -69,4 +69,11 @@ export class AuthController {
     const updatedUser = await this.authService.updateProfile(req.user.id, body);
     return { ok: true, user: updatedUser };
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('api-key')
+  async generateApiKey(@Req() req: Request & { user: any }) {
+    const result = await this.authService.generateApiKey(req.user.id);
+    return { ok: true, ...result };
+  }
 }

@@ -3,22 +3,44 @@
 import { use } from 'react';
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
-import { Loader2, Package, User, Box } from 'lucide-react';
+import { Loader2, Package, User, Box, Plane, Store } from 'lucide-react';
 import { ReserveRequestActions } from '@/components/admin/reserve-request-actions';
 import { StatusPill } from '@/components/admin/status-pill';
 import { formatMoney } from '@/lib/format';
+import { apiFetch } from '@/lib/api';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 export default function ReserveDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   
-  // ФІКС: Правильний роут до нашого API
   const { data, isLoading } = useSWR<any>(`/api/admin/reserves/${id}`, swrFetcher);
+  const { data: dropshipOptions, isLoading: dropshipLoading } = useSWR<any[]>(
+    data && !data.inventoryItem && data.status === 'pending' ? `/api/admin/reserves/${id}/dropship` : null, 
+    swrFetcher
+  );
 
   if (isLoading) return <div className="flex h-[calc(100vh-8rem)] items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-blue-500" /></div>;
   if (!data) return <div className="flex h-[calc(100vh-8rem)] items-center justify-center font-bold text-slate-500">Reserve request not found</div>;
 
   const imageUrl = data.inventoryItem?.images?.[0]?.imageUrl;
+  const isZeroTouchAvailable = !data.inventoryItem && data.status === 'pending' && Array.isArray(dropshipOptions) && dropshipOptions.length > 0;
+
+  const handleApproveDropship = async (listingId: string, supplierCost: number) => {
+    if (!confirm('Ви дійсно хочете підтвердити дропшиппінг з цього лістингу? Буде створено замовлення на закупівлю (Purchase Order) та схвалено замовлення клієнта.')) return;
+    try {
+      await apiFetch('/api/admin/orders/approve-dropship', {
+        method: 'POST',
+        body: JSON.stringify({ reserveRequestId: id, listingId, supplierCost })
+      });
+      toast.success('Zero-Touch Fulfillment успішно активовано!');
+      router.refresh();
+    } catch (e: any) {
+      toast.error(e.message || 'Помилка підтвердження дропшипу');
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20 animate-fade-in-up">
@@ -29,7 +51,6 @@ export default function ReserveDetailPage({ params }: { params: Promise<{ id: st
         </div>
         <div className="flex flex-col sm:items-end gap-3">
           <StatusPill value={data.status} />
-          {/* Кнопки зміни статусу тепер прямо тут! */}
           <ReserveRequestActions id={data.id} currentStatus={data.status} />
         </div>
       </div>
@@ -76,7 +97,12 @@ export default function ReserveDetailPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
           ) : (
-            <div className="font-bold text-lg text-[var(--foreground)]">{data.productTitle}</div>
+            <div className="flex flex-col h-full">
+              <div className="font-bold text-lg text-[var(--foreground)] bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-[var(--border)]">{data.productTitle}</div>
+              <div className="mt-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 text-sm font-bold flex items-center gap-2">
+                <Plane size={16} /> Набору немає в інвентарі (Out of Stock Request)
+              </div>
+            </div>
           )}
           
           <div className="pt-6 mt-auto border-t border-[var(--border)]">
@@ -85,6 +111,59 @@ export default function ReserveDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </div>
+
+      {isZeroTouchAvailable && (
+        <div className="bg-[var(--card)] border border-indigo-200 dark:border-indigo-900/50 rounded-[2rem] p-6 md:p-8 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-xl flex items-center justify-center">
+              <Store size={20} />
+            </div>
+            <div>
+              <h3 className="font-black text-xl text-[var(--foreground)]">Zero-Touch Fulfillment Options</h3>
+              <p className="text-sm font-medium text-slate-500">Система знайшла цей набір у інших продавців з достатньою маржею для дропшипу.</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {dropshipOptions.map((opt: any) => {
+              const p = opt.payloadJson;
+              return (
+                <div key={opt.id} className="p-5 bg-[var(--background)] border border-[var(--border)] rounded-2xl flex flex-col justify-between group hover:border-indigo-500/30 transition-colors">
+                  <div className="mb-4">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex justify-between">
+                      <span>Source Listing</span>
+                      <a href={p.listingUrl} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Link</a>
+                    </div>
+                    <div className="font-bold text-[var(--foreground)] line-clamp-1">{data.productTitle}</div>
+                  </div>
+                  
+                  <div className="space-y-2 mb-6">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-medium text-slate-500">Ціна постачальника</span>
+                      <span className="font-bold text-rose-500">{formatMoney(p.cost)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-medium text-slate-500">Клієнт заплатить</span>
+                      <span className="font-bold text-blue-500">{formatMoney(p.clientPrice)}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-[var(--border)]">
+                      <span className="font-black text-[10px] uppercase text-slate-400 tracking-widest">Наш чистий профіт</span>
+                      <span className="font-black text-emerald-500">{formatMoney(p.profit)}</span>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => handleApproveDropship(p.listingId, p.cost)}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-md shadow-indigo-600/20 active:scale-95"
+                  >
+                    Підтвердити Дропшип
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

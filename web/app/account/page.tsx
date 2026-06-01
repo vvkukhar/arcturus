@@ -4,7 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { useI18n } from '@/components/providers/i18n-provider';
 import { WalletPanel } from '@/components/account/wallet-panel';
-import { User, Package, Settings, Loader2, Store, Clock, CheckCircle2, XCircle, Wallet, Lock, Mail, Save, Handshake, Check, X } from 'lucide-react';
+import { User, Package, Settings, Loader2, Store, Clock, CheckCircle2, XCircle, Wallet, Lock, Mail, Save, Handshake, Check, X, Terminal, Copy } from 'lucide-react';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney } from '@/lib/format';
 import { apiFetch } from '@/lib/api';
@@ -15,15 +15,17 @@ import { useRouter } from 'next/navigation';
 export default function AccountPage() {
   const { t } = useI18n();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'orders' | 'listings' | 'wallet' | 'settings'>('listings');
+  const [activeTab, setActiveTab] = useState<'orders' | 'listings' | 'wallet' | 'settings' | 'developer'>('listings');
   
   const [respondingId, setRespondingId] = useState<string | null>(null);
 
-  // Settings State
   const [profileName, setProfileName] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
   const [profilePassword, setProfilePassword] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  
+  const [generatingKey, setGeneratingKey] = useState(false);
+  const [apiKeyCopied, setApiKeyCopied] = useState(false);
 
   const { data: user, isLoading: uLoading, mutate: mutateUser } = useSWR('/api/auth/me', swrFetcher as any, {
     onSuccess: (data) => {
@@ -37,7 +39,6 @@ export default function AccountPage() {
   const { data: listings, isLoading: lLoading } = useSWR<any[]>('/api/proxy/marketplace/my-listings', swrFetcher);
   const { data: finance, isLoading: fLoading, mutate: mutateFinance } = useSWR<any>('/api/proxy/marketplace/finance', swrFetcher);
   
-  // Компоненти пропозицій (Offers)
   const { data: myOffers, mutate: mutateMyOffers } = useSWR<any[]>('/api/proxy/offers/my-offers', swrFetcher);
   const { data: incomingOffers, mutate: mutateIncomingOffers } = useSWR<any[]>('/api/proxy/offers/incoming', swrFetcher);
 
@@ -79,6 +80,28 @@ export default function AccountPage() {
     }
   };
 
+  const handleGenerateApiKey = async () => {
+    if (generatingKey) return;
+    try {
+      setGeneratingKey(true);
+      await apiFetch('/api/auth/api-key', { method: 'POST' });
+      toast.success('Новий API Key згенеровано!');
+      mutateUser();
+    } catch (err: any) {
+      toast.error(err.message || 'Не вдалося згенерувати API ключ');
+    } finally {
+      setGeneratingKey(false);
+    }
+  };
+
+  const copyApiKey = () => {
+    if (user?.apiKey) {
+      navigator.clipboard.writeText(user.apiKey);
+      setApiKeyCopied(true);
+      setTimeout(() => setApiKeyCopied(false), 2000);
+    }
+  };
+
   const handleOfferResponse = async (offerId: string, action: 'accept' | 'reject') => {
     try {
       setRespondingId(`${action}-${offerId}`);
@@ -107,6 +130,17 @@ export default function AccountPage() {
     return <span className="text-amber-600 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 text-[10px] font-black uppercase px-2.5 py-1 rounded-md">Очікує</span>;
   };
 
+  const tabs = [
+    { id: 'listings', icon: Store, label: 'Мої товари' },
+    { id: 'wallet', icon: Wallet, label: 'Гаманець та Офери' },
+    { id: 'orders', icon: Package, label: 'Мої покупки' },
+    { id: 'settings', icon: Settings, label: 'Налаштування' }
+  ];
+
+  if (user?.isPro || user?.role === 'admin' || user?.role === 'operator') {
+    tabs.push({ id: 'developer', icon: Terminal, label: 'Developer API' });
+  }
+
   return (
     <div className="min-h-screen py-12 md:py-16 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -124,12 +158,7 @@ export default function AccountPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-3 space-y-2">
-            {[
-              { id: 'listings', icon: Store, label: 'Мої товари' },
-              { id: 'wallet', icon: Wallet, label: 'Гаманець та Офери' },
-              { id: 'orders', icon: Package, label: 'Мої покупки' },
-              { id: 'settings', icon: Settings, label: 'Налаштування' }
-            ].map((tab) => {
+            {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button 
@@ -310,6 +339,81 @@ export default function AccountPage() {
                         </button>
                       </div>
                     </form>
+                  </div>
+                )}
+
+                {activeTab === 'developer' && (
+                  <div className="flex-1 max-w-2xl animate-in fade-in slide-in-from-right-4">
+                    <h2 className="text-2xl font-black mb-6 flex items-center gap-2"><Terminal className="text-indigo-500" /> B2B Developer API</h2>
+                    <p className="text-slate-500 font-medium mb-8">
+                      Використовуйте API для створення власних ботів, інтеграції цін або автоматизації дропшипінгу з платформою Arcturus.
+                    </p>
+
+                    <div className="bg-slate-900 text-white p-8 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-8 opacity-5"><Terminal size={150} /></div>
+                      <div className="relative z-10">
+                        <h3 className="text-lg font-black mb-2">Ваш API Key</h3>
+                        
+                        {user?.apiKey ? (
+                          <div className="space-y-4">
+                            <div className="bg-black border border-slate-700 p-4 rounded-xl flex items-center justify-between gap-4">
+                              <code className="font-mono text-emerald-400 text-sm break-all">{user.apiKey}</code>
+                              <button 
+                                onClick={copyApiKey}
+                                className="bg-slate-800 hover:bg-slate-700 p-2 rounded-lg text-slate-300 hover:text-white transition-colors shrink-0"
+                              >
+                                {apiKeyCopied ? <Check size={20} className="text-emerald-400" /> : <Copy size={20} />}
+                              </button>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Доступ:</span>
+                              <span className="text-xs font-black bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-1 rounded uppercase tracking-wider">{user.apiTier || 'B2B'}</span>
+                            </div>
+
+                            <button 
+                              onClick={handleGenerateApiKey} 
+                              disabled={generatingKey}
+                              className="mt-6 flex items-center gap-2 text-sm font-bold text-red-400 hover:text-red-300 transition-colors"
+                            >
+                              {generatingKey ? <Loader2 className="animate-spin" size={16} /> : <XCircle size={16} />}
+                              Відкликати поточний та згенерувати новий ключ
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="text-center py-6">
+                            <p className="text-slate-400 mb-6">У вас ще немає згенерованого ключа доступу.</p>
+                            <button 
+                              onClick={handleGenerateApiKey} 
+                              disabled={generatingKey}
+                              className="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-4 rounded-xl shadow-lg shadow-indigo-600/20 transition-transform active:scale-95 flex items-center justify-center gap-2 mx-auto"
+                            >
+                              {generatingKey ? <Loader2 className="animate-spin" size={20} /> : <Terminal size={20} />}
+                              Згенерувати API Key
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-8 space-y-4">
+                      <h3 className="font-black text-lg">Документація</h3>
+                      <div className="bg-[var(--background)] p-4 rounded-2xl border border-[var(--border)]">
+                        <div className="flex items-center gap-2 mb-2 font-mono text-sm font-bold">
+                          <span className="text-emerald-600">GET</span> /api/v1/b2b/market
+                        </div>
+                        <p className="text-sm text-slate-500">Отримати ринкову оцінку та останні ціни конкурентів за артикулом.</p>
+                      </div>
+                      <div className="bg-[var(--background)] p-4 rounded-2xl border border-[var(--border)]">
+                        <div className="flex items-center gap-2 mb-2 font-mono text-sm font-bold">
+                          <span className="text-emerald-600">GET</span> /api/v1/b2b/deals
+                        </div>
+                        <p className="text-sm text-slate-500">Потік сирих арбітражних угод зі скраперів (затримка 15 хв).</p>
+                      </div>
+                      <div className="text-sm text-slate-400 font-medium italic">
+                        * Авторизація відбувається через заголовок <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">x-api-key</code>.
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

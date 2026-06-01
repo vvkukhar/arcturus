@@ -1,4 +1,3 @@
-// call:function_1{"queries":["backend/apps/api/src/modules/public/public-store.service.ts"]}
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { toMoney } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
@@ -66,7 +65,6 @@ export class PublicStoreService {
     const limit = Math.min(params.limit ?? 48, 200);
     const q = params.q?.trim();
 
-    // 🔥 ФІКС БАГА ФІЛЬТРАЦІЇ 🔥
     const whereClause: any = {
       quantity: params.availableOnly === true ? { gt: 0 } : undefined,
       AND: [
@@ -82,7 +80,6 @@ export class PublicStoreService {
     if (params.seller === 'community') whereClause.isMarketplace = true;
     if (params.seller === 'arcturus') whereClause.isMarketplace = false;
 
-    // Збираємо фільтри по Item (Type + Theme) в один об'єкт, щоб вони не перезаписували одне одного
     const itemFilter: any = {};
     if (params.type && params.type !== 'all') itemFilter.kind = params.type;
     if (params.theme) itemFilter.theme = { equals: params.theme, mode: 'insensitive' };
@@ -91,7 +88,6 @@ export class PublicStoreService {
       whereClause.item = itemFilter;
     }
 
-    // Якщо є пошук, додаємо його в AND, щоб не зламати OR маркетплейсу
     if (q) {
       whereClause.AND.push({
         OR: [
@@ -196,16 +192,16 @@ export class PublicStoreService {
     return order;
   }
 
-  async createReserve(params: { inventoryItemId?: string | null; productTitle?: string; name: string; contact: string; message?: string | null; quantity?: number }): Promise<unknown> {
+  async createReserve(params: { inventoryItemId?: string | null; productTitle?: string; name: string; contact: string; message?: string | null; quantity?: number; promoCode?: string }): Promise<unknown> {
     const name = params.name.trim();
     const contact = params.contact.trim();
     const message = params.message?.trim() ?? '';
     let productTitle = params.productTitle?.trim() ?? '';
     let inventoryItemId = params.inventoryItemId;
 
-    // 🔥 ФІКС ТУТ: Визначаємо фінальну ціну та кількість
     let finalPrice: number | null = null;
     let finalQty = params.quantity && params.quantity > 0 ? params.quantity : 1;
+    let appliedPromoId = null;
 
     if (inventoryItemId) {
       const inventoryItem = await this.prisma.inventoryItem.findUnique({
@@ -216,11 +212,20 @@ export class PublicStoreService {
       if (inventoryItem.quantity < finalQty) throw new BadRequestException('Item is out of stock');
       
       productTitle = productTitle || inventoryItem.titleSnapshot || inventoryItem.item?.title || inventoryItem.id;
-      // Беремо ціну з бази і множимо на кількість
       finalPrice = (inventoryItem.expectedSalePriceManual ?? inventoryItem.totalCost ?? 0) * finalQty;
     }
 
     if (!productTitle) throw new BadRequestException('Product title is required');
+
+    if (params.promoCode && finalPrice) {
+      const promo = await this.prisma.promoCode.findUnique({ where: { code: params.promoCode } });
+      if (promo && !promo.isUsed && (!promo.validUntil || promo.validUntil > new Date())) {
+        finalPrice = toMoney(finalPrice * (1 - promo.discountPercent / 100));
+        appliedPromoId = promo.id;
+      } else {
+        throw new BadRequestException('Промокод недійсний або вже використаний');
+      }
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       const reserve = await tx.reserveRequest.create({
@@ -234,8 +239,8 @@ export class PublicStoreService {
           buyerName: reserve.name,
           contact: reserve.contact,
           status: 'pending',
-          sellPrice: finalPrice, // 🔥 ТЕПЕР ЗАПИСУЄМО РЕАЛЬНУ ЦІНУ
-          quantity: finalQty,    // 🔥 ТЕПЕР ЗАПИСУЄМО РЕАЛЬНУ КІЛЬКІСТЬ
+          sellPrice: finalPrice, 
+          quantity: finalQty,    
           channel: 'public_store',
           adminNote: reserve.message ?? null,
         },
@@ -245,6 +250,13 @@ export class PublicStoreService {
         await tx.inventoryItem.update({
           where: { id: inventoryItemId },
           data: { quantity: { decrement: finalQty } }
+        });
+      }
+
+      if (appliedPromoId) {
+        await tx.promoCode.update({
+          where: { id: appliedPromoId },
+          data: { isUsed: true }
         });
       }
 
@@ -388,5 +400,11 @@ export class PublicStoreService {
       avgVisiblePrice: Number(avgPrice.toFixed(2)),
       visibleInventoryValue: Number(visibleInventoryValue.toFixed(2)),
     };
+  }
+
+  async getDropshipOptions(reserveId: string): Promise<unknown[]> {
+    return this.prisma.decisionSnapshot.findMany({
+      where: { contextType: 'zero_touch', contextId: reserveId }
+    });
   }
 }

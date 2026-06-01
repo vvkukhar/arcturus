@@ -7,7 +7,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { User } from '@prisma/client';
 
-export type AuthUser = Pick<User, 'id' | 'name' | 'email' | 'role' | 'isPro' | 'proExpiresAt'>;
+export type AuthUser = Pick<User, 'id' | 'name' | 'email' | 'role' | 'isPro' | 'proExpiresAt' | 'apiKey' | 'apiTier'>;
 
 @Injectable()
 export class AuthService {
@@ -44,6 +44,8 @@ export class AuthService {
       role: session.user.role,
       isPro: session.user.isPro,
       proExpiresAt: session.user.proExpiresAt,
+      apiKey: session.user.apiKey,
+      apiTier: session.user.apiTier,
     };
   }
 
@@ -84,6 +86,8 @@ export class AuthService {
         role: user.role,
         isPro: user.isPro,
         proExpiresAt: user.proExpiresAt,
+        apiKey: user.apiKey,
+        apiTier: user.apiTier,
       } 
     };
   }
@@ -118,6 +122,8 @@ export class AuthService {
         role: user.role,
         isPro: user.isPro,
         proExpiresAt: user.proExpiresAt,
+        apiKey: user.apiKey,
+        apiTier: user.apiTier,
       } 
     };
   }
@@ -140,7 +146,6 @@ export class AuthService {
     await this.prisma.userSession.deleteMany({ where: { userId } });
   }
 
-  // НОВИЙ МЕТОД ДЛЯ ОНОВЛЕННЯ ПРОФІЛЮ
   async updateProfile(userId: string, dto: { name?: string; email?: string; password?: string }): Promise<AuthUser> {
     const updateData: any = {};
     
@@ -165,7 +170,6 @@ export class AuthService {
       data: updateData,
     });
 
-    // Оновлюємо кеш сесій для цього юзера, щоб застосувались нові дані (ім'я/email)
     await this.invalidateUserSessions(userId);
 
     return {
@@ -175,6 +179,18 @@ export class AuthService {
       role: updatedUser.role,
       isPro: updatedUser.isPro,
       proExpiresAt: updatedUser.proExpiresAt,
+      apiKey: updatedUser.apiKey,
+      apiTier: updatedUser.apiTier,
     };
+  }
+
+  async generateApiKey(userId: string): Promise<{ apiKey: string; apiTier: string }> {
+    const apiKey = `arc_live_${crypto.randomBytes(24).toString('hex')}`;
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { apiKey, apiTier: 'b2b' }
+    });
+    await this.invalidateUserSessions(userId);
+    return { apiKey: user.apiKey!, apiTier: user.apiTier! };
   }
 }

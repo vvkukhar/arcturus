@@ -42,6 +42,11 @@ export class OrdersController {
     return this.ordersService.createFromReserve(body.reserveRequestId);
   }
 
+  @Post('approve-dropship')
+  approveDropship(@Body() body: { reserveRequestId: string, listingId: string, supplierCost: number }) {
+    return this.ordersService.approveDropship(body);
+  }
+
   @Post('bulk-ttn')
   generateBulkTTN(@Body() body: { orders: { orderId: string, weight: number }[] }) {
     return this.ordersService.generateBulkTTN(body.orders);
