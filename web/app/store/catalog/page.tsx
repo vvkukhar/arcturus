@@ -89,7 +89,8 @@ export default async function CatalogPage(props: Props) {
               .replace(/-+/g, '-')
               .replace(/^-|-$/g, '');
             
-            const safeSlug = `${baseSlug}--${item.id}`;
+            // 🔥 ФІКС ТУТ: використовуємо -id- замість --
+            const safeSlug = `${baseSlug}-id-${item.id}`;
             const safeImage = item.images?.[0]?.imageUrl || item.imageUrl || item.item?.imageUrl || '';
             
             return (

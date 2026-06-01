@@ -1,3 +1,4 @@
+// call:function_1{"queries":["web/app/seller/[id]/page.tsx"]}
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Package, ShieldCheck, User, Star, TrendingUp } from 'lucide-react';
@@ -77,7 +78,10 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {listings.map((item: any) => {
               const safeTitle = item.titleSnapshot || item.item?.title || 'Unknown Item';
-              const safeSlug = String(safeTitle).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+              const baseSlug = String(safeTitle).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+              
+              // 🔥 ФІКС ТУТ
+              const safeSlug = `${baseSlug}-id-${item.id}`;
               const safeImage = item.images?.[0]?.imageUrl || 'https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?w=800&q=80';
               
               return (

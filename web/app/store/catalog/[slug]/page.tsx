@@ -34,8 +34,18 @@ async function getProductData(slug: string): Promise<ProductDetail | null> {
   const res = await fetch(`${appConfig.apiBaseUrl}/public/catalog/${encodeURIComponent(slug)}`, {
     next: { tags: [`catalog-item-${slug}`] }
   });
+  
   if (!res.ok) return null;
-  return res.json();
+  
+  // 🔥 ФІКС ЗАХИСТУ: Якщо бекенд повернув пусту відповідь, не намагаємось її парсити!
+  const text = await res.text();
+  if (!text) return null;
+  
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return null;
+  }
 }
 
 export async function generateMetadata(
