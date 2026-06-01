@@ -9,7 +9,6 @@ import { Metadata, ResolvingMetadata } from 'next';
 import { AddToCartButton } from './add-to-cart-button';
 import { ConversionEngine } from '@/components/store/conversion-engine';
 import { ProductPageOfferButton } from './product-page-offer-button';
-import { cn } from '@/lib/utils';
 
 interface ProductDetail {
   id: string;
@@ -103,22 +102,19 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 relative z-10">
         
-        {/* ЛІВА ЧАСТИНА - ФОТО (Завжди світлий студійний фон) */}
+        {/* ЛІВА ЧАСТИНА - ФОТО */}
         <div className="lg:col-span-7">
           <div className="sticky top-28">
-            {/* 🔥 ФІКС: bg-white dark:bg-white фіксує білий фон назавжди */}
-            <div className="relative aspect-square w-full rounded-[3rem] border border-[var(--border)] bg-white dark:bg-white overflow-hidden shadow-2xl flex items-center justify-center group transition-colors duration-500">
+            {/* 🔥 ФІКС: Змінено bg на var(--card) і додано overflow-hidden для зрізу фотографії */}
+            <div className="relative aspect-square w-full rounded-[3rem] border border-[var(--border)] bg-[var(--card)] overflow-hidden shadow-2xl flex items-center justify-center group transition-colors duration-500">
               
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100 z-0 pointer-events-none" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-blue-200 blur-[100px] rounded-full z-0 opacity-40 group-hover:opacity-60 transition-opacity duration-700 pointer-events-none" />
-
               {displayImage ? (
                 <Image 
                   src={displayImage} 
                   alt={title} 
                   fill 
-                  // 🔥 ФІКС: mix-blend-multiply розчинить білий фон JPG картинки
-                  className="object-contain p-4 sm:p-8 drop-shadow-2xl hover:scale-105 transition-transform duration-700 ease-out-expo z-10 mix-blend-multiply" 
+                  // 🔥 ФІКС: object-cover розтягне картинку на весь блок без відступів, mix-blend прибрано
+                  className="object-cover hover:scale-105 transition-transform duration-700 ease-out-expo z-10" 
                   priority 
                   sizes="(max-width: 1024px) 100vw, 60vw" 
                 />

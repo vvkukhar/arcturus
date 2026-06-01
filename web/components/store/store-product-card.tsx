@@ -56,8 +56,8 @@ function ProductCardComponent({ item }: Props) {
         >
           <SpotlightCard className="flex h-full flex-col border border-[var(--border)] bg-[var(--card)] transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 hover:border-blue-300 dark:hover:border-blue-700 rounded-[2.5rem] overflow-hidden transform-gpu relative">
             
-            {/* 🔥 ФІКС: bg-white dark:bg-white гарантує, що білий фон фото розчиниться через mix-blend-multiply */}
-            <div className="relative aspect-square w-full z-10 bg-white dark:bg-white border-b border-[var(--border)] flex items-center justify-center p-6">
+            {/* 🔥 ФІКС: bg-[var(--card)] і жодних padding'ів */}
+            <div className="relative aspect-square w-full z-10 bg-[var(--card)] border-b border-[var(--border)] flex items-center justify-center overflow-hidden">
               
               <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 items-start">
                 <span className="inline-flex items-center rounded-xl bg-black/80 backdrop-blur-md px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm border border-white/10">
@@ -95,7 +95,8 @@ function ProductCardComponent({ item }: Props) {
                     src={imageUrl}
                     alt={title}
                     fill
-                    className="object-contain mix-blend-multiply drop-shadow-xl transition-transform duration-700 group-hover:scale-110"
+                    // 🔥 ФІКС: object-cover замість object-contain і прибрали mix-blend
+                    className="object-cover transition-transform duration-700 group-hover:scale-105"
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   />
                 </div>
