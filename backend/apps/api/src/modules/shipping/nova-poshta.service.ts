@@ -16,7 +16,6 @@ export class NovaPoshtaService {
     private readonly activity: ActivityService,
   ) {}
 
-  // 🔥 Хелпер для зручних запитів до АПІ НП
   private async npRequest(model: string, method: string, props: any = {}) {
     const res = await fetch(this.apiUrl, {
       method: 'POST',
@@ -56,7 +55,6 @@ export class NovaPoshtaService {
       throw new BadRequestException('В .env не налаштовано REF-коди відправника НП');
     }
 
-    // 1. Парсимо `deliveryString` (рядок виду: "... Delivery: Хмельницький, Хмельницька обл., Відділення №28 ...")
     let cityName = 'Київ';
     let warehouseStr = '1';
 
@@ -69,21 +67,18 @@ export class NovaPoshtaService {
       if (match) warehouseStr = match[1];
     }
 
-    // 2. Шукаємо REF Міста
     const cities = await this.npRequest('Address', 'getCities', { FindByString: cityName });
     if (!cities || cities.length === 0) throw new BadRequestException(`Місто ${cityName} не знайдено в базі НП`);
     const cityRef = cities[0].Ref;
 
-    // 3. Шукаємо REF Відділення
     const warehouses = await this.npRequest('Address', 'getWarehouses', { CityRef: cityRef, FindByString: warehouseStr });
     if (!warehouses || warehouses.length === 0) throw new BadRequestException(`Відділення №${warehouseStr} не знайдено в місті ${cityName}`);
     const warehouseRef = warehouses[0].Ref;
 
-    // 4. Створюємо або отримуємо існуючого Контрагента-Отримувача (PrivatePerson)
     const counterpartyRes = await this.npRequest('Counterparty', 'save', {
       FirstName: params.firstName,
       LastName: params.lastName || 'Клієнт',
-      Phone: params.phone, // Формат: 380...
+      Phone: params.phone,
       Email: '',
       CounterpartyType: 'PrivatePerson',
       CounterpartyProperty: 'Recipient'
@@ -92,7 +87,6 @@ export class NovaPoshtaService {
     const recipientRef = counterpartyRes[0].Ref;
     const contactRecipientRef = counterpartyRes[0].ContactPerson.data[0].Ref;
 
-    // 5. Генеруємо фінальну ТТН
     const documentRes = await this.npRequest('InternetDocument', 'save', {
       PayerType: 'Recipient',
       PaymentMethod: 'Cash',
@@ -121,8 +115,15 @@ export class NovaPoshtaService {
 
   async getBulkPdfLink(ttns: string[]): Promise<string> {
     if (ttns.length === 0) throw new BadRequestException('No TTNs provided');
+    if (!this.apiKey) throw new BadRequestException('NOVA_POSHTA_API_KEY is missing');
+    
+    // Формуємо рядок типу orders[]/2045.../orders[]/2045...
     const query = ttns.map(t => `orders[]/${t}`).join('/');
-    return `https://my.novaposhta.ua/orders/printDocument/${query}/type/pdf/aw/1`;
+    
+    // 🔥 ФІКС: Додаємо /apiKey/твій_ключ в кінець URL. Це обходить екран логіну!
+    // Ми використовуємо printMarkings100x100 для красивих квадратних наклейок "Зебра" (найпопулярніший формат). 
+    // Якщо хочеш А4 накладні, зміни printMarkings100x100 на printDocument.
+    return `https://my.novaposhta.ua/orders/printMarkings100x100/${query}/type/pdf/apiKey/${this.apiKey}`;
   }
 
   async handleWebhook(payload: any): Promise<{ ok: boolean }> {
