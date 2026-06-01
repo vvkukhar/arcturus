@@ -1,3 +1,4 @@
+// call:function_1{"queries":["web/components/store/store-product-card.tsx"]}
 'use client';
 
 import { memo, useState } from 'react';
@@ -55,10 +56,11 @@ function ProductCardComponent({ item }: Props) {
         >
           <SpotlightCard className="flex h-full flex-col border border-[var(--border)] bg-[var(--card)] transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 hover:border-blue-300 dark:hover:border-blue-700 rounded-[2.5rem] overflow-hidden transform-gpu relative">
             
-            <div className="relative aspect-square w-full z-10 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900/60 dark:to-slate-900 border-b border-[var(--border)] flex items-center justify-center p-6">
+            {/* 🔥 ФІКС: bg-white dark:bg-white гарантує, що білий фон фото розчиниться через mix-blend-multiply */}
+            <div className="relative aspect-square w-full z-10 bg-white dark:bg-white border-b border-[var(--border)] flex items-center justify-center p-6">
               
               <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 items-start">
-                <span className="inline-flex items-center rounded-xl bg-[var(--card)]/90 backdrop-blur-md px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--foreground)] shadow-sm border border-[var(--border)]">
+                <span className="inline-flex items-center rounded-xl bg-black/80 backdrop-blur-md px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm border border-white/10">
                   {item.theme}
                 </span>
                 {item.sealed ? (
@@ -93,7 +95,7 @@ function ProductCardComponent({ item }: Props) {
                     src={imageUrl}
                     alt={title}
                     fill
-                    className="object-contain mix-blend-multiply dark:mix-blend-normal drop-shadow-xl transition-transform duration-700 group-hover:scale-110"
+                    className="object-contain mix-blend-multiply drop-shadow-xl transition-transform duration-700 group-hover:scale-110"
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   />
                 </div>

@@ -103,32 +103,33 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 relative z-10">
         
-        {/* ЛІВА ЧАСТИНА - ФОТО */}
+        {/* ЛІВА ЧАСТИНА - ФОТО (Завжди світлий студійний фон) */}
         <div className="lg:col-span-7">
           <div className="sticky top-28">
-            <div className="relative aspect-square w-full rounded-[3rem] border border-[var(--border)] bg-[var(--card)] overflow-hidden shadow-2xl flex items-center justify-center group transition-colors duration-500">
+            {/* 🔥 ФІКС: bg-white dark:bg-white фіксує білий фон назавжди */}
+            <div className="relative aspect-square w-full rounded-[3rem] border border-[var(--border)] bg-white dark:bg-white overflow-hidden shadow-2xl flex items-center justify-center group transition-colors duration-500">
               
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 z-0 pointer-events-none" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-blue-500/10 blur-[100px] rounded-full z-0 opacity-50 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100 z-0 pointer-events-none" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-blue-200 blur-[100px] rounded-full z-0 opacity-40 group-hover:opacity-60 transition-opacity duration-700 pointer-events-none" />
 
               {displayImage ? (
                 <Image 
                   src={displayImage} 
                   alt={title} 
                   fill 
-                  className="object-contain p-2 sm:p-4 drop-shadow-2xl hover:scale-105 transition-transform duration-700 ease-out-expo z-10 mix-blend-multiply dark:mix-blend-normal" 
+                  // 🔥 ФІКС: mix-blend-multiply розчинить білий фон JPG картинки
+                  className="object-contain p-4 sm:p-8 drop-shadow-2xl hover:scale-105 transition-transform duration-700 ease-out-expo z-10 mix-blend-multiply" 
                   priority 
                   sizes="(max-width: 1024px) 100vw, 60vw" 
                 />
               ) : (
-                <div className="flex flex-col h-full w-full items-center justify-center text-slate-300 dark:text-slate-600 z-10">
+                <div className="flex flex-col h-full w-full items-center justify-center text-slate-300 dark:text-slate-400 z-10">
                   <Package className="h-24 w-24 mb-4" strokeWidth={1} />
                   <span className="font-bold uppercase tracking-widest text-xs">Зображення очікується</span>
                 </div>
               )}
               
               <div className="absolute top-6 left-6 z-20 flex flex-col gap-2">
-                {/* 🔥 ФІКС ТУТ: Темний фон, білий текст, розмиття, гарний бордер */}
                 <span className="inline-flex items-center px-4 py-2 rounded-xl bg-black/80 backdrop-blur-md text-xs font-black uppercase tracking-widest text-white shadow-xl border border-white/10">
                   {theme}
                 </span>
