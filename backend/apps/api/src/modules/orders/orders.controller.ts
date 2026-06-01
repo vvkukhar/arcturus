@@ -43,8 +43,8 @@ export class OrdersController {
   }
 
   @Post('bulk-ttn')
-  generateBulkTTN(@Body() body: { orderIds: string[] }) {
-    return this.ordersService.generateBulkTTN(body.orderIds);
+  generateBulkTTN(@Body() body: { orders: { orderId: string, weight: number }[] }) {
+    return this.ordersService.generateBulkTTN(body.orders);
   }
 
   @Post('bulk-pdf')

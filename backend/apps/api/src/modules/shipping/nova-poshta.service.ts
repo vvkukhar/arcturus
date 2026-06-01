@@ -1,4 +1,3 @@
-// call:function_1{"queries":["backend/apps/api/src/modules/shipping/nova-poshta.service.ts"]}
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
@@ -40,6 +39,7 @@ export class NovaPoshtaService {
     deliveryString: string;
     weight: number;
     cost: number;
+    isPaid?: boolean; // 🔥 ДОДАНО ДЛЯ ПІСЛЯПЛАТИ
   }): Promise<string> {
     if (!this.apiKey) {
       throw new BadRequestException('NOVA_POSHTA_API_KEY is missing');
@@ -87,13 +87,14 @@ export class NovaPoshtaService {
     const recipientRef = counterpartyRes[0].Ref;
     const contactRecipientRef = counterpartyRes[0].ContactPerson.data[0].Ref;
 
-    const documentRes = await this.npRequest('InternetDocument', 'save', {
+    // 🔥 БАЗОВІ ОПЦІЇ ДОСТАВКИ 🔥
+    const documentOptions: any = {
       PayerType: 'Recipient',
       PaymentMethod: 'Cash',
       DateTime: new Date().toLocaleDateString('uk-UA').replace(/\./g, '.'),
       CargoType: 'Cargo',
       VolumeGeneral: '0.01',
-      Weight: params.weight.toString(),
+      Weight: params.weight.toString(), // ДИНАМІЧНА ВАГА
       ServiceType: 'WarehouseWarehouse',
       SeatsAmount: '1',
       Description: `LEGO Order ${params.orderId.slice(-6)}`,
@@ -108,19 +109,32 @@ export class NovaPoshtaService {
       RecipientAddress: warehouseRef,
       ContactRecipient: contactRecipientRef,
       RecipientsPhone: params.phone,
-    });
+    };
+
+    // 🔥 ДОДАЄМО ПІСЛЯПЛАТУ ЯКЩО НЕ ОПЛАЧЕНО 🔥
+    if (!params.isPaid) {
+      documentOptions.BackwardDeliveryData = [
+        {
+          PayerType: "Recipient",
+          CargoType: "Money",
+          RedeliveryString: params.cost.toString()
+        }
+      ];
+    }
+
+    const documentRes = await this.npRequest('InternetDocument', 'save', documentOptions);
 
     return documentRes[0].IntDocNumber;
   }
 
-  // 🔥 ФІКС ТУТ: Використовуємо printDocument (стандартна А4 форма, працює безпомилково)
+  // 🔥 ФІКС ТУТ: Термо-етикетки 100х100
   async getBulkPdfLink(ttns: string[]): Promise<string> {
     if (ttns.length === 0) throw new BadRequestException('No TTNs provided');
     if (!this.apiKey) throw new BadRequestException('NOVA_POSHTA_API_KEY is missing');
     
     const query = ttns.map(t => `orders[]/${t}`).join('/');
     
-    return `https://my.novaposhta.ua/orders/printDocument/${query}/type/pdf/apiKey/${this.apiKey}`;
+    return `https://my.novaposhta.ua/orders/printMarking100x100/${query}/type/pdf/apiKey/${this.apiKey}`;
   }
 
   async handleWebhook(payload: any): Promise<{ ok: boolean }> {
@@ -137,12 +151,13 @@ export class NovaPoshtaService {
 
       if (!order) return { ok: true }; 
 
+      // Отриманий (Сплачений та забраний)
       if (['9', '10', '11'].includes(String(stateId))) {
          if (order.status !== 'sold' && order.status !== 'paid') {
            await this.prisma.$transaction(async (tx) => {
              await tx.order.update({
                where: { id: order.id },
-               data: { status: 'sold' }
+               data: { status: 'sold', deliveryStatus: 'Отримано' } // ФІКС ЛАЙВ СТАТУСУ
              });
              const phoneStr = order.contact.replace(/[^\d+]/g, '');
              await tx.clientProfile.upsert({
@@ -155,12 +170,13 @@ export class NovaPoshtaService {
          }
       }
 
+      // Відмова клієнта
       if (['103', '104', '106'].includes(String(stateId))) {
          if (order.status !== 'cancelled') {
            await this.prisma.$transaction(async (tx) => {
              await tx.order.update({
                where: { id: order.id },
-               data: { status: 'cancelled', adminNote: `${order.adminNote} [NP: REFUSED]` }
+               data: { status: 'cancelled', deliveryStatus: 'Відмова', adminNote: `${order.adminNote} [NP: REFUSED]` }
              });
              
              if (order.inventoryItemId) {

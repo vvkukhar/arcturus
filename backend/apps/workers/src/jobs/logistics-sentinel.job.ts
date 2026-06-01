@@ -48,9 +48,19 @@ export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts:
 
   for (const doc of data.data) {
     const stateId = String(doc.StateId);
+    const statusName = doc.StateName; // Отримуємо статус текстом ("Прямує до міста", "Отримано" і тд)
     const order = ttnMap.get(doc.Number);
     if (!order) continue;
 
+    // Оновлюємо статус в базі для відображення в UI
+    if (order.deliveryStatus !== statusName) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { deliveryStatus: statusName }
+      });
+    }
+
+    // Відстеження покинутих посилок (лежить на відділенні понад 3 дні)
     if (['7', '8'].includes(stateId)) {
       const arrivedDateStr = doc.DateFirstDay;
       if (arrivedDateStr) {
@@ -58,15 +68,21 @@ export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts:
         const diffDays = (Date.now() - arrivedDate.getTime()) / (1000 * 60 * 60 * 24);
 
         if (diffDays >= 3) {
-          await prisma.notification.create({
-            data: {
-              title: '⚠️ Logistics Alert: Abandoned Package',
-              message: `Order ${order.id.slice(-6)} (${order.buyerName}) has been sitting at the branch for ${Math.floor(diffDays)} days. TTN: ${doc.Number}`,
-              type: 'logistics_alert',
-              payloadJson: { orderId: order.id, ttn: doc.Number, diffDays }
-            }
+          const alreadyNotified = await prisma.notification.findFirst({
+             where: { type: 'logistics_alert', payloadJson: { path: ['ttn'], equals: doc.Number } }
           });
-          alerts++;
+          
+          if (!alreadyNotified) {
+            await prisma.notification.create({
+              data: {
+                title: '⚠️ Logistics Alert: Abandoned Package',
+                message: `Order ${order.id.slice(-6)} (${order.buyerName}) has been sitting at the branch for ${Math.floor(diffDays)} days. TTN: ${doc.Number}`,
+                type: 'logistics_alert',
+                payloadJson: { orderId: order.id, ttn: doc.Number, diffDays }
+              }
+            });
+            alerts++;
+          }
         }
       }
     }

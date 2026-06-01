@@ -1,4 +1,3 @@
-// call:function_1{"queries":["backend/apps/api/src/modules/orders/orders.service.ts"]}
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { toMoney } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
@@ -87,8 +86,12 @@ export class OrdersService {
     return { ...order, clientProfile };
   }
 
-  async generateBulkTTN(orderIds: string[]): Promise<unknown> {
-    if (!orderIds || orderIds.length === 0) throw new BadRequestException('No order IDs provided');
+  // 🔥 ФІКС ТУТ: Приймаємо об'єкт з вагою для кожного ордера
+  async generateBulkTTN(ordersData: { orderId: string, weight: number }[]): Promise<unknown> {
+    if (!ordersData || ordersData.length === 0) throw new BadRequestException('No orders provided');
+
+    const orderIds = ordersData.map(o => o.orderId);
+    const weightMap = new Map(ordersData.map(o => [o.orderId, o.weight]));
 
     const orders = await this.prisma.order.findMany({
       where: { id: { in: orderIds }, status: { in: ['pending', 'approved', 'contacted', 'paid'] } },
@@ -108,26 +111,33 @@ export class OrdersService {
       try {
         const parts = order.buyerName.split(' ');
         
-        // 🔥 ФІКС ТУТ: Форматуємо телефон для НП (лише цифри, формат 380...)
         let cleanPhone = order.contact.replace(/[^\d]/g, '');
         if (cleanPhone.startsWith('0')) cleanPhone = '38' + cleanPhone;
         if (cleanPhone.length > 12) cleanPhone = cleanPhone.slice(0, 12);
+
+        const isPaid = order.status === 'paid' || order.channel === 'paid_upfront';
+        const weight = weightMap.get(order.id) || 2.5; // Дефолтна або вказана вага
 
         const ttn = await this.novaPoshta.createExpressWaybill({
           orderId: order.id,
           firstName: parts[0] || 'Клієнт',
           lastName: parts.slice(1).join(' ') || 'Покупець',
           phone: cleanPhone,
-          deliveryString: order.adminNote || '', // Передаємо весь текст адреси
-          weight: 2.5,
-          cost: order.sellPrice ?? 2000
+          deliveryString: order.adminNote || '', 
+          weight,
+          cost: order.sellPrice ?? 2000,
+          isPaid // Передаємо статус оплати для післяплати
         });
 
         const updatedAdminNote = `${order.adminNote ?? ''} [TTN: ${ttn}]`.trim();
 
         await this.prisma.order.update({
           where: { id: order.id },
-          data: { adminNote: updatedAdminNote, status: 'sold' }
+          data: { 
+            adminNote: updatedAdminNote, 
+            status: isPaid ? 'sold' : 'contacted', // Якщо не оплачено, залишаємо contacted до отримання
+            deliveryStatus: 'Створено' 
+          }
         });
 
         results.push({ orderId: order.id, status: 'success', ttn });

@@ -577,6 +577,7 @@ model Order {
   buyerName        String
   contact          String
   status           String          @default("pending")
+  deliveryStatus   String?         // 🔥 ДОДАНО ДЛЯ ЛАЙВ СТАТУСІВ НП
   sellPrice        Float?
   quantity         Int             @default(1)
   channel          String?

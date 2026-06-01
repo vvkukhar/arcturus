@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ orderIds: body.orderIds ?? [] }),
+    body: JSON.stringify({ orders: body.orders ?? [] }),
     cache: 'no-store',
   });
 
