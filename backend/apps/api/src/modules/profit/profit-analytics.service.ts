@@ -1,6 +1,7 @@
+// call:function_1{"queries":["backend/apps/api/src/modules/profit/profit-analytics.service.ts"]}
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { toMoney } from '@arcturus/shared';
+import { calculateProfit, calculateRoiPercent, toMoney } from '@arcturus/shared';
 
 @Injectable()
 export class ProfitAnalyticsService {
@@ -23,19 +24,42 @@ export class ProfitAnalyticsService {
       })
     ]);
 
+    const activeInventory = await this.prisma.inventoryItem.findMany({
+      where: { quantity: { gt: 0 } },
+      select: { totalCost: true, expectedSalePriceManual: true, quantity: true }
+    });
+
+    let invCost = 0;
+    let invRev = 0;
+    for (const item of activeInventory) {
+        invCost += Number(item.totalCost) * item.quantity;
+        invRev += Number(item.expectedSalePriceManual ?? item.totalCost) * item.quantity;
+    }
+
     const totalRevenue = toMoney(salesAgg._sum.sellPrice ?? 0);
     const totalProfit = toMoney(salesAgg._sum.profit ?? 0);
     const salesCount = salesAgg._count._all;
 
-    const avgProfit = salesCount > 0 ? toMoney(totalProfit / salesCount) : 0;
+    const avgProfitPerSale = salesCount > 0 ? toMoney(totalProfit / salesCount) : 0;
     const avgRevenue = salesCount > 0 ? toMoney(totalRevenue / salesCount) : 0;
+
+    const realizedRoiPercent = calculateRoiPercent({ profit: totalProfit, cost: Math.max(1, totalRevenue - totalProfit) });
+    
+    const inventoryCostBasis = toMoney(invCost);
+    const expectedInventoryRevenue = toMoney(invRev);
+    const expectedInventoryProfit = calculateProfit({ revenue: expectedInventoryRevenue, cost: inventoryCostBasis });
 
     return {
       salesCount,
       totalRevenue,
       totalProfit,
-      avgProfit,
+      avgProfitPerSale,
       avgRevenue,
+      realizedRoiPercent,
+      inventoryCostBasis,
+      expectedInventoryRevenue,
+      expectedInventoryProfit,
+      expectedInventoryRoiPercent: calculateRoiPercent({ profit: expectedInventoryProfit, cost: inventoryCostBasis }),
       bestSale: bestSaleRaw ?? null,
       recentSales,
     };

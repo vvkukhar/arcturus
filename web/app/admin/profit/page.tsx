@@ -1,3 +1,4 @@
+// call:function_1{"queries":["web/app/admin/profit/page.tsx"]}
 'use client';
 
 import useSWR from 'swr';
@@ -44,9 +45,10 @@ interface VelocityStats {
 }
 
 export default function AdminProfitPage() {
-const { data: summary, isLoading: sLoading } = useSWR<ProfitSummary>('/api/proxy/profit/summary', swrFetcher);
-  const { data: monthly = [], isLoading: mLoading } = useSWR<MonthlyProfit[]>('/api/proxy/profit/monthly', swrFetcher);
-  const { data: themes = [], isLoading: tLoading } = useSWR<ThemeProfit[]>('/api/proxy/profit/by-theme', swrFetcher);
+  const { data: summary, isLoading: sLoading } = useSWR<ProfitSummary>('/api/proxy/profit/summary', swrFetcher);
+  // 🔥 ФІКС: Змінили шляхи на правильні репорти
+  const { data: monthly = [], isLoading: mLoading } = useSWR<MonthlyProfit[]>('/api/proxy/reports/daily-pnl', swrFetcher);
+  const { data: themes = [], isLoading: tLoading } = useSWR<ThemeProfit[]>('/api/proxy/reports/sales-by-theme', swrFetcher);
   const { data: velocity, isLoading: vLoading } = useSWR<VelocityStats>('/api/proxy/profit/velocity?days=30', swrFetcher);
 
   if (sLoading || mLoading || tLoading || vLoading) {
