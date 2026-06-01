@@ -105,28 +105,30 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         {/* ЛІВА ЧАСТИНА - ФОТО */}
         <div className="lg:col-span-7">
           <div className="sticky top-28">
-            {/* 🔥 ФІКС: Змінено bg на var(--card) і додано overflow-hidden для зрізу фотографії */}
-            <div className="relative aspect-square w-full rounded-[3rem] border border-[var(--border)] bg-[var(--card)] overflow-hidden shadow-2xl flex items-center justify-center group transition-colors duration-500">
+            {/* 🔥 ФІКС: Студійний білий фон, щоб mix-blend-multiply ідеально розчинив рамки фотографії */}
+            <div className="relative aspect-square w-full rounded-[3rem] border border-[var(--border)] bg-white overflow-hidden shadow-2xl flex items-center justify-center group transition-colors duration-500">
               
+              <div className="absolute inset-0 bg-gradient-to-br from-white to-slate-100 z-0 pointer-events-none" />
+
               {displayImage ? (
                 <Image 
                   src={displayImage} 
                   alt={title} 
                   fill 
-                  // 🔥 ФІКС: object-cover розтягне картинку на весь блок без відступів, mix-blend прибрано
-                  className="object-cover hover:scale-105 transition-transform duration-700 ease-out-expo z-10" 
+                  // 🔥 ФІКС: object-contain (щоб влізло повністю), великі відступи (p-8 sm:p-16) і mix-blend-multiply
+                  className="object-contain p-8 sm:p-16 drop-shadow-2xl hover:scale-105 transition-transform duration-700 ease-out-expo z-10 mix-blend-multiply" 
                   priority 
                   sizes="(max-width: 1024px) 100vw, 60vw" 
                 />
               ) : (
-                <div className="flex flex-col h-full w-full items-center justify-center text-slate-300 dark:text-slate-400 z-10">
+                <div className="flex flex-col h-full w-full items-center justify-center text-slate-300 z-10">
                   <Package className="h-24 w-24 mb-4" strokeWidth={1} />
                   <span className="font-bold uppercase tracking-widest text-xs">Зображення очікується</span>
                 </div>
               )}
               
               <div className="absolute top-6 left-6 z-20 flex flex-col gap-2">
-                <span className="inline-flex items-center px-4 py-2 rounded-xl bg-black/80 backdrop-blur-md text-xs font-black uppercase tracking-widest text-white shadow-xl border border-white/10">
+                <span className="inline-flex items-center px-4 py-2 rounded-xl bg-slate-900/90 backdrop-blur-md text-xs font-black uppercase tracking-widest text-white shadow-xl border border-slate-700">
                   {theme}
                 </span>
                 {product.sealed && (
