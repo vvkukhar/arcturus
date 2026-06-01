@@ -9,16 +9,16 @@ export class DropshipController {
 
   @Get('catalog')
   async getWholesaleCatalog(@Req() req: any) {
-    if (req.user.role !== 'dropshipper' && req.user.role !== 'admin') {
-      throw new UnauthorizedException('Dropshipper access required');
+    if (!req.user.isPro && req.user.role !== 'admin' && req.user.role !== 'operator') {
+      throw new UnauthorizedException('B2B Dropship access required (PRO tier)');
     }
     return this.dropshipService.getWholesaleCatalog();
   }
 
   @Post('order')
   async createDropshipOrder(@Req() req: any, @Body() body: any) {
-    if (req.user.role !== 'dropshipper' && req.user.role !== 'admin') {
-      throw new UnauthorizedException('Dropshipper access required');
+    if (!req.user.isPro && req.user.role !== 'admin' && req.user.role !== 'operator') {
+      throw new UnauthorizedException('B2B Dropship access required (PRO tier)');
     }
     return this.dropshipService.createOrder(req.user.id, body);
   }

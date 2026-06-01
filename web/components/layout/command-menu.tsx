@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Package, User, MapPin, ShieldCheck, Tag } from 'lucide-react';
+import { Search, Package, User, MapPin, ShieldCheck, Tag, Truck } from 'lucide-react';
 
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
@@ -14,6 +14,7 @@ export function CommandMenu() {
     { name: 'Каталог наборів', path: '/store/catalog', icon: Package, category: 'Магазин' },
     { name: 'Мій Кабінет', path: '/account', icon: User, category: 'Акаунт' },
     { name: 'Відстежити замовлення', path: '/track', icon: MapPin, category: 'Магазин' },
+    { name: 'B2B Dropship Портал', path: '/dropship', icon: Truck, category: 'Магазин' },
     { name: 'Виставити на продаж (5% комісія)', path: '/sell', icon: Tag, category: 'Маркетплейс' },
     { name: 'Гарантія якості', path: '/authenticity', icon: ShieldCheck, category: 'Інформація' },
   ], []);

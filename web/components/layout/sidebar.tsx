@@ -1,4 +1,3 @@
-// call:function_1{"queries":["web/components/layout/sidebar.tsx"]}
 'use client';
 
 import Link from 'next/link';
@@ -10,7 +9,7 @@ import { swrFetcher } from '@/lib/swr-fetcher';
 import { 
   LineChart, Activity, Filter, BarChart2, Clock, 
   FileText, PieChart, Wallet, Heart, TrendingUp, Package, 
-  HelpCircle, ShieldCheck, X, Crown, Target, Gift, Vault
+  HelpCircle, ShieldCheck, X, Crown, Target, Gift, Vault, Truck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
@@ -21,7 +20,6 @@ export function Sidebar() {
   const { isOpen, setIsOpen } = useSidebar();
   const [isMounted, setIsMounted] = useState(false);
   
-  // Додано <any> для фіксу типізації при білді
   const { data: user } = useSWR<any>('/api/auth/me', swrFetcher);
 
   useEffect(() => {
@@ -70,6 +68,7 @@ export function Sidebar() {
       items: [
         { name: 'nav.catalog', path: '/store/catalog', icon: Package, show: true },
         { name: 'Mystery Boxes', path: '/store/mystery-boxes', icon: Gift, show: true },
+        { name: 'B2B Dropship', path: '/dropship', icon: Truck, show: isPro }, // 🔥 ДОДАНО ДЛЯ ОПТОВИКІВ
         { name: 'sidebar.sell', path: '/sell', icon: Package, show: true },
         { name: 'nav.auth', path: '/authenticity', icon: ShieldCheck, show: true },
         { name: 'footer.faq', path: '/faq', icon: HelpCircle, show: true },
@@ -115,7 +114,6 @@ export function Sidebar() {
                     const Icon = item.icon;
                     const isActive = pathname === item.path || (pathname?.startsWith(`${item.path}/`) && item.path !== '/');
                     
-                    // Видалили перевірки на isSpecial і фіолетові градієнти
                     return (
                       <Link href={item.path} key={iIdx} onClick={() => setIsOpen(false)}
                         className={cn(
@@ -127,7 +125,7 @@ export function Sidebar() {
                       >
                         <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                         <span>
-                          {isMounted && (item.name.includes('PRO') || item.name.includes('Mystery') || item.name.includes('Vault')) ? item.name : isMounted ? t(item.name as any) : '...'}
+                          {isMounted && (item.name.includes('PRO') || item.name.includes('Mystery') || item.name.includes('Vault') || item.name.includes('B2B')) ? item.name : isMounted ? t(item.name as any) : '...'}
                         </span>
                       </Link>
                     );
