@@ -55,8 +55,18 @@ export default function AdminOrdersListPage() {
         body: JSON.stringify({ orderIds: validIds })
       });
       
-      // 🔥 ФІКС ТУТ: res.data?.success
-      toast.success(`Успішно згенеровано ТТН для ${res.data?.success ?? 0} замовлень!`);
+      const data = res.data;
+      
+      // 🔥 ФІКС ТУТ: Аналізуємо реальний результат замість сліпого "Успіх"
+      if (data && data.success > 0) {
+        toast.success(`Успішно згенеровано ТТН для ${data.success} з ${data.processed} замовлень!`);
+      } else if (data && data.success === 0 && data.results?.length > 0) {
+        // Якщо жодна ТТН не згенерувалась, дістаємо причину з бекенду
+        toast.error(`Помилка генерації ТТН: ${data.results[0].reason}`);
+      } else {
+        toast.error('Не вдалося згенерувати ТТН.');
+      }
+
       setSelectedIds(new Set());
       mutate();
     } catch (err: any) {
