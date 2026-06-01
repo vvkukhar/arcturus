@@ -1,3 +1,4 @@
+// call:function_1{"queries":["backend/apps/api/src/modules/shipping/nova-poshta.service.ts"]}
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
@@ -26,7 +27,17 @@ export class NovaPoshtaService {
     cost: number;
   }): Promise<string> {
     if (!this.apiKey) {
-      throw new BadRequestException('Nova Poshta API key is missing');
+      throw new BadRequestException('NOVA_POSHTA_API_KEY is missing in environment variables');
+    }
+
+    const citySender = process.env.NP_CITY_SENDER_REF;
+    const sender = process.env.NP_SENDER_REF;
+    const senderAddress = process.env.NP_SENDER_ADDRESS_REF;
+    const contactSender = process.env.NP_CONTACT_SENDER_REF;
+    const senderPhone = process.env.NP_SENDER_PHONE;
+
+    if (!citySender || !sender || !senderAddress || !contactSender || !senderPhone) {
+      throw new BadRequestException('Не налаштовані всі параметри відправника Нової Пошти (REF коди) у змінних оточення.');
     }
 
     const payload = {
@@ -44,11 +55,11 @@ export class NovaPoshtaService {
         SeatsAmount: '1',
         Description: `LEGO Order ${params.orderId}`,
         Cost: params.cost.toString(),
-        CitySender: process.env.NP_CITY_SENDER_REF,
-        Sender: process.env.NP_SENDER_REF,
-        SenderAddress: process.env.NP_SENDER_ADDRESS_REF,
-        ContactSender: process.env.NP_CONTACT_SENDER_REF,
-        SendersPhone: process.env.NP_SENDER_PHONE,
+        CitySender: citySender,
+        Sender: sender,
+        SenderAddress: senderAddress,
+        ContactSender: contactSender,
+        SendersPhone: senderPhone,
         RecipientCityName: params.cityRecipient,
         RecipientArea: '',
         RecipientAreaRegions: '',
@@ -67,7 +78,7 @@ export class NovaPoshtaService {
     const data = await response.json();
     
     if (!data.success) {
-      throw new BadRequestException(`NP Error: ${data.errors.join(', ')}`);
+      throw new BadRequestException(`Помилка НП: ${data.errors.join(', ')}`);
     }
 
     return data.data[0].IntDocNumber;
@@ -93,6 +104,7 @@ export class NovaPoshtaService {
 
       if (!order) return { ok: true }; 
 
+      // 9, 10, 11 - Отримано
       if (['9', '10', '11'].includes(String(stateId))) {
          if (order.status !== 'sold' && order.status !== 'paid') {
            await this.prisma.$transaction(async (tx) => {
@@ -111,6 +123,7 @@ export class NovaPoshtaService {
          }
       }
 
+      // 103, 104, 106 - Відмова
       if (['103', '104', '106'].includes(String(stateId))) {
          if (order.status !== 'cancelled') {
            await this.prisma.$transaction(async (tx) => {
