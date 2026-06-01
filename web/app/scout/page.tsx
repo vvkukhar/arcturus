@@ -10,7 +10,7 @@ import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney } from '@/lib/format';
 
 export default function ScoutPage() {
-  const { data: user, isLoading: uLoading } = useSWR('/api/auth/me', swrFetcher);
+  const { data: user, isLoading: uLoading } = useSWR<any>('/api/auth/me', swrFetcher);
   const { data: leads, mutate } = useSWR<any[]>('/api/proxy/marketplace/scout/my-leads', swrFetcher);
   const { data: surges } = useSWR<any[]>('/api/proxy/marketplace/scout/active-surges', swrFetcher);
 

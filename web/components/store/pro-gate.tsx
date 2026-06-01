@@ -7,7 +7,7 @@ import Link from 'next/link';
 
 export function ProGate({ children }: { children: React.ReactNode }) {
   // Тягнемо дані юзера з нашого API
-  const { data: user, isLoading } = useSWR('/api/auth/me', swrFetcher as any);
+  const { data: user, isLoading } = useSWR<any>('/api/auth/me', swrFetcher);
 
   if (isLoading) {
     return (

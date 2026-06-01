@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function ArcturusProPage() {
-  const { data: user, isLoading } = useSWR('/api/auth/me', swrFetcher as any);
+  const { data: user, isLoading } = useSWR<any>('/api/auth/me', swrFetcher);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
