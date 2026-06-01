@@ -1,3 +1,4 @@
+// call:function_1{"queries":["web/components/layout/sidebar.tsx"]}
 'use client';
 
 import Link from 'next/link';
@@ -19,6 +20,8 @@ export function Sidebar() {
   const pathname = usePathname();
   const { isOpen, setIsOpen } = useSidebar();
   const [isMounted, setIsMounted] = useState(false);
+  
+  // Додано <any> для фіксу типізації при білді
   const { data: user } = useSWR<any>('/api/auth/me', swrFetcher);
 
   useEffect(() => {
@@ -111,8 +114,8 @@ export function Sidebar() {
                   {visibleItems.map((item, iIdx) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.path || (pathname?.startsWith(`${item.path}/`) && item.path !== '/');
-                    const isSpecial = item.name.includes('PRO') || item.name.includes('Mystery') || item.name.includes('Vault');
                     
+                    // Видалили перевірки на isSpecial і фіолетові градієнти
                     return (
                       <Link href={item.path} key={iIdx} onClick={() => setIsOpen(false)}
                         className={cn(
@@ -122,8 +125,8 @@ export function Sidebar() {
                             : "text-slate-600 dark:text-slate-400 hover:bg-[var(--background)] hover:text-[var(--foreground)] hover:border-[var(--border)]"
                         )}
                       >
-                        <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={isSpecial && !isActive ? 'text-purple-500' : ''} />
-                        <span className={isSpecial && !isActive ? 'text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600' : ''}>
+                        <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                        <span>
                           {isMounted && (item.name.includes('PRO') || item.name.includes('Mystery') || item.name.includes('Vault')) ? item.name : isMounted ? t(item.name as any) : '...'}
                         </span>
                       </Link>
