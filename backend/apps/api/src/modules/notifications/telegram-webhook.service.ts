@@ -1,3 +1,4 @@
+// call:function_1{"queries":["backend/apps/api/src/modules/notifications/telegram-webhook.service.ts"]}
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from './telegram.service';
@@ -77,13 +78,19 @@ export class TelegramWebhookService {
 
     try {
       const parts = order.buyerName.split(' ');
+      
+      // Форматуємо телефон для НП
+      let cleanPhone = order.contact.replace(/[^\d]/g, '');
+      if (cleanPhone.startsWith('0')) cleanPhone = '38' + cleanPhone;
+      if (cleanPhone.length > 12) cleanPhone = cleanPhone.slice(0, 12);
+
+      // 🔥 ФІКС ТУТ: Передаємо deliveryString (адресу клієнта), а не захардкоджений Київ
       const ttn = await this.novaPoshta.createExpressWaybill({
         orderId: order.id,
         firstName: parts[0] || 'Клієнт',
-        lastName: parts[1] || '',
-        phone: order.contact.replace(/[^\d+]/g, '').slice(0, 13),
-        cityRecipient: 'Київ',
-        warehouseRecipient: 'Відділення №1',
+        lastName: parts.slice(1).join(' ') || 'Покупець',
+        phone: cleanPhone,
+        deliveryString: order.adminNote || '',
         weight: 2.5,
         cost: order.sellPrice ?? 2000
       });
