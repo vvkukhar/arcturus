@@ -27,9 +27,9 @@ interface ProfitSummary {
 }
 
 interface MonthlyProfit {
-  date: string;
+  month: string;
   revenue: number;
-  netProfit: number;
+  profit: number;
 }
 
 interface ThemeProfit {
@@ -46,9 +46,9 @@ interface VelocityStats {
 
 export default function AdminProfitPage() {
   const { data: summary, isLoading: sLoading } = useSWR<ProfitSummary>('/api/proxy/profit/summary', swrFetcher);
-  // 🔥 ФІКС: Змінили шляхи на правильні репорти
-  const { data: monthly = [], isLoading: mLoading } = useSWR<MonthlyProfit[]>('/api/proxy/reports/daily-pnl', swrFetcher);
-  const { data: themes = [], isLoading: tLoading } = useSWR<ThemeProfit[]>('/api/proxy/reports/sales-by-theme', swrFetcher);
+  // 🔥 ФІКС: Повернули правильні шляхи до нашого ідеального profit сервісу
+  const { data: monthly = [], isLoading: mLoading } = useSWR<MonthlyProfit[]>('/api/proxy/profit/monthly', swrFetcher);
+  const { data: themes = [], isLoading: tLoading } = useSWR<ThemeProfit[]>('/api/proxy/profit/by-theme', swrFetcher);
   const { data: velocity, isLoading: vLoading } = useSWR<VelocityStats>('/api/proxy/profit/velocity?days=30', swrFetcher);
 
   if (sLoading || mLoading || tLoading || vLoading) {
@@ -91,10 +91,10 @@ export default function AdminProfitPage() {
           <div className="mb-6 flex items-center justify-between">
             <div>
               <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Revenue & Profit Timeline</h2>
-              <p className="text-sm font-medium text-slate-500">Daily financial performance</p>
+              <p className="text-sm font-medium text-slate-500">Monthly financial performance</p>
             </div>
             <div className="px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold tracking-wider uppercase">
-              30 Days
+              All Time
             </div>
           </div>
           <div className="h-[350px] w-full">
@@ -111,11 +111,12 @@ export default function AdminProfitPage() {
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} dy={10} />
+                  {/* 🔥 ФІКС КЛЮЧІВ: month та profit */}
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} dy={10} />
                   <YAxis hide />
                   <Tooltip contentStyle={{ borderRadius: '1rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--foreground)', fontWeight: 'bold' }} itemStyle={{ fontWeight: '900' }} />
-                  <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
-                  <Area type="monotone" dataKey="netProfit" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorProf)" />
+                  <Area type="monotone" dataKey="revenue" name="Дохід ₴" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" />
+                  <Area type="monotone" dataKey="profit" name="Прибуток ₴" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorProf)" />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -141,7 +142,6 @@ export default function AdminProfitPage() {
                   </div>
                   <div className="text-right">
                     <div className="font-black text-emerald-600 dark:text-emerald-400">{formatMoney(t.profit)}</div>
-                    <div className="text-xs font-bold text-slate-500">ROI {formatPercent(t.roiPercent)}</div>
                   </div>
                 </div>
               ))
