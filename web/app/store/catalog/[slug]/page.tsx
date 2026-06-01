@@ -9,7 +9,6 @@ import { Metadata, ResolvingMetadata } from 'next';
 import { AddToCartButton } from './add-to-cart-button';
 import { ConversionEngine } from '@/components/store/conversion-engine';
 import { ProductPageOfferButton } from './product-page-offer-button';
-import { cn } from '@/lib/utils';
 
 interface ProductDetail {
   id: string;
@@ -37,7 +36,6 @@ async function getProductData(slug: string): Promise<ProductDetail | null> {
   
   if (!res.ok) return null;
   
-  // 🔥 ФІКС ЗАХИСТУ: Якщо бекенд повернув пусту відповідь, не намагаємось її парсити!
   const text = await res.text();
   if (!text) return null;
   
@@ -107,19 +105,19 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         {/* ЛІВА ЧАСТИНА - ФОТО */}
         <div className="lg:col-span-7">
           <div className="sticky top-28">
-            <div className={cn(
-              "relative aspect-square w-full rounded-[3rem] border border-[var(--border)] overflow-hidden shadow-2xl flex items-center justify-center group transition-colors duration-500",
-              displayImage ? "bg-white" : "bg-slate-100 dark:bg-slate-900"
-            )}>
+            {/* ФІКС: Змінили фон на адаптивний (bg-card), прибрали паддінги, додали світіння */}
+            <div className="relative aspect-square w-full rounded-[3rem] border border-[var(--border)] bg-[var(--card)] overflow-hidden shadow-2xl flex items-center justify-center group transition-colors duration-500">
               
-              <div className="absolute inset-0 bg-blue-500/5 blur-3xl rounded-full scale-75 group-hover:scale-100 transition-transform duration-700" />
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 z-0 pointer-events-none" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-blue-500/10 blur-[100px] rounded-full z-0 opacity-50 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
               {displayImage ? (
                 <Image 
                   src={displayImage} 
                   alt={title} 
                   fill 
-                  className="object-contain p-4 sm:p-8 mix-blend-multiply drop-shadow-2xl hover:scale-105 transition-transform duration-700 ease-out-expo z-10" 
+                  // ФІКС: p-2 замість p-8 (зображення на всю ширину)
+                  className="object-contain p-2 sm:p-4 drop-shadow-2xl hover:scale-105 transition-transform duration-700 ease-out-expo z-10 mix-blend-multiply dark:mix-blend-normal" 
                   priority 
                   sizes="(max-width: 1024px) 100vw, 60vw" 
                 />
@@ -131,11 +129,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               )}
               
               <div className="absolute top-6 left-6 z-20 flex flex-col gap-2">
-                <span className="inline-flex items-center px-4 py-2 rounded-xl bg-[var(--card)]/90 backdrop-blur-md text-xs font-black uppercase tracking-widest text-[var(--foreground)] shadow-sm border border-[var(--border)]">
+                <span className="inline-flex items-center px-4 py-2 rounded-xl bg-[var(--background)]/80 backdrop-blur-md text-xs font-black uppercase tracking-widest text-[var(--foreground)] shadow-md border border-[var(--border)]">
                   {theme}
                 </span>
                 {product.sealed && (
-                  <span className="inline-flex items-center w-fit px-4 py-2 rounded-xl bg-blue-600/90 backdrop-blur-md text-xs font-black uppercase tracking-widest text-white shadow-sm border border-blue-500">
+                  <span className="inline-flex items-center w-fit px-4 py-2 rounded-xl bg-blue-600/90 backdrop-blur-md text-xs font-black uppercase tracking-widest text-white shadow-md border border-blue-500">
                     Sealed
                   </span>
                 )}
@@ -168,18 +166,22 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="bg-[var(--card)] border border-[var(--border)] p-4 rounded-2xl flex items-start gap-3">
-              <Hash className="text-blue-500 w-5 h-5 shrink-0 mt-0.5" />
+            <div className="bg-[var(--card)] border border-[var(--border)] p-5 rounded-[1.5rem] shadow-sm flex items-start gap-4 hover:border-blue-500/30 transition-colors group">
+              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 shrink-0 group-hover:scale-110 transition-transform">
+                <Hash size={20} />
+              </div>
               <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Артикул</div>
-                <div className="font-bold text-[var(--foreground)] mt-0.5">{product.item?.setNumber || 'N/A'}</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Артикул</div>
+                <div className="font-black text-lg text-[var(--foreground)] leading-tight mt-0.5">{product.item?.setNumber || 'N/A'}</div>
               </div>
             </div>
-            <div className="bg-[var(--card)] border border-[var(--border)] p-4 rounded-2xl flex items-start gap-3">
-              <Layers className="text-purple-500 w-5 h-5 shrink-0 mt-0.5" />
+            <div className="bg-[var(--card)] border border-[var(--border)] p-5 rounded-[1.5rem] shadow-sm flex items-start gap-4 hover:border-purple-500/30 transition-colors group">
+              <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 shrink-0 group-hover:scale-110 transition-transform">
+                <Layers size={20} />
+              </div>
               <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Тип</div>
-                <div className="font-bold text-[var(--foreground)] mt-0.5">{kindLabelUA}</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Тип</div>
+                <div className="font-black text-lg text-[var(--foreground)] leading-tight mt-0.5">{kindLabelUA}</div>
               </div>
             </div>
           </div>
