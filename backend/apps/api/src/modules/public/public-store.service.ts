@@ -1,3 +1,4 @@
+// call:function_1{"queries":["backend/apps/api/src/modules/public/public-store.service.ts"]}
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { toMoney } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
@@ -30,7 +31,7 @@ export class PublicStoreService {
     if (sort === 'price_desc') return { expectedSalePriceManual: 'desc' };
     if (sort === 'title_asc') return { titleSnapshot: 'asc' };
     if (sort === 'title_desc') return { titleSnapshot: 'desc' };
-    return { expectedSalePriceManual: 'asc' };
+    return { createdAt: 'desc' };
   }
 
   async getThemes(): Promise<string[]> {
@@ -65,23 +66,45 @@ export class PublicStoreService {
     const limit = Math.min(params.limit ?? 48, 200);
     const q = params.q?.trim();
 
-    const data = await this.prisma.inventoryItem.findMany({
-      where: {
-        quantity: params.availableOnly === true ? { gt: 0 } : undefined,
+    // 🔥 ФІКС БАГА ФІЛЬТРАЦІЇ 🔥
+    const whereClause: any = {
+      quantity: params.availableOnly === true ? { gt: 0 } : undefined,
+      AND: [
+        {
+          OR: [
+            { isMarketplace: false },
+            { isMarketplace: true, approvalStatus: 'approved' }
+          ]
+        }
+      ]
+    };
+
+    if (params.seller === 'community') whereClause.isMarketplace = true;
+    if (params.seller === 'arcturus') whereClause.isMarketplace = false;
+
+    // Збираємо фільтри по Item (Type + Theme) в один об'єкт, щоб вони не перезаписували одне одного
+    const itemFilter: any = {};
+    if (params.type && params.type !== 'all') itemFilter.kind = params.type;
+    if (params.theme) itemFilter.theme = { equals: params.theme, mode: 'insensitive' };
+    
+    if (Object.keys(itemFilter).length > 0) {
+      whereClause.item = itemFilter;
+    }
+
+    // Якщо є пошук, додаємо його в AND, щоб не зламати OR маркетплейсу
+    if (q) {
+      whereClause.AND.push({
         OR: [
-          { isMarketplace: false },
-          { isMarketplace: true, approvalStatus: 'approved' }
-        ],
-        ...(params.seller === 'community' ? { isMarketplace: true } : params.seller === 'arcturus' ? { isMarketplace: false } : {}),
-        ...(params.type && params.type !== 'all' ? { item: { kind: params.type } } : {}),
-        ...(params.theme ? { item: { theme: { equals: params.theme, mode: 'insensitive' } } } : {}),
-        ...(q ? { OR: [
           { titleSnapshot: { contains: q, mode: 'insensitive' } }, 
           { item: { title: { contains: q, mode: 'insensitive' } } }, 
           { item: { setNumber: { contains: q, mode: 'insensitive' } } }, 
           { item: { theme: { contains: q, mode: 'insensitive' } } }
-        ] } : {}),
-      },
+        ]
+      });
+    }
+
+    const data = await this.prisma.inventoryItem.findMany({
+      where: whereClause,
       select: {
         id: true,
         titleSnapshot: true,
