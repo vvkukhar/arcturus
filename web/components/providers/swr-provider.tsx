@@ -1,3 +1,4 @@
+// web/components/providers/swr-provider.tsx
 'use client';
 
 import { SWRConfig } from 'swr';
@@ -8,8 +9,6 @@ export function SWRProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handleUnauthorized = async () => {
       try {
-        // ФІКС: Жорстко вбиваємо сесію на сервері перед редиректом, 
-        // щоб Middleware не завернув нас назад на дашборд.
         await fetch('/api/auth/logout', { method: 'POST' });
       } catch (e) {
         console.error('Failed to clear session', e);
@@ -25,14 +24,13 @@ export function SWRProvider({ children }: { children: React.ReactNode }) {
     <SWRConfig
       value={{
         fetcher: swrFetcher,
-        revalidateOnFocus: true,
-        revalidateOnReconnect: true,
-        revalidateIfStale: false,
-        focusThrottleInterval: 5000,
-        errorRetryCount: 3,
-        errorRetryInterval: 2000,
-        dedupingInterval: 5000,
-        keepPreviousData: true,
+        // 🔥 ВИМИКАЄМО АГРЕСИВНІ ОНОВЛЕННЯ 🔥
+        revalidateOnFocus: false,      // Більше не оновлює дані при кліку на вікно
+        revalidateOnReconnect: false,  // Не спамить запитами при відновленні інтернету
+        revalidateIfStale: false,      // Кеш живе довше
+        dedupingInterval: 15000,       // Не дублює запити протягом 15 секунд
+        errorRetryCount: 1,            // Не спамить ретраями, якщо бекенд впав/спить
+        keepPreviousData: true,        // Тримає старі дані на екрані, поки вантажаться нові (без блимань)
       }}
     >
       {children}
