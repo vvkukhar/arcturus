@@ -61,6 +61,48 @@ export class MonetizationService {
     });
   }
 
+  async buySignalSubscription(userId: string, targetQuery: string, type: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    
+    const cost = type === 'sms' ? 20000 : 5000; // 20k AC for SMS, 5k AC for Telegram
+
+    if (user.points < cost) {
+      throw new BadRequestException('Insufficient Arcturus Credits (AC)');
+    }
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days sub
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { points: { decrement: cost } }
+      });
+
+      await tx.pointTransaction.create({
+        data: {
+          userId,
+          amount: -cost,
+          type: 'spend',
+          description: `Subscribed to ${type.toUpperCase()} signals for ${targetQuery}`
+        }
+      });
+
+      return tx.signalSubscription.create({
+        data: { userId, targetQuery, type, expiresAt }
+      });
+    });
+  }
+
+  async getUserSignals(userId: string) {
+    return this.prisma.signalSubscription.findMany({
+      where: { userId, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  // Mystery Box logic remains the same
   async generateMysteryBoxes() {
     const staleLimit = new Date();
     staleLimit.setDate(staleLimit.getDate() - 60);

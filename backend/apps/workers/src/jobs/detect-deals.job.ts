@@ -12,9 +12,10 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
   const chunkSize = 2000;
   let scannedListings = 0;
   let createdOrUpdated = 0;
-
   let hasMore = true;
   let lastId: string | undefined = undefined;
+  
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
   while (hasMore) {
     const listingsQuery = await prisma.marketListing.findMany({
@@ -23,10 +24,10 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
       take: chunkSize,
       skip: lastId ? 1 : undefined,
       cursor: lastId ? { id: lastId } : undefined,
-      select: { id: true, itemId: true, price: true, shippingPrice: true }
+      select: { id: true, itemId: true, price: true, shippingPrice: true, title: true, url: true }
     });
 
-    const listings: Array<{ id: string; itemId: string; price: number; shippingPrice: number | null }> = listingsQuery;
+    const listings = listingsQuery;
 
     if (listings.length === 0) {
       hasMore = false;
@@ -38,12 +39,11 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
 
     const itemIds = Array.from(new Set<string>(listings.map((l) => String(l.itemId))));
     
+    // 1. Стандартні угоди для Watchlist
     const watchlistItems = await prisma.watchlistItem.findMany({
       where: { itemId: { in: itemIds }, active: true },
       select: { id: true, itemId: true, maxBuyPrice: true, desiredBuyPrice: true, targetSellPrice: true }
     });
-
-    if (watchlistItems.length === 0) continue;
 
     const watchlistMap = new Map<string, typeof watchlistItems>();
     for (const w of watchlistItems) {
@@ -52,15 +52,48 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
       watchlistMap.set(w.itemId, arr);
     }
 
+    // 2. Сигнали для користувачів (SaaS)
+    const activeSignals = await prisma.signalSubscription.findMany({
+      where: { expiresAt: { gt: new Date() } },
+      include: { user: true }
+    });
+
     const creates: string[] = [];
     const now = new Date().toISOString();
 
     for (const listing of listings) {
+      const buyPrice = toMoney(listing.price + (listing.shippingPrice ?? 0));
+
+      // Обробка підписок
+      for (const signal of activeSignals) {
+        if (signal.user.phone && listing.title.toLowerCase().includes(signal.targetQuery.toLowerCase())) {
+          const tgUsername = signal.user.phone.replace('@', '');
+          
+          if (botToken) {
+            try {
+              const chatIdRes = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates`);
+              const chatIdData = await chatIdRes.json();
+              if (chatIdData.ok) {
+                const update = chatIdData.result.find((u: any) => u.message?.from?.username === tgUsername);
+                if (update) {
+                  const chatId = update.message.chat.id;
+                  const text = `🚨 <b>Arcturus Signal Match</b> 🚨\n\nЗнайдено збіг для: <b>${signal.targetQuery}</b>\nНазва: ${listing.title}\nЦіна: ${buyPrice} ₴\n\nЛінк: ${listing.url}`;
+                  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
+                  });
+                }
+              }
+            } catch (e) {}
+          }
+        }
+      }
+
       const matchedWatchlists = watchlistMap.get(listing.itemId);
       if (!matchedWatchlists) continue;
 
       for (const watchlistItem of matchedWatchlists) {
-        const buyPrice = toMoney(listing.price + (listing.shippingPrice ?? 0));
         const targetSellPrice = toMoney(watchlistItem.targetSellPrice ?? watchlistItem.maxBuyPrice * 1.4);
         const profit = toMoney(targetSellPrice - buyPrice);
         const roiPercent = roi(profit, buyPrice);

@@ -35,6 +35,12 @@ export class LiveController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('auction/:auctionId/ticket')
+  buyTicket(@Req() req: any, @Param('auctionId') auctionId: string) {
+    return this.liveService.buyAuctionTicket(req.user.id, auctionId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('auction/:auctionId/bid')
   placeBid(@Req() req: any, @Param('auctionId') auctionId: string, @Body() body: { amount: number }) {
     return this.liveService.placeBid(req.user.id, auctionId, body.amount);

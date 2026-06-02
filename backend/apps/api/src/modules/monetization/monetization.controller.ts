@@ -14,6 +14,18 @@ export class MonetizationController {
     return this.monetization.buyBoost(req.user.id, body.inventoryItemId, body.days);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('signals/subscribe')
+  subscribeSignal(@Req() req: any, @Body() body: { query: string; type: string }) {
+    return this.monetization.buySignalSubscription(req.user.id, body.query, body.type);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('signals')
+  getSignals(@Req() req: any) {
+    return this.monetization.getUserSignals(req.user.id);
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Post('mystery-boxes/generate')

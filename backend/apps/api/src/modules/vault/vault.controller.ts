@@ -25,7 +25,7 @@ export class VaultController {
   }
 
   @Post('invest')
-  investInDeal(@Req() req: any, @Body() body: { dealId: string }) {
-    return this.vault.investInDeal(req.user.id, body.dealId);
+  investInDeal(@Req() req: any, @Body() body: { dealId: string; amount?: number }) {
+    return this.vault.investInDeal(req.user.id, body.dealId, body.amount);
   }
 }

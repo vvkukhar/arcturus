@@ -23,10 +23,17 @@ export class VaultService {
   }
 
   async getInvestorPortfolio(userId: string) {
-    return this.prisma.inventoryItem.findMany({
+    const fullOwnership = await this.prisma.inventoryItem.findMany({
       where: { investorId: userId },
       include: { item: true, sales: true }
     });
+
+    const fractionalOwnership = await this.prisma.fractionalShare.findMany({
+      where: { userId },
+      include: { deal: { include: { watchlistItem: { include: { item: true } } } } }
+    });
+
+    return { fullOwnership, fractionalOwnership };
   }
 
   async createDepositLink(userId: string, amount: number) {
@@ -34,16 +41,14 @@ export class VaultService {
     const reference = `vault_${userId}_${Date.now()}`;
     const storeUrl = this.getStoreUrl();
 
-    // Якщо немає токена Монобанку в .env — імітуємо платіж 
     if (!this.monoToken || this.monoToken === '') {
-       console.warn('[VaultService] MONOBANK_TOKEN is missing. Emulating payment success.');
        await this.prisma.$transaction([
         this.prisma.user.update({
           where: { id: userId },
           data: { vaultBalance: { increment: amount } }
         }),
         this.prisma.vaultTransaction.create({
-          data: { userId, amount: amount, type: 'deposit', description: 'Simulated Local Deposit' }
+          data: { userId, amount: amount, type: 'deposit', description: 'Local Deposit' }
         })
        ]);
        return { url: `${storeUrl}/vault?success=true` };
@@ -67,82 +72,86 @@ export class VaultService {
     return { url: (data as any).pageUrl };
   }
 
-  async handleDepositWebhook(body: any) {
-    if (body.status === 'success' && body.reference?.startsWith('vault_')) {
-      const userId = body.reference.split('_')[1];
-      const amountUah = body.amount / 100;
-
-      await this.prisma.$transaction([
-        this.prisma.user.update({
-          where: { id: userId },
-          data: { vaultBalance: { increment: amountUah } }
-        }),
-        this.prisma.vaultTransaction.create({
-          data: { userId, amount: amountUah, type: 'deposit', description: 'Monobank Deposit' }
-        })
-      ]);
-    }
-    return { received: true };
-  }
-
-  async investInDeal(userId: string, dealId: string) {
+  async investInDeal(userId: string, dealId: string, fractionalAmount?: number) {
     const deal = await this.prisma.deal.findUnique({
       where: { id: dealId, status: 'open' },
-      include: { listing: true, watchlistItem: true }
+      include: { listing: true, watchlistItem: true, fractionalShares: true }
     });
 
     if (!deal) throw new NotFoundException('Deal not found or already closed');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.vaultBalance < deal.buyPrice) {
+    const amountToInvest = fractionalAmount ?? deal.buyPrice;
+
+    if (!user || user.vaultBalance < amountToInvest) {
       throw new BadRequestException('Insufficient Vault balance');
+    }
+
+    const currentFunded = deal.fractionalShares.reduce((sum, s) => sum + s.amount, 0);
+    if (currentFunded + amountToInvest > deal.buyPrice) {
+      throw new BadRequestException('Investment amount exceeds required capital for this deal');
     }
 
     return this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: userId },
-        data: { vaultBalance: { decrement: deal.buyPrice } }
+        data: { vaultBalance: { decrement: amountToInvest } }
       });
 
       await tx.vaultTransaction.create({
-        data: { userId, amount: -deal.buyPrice, type: 'investment', description: `Funded deal: ${deal.watchlistItem.titleSnapshot}` }
+        data: { userId, amount: -amountToInvest, type: 'investment', description: `Funded deal: ${deal.watchlistItem.titleSnapshot}` }
       });
 
-      await tx.deal.update({
-        where: { id: dealId },
-        data: { status: 'funded' }
-      });
+      const sharePercent = (amountToInvest / deal.buyPrice) * 100;
 
-      const inv = await tx.inventoryItem.create({
+      await tx.fractionalShare.create({
         data: {
-          itemId: deal.watchlistItem.itemId,
-          titleSnapshot: deal.watchlistItem.titleSnapshot,
-          purchasePrice: deal.buyPrice,
-          totalCost: deal.buyPrice,
-          expectedSalePriceManual: deal.targetSellPrice,
-          quantity: 1,
-          condition: 'used',
-          investorId: userId,
-          investorProfitShare: 0.8,
-          notes: 'Funded via Arcturus Vault',
+          dealId,
+          userId,
+          amount: amountToInvest,
+          sharePercent
         }
       });
 
-      await tx.purchaseOrder.create({
-        data: {
-          itemId: deal.watchlistItem.itemId,
-          watchlistItemId: deal.watchlistItemId,
-          inventoryItemId: inv.id,
-          titleSnapshot: deal.watchlistItem.titleSnapshot,
-          status: 'ordered',
-          plannedPrice: deal.buyPrice,
-          actualPrice: deal.buyPrice,
-          totalCost: deal.buyPrice,
-          notes: 'Auto-ordered via Vault Investor',
-        }
-      });
+      if (currentFunded + amountToInvest >= deal.buyPrice) {
+        await tx.deal.update({
+          where: { id: dealId },
+          data: { status: 'funded' }
+        });
 
-      return inv;
+        const inv = await tx.inventoryItem.create({
+          data: {
+            itemId: deal.watchlistItem.itemId,
+            titleSnapshot: deal.watchlistItem.titleSnapshot,
+            purchasePrice: deal.buyPrice,
+            totalCost: deal.buyPrice,
+            expectedSalePriceManual: deal.targetSellPrice,
+            quantity: 1,
+            condition: 'used',
+            investorId: fractionalAmount ? null : userId,
+            investorProfitShare: 0.8,
+            notes: 'Funded via Arcturus Vault (Crowdinvesting)',
+          }
+        });
+
+        await tx.purchaseOrder.create({
+          data: {
+            itemId: deal.watchlistItem.itemId,
+            watchlistItemId: deal.watchlistItemId,
+            inventoryItemId: inv.id,
+            titleSnapshot: deal.watchlistItem.titleSnapshot,
+            status: 'ordered',
+            plannedPrice: deal.buyPrice,
+            actualPrice: deal.buyPrice,
+            totalCost: deal.buyPrice,
+            notes: 'Auto-ordered via Vault Funding',
+          }
+        });
+
+        return { status: 'fully_funded', inventoryItem: inv };
+      }
+
+      return { status: 'partially_funded', sharePercent };
     });
   }
 }

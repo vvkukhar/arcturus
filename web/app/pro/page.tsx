@@ -3,15 +3,16 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
-import { Crown, Zap, BarChart2, ShieldCheck, ArrowRight, Loader2, Lock, Terminal, Vault } from 'lucide-react';
+import { Crown, Zap, BarChart2, ShieldCheck, ArrowRight, Loader2, Lock, Terminal, Vault, Send } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function ArcturusProPage() {
-  const { data: user, isLoading } = useSWR<any>('/api/auth/me', swrFetcher);
+  const { data: user, isLoading, mutate } = useSWR<any>('/api/auth/me', swrFetcher);
   const [loading, setLoading] = useState(false);
+  const [signalQuery, setSignalQuery] = useState('');
   const router = useRouter();
 
   const handleSubscribe = async () => {
@@ -31,8 +32,22 @@ export default function ArcturusProPage() {
     }
   };
 
-  const handleGenApiKey = async () => {
-    toast.info('Генерація ключів доступна тільки в налаштуваннях профілю.');
+  const handleBuySignal = async () => {
+    if (!signalQuery) return;
+    setLoading(true);
+    try {
+      await apiFetch('/api/proxy/monetization/signals/subscribe', { 
+        method: 'POST',
+        body: JSON.stringify({ query: signalQuery, type: 'telegram' })
+      });
+      toast.success('Підписку оформлено! Ви отримаєте сповіщення в Telegram.');
+      setSignalQuery('');
+      mutate();
+    } catch (e: any) {
+      toast.error(e.message || 'Недостатньо AC або помилка.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,6 +66,32 @@ export default function ArcturusProPage() {
         <p className="text-xl text-slate-500 dark:text-slate-400 font-medium max-w-2xl mx-auto mb-16">
           Від інституційної аналітики до алгоритмічного управління капіталом. Оберіть свій рівень доступу.
         </p>
+
+        {/* Секція Платних Сигналів */}
+        <div className="mb-16 bg-[var(--card)] p-8 rounded-3xl border border-[var(--border)] shadow-xl flex flex-col md:flex-row items-center gap-8 text-left">
+          <div className="p-6 bg-blue-50 dark:bg-blue-900/20 rounded-2xl shrink-0">
+            <Send size={48} className="text-blue-500" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-2xl font-black mb-2">Premium Market Signals</h3>
+            <p className="text-slate-500 font-medium mb-4">Налаштуйте бота, щоб миттєво отримувати сповіщення в Telegram, коли з'являється потрібний вам набір. Ціна: 5000 AC за 30 днів.</p>
+            <div className="flex gap-4">
+              <input 
+                value={signalQuery}
+                onChange={e => setSignalQuery(e.target.value)}
+                placeholder="Артикул або назва..." 
+                className="flex-1 bg-[var(--background)] border border-[var(--border)] rounded-xl px-4 font-bold outline-none focus:border-blue-500"
+              />
+              <button 
+                onClick={handleBuySignal}
+                disabled={loading || !signalQuery}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="animate-spin" /> : <Zap size={18} />} Підписатися
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div className="grid lg:grid-cols-3 gap-8 text-left mb-16">
           
@@ -81,7 +122,7 @@ export default function ArcturusProPage() {
             </div>
             <div className="text-4xl font-black mb-6">20% <span className="text-lg text-slate-400">Success Fee</span></div>
             <ul className="space-y-3 mb-8 flex-1 relative z-10">
-              <li className="flex items-center gap-2 font-medium"><Zap size={16} className="text-amber-400"/> Авто-викуп угод ботами</li>
+              <li className="flex items-center gap-2 font-medium"><Zap size={16} className="text-amber-400"/> Фракційне інвестування</li>
               <li className="flex items-center gap-2 font-medium"><BarChart2 size={16} className="text-amber-400"/> Фізичне зберігання на складі</li>
               <li className="flex items-center gap-2 font-medium"><ShieldCheck size={16} className="text-amber-400"/> 80% чистого прибутку вам</li>
             </ul>
@@ -102,9 +143,9 @@ export default function ArcturusProPage() {
               <li className="flex items-center gap-2 font-medium"><Zap size={16} className="text-blue-500"/> 15m Delayed Deal Feed</li>
               <li className="flex items-center gap-2 font-medium"><ShieldCheck size={16} className="text-blue-500"/> Comps & Valuation API</li>
             </ul>
-            <button onClick={handleGenApiKey} className="w-full py-4 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <Link href="/account" className="w-full text-center py-4 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               Згенерувати API Key
-            </button>
+            </Link>
           </div>
 
         </div>

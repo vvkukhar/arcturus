@@ -45,7 +45,7 @@ export class LiveService {
     const active = await this.prisma.liveAuction.findFirst({ where: { streamId, status: 'active' } });
     if (active) throw new BadRequestException('Another auction is already active');
 
-    const endsAt = new Date(Date.now() + 30 * 1000); 
+    const endsAt = new Date(Date.now() + 60 * 1000); // 60 seconds
 
     const auction = await this.prisma.liveAuction.create({
       data: {
@@ -62,10 +62,43 @@ export class LiveService {
 
     this.realtime.emitCustom('live.auction_started', auction);
 
-    const timer = setTimeout(() => this.endAuction(auction.id), 30000);
+    const timer = setTimeout(() => this.endAuction(auction.id), 60000);
     this.activeAuctionTimers.set(auction.id, timer);
 
     return auction;
+  }
+
+  async buyAuctionTicket(userId: string, auctionId: string) {
+    const depositAmount = 500;
+
+    const auction = await this.prisma.liveAuction.findUnique({ where: { id: auctionId } });
+    if (!auction || auction.status !== 'active') throw new NotFoundException('Auction is not active');
+
+    const existing = await this.prisma.auctionTicket.findUnique({
+      where: { auctionId_userId: { auctionId, userId } }
+    });
+
+    if (existing) return existing;
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.vaultBalance < depositAmount) {
+      throw new BadRequestException('Insufficient Vault Balance to pay deposit (500 ₴ required).');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { vaultBalance: { decrement: depositAmount } }
+      });
+
+      await tx.vaultTransaction.create({
+        data: { userId, amount: -depositAmount, type: 'auction_deposit', description: `Locked deposit for auction ${auctionId}` }
+      });
+
+      return tx.auctionTicket.create({
+        data: { auctionId, userId, deposit: depositAmount, status: 'locked' }
+      });
+    });
   }
 
   async placeBid(userId: string, auctionId: string, amount: number) {
@@ -74,14 +107,22 @@ export class LiveService {
     
     if (amount <= auction.currentPrice) throw new BadRequestException('Bid too low');
 
+    const ticket = await this.prisma.auctionTicket.findUnique({
+      where: { auctionId_userId: { auctionId, userId } }
+    });
+
+    if (!ticket || ticket.status !== 'locked') {
+      throw new BadRequestException('You must pay the deposit to bid.');
+    }
+
     let newEndsAt = auction.endsAt!;
     const timeRemaining = newEndsAt.getTime() - Date.now();
-    if (timeRemaining < 10000) {
-      newEndsAt = new Date(Date.now() + 10000);
+    if (timeRemaining < 15000) {
+      newEndsAt = new Date(Date.now() + 15000);
       if (this.activeAuctionTimers.has(auctionId)) {
         clearTimeout(this.activeAuctionTimers.get(auctionId));
       }
-      const newTimer = setTimeout(() => this.endAuction(auctionId), 10000);
+      const newTimer = setTimeout(() => this.endAuction(auctionId), 15000);
       this.activeAuctionTimers.set(auctionId, newTimer);
     }
 
@@ -108,7 +149,7 @@ export class LiveService {
     
     const auction = await this.prisma.liveAuction.findUnique({
       where: { id: auctionId },
-      include: { inventoryItem: true }
+      include: { inventoryItem: true, tickets: true }
     });
 
     if (!auction || auction.status !== 'active') return;
@@ -120,22 +161,47 @@ export class LiveService {
       });
 
       if (auction.highestBidderId) {
-        const user = await tx.user.findUnique({ where: { id: auction.highestBidderId } });
+        const winner = await tx.user.findUnique({ where: { id: auction.highestBidderId } });
+        
         await tx.order.create({
           data: {
             inventoryItemId: auction.inventoryItemId,
             productTitle: auction.inventoryItem.titleSnapshot,
-            buyerName: user?.name || 'Live Bidder',
-            contact: user?.email || 'N/A',
+            buyerName: winner?.name || 'Live Winner',
+            contact: winner?.phone || winner?.email || 'N/A',
             sellPrice: auction.currentPrice,
             channel: 'live_auction',
             status: 'pending'
           }
         });
+        
         await tx.inventoryItem.update({
           where: { id: auction.inventoryItemId },
           data: { quantity: { decrement: 1 } }
         });
+
+        // Форфейт депозиту для переможця (йде в рахунок оплати, або залишаємо як штраф)
+        await tx.auctionTicket.update({
+          where: { auctionId_userId: { auctionId, userId: auction.highestBidderId } },
+          data: { status: 'forfeited' }
+        });
+      }
+
+      // Повернення депозитів тим, хто не виграв
+      for (const ticket of auction.tickets) {
+        if (ticket.userId !== auction.highestBidderId && ticket.status === 'locked') {
+          await tx.user.update({
+            where: { id: ticket.userId },
+            data: { vaultBalance: { increment: ticket.deposit } }
+          });
+          await tx.vaultTransaction.create({
+            data: { userId: ticket.userId, amount: ticket.deposit, type: 'auction_refund', description: 'Auction deposit returned' }
+          });
+          await tx.auctionTicket.update({
+            where: { id: ticket.id },
+            data: { status: 'refunded' }
+          });
+        }
       }
     });
 

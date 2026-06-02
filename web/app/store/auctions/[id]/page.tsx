@@ -8,7 +8,7 @@ import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 import { useI18n } from '@/components/providers/i18n-provider';
 import Image from 'next/image';
-import { Loader2, Gavel, Clock, ArrowLeft, ArrowUpCircle } from 'lucide-react';
+import { Loader2, Gavel, Clock, ArrowLeft, ArrowUpCircle, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -17,18 +17,21 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
   const { t } = useI18n();
   const [bidAmount, setBidAmount] = useState('');
   const [isBidding, setIsBidding] = useState(false);
+  const [isPayingDeposit, setIsPayingDeposit] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
 
+  const { data: user } = useSWR<any>('/api/auth/me', swrFetcher);
   const { data: auction, isLoading, mutate } = useSWR<any>(`/api/auctions/${id}`, swrFetcher);
+
+  const hasTicket = auction?.tickets?.some((t: any) => t.userId === user?.id && t.status === 'locked');
 
   useEffect(() => {
     if (!auction) return;
     const socket = getSocket();
     
-    // Підписуємось на подію аукціону
     const handleNewBid = (payload: any) => {
       toast.info('New bid placed!');
-      mutate(); // Оновлюємо дані при новій ставці
+      mutate();
     };
 
     socket.on(`auction.${id}.bid_placed`, handleNewBid);
@@ -54,6 +57,20 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
     return () => clearInterval(interval);
   }, [auction?.endsAt]);
 
+  const handlePayDeposit = async () => {
+    if (isPayingDeposit) return;
+    try {
+      setIsPayingDeposit(true);
+      await apiFetch(`/api/proxy/live/auction/${id}/ticket`, { method: 'POST' });
+      toast.success('Депозит 500 ₴ успішно заблоковано! Ви можете робити ставки.');
+      mutate();
+    } catch (e: any) {
+      toast.error(e.message || 'Помилка. Поповніть Vault баланс мінімум на 500 ₴.');
+    } finally {
+      setIsPayingDeposit(false);
+    }
+  };
+
   const handlePlaceBid = async (e: React.FormEvent) => {
     e.preventDefault();
     const amount = Number(bidAmount);
@@ -64,7 +81,7 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
 
     try {
       setIsBidding(true);
-      await apiFetch(`/api/proxy/public/auctions/${id}/bid`, {
+      await apiFetch(`/api/proxy/live/auction/${id}/bid`, {
         method: 'POST',
         body: JSON.stringify({ amount }),
       });
@@ -72,7 +89,7 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
       toast.success('Bid placed successfully!');
       mutate();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to place bid. Are you logged in?');
+      toast.error(err.message || 'Failed to place bid.');
     } finally {
       setIsBidding(false);
     }
@@ -85,7 +102,7 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
   const displayImage = item.images?.[0]?.imageUrl || 'https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?w=800&q=80';
   const isEnded = new Date(auction.endsAt).getTime() <= Date.now();
 
-  const minNextBid = auction.currentPrice + 50; // Мінімальний крок +50 грн
+  const minNextBid = auction.currentPrice + 50;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-in fade-in duration-500 pb-24">
@@ -94,7 +111,6 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Фото */}
         <div className="relative aspect-square w-full rounded-[3rem] bg-[var(--card)] border border-[var(--border)] overflow-hidden shadow-sm">
           <Image src={displayImage} alt={item.titleSnapshot} fill className="object-cover mix-blend-multiply dark:mix-blend-normal" />
           <div className="absolute top-6 left-6 flex gap-2">
@@ -104,7 +120,6 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        {/* Консоль торгів */}
         <div className="flex flex-col">
           <div className="mb-6">
             <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2">{item.item?.theme || 'LEGO'}</div>
@@ -112,42 +127,57 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
           </div>
 
           <div className="bg-[var(--card)] p-8 rounded-[2rem] border border-[var(--border)] shadow-xl mb-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-8 opacity-5">
-              <Gavel size={120} />
-            </div>
+            <div className="absolute top-0 right-0 p-8 opacity-5"><Gavel size={120} /></div>
             
             <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Current Bid</div>
             <div className="text-5xl md:text-6xl font-black text-red-600 dark:text-red-400 mb-8 font-mono">
               {formatMoney(auction.currentPrice)}
             </div>
 
-            <form onSubmit={handlePlaceBid} className="space-y-4 relative z-10">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₴</span>
-                  <input 
-                    type="number"
-                    min={minNextBid}
-                    required
-                    disabled={isEnded || isBidding}
-                    value={bidAmount}
-                    onChange={(e) => setBidAmount(e.target.value)}
-                    placeholder={`Min: ${minNextBid}`}
-                    className="w-full h-16 pl-10 pr-4 rounded-2xl border-2 border-[var(--border)] bg-[var(--background)] font-black text-xl text-[var(--foreground)] outline-none focus:border-red-500 transition-colors disabled:opacity-50"
-                  />
+            {!hasTicket && !isEnded ? (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 p-6 rounded-2xl relative z-10">
+                <div className="flex items-center gap-3 mb-4 text-red-600 dark:text-red-400">
+                  <Lock size={24} />
+                  <span className="font-black text-lg">Вхід за Депозитом</span>
                 </div>
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-6">Щоб робити ставки, необхідно сплатити гарантійний депозит 500 ₴ з балансу Vault. Депозит повертається, якщо ви не виграєте аукціон.</p>
                 <button 
-                  type="submit" 
-                  disabled={isEnded || isBidding || !bidAmount || Number(bidAmount) <= auction.currentPrice}
-                  className="h-16 px-8 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-lg flex items-center justify-center gap-2 transition-all shadow-xl shadow-red-600/20 disabled:opacity-50 disabled:scale-100 active:scale-95"
+                  onClick={handlePayDeposit}
+                  disabled={isPayingDeposit}
+                  className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl transition-transform active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2"
                 >
-                  {isBidding ? <Loader2 className="animate-spin" /> : <ArrowUpCircle />} Place Bid
+                  {isPayingDeposit ? <Loader2 className="animate-spin" /> : <Gavel />} Оплатити 500 ₴
                 </button>
               </div>
-              <p className="text-xs font-semibold text-slate-500">
-                Anti-sniping is active. Bids placed in the last 15 seconds will extend the timer.
-              </p>
-            </form>
+            ) : (
+              <form onSubmit={handlePlaceBid} className="space-y-4 relative z-10">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₴</span>
+                    <input 
+                      type="number"
+                      min={minNextBid}
+                      required
+                      disabled={isEnded || isBidding}
+                      value={bidAmount}
+                      onChange={(e) => setBidAmount(e.target.value)}
+                      placeholder={`Min: ${minNextBid}`}
+                      className="w-full h-16 pl-10 pr-4 rounded-2xl border-2 border-[var(--border)] bg-[var(--background)] font-black text-xl text-[var(--foreground)] outline-none focus:border-red-500 transition-colors disabled:opacity-50"
+                    />
+                  </div>
+                  <button 
+                    type="submit" 
+                    disabled={isEnded || isBidding || !bidAmount || Number(bidAmount) <= auction.currentPrice}
+                    className="h-16 px-8 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-lg flex items-center justify-center gap-2 transition-all shadow-xl shadow-red-600/20 disabled:opacity-50 disabled:scale-100 active:scale-95"
+                  >
+                    {isBidding ? <Loader2 className="animate-spin" /> : <ArrowUpCircle />} Place Bid
+                  </button>
+                </div>
+                <p className="text-xs font-semibold text-slate-500">
+                  Anti-sniping is active. Bids placed in the last 15 seconds will extend the timer.
+                </p>
+              </form>
+            )}
           </div>
 
           <div className="flex-1">
@@ -156,9 +186,7 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
               {auction.bids?.map((bid: any, idx: number) => (
                 <div key={bid.id} className="flex justify-between items-center p-4 bg-[var(--card)] border border-[var(--border)] rounded-2xl">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500">
-                      #{idx + 1}
-                    </div>
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500">#{idx + 1}</div>
                     <div>
                       <div className="font-bold text-sm">{bid.bidder?.name || 'Anonymous'}</div>
                       <div className="text-xs text-slate-400 font-mono">{new Date(bid.createdAt).toLocaleTimeString()}</div>

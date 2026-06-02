@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
-import { Vault, TrendingUp, PiggyBank, ArrowRight, Loader2, BarChart2 } from 'lucide-react';
+import { Vault, TrendingUp, PiggyBank, Loader2, BarChart2, PieChart } from 'lucide-react';
 import { formatMoney } from '@/lib/format';
 import { useState, useMemo } from 'react';
 import { apiFetch } from '@/lib/api';
@@ -18,28 +18,33 @@ const Tooltip = dynamic(() => import('recharts').then((mod) => mod.Tooltip), { s
 
 export default function VaultPage() {
   const { data: balance, mutate: mutateBalance } = useSWR('/api/proxy/vault/balance', swrFetcher);
-  const { data: portfolio, mutate: mutatePortfolio } = useSWR<any[]>('/api/proxy/vault/portfolio', swrFetcher);
-  const { data: deals } = useSWR<any[]>('/api/proxy/pro/deals', swrFetcher, { refreshInterval: 15000 });
+  const { data: portfolio, mutate: mutatePortfolio } = useSWR<any>('/api/proxy/vault/portfolio', swrFetcher);
+  const { data: deals, mutate: mutateDeals } = useSWR<any[]>('/api/proxy/pro/deals', swrFetcher, { refreshInterval: 15000 });
   
   const [depositAmount, setDepositAmount] = useState('');
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  const safePortfolio = Array.isArray(portfolio) ? portfolio : [];
+  const fullOwnership = portfolio?.fullOwnership || [];
+  const fractionalOwnership = portfolio?.fractionalOwnership || [];
   const safeDeals = Array.isArray(deals) ? deals : [];
 
   const chartData = useMemo(() => {
     let runningVal = Number(balance || 0);
     const data = [{ name: 'Init', value: runningVal }];
-    if (safePortfolio.length > 0) {
-      safePortfolio.forEach((p, i) => {
-        runningVal += p.expectedSalePriceManual ?? p.totalCost;
-        data.push({ name: `T+${i + 1}`, value: runningVal });
-      });
-    } else {
-      data.push({ name: 'Proj', value: runningVal * 1.05 });
-    }
+    
+    [...fullOwnership, ...fractionalOwnership].forEach((p: any, i) => {
+      if (p.expectedSalePriceManual) {
+        runningVal += p.expectedSalePriceManual;
+      } else if (p.amount) {
+        runningVal += p.amount * 1.35; 
+      } else {
+        runningVal += p.totalCost;
+      }
+      data.push({ name: `T+${i + 1}`, value: runningVal });
+    });
+    
     return data;
-  }, [safePortfolio, balance]);
+  }, [fullOwnership, fractionalOwnership, balance]);
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,17 +63,27 @@ export default function VaultPage() {
     }
   };
 
-  const handleInvest = async (dealId: string) => {
+  const handleInvest = async (dealId: string, fullPrice: number) => {
+    const fractionAmtStr = prompt(`Угода коштує ${fullPrice} ₴. Введіть суму, на яку хочете зайти (мін 500 ₴):`, String(fullPrice));
+    if (!fractionAmtStr) return;
+
+    const fractionAmt = Number(fractionAmtStr);
+    if (isNaN(fractionAmt) || fractionAmt < 500) {
+      toast.error('Сума має бути мінімум 500 ₴');
+      return;
+    }
+
     if (loadingId) return;
     try {
       setLoadingId(dealId);
       await apiFetch('/api/proxy/vault/invest', {
         method: 'POST',
-        body: JSON.stringify({ dealId }),
+        body: JSON.stringify({ dealId, amount: fractionAmt }),
       });
-      toast.success('Successfully funded the deal!');
+      toast.success('Ви успішно проінвестували в набір!');
       mutateBalance();
       mutatePortfolio();
+      mutateDeals();
     } catch (e: any) {
       toast.error(e.message || 'Investment failed');
     } finally {
@@ -76,7 +91,8 @@ export default function VaultPage() {
     }
   };
 
-  const projectedYield = safePortfolio.reduce((sum, p) => sum + ((p.expectedSalePriceManual ?? p.totalCost) - p.totalCost) * 0.8, 0);
+  const projectedYield = fullOwnership.reduce((sum: number, p: any) => sum + ((p.expectedSalePriceManual ?? p.totalCost) - p.totalCost) * 0.8, 0) +
+                         fractionalOwnership.reduce((sum: number, f: any) => sum + (f.amount * 0.35) * 0.8, 0);
 
   return (
     <div className="bg-[#020617] text-white min-h-screen">
@@ -89,7 +105,7 @@ export default function VaultPage() {
             </div>
             <div>
               <h1 className="text-4xl font-black tracking-tight font-mono">Arcturus Vault</h1>
-              <p className="font-medium text-slate-400 mt-1 uppercase tracking-widest text-xs">Institutional Capital Management</p>
+              <p className="font-medium text-slate-400 mt-1 uppercase tracking-widest text-xs">Crowdinvesting & Capital Management</p>
             </div>
           </div>
           <div className="flex gap-4 text-right">
@@ -150,21 +166,24 @@ export default function VaultPage() {
                 </button>
               </form>
             </div>
-            <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-[2rem]">
-              <div className="text-emerald-500 font-black text-sm uppercase tracking-widest mb-1">Active Positions</div>
-              <div className="text-3xl font-black font-mono text-white">{safePortfolio.length}</div>
+            <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-[2rem] flex justify-between items-center">
+              <div>
+                <div className="text-emerald-500 font-black text-sm uppercase tracking-widest mb-1">Active Positions</div>
+                <div className="text-3xl font-black font-mono text-white">{fullOwnership.length + fractionalOwnership.length}</div>
+              </div>
+              <PieChart className="text-emerald-500 opacity-50" size={48} />
             </div>
           </div>
         </div>
 
-        <h2 className="text-2xl font-black mb-8 border-b border-slate-800 pb-4">Executable Deals (Auto-Buy)</h2>
+        <h2 className="text-2xl font-black mb-8 border-b border-slate-800 pb-4">Crowdinvesting Deals (Fractional)</h2>
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
           {safeDeals.map(deal => (
-            <div key={deal.id} className="bg-[#0B0F19] border border-slate-800 p-6 rounded-[2rem] hover:border-amber-500/50 transition-colors group">
-              <div className="font-bold text-lg leading-tight line-clamp-2 mb-6 group-hover:text-amber-400 transition-colors">{deal.title}</div>
-              <div className="flex justify-between items-center mb-8 bg-[#131825] p-4 rounded-xl border border-slate-800">
+            <div key={deal.id} className="bg-[#0B0F19] border border-slate-800 p-6 rounded-[2rem] hover:border-amber-500/50 transition-colors group relative overflow-hidden">
+              <div className="font-bold text-lg leading-tight line-clamp-2 mb-6 group-hover:text-amber-400 transition-colors relative z-10">{deal.title}</div>
+              <div className="flex justify-between items-center mb-8 bg-[#131825] p-4 rounded-xl border border-slate-800 relative z-10">
                 <div>
-                  <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Entry Capital</div>
+                  <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Required Capital</div>
                   <div className="text-xl font-black font-mono">{formatMoney(deal.buyPrice)}</div>
                 </div>
                 <div className="text-right">
@@ -173,12 +192,12 @@ export default function VaultPage() {
                 </div>
               </div>
               <button 
-                onClick={() => handleInvest(deal.id)}
-                disabled={loadingId === deal.id || Number(balance || 0) < deal.buyPrice}
-                className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 border border-slate-700"
+                onClick={() => handleInvest(deal.id, deal.buyPrice)}
+                disabled={loadingId === deal.id || Number(balance || 0) < 500}
+                className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 border border-slate-700 relative z-10"
               >
                 {loadingId === deal.id ? <Loader2 className="animate-spin" /> : <TrendingUp size={18} className="text-amber-500" />} 
-                Execute Trade
+                Buy Fractional Share
               </button>
             </div>
           ))}

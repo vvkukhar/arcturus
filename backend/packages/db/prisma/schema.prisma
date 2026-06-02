@@ -54,11 +54,54 @@ model User {
   promotedListings       PromotedListing[]
   mysteryBoxesBought     MysteryBox[]
   promoCodes             PromoCode[]
+  fractionalShares       FractionalShare[]  @relation("FractionalInvestments")
+  signals                SignalSubscription[] @relation("UserSignals")
+  auctionTickets         AuctionTicket[]    @relation("AuctionTickets")
 
   @@index([role, active])
   @@index([active])
   @@index([apiKey])
   @@index([referralCode])
+}
+
+model FractionalShare {
+  id           String   @id @default(cuid())
+  dealId       String
+  userId       String
+  amount       Float
+  sharePercent Float
+  createdAt    DateTime @default(now())
+  deal         Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user         User     @relation("FractionalInvestments", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@index([userId])
+}
+
+model SignalSubscription {
+  id          String   @id @default(cuid())
+  userId      String
+  targetQuery String
+  type        String   @default("telegram")
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  user        User     @relation("UserSignals", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([targetQuery])
+}
+
+model AuctionTicket {
+  id          String   @id @default(cuid())
+  auctionId   String
+  userId      String
+  deposit     Float
+  status      String   @default("locked")
+  createdAt   DateTime @default(now())
+  auction     LiveAuction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  user        User     @relation("AuctionTickets", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([auctionId, userId])
 }
 
 model PromoCode {
@@ -129,6 +172,7 @@ model LiveAuction {
   stream          LiveStream    @relation(fields: [streamId], references: [id], onDelete: Cascade)
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
   bids            LiveBid[]
+  tickets         AuctionTicket[]
 
   @@index([streamId, status])
 }
@@ -543,6 +587,7 @@ model Deal {
   updatedAt       DateTime      @default(now()) @updatedAt
   listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
+  fractionalShares FractionalShare[]
 
   @@unique([watchlistItemId, listingId])
   @@index([status, score])
@@ -598,7 +643,7 @@ model Order {
   supplierCost     Float?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @default(now()) @updatedAt
-  deletedAt        DateTime?
+  deletedAt         DateTime?
   reserveRequest   ReserveRequest? @relation(fields: [reserveRequestId], references: [id], onDelete: SetNull)
   inventoryItem    InventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
   sale             Sale?           @relation(fields: [saleId], references: [id], onDelete: SetNull)
