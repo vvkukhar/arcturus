@@ -8,7 +8,7 @@ import {
   ChartColumn, ChartNoAxesCombined, ClipboardList, Coins, DatabaseZap,
   Gauge, Handshake, KanbanSquare, MailCheck, Package, ReceiptText,
   RefreshCw, ScanSearch, ScrollText, SearchCheck, Users, Wallet,
-  Globe, ScanBarcode, Store, CornerDownLeft, Shield, Flame
+  Globe, ScanBarcode, Store, CornerDownLeft, Shield, Flame, Megaphone
 } from 'lucide-react';
 import { NotificationBadge } from '@/components/admin/notification-badge';
 import { cn } from '@/lib/utils';
@@ -25,10 +25,11 @@ export function AdminSidebar() {
 
   const items = [
     { href: '/admin/dashboard', label: 'admin.dashboard', icon: Gauge },
+    { href: '/admin/marketing', label: 'admin.marketing', icon: Megaphone },
     { href: '/admin/algo', label: 'admin.algo', icon: BrainCircuit },
     { href: '/admin/arbitrage', label: 'admin.arbitrage', icon: Globe },
     { href: '/admin/inventory', label: 'admin.inventory', icon: Package },
-    { href: '/admin/suppliers', label: 'Supplier CRM', icon: Shield },
+    { href: '/admin/suppliers', label: 'admin.suppliers', icon: Shield },
     { href: '/admin/watchlist', label: 'admin.watchlist', icon: Wallet },
     { href: '/admin/opportunities/buy', label: 'admin.opportunities', icon: ChartColumn },
     { href: '/admin/opportunities/sell', label: 'admin.opportunities', icon: ChartColumn },
@@ -47,15 +48,15 @@ export function AdminSidebar() {
     { href: '/admin/profit', label: 'admin.profit', icon: Coins },
     { href: '/admin/allocation', label: 'sidebar.portfolio', icon: ChartNoAxesCombined },
     { href: '/admin/reserves', label: 'admin.reserves', icon: MailCheck },
-    { href: '/admin/orders', label: 'Orders List', icon: Package },
+    { href: '/admin/orders', label: 'admin.orders', icon: Package },
     { href: '/admin/orders/board', label: 'admin.orders', icon: KanbanSquare },
     { href: '/admin/returns', label: 'Returns & Refunds', icon: CornerDownLeft },
     { href: '/admin/sales', label: 'admin.sales', icon: ReceiptText },
-    { href: '/admin/payouts', label: 'Marketplace Payouts', icon: Coins },
+    { href: '/admin/payouts', label: 'admin.payouts', icon: Coins },
     { href: '/admin/notifications', label: 'account.sysPref', icon: Bell },
     { href: '/admin/collaboration', label: 'admin.collab', icon: Handshake },
     { href: '/admin/activity', label: 'admin.activity', icon: ScrollText },
-    { href: '/admin/opportunities/demand', label: 'Demand Heatmap', icon: Flame },
+    { href: '/admin/opportunities/demand', label: 'admin.demand', icon: Flame },
   ];
 
   return (
@@ -99,7 +100,7 @@ export function AdminSidebar() {
               )}
             >
               <Icon size={18} strokeWidth={active ? 2.5 : 2} />
-              <span>{['POS Terminal', 'Marketplace', 'Returns & Refunds', 'Marketplace Payouts', 'Supplier CRM', 'Demand Heatmap', 'Orders List'].includes(item.label) ? item.label : (isMounted ? t(item.label as any) : '...')}</span>
+              <span>{['POS Terminal', 'Returns & Refunds'].includes(item.label) ? item.label : (isMounted ? t(item.label as any) : '...')}</span>
             </Link>
           );
         })}

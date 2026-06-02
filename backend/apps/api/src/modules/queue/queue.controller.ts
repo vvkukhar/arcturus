@@ -34,4 +34,14 @@ export class QueueController {
   scheduledRefresh(): Promise<unknown> {
     return this.queueService.enqueueScheduledRefresh();
   }
+
+  @Post('marketing/smm')
+  triggerSmm(): Promise<unknown> {
+    return this.queueService.enqueueAiSmmBroadcaster();
+  }
+
+  @Post('marketing/ltv')
+  triggerLtv(): Promise<unknown> {
+    return this.queueService.enqueueLtvMaximizer();
+  }
 }

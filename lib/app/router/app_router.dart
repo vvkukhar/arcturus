@@ -6,6 +6,9 @@ import 'package:lego_trading_manager/features/core/presentation/root_layout.dart
 import 'package:lego_trading_manager/features/orders/presentation/orders_screen.dart';
 import 'package:lego_trading_manager/features/scouts/presentation/scouts_screen.dart';
 import 'package:lego_trading_manager/features/monetization/presentation/monetization_screen.dart';
+import 'package:lego_trading_manager/features/vault/presentation/vault_screen.dart';
+import 'package:lego_trading_manager/features/syndicate/presentation/syndicate_screen.dart';
+import 'package:lego_trading_manager/features/marketing/presentation/marketing_screen.dart';
 
 class AppRouter {
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -32,6 +35,9 @@ class AppRouter {
   static const String orders = '/orders';
   static const String scouts = '/scouts';
   static const String monetization = '/monetization';
+  static const String vault = '/vault';
+  static const String syndicate = '/syndicate';
+  static const String marketing = '/marketing';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     Widget page;
@@ -58,6 +64,15 @@ class AppRouter {
         break;
       case '/monetization':
         page = const MonetizationScreen();
+        break;
+      case '/vault':
+        page = const VaultScreen();
+        break;
+      case '/syndicate':
+        page = const SyndicateScreen();
+        break;
+      case '/marketing':
+        page = const MarketingScreen();
         break;
       default:
         page = const RootLayout();

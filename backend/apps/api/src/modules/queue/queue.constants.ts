@@ -17,4 +17,6 @@ export const JOB_NAMES = {
   RUN_SCANNER_JOB: 'run-scanner',
   GLOBAL_SYNC_REFRESH: 'global-sync-refresh',
   SURGE_PRICING: 'surge-pricing',
+  AI_SMM_BROADCASTER: 'ai-smm-broadcaster',
+  LTV_MAXIMIZER: 'ltv-maximizer',
 } as const;

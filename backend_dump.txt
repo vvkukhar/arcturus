@@ -3842,6 +3842,13 @@ export class AuthController {
     const updatedUser = await this.authService.updateProfile(req.user.id, body);
     return { ok: true, user: updatedUser };
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('api-key')
+  async generateApiKey(@Req() req: Request & { user: any }) {
+    const result = await this.authService.generateApiKey(req.user.id);
+    return { ok: true, ...result };
+  }
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\auth\auth.guard.ts =====
@@ -3902,7 +3909,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { User } from '@prisma/client';
 
-export type AuthUser = Pick<User, 'id' | 'name' | 'email' | 'role' | 'isPro' | 'proExpiresAt'>;
+export type AuthUser = Pick<User, 'id' | 'name' | 'email' | 'role' | 'isPro' | 'proExpiresAt' | 'apiKey' | 'apiTier'>;
 
 @Injectable()
 export class AuthService {
@@ -3939,6 +3946,8 @@ export class AuthService {
       role: session.user.role,
       isPro: session.user.isPro,
       proExpiresAt: session.user.proExpiresAt,
+      apiKey: session.user.apiKey,
+      apiTier: session.user.apiTier,
     };
   }
 
@@ -3979,6 +3988,8 @@ export class AuthService {
         role: user.role,
         isPro: user.isPro,
         proExpiresAt: user.proExpiresAt,
+        apiKey: user.apiKey,
+        apiTier: user.apiTier,
       } 
     };
   }
@@ -4013,6 +4024,8 @@ export class AuthService {
         role: user.role,
         isPro: user.isPro,
         proExpiresAt: user.proExpiresAt,
+        apiKey: user.apiKey,
+        apiTier: user.apiTier,
       } 
     };
   }
@@ -4035,7 +4048,6 @@ export class AuthService {
     await this.prisma.userSession.deleteMany({ where: { userId } });
   }
 
-  // НОВИЙ МЕТОД ДЛЯ ОНОВЛЕННЯ ПРОФІЛЮ
   async updateProfile(userId: string, dto: { name?: string; email?: string; password?: string }): Promise<AuthUser> {
     const updateData: any = {};
     
@@ -4060,7 +4072,6 @@ export class AuthService {
       data: updateData,
     });
 
-    // Оновлюємо кеш сесій для цього юзера, щоб застосувались нові дані (ім'я/email)
     await this.invalidateUserSessions(userId);
 
     return {
@@ -4070,7 +4081,19 @@ export class AuthService {
       role: updatedUser.role,
       isPro: updatedUser.isPro,
       proExpiresAt: updatedUser.proExpiresAt,
+      apiKey: updatedUser.apiKey,
+      apiTier: updatedUser.apiTier,
     };
+  }
+
+  async generateApiKey(userId: string): Promise<{ apiKey: string; apiTier: string }> {
+    const apiKey = `arc_live_${crypto.randomBytes(24).toString('hex')}`;
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { apiKey, apiTier: 'b2b' }
+    });
+    await this.invalidateUserSessions(userId);
+    return { apiKey: user.apiKey!, apiTier: user.apiTier! };
   }
 }
 
@@ -7987,16 +8010,16 @@ export class DropshipController {
 
   @Get('catalog')
   async getWholesaleCatalog(@Req() req: any) {
-    if (req.user.role !== 'dropshipper' && req.user.role !== 'admin') {
-      throw new UnauthorizedException('Dropshipper access required');
+    if (!req.user.isPro && req.user.role !== 'admin' && req.user.role !== 'operator') {
+      throw new UnauthorizedException('B2B Dropship access required (PRO tier)');
     }
     return this.dropshipService.getWholesaleCatalog();
   }
 
   @Post('order')
   async createDropshipOrder(@Req() req: any, @Body() body: any) {
-    if (req.user.role !== 'dropshipper' && req.user.role !== 'admin') {
-      throw new UnauthorizedException('Dropshipper access required');
+    if (!req.user.isPro && req.user.role !== 'admin' && req.user.role !== 'operator') {
+      throw new UnauthorizedException('B2B Dropship access required (PRO tier)');
     }
     return this.dropshipService.createOrder(req.user.id, body);
   }
@@ -8009,9 +8032,10 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { DropshipController } from './dropship.controller';
 import { DropshipService } from './dropship.service';
 import { AuthModule } from '../auth/auth.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, PaymentsModule],
   controllers: [DropshipController],
   providers: [DropshipService],
 })
@@ -8019,48 +8043,79 @@ export class DropshipModule {}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\dropship\dropship.service.ts =====
 
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class DropshipService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly payments: PaymentsService
+  ) {}
 
   async getWholesaleCatalog() {
     const items = await this.prisma.inventoryItem.findMany({
       where: { quantity: { gt: 0 }, isMarketplace: false },
-      include: { item: true, images: { take: 1, orderBy: { sortOrder: 'asc' } } }
+      include: { item: true, images: { take: 1, orderBy: { sortOrder: 'asc' } } },
+      orderBy: { createdAt: 'desc' }
     });
 
     return items.map(i => {
       const retail = i.expectedSalePriceManual ?? (i.totalCost * 1.5);
-      const b2bDiscount = 0.15; 
+      const b2bDiscount = 0.15; // 15% знижка для оптовиків
       const wholesalePrice = Math.round(retail * (1 - b2bDiscount));
 
       return {
         id: i.id,
         title: i.titleSnapshot,
-        theme: i.item.theme,
+        theme: i.item?.theme || 'LEGO',
         wholesalePrice,
         recommendedRetailPrice: retail,
+        profitMargin: retail - wholesalePrice,
         quantity: i.quantity,
         imageUrl: i.images[0]?.imageUrl
       };
     });
   }
 
-  async createOrder(dropshipperId: string, payload: { inventoryItemId: string; customerName: string; contact: string; ttn?: string }) {
+  async createOrder(
+    dropshipperId: string, 
+    payload: { inventoryItemId: string; customerName: string; contact: string; deliveryString: string; paymentMethod: 'vault' | 'card' }
+  ) {
     const inventory = await this.prisma.inventoryItem.findUnique({ where: { id: payload.inventoryItemId } });
     if (!inventory || inventory.quantity < 1) throw new BadRequestException('Item unavailable');
 
     const retail = inventory.expectedSalePriceManual ?? (inventory.totalCost * 1.5);
     const wholesalePrice = Math.round(retail * 0.85);
 
-    return this.prisma.$transaction(async (tx) => {
+    if (payload.paymentMethod === 'vault') {
+      const user = await this.prisma.user.findUnique({ where: { id: dropshipperId } });
+      if (!user || user.vaultBalance < wholesalePrice) {
+        throw new BadRequestException('Insufficient funds in Vault balance');
+      }
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.inventoryItem.update({
         where: { id: inventory.id },
         data: { quantity: { decrement: 1 } }
       });
+
+      if (payload.paymentMethod === 'vault') {
+        await tx.user.update({
+          where: { id: dropshipperId },
+          data: { vaultBalance: { decrement: wholesalePrice } }
+        });
+        await tx.vaultTransaction.create({
+          data: {
+            userId: dropshipperId,
+            amount: -wholesalePrice,
+            type: 'payment',
+            description: `B2B Dropship Order: ${inventory.titleSnapshot}`
+          }
+        });
+      }
 
       const order = await tx.order.create({
         data: {
@@ -8070,13 +8125,20 @@ export class DropshipService {
           contact: payload.contact,
           sellPrice: wholesalePrice,
           channel: 'dropship_b2b',
-          adminNote: `Dropshipper ID: ${dropshipperId}. TTN provided: ${payload.ttn || 'None'}`,
-          status: 'pending'
+          adminNote: `Dropship B2B Partner: ${dropshipperId} | Delivery: ${payload.deliveryString}`,
+          status: payload.paymentMethod === 'vault' ? 'paid' : 'pending'
         }
       });
 
       return order;
     });
+
+    if (payload.paymentMethod === 'card') {
+      const checkout = await this.payments.createCheckoutSession(result.id);
+      return { order: result, url: checkout.url };
+    }
+
+    return { order: result };
   }
 }
 
@@ -11218,16 +11280,29 @@ export class ReviewFlowService {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\gamification\gamification.controller.ts =====
 
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
 import { GamificationService } from './gamification.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@Controller('public/gamification')
+@Controller('gamification')
 export class GamificationController {
   constructor(private readonly gamification: GamificationService) {}
 
   @Get('leaderboard')
   getLeaderboard() {
     return this.gamification.getLeaderboard(20);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('my-rewards')
+  getMyRewards(@Req() req: any) {
+    return this.gamification.getMyRewards(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('buy-promo')
+  buyPromoCode(@Req() req: any, @Body() body: { discountPercent: number }) {
+    return this.gamification.buyPromoCode(req.user.id, body.discountPercent);
   }
 }
 
@@ -11250,7 +11325,7 @@ export class GamificationModule {}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\gamification\gamification.service.ts =====
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
@@ -11261,16 +11336,13 @@ export class GamificationService {
     private readonly realtime: RealtimeGateway,
   ) {}
 
-  // Нарахування балів за активність (для рейтингу в таблиці лідерів)
   async awardPoints(userId: string, amount: number, description: string) {
     return this.prisma.$transaction(async (tx) => {
-      // Оновлюємо загальний рахунок користувача
       await tx.user.update({
         where: { id: userId },
         data: { points: { increment: amount } },
       });
 
-      // Логуємо подію для історії (щоб адмін бачив за що бали)
       await tx.pointTransaction.create({
         data: {
           userId,
@@ -11280,7 +11352,6 @@ export class GamificationService {
         },
       });
 
-      // Сповіщаємо скаута в реальному часі
       this.realtime.emitCustom(`user.${userId}.points_updated`, {
         amount,
         description,
@@ -11291,7 +11362,6 @@ export class GamificationService {
     });
   }
 
-  // Отримання рейтингової таблиці
   async getLeaderboard(limit: number = 10) {
     const users = await this.prisma.user.findMany({
       where: { points: { gt: 0 } },
@@ -11309,8 +11379,9 @@ export class GamificationService {
 
     return users.map(user => {
       let rank = 'Rookie';
-      if (user.points >= 5000) rank = 'Master Scout';
-      else if (user.points >= 1000) rank = 'Pro Hunter';
+      if (user.points >= 10000) rank = 'Grandmaster';
+      else if (user.points >= 5000) rank = 'Master Scout';
+      else if (user.points >= 1000) rank = 'Hunter';
 
       const successfulLeads = user.scoutLeads.filter(l => l.status === 'bought').length;
 
@@ -11322,6 +11393,76 @@ export class GamificationService {
         successfulLeads,
         totalLeads: user.scoutLeads.length
       };
+    });
+  }
+
+  async getMyRewards(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        promoCodes: {
+          where: { isUsed: false, validUntil: { gt: new Date() } },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    if (!user) throw new BadRequestException('User not found');
+
+    let rank = 'Rookie';
+    let nextRankPoints = 1000;
+    if (user.points >= 10000) { rank = 'Grandmaster'; nextRankPoints = user.points; }
+    else if (user.points >= 5000) { rank = 'Master Scout'; nextRankPoints = 10000; }
+    else if (user.points >= 1000) { rank = 'Hunter'; nextRankPoints = 5000; }
+
+    return {
+      points: user.points,
+      rank,
+      nextRankPoints,
+      promoCodes: user.promoCodes
+    };
+  }
+
+  async buyPromoCode(userId: string, discountPercent: number) {
+    const costs: Record<number, number> = { 5: 5000, 10: 12000, 15: 25000 };
+    const cost = costs[discountPercent];
+
+    if (!cost) throw new BadRequestException('Invalid discount tier');
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.points < cost) {
+      throw new BadRequestException('Not enough Arcturus Credits (AC)');
+    }
+
+    const code = `ARC-${discountPercent}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const validUntil = new Date();
+    validUntil.setDate(validUntil.getDate() + 30); 
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { points: { decrement: cost } }
+      });
+
+      await tx.pointTransaction.create({
+        data: {
+          userId,
+          amount: -cost,
+          type: 'spend',
+          description: `Purchased ${discountPercent}% discount promo code`
+        }
+      });
+
+      const promo = await tx.promoCode.create({
+        data: {
+          code,
+          discountPercent,
+          userId,
+          validUntil
+        }
+      });
+
+      return promo;
     });
   }
 }
@@ -15569,21 +15710,6 @@ export class ScoutService {
     });
   }
 
-  async getScoutEfficiency() {
-    return this.prisma.user.findMany({
-      where: { role: 'viewer' }, 
-      select: {
-        id: true,
-        name: true,
-        points: true,
-        _count: {
-          select: { scoutLeads: true }
-        }
-      },
-      orderBy: { points: 'desc' }
-    });
-  }
-
   async getAllLeads() {
     return this.prisma.scoutLead.findMany({
       include: { scout: true },
@@ -15598,7 +15724,7 @@ export class ScoutService {
     });
   }
 
-  async approveLead(leadId: string, baseReward: number) {
+  async approveLead(leadId: string, baseRewardAC: number) {
     const lead = await this.prisma.scoutLead.findUnique({ where: { id: leadId } });
     if (!lead) throw new NotFoundException('Lead not found');
 
@@ -15616,7 +15742,7 @@ export class ScoutService {
       }
     }
 
-    const finalReward = Math.round(baseReward * bestMultiplier);
+    const finalReward = Math.round(baseRewardAC * bestMultiplier);
 
     return this.prisma.$transaction(async (tx) => {
       const updatedLead = await tx.scoutLead.update({
@@ -15634,7 +15760,7 @@ export class ScoutService {
           userId: lead.scoutId,
           amount: finalReward,
           type: 'earn',
-          description: `Reward for lead ${leadId} (x${bestMultiplier} multiplier applied)`
+          description: `Bounty for lead ${leadId} (x${bestMultiplier} multiplier)`
         }
       });
 
@@ -18209,9 +18335,14 @@ export class OrdersController {
     return this.ordersService.createFromReserve(body.reserveRequestId);
   }
 
+  @Post('approve-dropship')
+  approveDropship(@Body() body: { reserveRequestId: string, listingId: string, supplierCost: number }) {
+    return this.ordersService.approveDropship(body);
+  }
+
   @Post('bulk-ttn')
-  generateBulkTTN(@Body() body: { orderIds: string[] }) {
-    return this.ordersService.generateBulkTTN(body.orderIds);
+  generateBulkTTN(@Body() body: { orders: { orderId: string, weight: number }[] }) {
+    return this.ordersService.generateBulkTTN(body.orders);
   }
 
   @Post('bulk-pdf')
@@ -18264,7 +18395,6 @@ export class OrdersModule {}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\orders\orders.service.ts =====
 
-// call:function_1{"queries":["backend/apps/api/src/modules/orders/orders.service.ts"]}
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { toMoney } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
@@ -18353,8 +18483,11 @@ export class OrdersService {
     return { ...order, clientProfile };
   }
 
-  async generateBulkTTN(orderIds: string[]): Promise<unknown> {
-    if (!orderIds || orderIds.length === 0) throw new BadRequestException('No order IDs provided');
+  async generateBulkTTN(ordersData: { orderId: string, weight: number }[]): Promise<unknown> {
+    if (!ordersData || ordersData.length === 0) throw new BadRequestException('No orders provided');
+
+    const orderIds = ordersData.map(o => o.orderId);
+    const weightMap = new Map(ordersData.map(o => [o.orderId, o.weight]));
 
     const orders = await this.prisma.order.findMany({
       where: { id: { in: orderIds }, status: { in: ['pending', 'approved', 'contacted', 'paid'] } },
@@ -18374,26 +18507,33 @@ export class OrdersService {
       try {
         const parts = order.buyerName.split(' ');
         
-        // 🔥 ФІКС ТУТ: Форматуємо телефон для НП (лише цифри, формат 380...)
         let cleanPhone = order.contact.replace(/[^\d]/g, '');
         if (cleanPhone.startsWith('0')) cleanPhone = '38' + cleanPhone;
         if (cleanPhone.length > 12) cleanPhone = cleanPhone.slice(0, 12);
+
+        const isPaid = order.status === 'paid' || order.channel === 'paid_upfront';
+        const weight = weightMap.get(order.id) || 2.5; 
 
         const ttn = await this.novaPoshta.createExpressWaybill({
           orderId: order.id,
           firstName: parts[0] || 'Клієнт',
           lastName: parts.slice(1).join(' ') || 'Покупець',
           phone: cleanPhone,
-          deliveryString: order.adminNote || '', // Передаємо весь текст адреси
-          weight: 2.5,
-          cost: order.sellPrice ?? 2000
+          deliveryString: order.adminNote || '', 
+          weight,
+          cost: order.sellPrice ?? 2000,
+          isPaid 
         });
 
         const updatedAdminNote = `${order.adminNote ?? ''} [TTN: ${ttn}]`.trim();
 
         await this.prisma.order.update({
           where: { id: order.id },
-          data: { adminNote: updatedAdminNote, status: 'sold' }
+          data: { 
+            adminNote: updatedAdminNote, 
+            status: isPaid ? 'sold' : 'contacted',
+            deliveryStatus: 'Створено' 
+          }
         });
 
         results.push({ orderId: order.id, status: 'success', ttn });
@@ -18426,9 +18566,20 @@ export class OrdersService {
     return { url };
   }
 
-  async create(dto: CreateOrderDto): Promise<unknown> {
+  async create(dto: CreateOrderDto & { promoCode?: string }): Promise<unknown> {
     if (!dto.productTitle?.trim() || !dto.buyerName?.trim() || !dto.contact?.trim()) {
       throw new BadRequestException('productTitle, buyerName, and contact are required');
+    }
+
+    let finalPrice = dto.sellPrice != null ? toMoney(dto.sellPrice) : null;
+    let appliedPromoId = null;
+
+    if (dto.promoCode && finalPrice) {
+      const promo = await this.prisma.promoCode.findUnique({ where: { code: dto.promoCode } });
+      if (promo && !promo.isUsed && (!promo.validUntil || promo.validUntil > new Date())) {
+        finalPrice = toMoney(finalPrice * (1 - promo.discountPercent / 100));
+        appliedPromoId = promo.id;
+      }
     }
 
     if (dto.inventoryItemId) {
@@ -18443,20 +18594,26 @@ export class OrdersService {
       throw new BadRequestException('Client is blacklisted due to unfulfilled COD orders. 100% upfront payment required.');
     }
 
-    const created = await this.prisma.order.create({
-      data: {
-        reserveRequestId: dto.reserveRequestId ?? null,
-        inventoryItemId: dto.inventoryItemId ?? null,
-        productTitle: dto.productTitle.trim(),
-        buyerName: dto.buyerName.trim(),
-        contact: dto.contact.trim(),
-        sellPrice: dto.sellPrice != null ? toMoney(dto.sellPrice) : null,
-        quantity: dto.quantity ?? 1,
-        channel: dto.channel ?? null,
-        adminNote: dto.adminNote ?? null,
-        status: 'pending',
-      },
-      include: { reserveRequest: true, inventoryItem: true },
+    const created = await this.prisma.$transaction(async (tx) => {
+      if (appliedPromoId) {
+        await tx.promoCode.update({ where: { id: appliedPromoId }, data: { isUsed: true } });
+      }
+
+      return tx.order.create({
+        data: {
+          reserveRequestId: dto.reserveRequestId ?? null,
+          inventoryItemId: dto.inventoryItemId ?? null,
+          productTitle: dto.productTitle.trim(),
+          buyerName: dto.buyerName.trim(),
+          contact: dto.contact.trim(),
+          sellPrice: finalPrice,
+          quantity: dto.quantity ?? 1,
+          channel: dto.channel ?? null,
+          adminNote: dto.adminNote ?? null,
+          status: 'pending',
+        },
+        include: { reserveRequest: true, inventoryItem: true },
+      });
     });
 
     await this.activity.log('order.created', { orderId: created.id });
@@ -18548,22 +18705,44 @@ export class OrdersService {
 
     if (!order) throw new NotFoundException('Order not found');
     if (order.saleId) return this.getById(order.id);
-    if (!order.inventoryItemId) throw new BadRequestException('Order has no inventory item');
+    if (!order.inventoryItemId && !order.isDropship) throw new BadRequestException('Order has no inventory item');
     if (!order.sellPrice || order.sellPrice <= 0) throw new BadRequestException('Order has no valid sell price');
 
     const isPublicStoreOrder = order.reserveRequestId != null || order.channel === 'public_store';
 
-    const sale = await this.salesService.registerSale({
-      inventoryItemId: order.inventoryItemId,
-      sellPrice: order.sellPrice,
-      quantity: order.quantity,
-      channel: order.channel ?? 'order',
-      buyerName: order.buyerName,
-      notes: order.adminNote ?? null,
-      skipStockDeduction: isPublicStoreOrder, 
-    });
+    let saleId;
 
-    const saleId = (sale as any).id;
+    if (order.isDropship && order.supplierCost) {
+       const profit = order.sellPrice - order.supplierCost;
+       const roi = (profit / order.supplierCost) * 100;
+       
+       const sale = await this.prisma.sale.create({
+         data: {
+           inventoryItemId: 'dropship_item_placeholder', // Dummy or create a specific dropship ghost item
+           itemId: order.inventoryItem?.itemId ?? 'unknown_item_id',
+           quantity: order.quantity,
+           sellPrice: order.sellPrice,
+           costBasis: order.supplierCost,
+           profit: profit,
+           roiPercent: roi,
+           channel: 'dropship',
+           buyerName: order.buyerName,
+           notes: `Zero-touch dropship from listing ${order.sourceListingId}`,
+         }
+       });
+       saleId = sale.id;
+    } else if (order.inventoryItemId) {
+      const sale = await this.salesService.registerSale({
+        inventoryItemId: order.inventoryItemId,
+        sellPrice: order.sellPrice,
+        quantity: order.quantity,
+        channel: order.channel ?? 'order',
+        buyerName: order.buyerName,
+        notes: order.adminNote ?? null,
+        skipStockDeduction: isPublicStoreOrder, 
+      });
+      saleId = (sale as any).id;
+    }
 
     const updated = await this.prisma.order.update({
       where: { id },
@@ -18573,6 +18752,78 @@ export class OrdersService {
     this.realtime.emitCustom('order.sold', updated);
     this.realtime.emitDashboardRefresh('order_sold');
     return updated;
+  }
+
+  async approveDropship(dto: { reserveRequestId: string, listingId: string, supplierCost: number }) {
+    const reserve = await this.prisma.reserveRequest.findUnique({ where: { id: dto.reserveRequestId } });
+    if (!reserve) throw new NotFoundException('Reserve not found');
+
+    const listing = await this.prisma.marketListing.findUnique({ where: { id: dto.listingId }});
+    if (!listing) throw new NotFoundException('Listing not found');
+
+    let order = await this.prisma.order.findFirst({ where: { reserveRequestId: dto.reserveRequestId }});
+
+    const sellPrice = order?.sellPrice ?? toMoney(dto.supplierCost * 1.35); 
+
+    const result = await this.prisma.$transaction(async (tx) => {
+        if (!order) {
+            order = await tx.order.create({
+                data: {
+                    reserveRequestId: reserve.id,
+                    productTitle: reserve.productTitle,
+                    buyerName: reserve.name,
+                    contact: reserve.contact,
+                    status: 'approved',
+                    sellPrice: sellPrice,
+                    quantity: 1,
+                    channel: 'dropship',
+                    isDropship: true,
+                    sourceListingId: listing.id,
+                    supplierCost: dto.supplierCost,
+                    adminNote: reserve.message
+                }
+            });
+        } else {
+            order = await tx.order.update({
+                where: { id: order.id },
+                data: {
+                    status: 'approved',
+                    isDropship: true,
+                    sourceListingId: listing.id,
+                    supplierCost: dto.supplierCost,
+                }
+            });
+        }
+
+        await tx.reserveRequest.update({
+            where: { id: reserve.id },
+            data: { status: 'approved', adminNote: `Approved for dropship via listing ${listing.id}` }
+        });
+
+        await tx.purchaseOrder.create({
+            data: {
+                itemId: listing.itemId,
+                titleSnapshot: listing.title,
+                sourceCode: listing.sourceCode,
+                sourceUrl: listing.url,
+                status: 'planned',
+                plannedPrice: dto.supplierCost,
+                targetSellPrice: order.sellPrice,
+                quantity: 1,
+                notes: `DROPSHIP for order ${order.id}. Ship directly to client: ${order.buyerName}, ${order.contact}, ${order.adminNote}`
+            }
+        });
+
+        await tx.decisionSnapshot.updateMany({
+            where: { contextType: 'zero_touch', contextId: reserve.id },
+            data: { executionStatus: 'executed' }
+        });
+
+        return order;
+    });
+
+    this.realtime.emitDashboardRefresh('dropship_approved');
+    return result;
   }
 
   async board(): Promise<any> {
@@ -21127,6 +21378,13 @@ export class PublicStoreController {
   reserveBoard(): Promise<unknown> {
     return this.publicStoreService.getReserveBoard();
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'operator')
+  @Get('reserve-requests/:id/dropship')
+  async getDropshipOptions(@Param('id') id: string) {
+    return this.publicStoreService.getDropshipOptions(id);
+  }
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\public\public-store.module.ts =====
@@ -21149,7 +21407,6 @@ export class PublicStoreModule {}
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\public\public-store.service.ts =====
 
-// call:function_1{"queries":["backend/apps/api/src/modules/public/public-store.service.ts"]}
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { toMoney } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
@@ -21217,7 +21474,6 @@ export class PublicStoreService {
     const limit = Math.min(params.limit ?? 48, 200);
     const q = params.q?.trim();
 
-    // 🔥 ФІКС БАГА ФІЛЬТРАЦІЇ 🔥
     const whereClause: any = {
       quantity: params.availableOnly === true ? { gt: 0 } : undefined,
       AND: [
@@ -21233,7 +21489,6 @@ export class PublicStoreService {
     if (params.seller === 'community') whereClause.isMarketplace = true;
     if (params.seller === 'arcturus') whereClause.isMarketplace = false;
 
-    // Збираємо фільтри по Item (Type + Theme) в один об'єкт, щоб вони не перезаписували одне одного
     const itemFilter: any = {};
     if (params.type && params.type !== 'all') itemFilter.kind = params.type;
     if (params.theme) itemFilter.theme = { equals: params.theme, mode: 'insensitive' };
@@ -21242,7 +21497,6 @@ export class PublicStoreService {
       whereClause.item = itemFilter;
     }
 
-    // Якщо є пошук, додаємо його в AND, щоб не зламати OR маркетплейсу
     if (q) {
       whereClause.AND.push({
         OR: [
@@ -21347,16 +21601,16 @@ export class PublicStoreService {
     return order;
   }
 
-  async createReserve(params: { inventoryItemId?: string | null; productTitle?: string; name: string; contact: string; message?: string | null; quantity?: number }): Promise<unknown> {
+  async createReserve(params: { inventoryItemId?: string | null; productTitle?: string; name: string; contact: string; message?: string | null; quantity?: number; promoCode?: string }): Promise<unknown> {
     const name = params.name.trim();
     const contact = params.contact.trim();
     const message = params.message?.trim() ?? '';
     let productTitle = params.productTitle?.trim() ?? '';
     let inventoryItemId = params.inventoryItemId;
 
-    // 🔥 ФІКС ТУТ: Визначаємо фінальну ціну та кількість
     let finalPrice: number | null = null;
     let finalQty = params.quantity && params.quantity > 0 ? params.quantity : 1;
+    let appliedPromoId = null;
 
     if (inventoryItemId) {
       const inventoryItem = await this.prisma.inventoryItem.findUnique({
@@ -21367,11 +21621,20 @@ export class PublicStoreService {
       if (inventoryItem.quantity < finalQty) throw new BadRequestException('Item is out of stock');
       
       productTitle = productTitle || inventoryItem.titleSnapshot || inventoryItem.item?.title || inventoryItem.id;
-      // Беремо ціну з бази і множимо на кількість
       finalPrice = (inventoryItem.expectedSalePriceManual ?? inventoryItem.totalCost ?? 0) * finalQty;
     }
 
     if (!productTitle) throw new BadRequestException('Product title is required');
+
+    if (params.promoCode && finalPrice) {
+      const promo = await this.prisma.promoCode.findUnique({ where: { code: params.promoCode } });
+      if (promo && !promo.isUsed && (!promo.validUntil || promo.validUntil > new Date())) {
+        finalPrice = toMoney(finalPrice * (1 - promo.discountPercent / 100));
+        appliedPromoId = promo.id;
+      } else {
+        throw new BadRequestException('Промокод недійсний або вже використаний');
+      }
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       const reserve = await tx.reserveRequest.create({
@@ -21385,8 +21648,8 @@ export class PublicStoreService {
           buyerName: reserve.name,
           contact: reserve.contact,
           status: 'pending',
-          sellPrice: finalPrice, // 🔥 ТЕПЕР ЗАПИСУЄМО РЕАЛЬНУ ЦІНУ
-          quantity: finalQty,    // 🔥 ТЕПЕР ЗАПИСУЄМО РЕАЛЬНУ КІЛЬКІСТЬ
+          sellPrice: finalPrice, 
+          quantity: finalQty,    
           channel: 'public_store',
           adminNote: reserve.message ?? null,
         },
@@ -21396,6 +21659,13 @@ export class PublicStoreService {
         await tx.inventoryItem.update({
           where: { id: inventoryItemId },
           data: { quantity: { decrement: finalQty } }
+        });
+      }
+
+      if (appliedPromoId) {
+        await tx.promoCode.update({
+          where: { id: appliedPromoId },
+          data: { isUsed: true }
         });
       }
 
@@ -21539,6 +21809,12 @@ export class PublicStoreService {
       avgVisiblePrice: Number(avgPrice.toFixed(2)),
       visibleInventoryValue: Number(visibleInventoryValue.toFixed(2)),
     };
+  }
+
+  async getDropshipOptions(reserveId: string): Promise<unknown[]> {
+    return this.prisma.decisionSnapshot.findMany({
+      where: { contextType: 'zero_touch', contextId: reserveId }
+    });
   }
 }
 
@@ -24614,7 +24890,6 @@ export class ScannerService {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\shipping\nova-poshta.service.ts =====
 
-// call:function_1{"queries":["backend/apps/api/src/modules/shipping/nova-poshta.service.ts"]}
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
@@ -24656,6 +24931,7 @@ export class NovaPoshtaService {
     deliveryString: string;
     weight: number;
     cost: number;
+    isPaid?: boolean; // 🔥 ДОДАНО ДЛЯ ПІСЛЯПЛАТИ
   }): Promise<string> {
     if (!this.apiKey) {
       throw new BadRequestException('NOVA_POSHTA_API_KEY is missing');
@@ -24703,13 +24979,14 @@ export class NovaPoshtaService {
     const recipientRef = counterpartyRes[0].Ref;
     const contactRecipientRef = counterpartyRes[0].ContactPerson.data[0].Ref;
 
-    const documentRes = await this.npRequest('InternetDocument', 'save', {
+    // 🔥 БАЗОВІ ОПЦІЇ ДОСТАВКИ 🔥
+    const documentOptions: any = {
       PayerType: 'Recipient',
       PaymentMethod: 'Cash',
       DateTime: new Date().toLocaleDateString('uk-UA').replace(/\./g, '.'),
       CargoType: 'Cargo',
       VolumeGeneral: '0.01',
-      Weight: params.weight.toString(),
+      Weight: params.weight.toString(), // ДИНАМІЧНА ВАГА
       ServiceType: 'WarehouseWarehouse',
       SeatsAmount: '1',
       Description: `LEGO Order ${params.orderId.slice(-6)}`,
@@ -24724,19 +25001,32 @@ export class NovaPoshtaService {
       RecipientAddress: warehouseRef,
       ContactRecipient: contactRecipientRef,
       RecipientsPhone: params.phone,
-    });
+    };
+
+    // 🔥 ДОДАЄМО ПІСЛЯПЛАТУ ЯКЩО НЕ ОПЛАЧЕНО 🔥
+    if (!params.isPaid) {
+      documentOptions.BackwardDeliveryData = [
+        {
+          PayerType: "Recipient",
+          CargoType: "Money",
+          RedeliveryString: params.cost.toString()
+        }
+      ];
+    }
+
+    const documentRes = await this.npRequest('InternetDocument', 'save', documentOptions);
 
     return documentRes[0].IntDocNumber;
   }
 
-  // 🔥 ФІКС ТУТ: Використовуємо printDocument (стандартна А4 форма, працює безпомилково)
+  // 🔥 ФІКС ТУТ: Термо-етикетки 100х100
   async getBulkPdfLink(ttns: string[]): Promise<string> {
     if (ttns.length === 0) throw new BadRequestException('No TTNs provided');
     if (!this.apiKey) throw new BadRequestException('NOVA_POSHTA_API_KEY is missing');
     
     const query = ttns.map(t => `orders[]/${t}`).join('/');
     
-    return `https://my.novaposhta.ua/orders/printDocument/${query}/type/pdf/apiKey/${this.apiKey}`;
+    return `https://my.novaposhta.ua/orders/printMarking100x100/${query}/type/pdf/apiKey/${this.apiKey}`;
   }
 
   async handleWebhook(payload: any): Promise<{ ok: boolean }> {
@@ -24753,12 +25043,13 @@ export class NovaPoshtaService {
 
       if (!order) return { ok: true }; 
 
+      // Отриманий (Сплачений та забраний)
       if (['9', '10', '11'].includes(String(stateId))) {
          if (order.status !== 'sold' && order.status !== 'paid') {
            await this.prisma.$transaction(async (tx) => {
              await tx.order.update({
                where: { id: order.id },
-               data: { status: 'sold' }
+               data: { status: 'sold', deliveryStatus: 'Отримано' } // ФІКС ЛАЙВ СТАТУСУ
              });
              const phoneStr = order.contact.replace(/[^\d+]/g, '');
              await tx.clientProfile.upsert({
@@ -24771,12 +25062,13 @@ export class NovaPoshtaService {
          }
       }
 
+      // Відмова клієнта
       if (['103', '104', '106'].includes(String(stateId))) {
          if (order.status !== 'cancelled') {
            await this.prisma.$transaction(async (tx) => {
              await tx.order.update({
                where: { id: order.id },
-               data: { status: 'cancelled', adminNote: `${order.adminNote} [NP: REFUSED]` }
+               data: { status: 'cancelled', deliveryStatus: 'Відмова', adminNote: `${order.adminNote} [NP: REFUSED]` }
              });
              
              if (order.inventoryItemId) {
@@ -27037,10 +27329,8 @@ export class SyncService {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\syndicate\syndicate.controller.ts =====
 
-import { Controller, Get, Post, Body, Req, UseGuards, Param, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Roles } from '../auth/roles.decorator';
-import { RolesGuard } from '../auth/roles.guard';
 import { SyndicateService } from './syndicate.service';
 
 @Controller('syndicate')
@@ -27064,26 +27354,6 @@ export class SyndicateController {
   applyCode(@Req() req: any, @Body() body: { code: string }) {
     return this.syndicate.applyReferralCode(req.user.id, body.code);
   }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('payout')
-  requestPayout(@Req() req: any) {
-    return this.syndicate.requestAffiliatePayout(req.user.id);
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  @Get('admin/pending')
-  getPendingPayouts() {
-    return this.syndicate.getPendingAffiliatePayouts();
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  @Patch('admin/payout/:id')
-  approvePayout(@Param('id') id: string) {
-    return this.syndicate.approvePayout(id);
-  }
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\syndicate\syndicate.module.ts =====
@@ -27106,7 +27376,6 @@ export class SyndicateModule {}
 
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { toMoney } from '@arcturus/shared';
 
 @Injectable()
 export class SyndicateService {
@@ -27154,50 +27423,29 @@ export class SyndicateService {
 
     if (!user) throw new NotFoundException('User not found');
 
-    const pendingPayouts = await this.prisma.payoutRequest.aggregate({
-      where: { sellerId: userId, adminNote: { contains: 'Affiliate' }, status: 'pending' },
-      _sum: { amount: true }
-    });
+    const totalAC = user.affiliateRewards.reduce((sum, r) => sum + r.amount, 0);
 
     return {
       referralCode: user.referralCode,
-      balance: user.affiliateBalance,
-      pendingPayout: pendingPayouts._sum.amount || 0,
+      totalEarnedAC: totalAC,
+      currentPoints: user.points,
       referralsCount: user.referredUsers.length,
       referrals: user.referredUsers,
       rewards: user.affiliateRewards
     };
   }
 
-  async processSaleCommission(saleId: string) {
-    const sale = await this.prisma.sale.findUnique({
-      where: { id: saleId },
-      include: { 
-        orders: { include: { reserveRequest: true } }
-      }
-    });
-
-    if (!sale) return;
-
-    let buyerUserId = null;
-    if (sale.orders.length > 0 && sale.orders[0].reserveRequest?.name) {
-       // Logic to map order to user if we eventually link user ids to orders.
-       // For now, Syndicate works best with Vault investments where we have absolute user mapping.
-    }
-
-    return true; 
-  }
-
-  async processVaultSuccessFeeCommission(vaultUserId: string, successFeeAmount: number) {
+  async processVaultSuccessFeeCommission(vaultUserId: string, successFeeAmountUAH: number) {
     const investor = await this.prisma.user.findUnique({ where: { id: vaultUserId } });
-    if (!investor?.referredById || successFeeAmount <= 0) return;
+    if (!investor?.referredById || successFeeAmountUAH <= 0) return;
 
-    const cashback = toMoney(successFeeAmount * 0.05); // 5% of Arcturus success fee goes to the referrer
+    // 1 UAH success fee = 10 AC for referrer
+    const pointsReward = Math.round(successFeeAmountUAH * 10); 
 
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: investor.referredById! },
-        data: { affiliateBalance: { increment: cashback } }
+        data: { points: { increment: pointsReward } }
       });
 
       await tx.affiliateReward.create({
@@ -27205,23 +27453,33 @@ export class SyndicateService {
           userId: investor.referredById!,
           sourceId: vaultUserId,
           sourceType: 'vault_success_fee',
-          amount: cashback,
+          amount: pointsReward,
           status: 'credited'
+        }
+      });
+      
+      await tx.pointTransaction.create({
+        data: {
+          userId: investor.referredById!,
+          amount: pointsReward,
+          type: 'earn',
+          description: 'Syndicate Network Yield (Vault)'
         }
       });
     });
   }
 
-  async processMarketplaceSaleCommission(sellerId: string, commissionAmount: number) {
+  async processMarketplaceSaleCommission(sellerId: string, commissionAmountUAH: number) {
     const seller = await this.prisma.user.findUnique({ where: { id: sellerId } });
-    if (!seller?.referredById || commissionAmount <= 0) return;
+    if (!seller?.referredById || commissionAmountUAH <= 0) return;
 
-    const cashback = toMoney(commissionAmount * 0.10); // 10% of Arcturus marketplace fee
+    // 1 UAH commission = 20 AC for referrer
+    const pointsReward = Math.round(commissionAmountUAH * 20);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: seller.referredById! },
-        data: { affiliateBalance: { increment: cashback } }
+        data: { points: { increment: pointsReward } }
       });
 
       await tx.affiliateReward.create({
@@ -27229,51 +27487,19 @@ export class SyndicateService {
           userId: seller.referredById!,
           sourceId: sellerId,
           sourceType: 'marketplace_fee',
-          amount: cashback,
+          amount: pointsReward,
           status: 'credited'
         }
       });
-    });
-  }
-
-  async requestAffiliatePayout(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.affiliateBalance < 100) {
-      throw new BadRequestException('Minimum payout is 100 UAH');
-    }
-
-    if (!user.payoutCard) throw new BadRequestException('Please set a payout card in settings');
-
-    return this.prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: userId },
-        data: { affiliateBalance: 0 }
-      });
-
-      return tx.payoutRequest.create({
+      
+      await tx.pointTransaction.create({
         data: {
-          sellerId: userId,
-          amount: user.affiliateBalance,
-          status: 'pending',
-          cardData: user.payoutCard,
-          adminNote: 'Affiliate Program Payout'
+          userId: seller.referredById!,
+          amount: pointsReward,
+          type: 'earn',
+          description: 'Syndicate Network Yield (Marketplace)'
         }
       });
-    });
-  }
-
-  async getPendingAffiliatePayouts() {
-    return this.prisma.payoutRequest.findMany({
-      where: { status: 'pending', adminNote: { contains: 'Affiliate' } },
-      include: { seller: { select: { id: true, name: true, email: true } } },
-      orderBy: { createdAt: 'desc' }
-    });
-  }
-
-  async approvePayout(id: string) {
-    return this.prisma.payoutRequest.update({
-      where: { id },
-      data: { status: 'paid', updatedAt: new Date() }
     });
   }
 }
@@ -34213,8 +34439,16 @@ export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts:
 
   for (const doc of data.data) {
     const stateId = String(doc.StateId);
+    const statusName = doc.StateName; 
     const order = ttnMap.get(doc.Number);
     if (!order) continue;
+
+    if (order.deliveryStatus !== statusName) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { deliveryStatus: statusName }
+      });
+    }
 
     if (['7', '8'].includes(stateId)) {
       const arrivedDateStr = doc.DateFirstDay;
@@ -34223,15 +34457,21 @@ export async function logisticsSentinelJob(): Promise<{ tracked: number; alerts:
         const diffDays = (Date.now() - arrivedDate.getTime()) / (1000 * 60 * 60 * 24);
 
         if (diffDays >= 3) {
-          await prisma.notification.create({
-            data: {
-              title: '⚠️ Logistics Alert: Abandoned Package',
-              message: `Order ${order.id.slice(-6)} (${order.buyerName}) has been sitting at the branch for ${Math.floor(diffDays)} days. TTN: ${doc.Number}`,
-              type: 'logistics_alert',
-              payloadJson: { orderId: order.id, ttn: doc.Number, diffDays }
-            }
+          const alreadyNotified = await prisma.notification.findFirst({
+             where: { type: 'logistics_alert', payloadJson: { path: ['ttn'], equals: doc.Number } }
           });
-          alerts++;
+          
+          if (!alreadyNotified) {
+            await prisma.notification.create({
+              data: {
+                title: '⚠️ Logistics Alert: Abandoned Package',
+                message: `Order ${order.id.slice(-6)} (${order.buyerName}) has been sitting at the branch for ${Math.floor(diffDays)} days. TTN: ${doc.Number}`,
+                type: 'logistics_alert',
+                payloadJson: { orderId: order.id, ttn: doc.Number, diffDays }
+              }
+            });
+            alerts++;
+          }
         }
       }
     }
@@ -35890,11 +36130,8 @@ model User {
   apiKey                 String?            @unique
   apiTier                String?            @default("none") 
   vaultBalance           Float              @default(0)
-  
   referralCode           String?            @unique
   referredById           String?
-  affiliateBalance       Float              @default(0)
-
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @default(now()) @updatedAt
   
@@ -35916,12 +36153,12 @@ model User {
   fundedItems            InventoryItem[]    @relation("InvestorItems")
   b2bWebhooks            B2bWebhook[]
   liveBids               LiveBid[]
-  
   referredUsers          User[]             @relation("UserReferrals")
   referrer               User?              @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
   affiliateRewards       AffiliateReward[]
   promotedListings       PromotedListing[]
   mysteryBoxesBought     MysteryBox[]
+  promoCodes             PromoCode[]
 
   @@index([role, active])
   @@index([active])
@@ -35929,13 +36166,27 @@ model User {
   @@index([referralCode])
 }
 
+model PromoCode {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  discountPercent Int
+  userId          String
+  isUsed          Boolean  @default(false)
+  validUntil      DateTime?
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isUsed])
+  @@index([code])
+}
+
 model AffiliateReward {
   id          String   @id @default(cuid())
   userId      String
   sourceId    String   
   sourceType  String   
-  amount      Float
-  status      String   @default("pending")
+  amount      Int      
+  status      String   @default("credited")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -36442,6 +36693,7 @@ model Order {
   buyerName        String
   contact          String
   status           String          @default("pending")
+  deliveryStatus   String?         
   sellPrice        Float?
   quantity         Int             @default(1)
   channel          String?

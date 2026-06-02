@@ -6,6 +6,7 @@ import 'package:lego_trading_manager/core/widgets/app_drawer.dart';
 import 'package:lego_trading_manager/core/sync/sync_engine.dart';
 import 'package:lego_trading_manager/features/pos/application/pos_cart_provider.dart';
 import 'package:lego_trading_manager/features/pos/presentation/pos_scanner_modal.dart';
+import 'package:lego_trading_manager/features/pos/presentation/pos_checkout_dialog.dart';
 
 class PosTerminalScreen extends ConsumerStatefulWidget {
   const PosTerminalScreen({super.key});
@@ -19,7 +20,6 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
   final _focusNode = FocusNode();
   bool _isProcessing = false;
 
-  // ФІКС: Звільняємо пам'ять при закритті екрану
   @override
   void dispose() {
     _searchController.dispose();
@@ -84,6 +84,18 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
         _focusNode.requestFocus();
       }
     }
+  }
+
+  void _showCheckoutDialog(double total) {
+    showDialog(
+      context: context,
+      builder: (_) => PosCheckoutDialog(
+        total: total,
+        onCard: () => _checkout('card'),
+        onCash: () => _checkout('cash'),
+        onCrypto: () => _checkout('crypto'),
+      ),
+    );
   }
 
   @override
@@ -191,26 +203,15 @@ class _PosTerminalScreenState extends ConsumerState<PosTerminalScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(backgroundColor: Colors.blueAccent, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                          onPressed: cart.isEmpty || _isProcessing ? null : () => _checkout('card'),
-                          icon: _isProcessing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.credit_card),
-                          label: Text(i18n.t('pos.card'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                          onPressed: cart.isEmpty || _isProcessing ? null : () => _checkout('cash'),
-                          icon: _isProcessing ? const SizedBox() : const Icon(Icons.payments_outlined),
-                          label: Text(i18n.t('pos.cash'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(backgroundColor: Colors.blueAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                      onPressed: cart.isEmpty || _isProcessing ? null : () => _showCheckoutDialog(total),
+                      icon: _isProcessing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.point_of_sale),
+                      label: const Text('Charge Customer', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
                   )
                 ],
               ),

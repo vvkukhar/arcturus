@@ -28,5 +28,7 @@ export async function registerRepeatableJobs(): Promise<void> {
   await maintenanceQueue.add(JOB_NAMES.AI_SMM_BROADCASTER, {}, { repeat: { every: 1000 * 60 * 60 * 4 }, jobId: 'rep:maint:smm', removeOnComplete: 5, removeOnFail: 10 });
   await maintenanceQueue.add(JOB_NAMES.LTV_MAXIMIZER, {}, { repeat: { every: 1000 * 60 * 60 * 24 }, jobId: 'rep:maint:ltv', removeOnComplete: 5, removeOnFail: 10 });
 
+  await maintenanceQueue.add(JOB_NAMES.VAULT_REPORTS, {}, { repeat: { pattern: '0 10 1 * *' }, jobId: 'rep:maint:vault_reports', removeOnComplete: 5, removeOnFail: 10 });
+
   await connection.quit();
 }

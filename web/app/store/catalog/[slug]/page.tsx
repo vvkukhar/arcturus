@@ -1,4 +1,3 @@
-// call:function_1{"queries":["web/app/store/catalog/[slug]/page.tsx"]}
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Package, ArrowLeft, ShieldCheck, Truck, User, Info, Hash, Tag, Layers } from 'lucide-react';
@@ -90,10 +89,37 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const images = product.images || [];
   const displayImage = images.find(img => img.isPrimary)?.imageUrl || images[0]?.imageUrl;
+  
+  const storeBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.arcturusbuild.com';
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: title,
+    image: displayImage ? [displayImage] : [],
+    description: product.notes || `Купити оригінальний ${title}. Серія: ${theme}. Стан: ${product.condition}.`,
+    sku: product.item?.setNumber || product.itemId,
+    mpn: product.item?.setNumber || product.id,
+    brand: {
+      '@type': 'Brand',
+      name: 'LEGO'
+    },
+    offers: {
+      '@type': 'Offer',
+      url: `${storeBaseUrl}/store/catalog/${resolvedParams.slug}`,
+      priceCurrency: 'UAH',
+      price: price,
+      availability: isAvailable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      itemCondition: product.sealed ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition'
+    }
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-in fade-in duration-700 pb-24 transform-gpu relative">
-      
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="absolute top-0 left-1/2 w-[800px] h-[600px] bg-indigo-500/10 dark:bg-indigo-500/10 rounded-full blur-[150px] pointer-events-none -translate-x-1/2 -translate-y-1/3" />
       
       <Link href="/store/catalog" className="relative z-10 inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[var(--card)] border border-[var(--border)] text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-900 hover:scale-105 transition-all mb-10 text-[var(--foreground)] shadow-sm">
@@ -102,13 +128,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 relative z-10">
-        
-        {/* ЛІВА ЧАСТИНА - ФОТО */}
         <div className="lg:col-span-7">
           <div className="sticky top-28">
             <div className="relative aspect-square w-full rounded-[3rem] border border-[var(--border)] bg-white overflow-hidden shadow-2xl flex items-center justify-center group transition-colors duration-500">
-              
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100 z-0 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-br from-white to-slate-50 z-0 pointer-events-none" />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-blue-200 blur-[100px] rounded-full z-0 opacity-40 group-hover:opacity-60 transition-opacity duration-700 pointer-events-none" />
 
               {displayImage ? (
@@ -116,7 +139,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                   src={displayImage} 
                   alt={title} 
                   fill 
-                  // 🔥 ФІКС ТУТ: Прибрали величезні відступи, поставили p-2 sm:p-4 щоб картинка була на весь екран
                   className="object-contain p-2 sm:p-4 drop-shadow-2xl hover:scale-105 transition-transform duration-700 ease-out-expo z-10 mix-blend-multiply" 
                   priority 
                   sizes="(max-width: 1024px) 100vw, 60vw" 
@@ -142,7 +164,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
 
-        {/* ПРАВА ЧАСТИНА - ІНФО */}
         <div className="lg:col-span-5 flex flex-col justify-center">
           <div className="mb-6">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 mb-4 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">

@@ -26,4 +26,5 @@ export const JOB_NAMES = {
   AI_SMM_BROADCASTER: 'ai-smm-broadcaster',
   LTV_MAXIMIZER: 'ltv-maximizer',
   SURGE_SCOUTS: 'surge-scouts',
+  VAULT_REPORTS: 'vault-reports',
 } as const;

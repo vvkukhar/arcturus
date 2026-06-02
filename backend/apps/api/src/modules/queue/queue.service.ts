@@ -66,8 +66,15 @@ export class QueueService implements OnModuleDestroy {
   }
 
   async enqueueScannerJob(jobId: string): Promise<unknown> {
-    // 🔥 ВИПРАВЛЕНО НА RUN_SCANNER_JOB 🔥
     return this.scraperQueue.add(JOB_NAMES.RUN_SCANNER_JOB, { jobId }, { removeOnComplete: 10, removeOnFail: 20 });
+  }
+
+  async enqueueAiSmmBroadcaster(): Promise<unknown> {
+    return this.maintenanceQueue.add(JOB_NAMES.AI_SMM_BROADCASTER, {}, { removeOnComplete: 10, removeOnFail: 20 });
+  }
+
+  async enqueueLtvMaximizer(): Promise<unknown> {
+    return this.maintenanceQueue.add(JOB_NAMES.LTV_MAXIMIZER, {}, { removeOnComplete: 10, removeOnFail: 20 });
   }
 
   async stats(): Promise<unknown> {

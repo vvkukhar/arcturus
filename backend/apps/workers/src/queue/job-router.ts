@@ -18,6 +18,7 @@ import { zeroTouchMatcherJob } from '../jobs/zero-touch-matcher.job';
 import { aiSmmBroadcasterJob } from '../jobs/ai-smm-broadcaster.job';
 import { ltvMaximizerJob } from '../jobs/ltv-maximizer.job';
 import { surgeScoutsJob } from '../jobs/surge-scouts.job';
+import { vaultReportsJob } from '../jobs/vault-reports.job';
 import { JOB_NAMES } from './queue.constants';
 
 export async function routeJob(job: Job): Promise<unknown> {
@@ -43,6 +44,7 @@ export async function routeJob(job: Job): Promise<unknown> {
     case JOB_NAMES.AI_SMM_BROADCASTER: return aiSmmBroadcasterJob();
     case JOB_NAMES.LTV_MAXIMIZER: return ltvMaximizerJob();
     case JOB_NAMES.SURGE_SCOUTS: return surgeScoutsJob();
+    case JOB_NAMES.VAULT_REPORTS: return vaultReportsJob();
     default: throw new Error(`Unknown job name: ${job.name}`);
   }
 }

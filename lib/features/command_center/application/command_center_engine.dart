@@ -53,9 +53,14 @@ class CommandCenterEngine extends Notifier<CommandCenterEngineState> {
         CommandCenterAction('sales', i18n.t('cc.sales'), i18n.t('cc.sales.sub'), AppRouter.sales),
         CommandCenterAction('deal_eval', i18n.t('cc.dealEval'), i18n.t('cc.dealEval.sub'), AppRouter.dealEvaluator),
       ]),
-      CommandCenterSection(i18n.t('cc.system'), [
+      CommandCenterSection('Ecosystem & Marketing', [
+        CommandCenterAction('vault', 'Arcturus Vault', 'Manage passive investments', AppRouter.vault),
+        CommandCenterAction('syndicate', 'The Syndicate', 'Affiliate network & yields', AppRouter.syndicate),
+        CommandCenterAction('marketing', 'AI Marketing Hub', 'SMM & LTV bots', AppRouter.marketing),
         CommandCenterAction('scouts', i18n.t('cc.scouts'), i18n.t('cc.scouts.sub'), AppRouter.scouts),
         CommandCenterAction('monetization', i18n.t('cc.monetization'), i18n.t('cc.monetization.sub'), AppRouter.monetization),
+      ]),
+      CommandCenterSection(i18n.t('cc.system'), [
         CommandCenterAction('analytics', i18n.t('cc.analytics'), i18n.t('cc.analytics.sub'), AppRouter.analytics),
         CommandCenterAction('activity', i18n.t('cc.activity'), i18n.t('cc.activity.sub'), AppRouter.activityLog),
         CommandCenterAction('settings', i18n.t('cc.settings'), i18n.t('cc.settings.sub'), AppRouter.settings),
