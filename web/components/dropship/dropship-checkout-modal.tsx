@@ -21,7 +21,7 @@ interface DropshipCheckoutModalProps {
 }
 
 export function DropshipCheckoutModal({ isOpen, onClose, item }: DropshipCheckoutModalProps) {
-  const { data: vaultBalance, mutate: mutateVault } = useSWR('/api/proxy/vault/balance', swrFetcher);
+  const { data: vaultBalance, mutate: mutateVault } = useSWR<number>('/api/proxy/vault/balance', swrFetcher);
   
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'vault' | 'card'>('vault');
@@ -32,7 +32,8 @@ export function DropshipCheckoutModal({ isOpen, onClose, item }: DropshipCheckou
 
   if (!isOpen) return null;
 
-  const canUseVault = (vaultBalance || 0) >= item.wholesalePrice;
+  const currentBalance = Number(vaultBalance ?? 0);
+  const canUseVault = currentBalance >= item.wholesalePrice;
   const isFormValid = customerName.trim() && contact.trim() && city.trim() && branch.trim();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -121,7 +122,7 @@ export function DropshipCheckoutModal({ isOpen, onClose, item }: DropshipCheckou
                     Vault Баланс
                     {paymentMethod === 'vault' && <div className="w-3 h-3 bg-indigo-500 rounded-full" />}
                   </div>
-                  <div className={`text-xs font-bold ${canUseVault ? 'text-slate-500' : 'text-red-500'}`}>Доступно: {formatMoney(vaultBalance)}</div>
+                  <div className={`text-xs font-bold ${canUseVault ? 'text-slate-500' : 'text-red-500'}`}>Доступно: {formatMoney(currentBalance)}</div>
                 </div>
 
                 <div 
