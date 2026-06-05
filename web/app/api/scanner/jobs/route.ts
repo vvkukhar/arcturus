@@ -22,19 +22,30 @@ export async function POST(request: NextRequest) {
   const token = await getAdminToken();
   const body = await request.json();
 
-  const res = await fetch(`${appConfig.apiBaseUrl}/scanner/jobs`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body),
-    cache: 'no-store',
-  });
+  try {
+    const res = await fetch(`${appConfig.apiBaseUrl}/scanner/jobs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    });
 
-  if (!res.ok) {
-    return NextResponse.json({ ok: false }, { status: 500 });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return NextResponse.json(
+        { ok: false, error: errData.message || `Scanner queue error: ${res.statusText}` }, 
+        { status: res.status >= 500 ? 500 : 400 }
+      );
+    }
+
+    return NextResponse.json(await res.json());
+  } catch (error: any) {
+    return NextResponse.json(
+      { ok: false, error: `Backend connection failed. Is Redis running? Details: ${error.message}` },
+      { status: 503 }
+    );
   }
-
-  return NextResponse.json(await res.json());
 }
