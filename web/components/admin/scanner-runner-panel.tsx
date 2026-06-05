@@ -7,27 +7,9 @@ import { apiFetch } from '@/lib/api';
 import { Loader2, PlaySquare } from 'lucide-react';
 import { swrFetcher } from '@/lib/swr-fetcher';
 
-interface ListingPayload {
-  externalId: string;
-  title: string;
-  price: number;
-  url: string;
-}
-
-function parseListings(value: string): ListingPayload[] {
-  try {
-    const parsed = JSON.parse(value);
-    if (!Array.isArray(parsed)) {
-      throw new Error('Listings payload must be a JSON array');
-    }
-    return parsed as ListingPayload[];
-  } catch {
-    throw new Error('Invalid JSON format');
-  }
-}
-
 export function ScannerRunnerPanel() {
-  const { data: rawJobs, mutate } = useSWR<ScannerJob[]>('/api/scanner/jobs', swrFetcher);
+  // 🔥 ФІКС: Авто-оновлення списку джобів
+  const { data: rawJobs, mutate } = useSWR<ScannerJob[]>('/api/scanner/jobs', swrFetcher, { refreshInterval: 3000 });
   const jobs = Array.isArray(rawJobs) ? rawJobs : [];
 
   const [jobId, setJobId] = useState('');
@@ -36,8 +18,10 @@ export function ScannerRunnerPanel() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Автоматично вибираємо першу активну/в черзі джобу
     if (jobs.length > 0 && !jobId) {
-      setJobId(jobs[0].id);
+      const activeJob = jobs.find(j => j.status === 'queued' || j.status === 'running');
+      if (activeJob) setJobId(activeJob.id);
     }
   }, [jobs, jobId]);
 
@@ -49,7 +33,8 @@ export function ScannerRunnerPanel() {
       setLoading(true);
       setError(null);
 
-      const listings = parseListings(payload);
+      const listings = JSON.parse(payload);
+      if (!Array.isArray(listings)) throw new Error('Listings payload must be a JSON array');
 
       await apiFetch('/api/scanner/jobs/run', {
         method: 'POST',
@@ -89,7 +74,7 @@ export function ScannerRunnerPanel() {
             <option value="" disabled>Select active job</option>
             {jobs.map((job) => (
               <option key={job.id} value={job.id}>
-                {job.sourceCode} • {job.status}
+                {job.sourceCode} • {job.status.toUpperCase()}
               </option>
             ))}
           </select>

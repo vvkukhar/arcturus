@@ -1,15 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import type { ScannerSource } from '@/lib/types';
 import { apiFetch } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
+import { getSocket } from '@/lib/socket';
+import { toast } from 'sonner';
 
 export function ScannerPanel() {
   const { data: rawSources, mutate: mutateSources } = useSWR<ScannerSource[]>('/api/scanner/sources', swrFetcher);
-  const { mutate: mutateJobs } = useSWR('/api/scanner/jobs', swrFetcher);
+  // 🔥 ФІКС: Додали авто-оновлення кожні 3 секунди, щоб ти бачив, як змінюється статус
+  const { mutate: mutateJobs } = useSWR('/api/scanner/jobs', swrFetcher, { refreshInterval: 3000 });
 
   const sources = Array.isArray(rawSources) ? rawSources : [];
   
@@ -18,7 +21,21 @@ export function ScannerPanel() {
   const [sourceCode, setSourceCode] = useState('');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState<'source' | 'job' | null>(null);
-  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const socket = getSocket();
+    const handleJobUpdate = () => mutateJobs();
+    
+    socket.on('scanner.job_queued', handleJobUpdate);
+    socket.on('scanner.job_completed', () => { mutateJobs(); toast.success('Скрапер успішно завершив роботу!'); });
+    socket.on('scanner.job_failed', () => { mutateJobs(); toast.error('Помилка скрапера. Перевірте логи.'); });
+
+    return () => {
+      socket.off('scanner.job_queued');
+      socket.off('scanner.job_completed');
+      socket.off('scanner.job_failed');
+    };
+  }, [mutateJobs]);
 
   const handleAddSource = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +49,6 @@ export function ScannerPanel() {
       setCode(''); 
       setName(''); 
       await mutateSources();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add source');
     } finally { 
       setLoading(null); 
     }
@@ -50,8 +65,7 @@ export function ScannerPanel() {
       });
       setQuery(''); 
       await mutateJobs();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to enqueue scan');
+      toast.success('Джоба додана в чергу! Скрапер запускається...');
     } finally { 
       setLoading(null); 
     }
@@ -63,8 +77,6 @@ export function ScannerPanel() {
         <h2 className="text-2xl font-black text-[var(--foreground)] tracking-tight">Scanner Control</h2>
         <p className="mt-1 text-sm font-medium text-slate-500">Manage scraping sources and enqueue parsing jobs.</p>
       </div>
-
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">{error}</div>}
 
       <form onSubmit={handleAddSource} className="space-y-4 bg-[var(--background)]/50 p-5 rounded-2xl border border-[var(--border)]">
         <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Add New Source</h3>

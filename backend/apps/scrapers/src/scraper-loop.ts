@@ -11,13 +11,14 @@ import { runBrickEconomySource } from './sources/brickeconomy/brickeconomy-sourc
 
 const redisUrl = process.env.REDIS_URL?.trim();
 const connection = redisUrl
-  ? new Redis(redisUrl, { maxRetriesPerRequest: null, enableReadyCheck: false })
+  ? new Redis(redisUrl, { maxRetriesPerRequest: null, enableReadyCheck: false, family: 0 })
   : new Redis({
       host: process.env.REDIS_HOST || '127.0.0.1',
       port: Number(process.env.REDIS_PORT || 6379),
       password: process.env.REDIS_PASSWORD,
       maxRetriesPerRequest: null,
-      enableReadyCheck: false
+      enableReadyCheck: false,
+      family: 0
     });
 
 async function processJob(job: Job) {
@@ -29,7 +30,7 @@ async function processJob(job: Job) {
   const scanJob = await prisma.scanJob.findUnique({ where: { id: jobId } });
   if (!scanJob) throw new Error(`ScanJob not found: ${jobId}`);
 
-  console.log(`[Scraper Worker] 🚀 Starting job ${jobId} for source: ${scanJob.sourceCode} | Query: ${scanJob.query || 'ALL'}`);
+  console.log(`[Scraper] 🚀 Starting job ${jobId} for source: ${scanJob.sourceCode}`);
 
   await prisma.scanJob.update({
     where: { id: jobId },
@@ -37,9 +38,6 @@ async function processJob(job: Job) {
   });
 
   try {
-    await browserManager.init();
-
-    // 🔥 Передаємо конкретний запит з адмінки у скрапер
     const query = scanJob.query;
 
     switch (scanJob.sourceCode) {
@@ -51,44 +49,38 @@ async function processJob(job: Job) {
       default: throw new Error(`Unknown source code: ${scanJob.sourceCode}`);
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.scanJob.update({ where: { id: jobId }, data: { status: 'success', finishedAt: new Date() } });
-      await tx.activityLog.create({
-        data: { action: 'worker.scanner.job_completed', payloadJson: { jobId, sourceCode: scanJob.sourceCode } }
-      });
-    });
-
-    console.log(`[Scraper Worker] ✅ Job ${jobId} completed successfully.`);
+    await prisma.scanJob.update({ where: { id: jobId }, data: { status: 'success', finishedAt: new Date() } });
+    console.log(`[Scraper] ✅ Job ${jobId} completed successfully.`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[Scraper Worker] ❌ Job ${jobId} failed:`, message);
+    console.error(`[Scraper] ❌ Job ${jobId} failed:`, message);
 
-    await prisma.$transaction(async (tx) => {
-      await tx.scanJob.update({ where: { id: jobId }, data: { status: 'failed', finishedAt: new Date(), errorMessage: message } });
-      await tx.syncErrorLog.create({
-        data: { scope: 'scanner_job', sourceCode: scanJob.sourceCode, referenceId: jobId, message: 'Scanner job failed', detailsJson: { error: message } }
-      });
-    });
+    await prisma.scanJob.update({ where: { id: jobId }, data: { status: 'failed', finishedAt: new Date(), errorMessage: message } });
     throw error;
   } finally {
-    // Жорстко вбиваємо браузер після кожної джоби, щоб пам'ять не текла
+    // 🔥 Гарантовано звільняємо пам'ять сервера після кожної джоби!
     await browserManager.restart();
   }
 }
 
-console.log('🔥 Scraper Worker successfully connected to BullMQ and waiting for jobs...');
+console.log('🔥 Scraper Node successfully connected to Redis and waiting for jobs...');
 
-const worker = new Worker('scrapers', processJob, {
+const worker = new Worker('scrapers', async (job) => {
+  await processJob(job);
+}, {
   connection,
-  concurrency: 1, // 1 браузер за раз, щоб не покласти сервак
-  lockDuration: 1000 * 60 * 15, // 15 хвилин на виконання скрапінгу
+  concurrency: 1, // Тільки 1 браузер за раз!
+  lockDuration: 1000 * 60 * 15,
 });
 
 worker.on('failed', (job, err) => {
-  console.error(`[Scraper Worker] Job ${job?.id} crashed hard:`, err);
+  console.error(`[Scraper] Job ${job?.id} crashed:`, err.message);
 });
 
-// Граціозне завершення
+worker.on('error', err => {
+  console.error('[Scraper] Redis Connection Error:', err.message);
+});
+
 const shutdown = async () => {
   console.log('Shutting down Scraper Worker...');
   await worker.close();
