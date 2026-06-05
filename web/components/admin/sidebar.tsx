@@ -7,7 +7,7 @@ import {
   ChartColumn, ChartNoAxesCombined, ClipboardList, Coins, DatabaseZap,
   Gauge, Handshake, KanbanSquare, MailCheck, Package, ReceiptText,
   RefreshCw, ScanSearch, ScrollText, SearchCheck, Shield, Wallet,
-  Globe, ScanBarcode, CornerDownLeft, Flame, Megaphone
+  Globe, ScanBarcode, CornerDownLeft, Flame, Megaphone, Users
 } from 'lucide-react';
 import { NotificationBadge } from '@/components/admin/notification-badge';
 import { cn } from '@/lib/utils';
