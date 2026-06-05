@@ -28,7 +28,7 @@ const CB_CONFIG = {
   RESET_TIMEOUT: 15000,
   BASE_BACKOFF: 250,
   MAX_BACKOFF: 3000,
-  TIMEOUT: 35000,
+  TIMEOUT: 60000, // Збільшено таймаут до 60 секунд
 };
 
 function getCircuitState(endpoint: string): CircuitState {

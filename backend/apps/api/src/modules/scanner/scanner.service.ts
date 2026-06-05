@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import { QueueService } from '../queue/queue.service';
 
 export type IngestListingInput = {
   externalId: string;
@@ -24,7 +23,6 @@ export class ScannerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
-    private readonly queueService: QueueService,
   ) {}
 
   normalizeTitle(title: string): string {
@@ -46,15 +44,12 @@ export class ScannerService {
       .replaceAll('=', '')
       .replaceAll('+', '-')
       .replaceAll('/', '_');
-
     return `${sourceCode}_${encoded}`;
   }
 
   private async getOrCreatePlaceholderItemId(): Promise<string> {
     const placeholder = await this.prisma.item.upsert({
-      where: {
-        id: 'item_unresolved_placeholder',
-      },
+      where: { id: 'item_unresolved_placeholder' },
       update: {},
       create: {
         id: 'item_unresolved_placeholder',
@@ -62,11 +57,8 @@ export class ScannerService {
         title: 'UNRESOLVED_PLACEHOLDER',
         conditionDefault: 'unknown',
       },
-      select: {
-        id: true,
-      },
+      select: { id: true },
     });
-
     return placeholder.id;
   }
 
@@ -100,16 +92,12 @@ export class ScannerService {
     resolved: boolean;
   }> {
     const setNumber = this.extractSetNumber(title);
-
     if (setNumber) {
       const exact = await this.prisma.item.findFirst({
         where: { setNumber },
         select: { id: true },
       });
-
-      if (exact) {
-        return { itemId: exact.id, resolved: true };
-      }
+      if (exact) return { itemId: exact.id, resolved: true };
     }
 
     const normalized = this.normalizeTitle(title);
@@ -170,8 +158,6 @@ export class ScannerService {
       data: { sourceCode: body.sourceCode, query: body.query ?? '', status: 'queued' },
     });
 
-    await this.queueService.enqueueScannerJob(job.id);
-
     this.realtime.emitCustom('scanner.job_queued', job);
     return job;
   }
@@ -211,7 +197,6 @@ export class ScannerService {
     let unresolved = 0;
     const unresolvedOperations = [];
     const now = new Date();
-    
     const upsertOperations = [];
 
     for (const listing of body.listings) {
@@ -286,7 +271,6 @@ export class ScannerService {
     });
 
     this.realtime.emitOpportunityRefresh('scanner_ingest');
-
     return [];
   }
 

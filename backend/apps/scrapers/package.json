@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "postinstall": "npx playwright install chromium",
     "start": "node dist/scraper-loop.js",
-    "start:dev": "ts-node src/main.ts",
+    "start:dev": "ts-node src/scraper-loop.ts",
     "loop": "ts-node src/scraper-loop.ts"
   },
   "dependencies": {

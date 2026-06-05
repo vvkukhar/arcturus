@@ -10,12 +10,22 @@ import { runBrickEconomySource } from './sources/brickeconomy/brickeconomy-sourc
 const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
   let timer: NodeJS.Timeout;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`Scraper timed out after ${ms / 1000}s`)), ms);
+    timer = setTimeout(() => reject(new Error(`Timeout ${ms}ms`)), ms);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 };
 
+async function cleanStuckJobs() {
+  const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
+  await prisma.scanJob.updateMany({
+    where: { status: 'running', startedAt: { lt: fifteenMinsAgo } },
+    data: { status: 'failed', errorMessage: 'Job timed out and was killed' }
+  });
+}
+
 async function processQueue() {
+  await cleanStuckJobs();
+
   const job = await prisma.scanJob.findFirst({
     where: { status: 'queued' },
     orderBy: { createdAt: 'asc' }
@@ -41,12 +51,13 @@ async function processQueue() {
         case 'brickeconomy': await runBrickEconomySource(query); break;
         default: throw new Error(`Unknown source: ${job.sourceCode}`);
       }
-    })(), 5 * 60 * 1000);
+    })(), 10 * 60 * 1000);
 
     await prisma.$transaction(async (tx) => {
       await tx.scanJob.update({ where: { id: job.id }, data: { status: 'success', finishedAt: new Date() } });
       await tx.activityLog.create({ data: { action: 'worker.scanner.job_completed', payloadJson: { jobId: job.id, sourceCode: job.sourceCode } } });
     });
+
   } catch (error: any) {
     await prisma.$transaction(async (tx) => {
       await tx.scanJob.update({ where: { id: job.id }, data: { status: 'failed', finishedAt: new Date(), errorMessage: error.message } });
@@ -58,6 +69,7 @@ async function processQueue() {
 }
 
 async function main() {
+  await prisma.activityLog.create({ data: { action: 'system.scraper_boot', payloadJson: { status: 'polling_db' } } }).catch(()=>{});
   while (true) {
     try {
       await processQueue();
