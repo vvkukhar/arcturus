@@ -8,18 +8,24 @@ import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
 import { parseOlxSearchHtml } from './olx-parser';
 
-export async function runOlxSource(): Promise<void> {
+// 🔥 ФІКС: Тепер функція приймає конкретний запит з адмінки
+export async function runOlxSource(specificQuery?: string | null): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'olx' } });
   if (!source || !source.enabled) return;
 
-  const activeWatchlist = await prisma.watchlistItem.findMany({
-    where: { active: true },
-    select: { item: { select: { setNumber: true } } }
-  });
+  let searchQueries: string[] = [];
 
-  const searchQueries = Array.from(
-    new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))
-  ) as string[];
+  // Якщо ти ввів артикул в адмінці — парсимо ТІЛЬКИ його
+  if (specificQuery && specificQuery.trim()) {
+    searchQueries = [specificQuery.trim()];
+  } else {
+    // Інакше парсимо весь Watchlist
+    const activeWatchlist = await prisma.watchlistItem.findMany({
+      where: { active: true },
+      select: { item: { select: { setNumber: true } } }
+    });
+    searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+  }
 
   if (searchQueries.length === 0) return;
 
@@ -76,7 +82,6 @@ export async function runOlxSource(): Promise<void> {
         }
       }
 
-      // ФІКС: Скидаємо масив прямо в циклі, щоб не накопичувати RAM
       if (creates.length >= 500) {
         await prisma.$executeRaw`
           INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "status", "fetchedAt", "updatedAt")
@@ -92,11 +97,10 @@ export async function runOlxSource(): Promise<void> {
             "updatedAt" = EXCLUDED."updatedAt"
         `;
         itemsInserted += creates.length;
-        creates.length = 0; // Очищуємо пам'ять!
+        creates.length = 0; 
       }
     }
 
-    // Дозаписуємо залишки
     if (creates.length > 0) {
       await prisma.$executeRaw`
         INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "status", "fetchedAt", "updatedAt")

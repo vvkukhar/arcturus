@@ -29,7 +29,7 @@ async function processJob(job: Job) {
   const scanJob = await prisma.scanJob.findUnique({ where: { id: jobId } });
   if (!scanJob) throw new Error(`ScanJob not found: ${jobId}`);
 
-  console.log(`[Scraper Worker] 🚀 Starting job ${jobId} for source: ${scanJob.sourceCode}`);
+  console.log(`[Scraper Worker] 🚀 Starting job ${jobId} for source: ${scanJob.sourceCode} | Query: ${scanJob.query || 'ALL'}`);
 
   await prisma.scanJob.update({
     where: { id: jobId },
@@ -39,12 +39,15 @@ async function processJob(job: Job) {
   try {
     await browserManager.init();
 
+    // 🔥 Передаємо конкретний запит з адмінки у скрапер
+    const query = scanJob.query;
+
     switch (scanJob.sourceCode) {
-      case 'olx': await runOlxSource(); break;
-      case 'bricklink': await runBrickLinkSource(); break;
-      case 'ebay': await runEbaySource(); break;
-      case 'brickowl': await runBrickOwlSource(); break;
-      case 'brickeconomy': await runBrickEconomySource(); break;
+      case 'olx': await runOlxSource(query); break;
+      case 'bricklink': await runBrickLinkSource(query); break;
+      case 'ebay': await runEbaySource(query); break;
+      case 'brickowl': await runBrickOwlSource(query); break;
+      case 'brickeconomy': await runBrickEconomySource(query); break;
       default: throw new Error(`Unknown source code: ${scanJob.sourceCode}`);
     }
 
