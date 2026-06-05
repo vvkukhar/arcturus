@@ -8,6 +8,15 @@ function roi(profit: number, cost: number): number {
   return cost <= 0 ? 0 : toMoney((profit / cost) * 100);
 }
 
+type ListingType = {
+  id: string;
+  itemId: string;
+  price: number;
+  shippingPrice: number | null;
+  title: string;
+  url: string;
+};
+
 export async function detectDealsJob(): Promise<{ scannedListings: number; createdOrUpdated: number }> {
   const chunkSize = 2000;
   let scannedListings = 0;
@@ -27,7 +36,7 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
       select: { id: true, itemId: true, price: true, shippingPrice: true, title: true, url: true }
     });
 
-    const listings = listingsQuery;
+    const listings: ListingType[] = listingsQuery as ListingType[];
 
     if (listings.length === 0) {
       hasMore = false;
@@ -37,9 +46,8 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
     lastId = listings[listings.length - 1].id;
     scannedListings += listings.length;
 
-    const itemIds = Array.from(new Set<string>(listings.map((l) => String(l.itemId))));
+    const itemIds = Array.from(new Set<string>(listings.map((l: ListingType) => String(l.itemId))));
     
-    // 1. Стандартні угоди для Watchlist
     const watchlistItems = await prisma.watchlistItem.findMany({
       where: { itemId: { in: itemIds }, active: true },
       select: { id: true, itemId: true, maxBuyPrice: true, desiredBuyPrice: true, targetSellPrice: true }
@@ -52,7 +60,6 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
       watchlistMap.set(w.itemId, arr);
     }
 
-    // 2. Сигнали для користувачів (SaaS)
     const activeSignals = await prisma.signalSubscription.findMany({
       where: { expiresAt: { gt: new Date() } },
       include: { user: true }
@@ -64,7 +71,6 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
     for (const listing of listings) {
       const buyPrice = toMoney(listing.price + (listing.shippingPrice ?? 0));
 
-      // Обробка підписок
       for (const signal of activeSignals) {
         if (signal.user.phone && listing.title.toLowerCase().includes(signal.targetQuery.toLowerCase())) {
           const tgUsername = signal.user.phone.replace('@', '');
