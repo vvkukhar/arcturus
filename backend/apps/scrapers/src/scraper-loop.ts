@@ -21,6 +21,14 @@ const connection = redisUrl
       family: 0
     });
 
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+  let timer: NodeJS.Timeout;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Scraper timed out after ${ms / 1000}s. Killed to save RAM.`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
+
 async function processJob(job: Job) {
   if (job.name !== 'run-scanner') return;
 
@@ -30,59 +38,60 @@ async function processJob(job: Job) {
   const scanJob = await prisma.scanJob.findUnique({ where: { id: jobId } });
   if (!scanJob) throw new Error(`ScanJob not found: ${jobId}`);
 
-  console.log(`[Scraper] 🚀 Starting job ${jobId} for source: ${scanJob.sourceCode}`);
-
   await prisma.scanJob.update({
     where: { id: jobId },
     data: { status: 'running', startedAt: new Date(), errorMessage: null },
   });
 
   try {
+    await browserManager.init();
+
     const query = scanJob.query;
 
-    switch (scanJob.sourceCode) {
-      case 'olx': await runOlxSource(query); break;
-      case 'bricklink': await runBrickLinkSource(query); break;
-      case 'ebay': await runEbaySource(query); break;
-      case 'brickowl': await runBrickOwlSource(query); break;
-      case 'brickeconomy': await runBrickEconomySource(query); break;
-      default: throw new Error(`Unknown source code: ${scanJob.sourceCode}`);
-    }
+    await withTimeout((async () => {
+      switch (scanJob.sourceCode) {
+        case 'olx': await runOlxSource(query); break;
+        case 'bricklink': await runBrickLinkSource(query); break;
+        case 'ebay': await runEbaySource(query); break;
+        case 'brickowl': await runBrickOwlSource(query); break;
+        case 'brickeconomy': await runBrickEconomySource(query); break;
+        default: throw new Error(`Unknown source code: ${scanJob.sourceCode}`);
+      }
+    })(), 10 * 60 * 1000);
 
-    await prisma.scanJob.update({ where: { id: jobId }, data: { status: 'success', finishedAt: new Date() } });
-    console.log(`[Scraper] ✅ Job ${jobId} completed successfully.`);
+    await prisma.$transaction(async (tx) => {
+      await tx.scanJob.update({ where: { id: jobId }, data: { status: 'success', finishedAt: new Date() } });
+      await tx.activityLog.create({
+        data: { action: 'worker.scanner.job_completed', payloadJson: { jobId, sourceCode: scanJob.sourceCode } }
+      });
+    });
+
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[Scraper] ❌ Job ${jobId} failed:`, message);
 
-    await prisma.scanJob.update({ where: { id: jobId }, data: { status: 'failed', finishedAt: new Date(), errorMessage: message } });
+    await prisma.$transaction(async (tx) => {
+      await tx.scanJob.update({ where: { id: jobId }, data: { status: 'failed', finishedAt: new Date(), errorMessage: message } });
+      await tx.syncErrorLog.create({
+        data: { scope: 'scanner_job', sourceCode: scanJob.sourceCode, referenceId: jobId, message: 'Scanner job failed', detailsJson: { error: message } }
+      });
+    });
     throw error;
   } finally {
-    // 🔥 Гарантовано звільняємо пам'ять сервера після кожної джоби!
     await browserManager.restart();
   }
 }
 
-console.log('🔥 Scraper Node successfully connected to Redis and waiting for jobs...');
-
-const worker = new Worker('scrapers', async (job) => {
-  await processJob(job);
-}, {
+const worker = new Worker('scrapers', processJob, {
   connection,
-  concurrency: 1, // Тільки 1 браузер за раз!
+  concurrency: 1,
   lockDuration: 1000 * 60 * 15,
 });
 
 worker.on('failed', (job, err) => {
-  console.error(`[Scraper] Job ${job?.id} crashed:`, err.message);
-});
-
-worker.on('error', err => {
-  console.error('[Scraper] Redis Connection Error:', err.message);
+  console.error(`Job ${job?.id} crashed hard:`, err);
 });
 
 const shutdown = async () => {
-  console.log('Shutting down Scraper Worker...');
   await worker.close();
   await browserManager.close();
   await prisma.$disconnect();

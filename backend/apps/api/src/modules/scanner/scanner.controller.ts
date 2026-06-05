@@ -1,7 +1,12 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { ScannerExecutorService } from './scanner-executor.service';
 import { IngestListingInput, ScannerService } from './scanner.service';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin', 'operator')
 @Controller('scanner')
 export class ScannerController {
   constructor(
@@ -52,6 +57,11 @@ export class ScannerController {
     },
   ): Promise<unknown> {
     return this.executor.runJob(body);
+  }
+
+  @Post('jobs/clear-stuck')
+  clearStuckJobs(): Promise<unknown> {
+    return this.service.clearStuckJobs();
   }
 
   @Post('ingest')

@@ -52,13 +52,18 @@ export class ScannerService {
 
   private async getOrCreatePlaceholderItemId(): Promise<string> {
     const placeholder = await this.prisma.item.upsert({
-      where: { id: 'item_unresolved_placeholder' },
+      where: {
+        id: 'item_unresolved_placeholder',
+      },
       update: {},
       create: {
         id: 'item_unresolved_placeholder',
         kind: 'unknown',
         title: 'UNRESOLVED_PLACEHOLDER',
         conditionDefault: 'unknown',
+      },
+      select: {
+        id: true,
       },
     });
 
@@ -178,6 +183,24 @@ export class ScannerService {
     });
   }
 
+  async clearStuckJobs(): Promise<unknown> {
+    const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const result = await this.prisma.scanJob.updateMany({
+      where: {
+        status: { in: ['queued', 'running'] },
+        createdAt: { lt: fiveMinsAgo }
+      },
+      data: {
+        status: 'failed',
+        errorMessage: 'Force cleared stuck job (Timeout)',
+        finishedAt: new Date()
+      }
+    });
+
+    this.realtime.emitDashboardRefresh('stuck_jobs_cleared');
+    return { clearedCount: result.count };
+  }
+
   async ingestListings(body: { sourceCode: string; listings: IngestListingInput[] }): Promise<unknown[]> {
     const source = await this.prisma.marketSource.findUnique({
       where: { code: body.sourceCode },
@@ -189,7 +212,6 @@ export class ScannerService {
     const unresolvedOperations = [];
     const now = new Date();
     
-    // ФІКС: Замість raw-рядків формуємо масив безпечних промісів
     const upsertOperations = [];
 
     for (const listing of body.listings) {
@@ -245,7 +267,6 @@ export class ScannerService {
       }
     }
 
-    // ФІКС: Виконуємо запити безпечними пачками через транзакцію Prisma
     if (upsertOperations.length > 0) {
       const chunkSize = 200;
       for (let i = 0; i < upsertOperations.length; i += chunkSize) {

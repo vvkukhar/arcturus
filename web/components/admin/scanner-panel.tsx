@@ -5,13 +5,12 @@ import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import type { ScannerSource } from '@/lib/types';
 import { apiFetch } from '@/lib/api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import { getSocket } from '@/lib/socket';
 import { toast } from 'sonner';
 
 export function ScannerPanel() {
   const { data: rawSources, mutate: mutateSources } = useSWR<ScannerSource[]>('/api/scanner/sources', swrFetcher);
-  // 🔥 ФІКС: Додали авто-оновлення кожні 3 секунди, щоб ти бачив, як змінюється статус
   const { mutate: mutateJobs } = useSWR('/api/scanner/jobs', swrFetcher, { refreshInterval: 3000 });
 
   const sources = Array.isArray(rawSources) ? rawSources : [];
@@ -20,7 +19,7 @@ export function ScannerPanel() {
   const [name, setName] = useState('');
   const [sourceCode, setSourceCode] = useState('');
   const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState<'source' | 'job' | null>(null);
+  const [loading, setLoading] = useState<'source' | 'job' | 'clear' | null>(null);
 
   useEffect(() => {
     const socket = getSocket();
@@ -31,9 +30,9 @@ export function ScannerPanel() {
     socket.on('scanner.job_failed', () => { mutateJobs(); toast.error('Помилка скрапера. Перевірте логи.'); });
 
     return () => {
-      socket.off('scanner.job_queued');
-      socket.off('scanner.job_completed');
-      socket.off('scanner.job_failed');
+      socket.off('scanner.job_queued', handleJobUpdate);
+      socket.off('scanner.job_completed', handleJobUpdate);
+      socket.off('scanner.job_failed', handleJobUpdate);
     };
   }, [mutateJobs]);
 
@@ -71,11 +70,34 @@ export function ScannerPanel() {
     }
   };
 
+  const handleClearStuck = async () => {
+    try {
+      setLoading('clear');
+      const res = await apiFetch<any>('/api/proxy/scanner/jobs/clear-stuck', { method: 'POST' });
+      toast.success(`Очищено ${res.clearedCount} мертвих джобів`);
+      await mutateJobs();
+    } catch (e) {
+      toast.error('Помилка очищення черги');
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <div className="flex flex-col space-y-8 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 md:p-8 shadow-sm">
-      <div>
-        <h2 className="text-2xl font-black text-[var(--foreground)] tracking-tight">Scanner Control</h2>
-        <p className="mt-1 text-sm font-medium text-slate-500">Manage scraping sources and enqueue parsing jobs.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-[var(--foreground)] tracking-tight">Scanner Control</h2>
+          <p className="mt-1 text-sm font-medium text-slate-500">Manage scraping sources and enqueue parsing jobs.</p>
+        </div>
+        <button 
+          onClick={handleClearStuck}
+          disabled={loading !== null}
+          className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-colors"
+          title="Clear stuck / dead jobs"
+        >
+          {loading === 'clear' ? <Loader2 className="animate-spin" size={20} /> : <Trash2 size={20} />}
+        </button>
       </div>
 
       <form onSubmit={handleAddSource} className="space-y-4 bg-[var(--background)]/50 p-5 rounded-2xl border border-[var(--border)]">

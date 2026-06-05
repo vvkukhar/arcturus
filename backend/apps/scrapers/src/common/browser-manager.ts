@@ -12,7 +12,6 @@ export class BrowserManager {
 
   async init(): Promise<void> {
     if (!this.browser) {
-      console.log('[BrowserManager] Launching optimized Chromium...');
       this.browser = await chromium.launch({
         headless: true,
         args: [
@@ -20,21 +19,9 @@ export class BrowserManager {
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-gpu',
-          '--no-first-run',
           '--no-zygote',
           '--single-process',
-          '--disable-extensions',
-          '--disable-background-networking',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-breakpad',
-          '--disable-component-extensions-with-background-pages',
-          '--disable-ipc-flooding-protection',
-          '--disable-renderer-backgrounding',
-          '--enable-features=NetworkService,NetworkServiceInProcess',
-          '--force-color-profile=srgb',
-          '--metrics-recording-only',
-          '--js-flags="--max-old-space-size=256"', // 🔥 Жорстко обмежуємо RAM для JS до 256MB
+          '--js-flags="--max-old-space-size=256"'
         ],
       });
     }
@@ -51,14 +38,13 @@ export class BrowserManager {
 
   async fetchHtml(url: string): Promise<string> {
     await this.init();
-    if (!this.context) throw new Error('Browser context not initialized');
+    if (!this.context) throw new Error('Browser not initialized');
 
     const page = await this.context.newPage();
 
-    // 🔥 Блокуємо ВСЕ зайве, щоб вантажився ТІЛЬКИ голий HTML. Економія пам'яті х10.
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
-      if (['image', 'media', 'font', 'stylesheet', 'websocket', 'other', 'script'].includes(type)) {
+      if (['image', 'media', 'font', 'stylesheet', 'websocket'].includes(type)) {
         route.abort().catch(() => {});
       } else {
         route.continue().catch(() => {});
@@ -66,7 +52,8 @@ export class BrowserManager {
     });
 
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 35000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      await page.waitForTimeout(3000); 
       return await page.content();
     } finally {
       await page.close().catch(() => {});
@@ -78,15 +65,14 @@ export class BrowserManager {
   }
 
   async close(): Promise<void> {
-    if (this.context) {
-      await this.context.close().catch(() => {});
-      this.context = null;
+    if (this.context) { 
+      await this.context.close().catch(() => {}); 
+      this.context = null; 
     }
-    if (this.browser) {
-      await this.browser.close().catch(() => {});
-      this.browser = null;
+    if (this.browser) { 
+      await this.browser.close().catch(() => {}); 
+      this.browser = null; 
     }
-    console.log('[BrowserManager] Browser closed and memory freed.');
   }
 }
 
