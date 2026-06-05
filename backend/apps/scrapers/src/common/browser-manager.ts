@@ -12,6 +12,7 @@ export class BrowserManager {
 
   async init(): Promise<void> {
     if (!this.browser) {
+      console.log('🖥️ [BrowserManager] Launching ultra-low memory Chromium...');
       this.browser = await chromium.launch({
         headless: true,
         args: [
@@ -21,7 +22,8 @@ export class BrowserManager {
           '--disable-gpu',
           '--no-zygote',
           '--single-process',
-          '--js-flags="--max-old-space-size=256"'
+          '--memory-pressure-off',
+          '--js-flags="--max-old-space-size=256 --gc-interval=100"' // Жорсткий ліміт RAM (256MB)
         ],
       });
     }
@@ -42,6 +44,7 @@ export class BrowserManager {
 
     const page = await this.context.newPage();
 
+    // Блокуємо все візуальне, залишаємо лише голий HTML і скрипти для OLX
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
       if (['image', 'media', 'font', 'stylesheet', 'websocket'].includes(type)) {
@@ -53,7 +56,7 @@ export class BrowserManager {
 
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      await page.waitForTimeout(3000); 
+      await page.waitForTimeout(3000); // Даємо 3 секунди React'у відрендерити ціни
       return await page.content();
     } finally {
       await page.close().catch(() => {});
@@ -65,14 +68,9 @@ export class BrowserManager {
   }
 
   async close(): Promise<void> {
-    if (this.context) { 
-      await this.context.close().catch(() => {}); 
-      this.context = null; 
-    }
-    if (this.browser) { 
-      await this.browser.close().catch(() => {}); 
-      this.browser = null; 
-    }
+    if (this.context) { await this.context.close().catch(()=>{}); this.context = null; }
+    if (this.browser) { await this.browser.close().catch(()=>{}); this.browser = null; }
+    console.log('🧹 [BrowserManager] Memory freed.');
   }
 }
 

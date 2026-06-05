@@ -48,6 +48,7 @@ export function ScannerPanel() {
       setCode(''); 
       setName(''); 
       await mutateSources();
+      toast.success('Джерело успішно додано!');
     } finally { 
       setLoading(null); 
     }
@@ -64,7 +65,7 @@ export function ScannerPanel() {
       });
       setQuery(''); 
       await mutateJobs();
-      toast.success('Джоба додана в чергу! Скрапер запускається...');
+      toast.success('Джоба додана в чергу! Скрапер запуститься протягом 5 секунд...');
     } finally { 
       setLoading(null); 
     }
@@ -74,10 +75,10 @@ export function ScannerPanel() {
     try {
       setLoading('clear');
       const res = await apiFetch<any>('/api/proxy/scanner/jobs/clear-stuck', { method: 'POST' });
-      toast.success(`Очищено ${res.clearedCount} мертвих джобів`);
+      toast.success(`Очищено ${res?.data?.clearedCount ?? res?.clearedCount ?? 0} мертвих джобів`);
       await mutateJobs();
-    } catch (e) {
-      toast.error('Помилка очищення черги');
+    } catch (e: any) {
+      toast.error(e.message || 'Бекенд ще не оновився. Зачекайте пару хвилин.');
     } finally {
       setLoading(null);
     }
@@ -94,7 +95,7 @@ export function ScannerPanel() {
           onClick={handleClearStuck}
           disabled={loading !== null}
           className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-colors"
-          title="Clear stuck / dead jobs"
+          title="Очистити завислі джоби"
         >
           {loading === 'clear' ? <Loader2 className="animate-spin" size={20} /> : <Trash2 size={20} />}
         </button>
