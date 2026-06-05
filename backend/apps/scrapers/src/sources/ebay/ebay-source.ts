@@ -9,18 +9,21 @@ import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
 import { parseEbaySearchHtml } from './ebay-parser';
 
-export async function runEbaySource(): Promise<void> {
+export async function runEbaySource(specificQuery?: string | null): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'ebay' } });
   if (!source || !source.enabled) return;
 
-  const activeWatchlist = await prisma.watchlistItem.findMany({
-    where: { active: true },
-    select: { item: { select: { setNumber: true } } }
-  });
+  let searchQueries: string[] = [];
 
-  const searchQueries = Array.from(
-    new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))
-  ) as string[];
+  if (specificQuery && specificQuery.trim()) {
+    searchQueries = [specificQuery.trim()];
+  } else {
+    const activeWatchlist = await prisma.watchlistItem.findMany({
+      where: { active: true },
+      select: { item: { select: { setNumber: true } } }
+    });
+    searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+  }
 
   if (searchQueries.length === 0) return;
 
@@ -86,7 +89,6 @@ export async function runEbaySource(): Promise<void> {
         }
       }
 
-      // ФІКС: Скидаємо масив створюваних записів для очищення RAM
       if (creates.length >= 500) {
         await prisma.$executeRaw`
           INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
@@ -103,11 +105,10 @@ export async function runEbaySource(): Promise<void> {
             "updatedAt" = EXCLUDED."updatedAt"
         `;
         itemsInserted += creates.length;
-        creates.length = 0; // Очищуємо пам'ять!
+        creates.length = 0;
       }
     }
 
-    // Записуємо залишок, якщо такий є
     if (creates.length > 0) {
       await prisma.$executeRaw`
         INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")

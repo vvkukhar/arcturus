@@ -7,18 +7,21 @@ import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
 import { parseBrickeconomySearchHtml } from './brickeconomy-parser';
 
-export async function runBrickEconomySource(): Promise<void> {
+export async function runBrickEconomySource(specificQuery?: string | null): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'brickeconomy' } });
   if (!source || !source.enabled) return;
 
-  const activeWatchlist = await prisma.watchlistItem.findMany({
-    where: { active: true },
-    select: { item: { select: { setNumber: true } } }
-  });
+  let searchQueries: string[] = [];
 
-  const searchQueries = Array.from(
-    new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))
-  ) as string[];
+  if (specificQuery && specificQuery.trim()) {
+    searchQueries = [specificQuery.trim()];
+  } else {
+    const activeWatchlist = await prisma.watchlistItem.findMany({
+      where: { active: true },
+      select: { item: { select: { setNumber: true } } }
+    });
+    searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+  }
 
   if (searchQueries.length === 0) return;
 
@@ -51,7 +54,6 @@ export async function runBrickEconomySource(): Promise<void> {
         const externalIdEscaped = data.externalListingId.replace(/'/g, "''");
         const currency = data.currency ? `'${data.currency.replace(/'/g, "''")}'` : "'USD'";
 
-        // BrickEconomy не дає інформації про шипінг, ставимо 0
         creates.push(`('${listingId}', '${source.id}', 'brickeconomy', '${itemId}', '${externalIdEscaped}', '${titleRawEscaped}', '${urlEscaped}', NULL, ${price}, ${currency}, 0, ${currency}, 'newSealed', true, 'active', '${now}', '${now}')`);
 
         if (resolvedItemId != null) {
