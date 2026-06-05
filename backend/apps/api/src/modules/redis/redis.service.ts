@@ -12,6 +12,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       this.client = new Redis(redisUrl, {
         maxRetriesPerRequest: null,
         family: 0,
+        enableReadyCheck: false
       });
     } else {
       this.client = new Redis({
@@ -20,12 +21,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         password: process.env.REDIS_PASSWORD || undefined,
         maxRetriesPerRequest: null,
         family: 0,
+        enableReadyCheck: false
       });
     }
-    
-    this.client.on('error', (err) => {
-      console.error('[RedisService] Connection error:', err);
-    });
   }
 
   async onModuleInit() {}

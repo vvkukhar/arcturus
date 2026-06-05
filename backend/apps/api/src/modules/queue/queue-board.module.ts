@@ -3,27 +3,19 @@ import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 import { Queue } from 'bullmq';
-import Redis from 'ioredis';
+import { RedisService } from '../redis/redis.service';
 import { QUEUE_NAMES } from './queue.constants';
 import { NextFunction, Request, Response } from 'express';
 
 @Module({})
 export class QueueBoardModule implements NestModule {
+  constructor(private readonly redisService: RedisService) {}
+
   configure(consumer: MiddlewareConsumer) {
     const serverAdapter = new ExpressAdapter();
     serverAdapter.setBasePath('/api/admin/queues');
 
-    const redisUrl = process.env.REDIS_URL?.trim();
-    const options = { maxRetriesPerRequest: null, enableReadyCheck: false };
-    
-    const connection = redisUrl 
-      ? new Redis(redisUrl, options) 
-      : new Redis({
-          host: process.env.REDIS_HOST || '127.0.0.1',
-          port: Number(process.env.REDIS_PORT || 6379),
-          password: process.env.REDIS_PASSWORD || undefined,
-          ...options,
-        });
+    const connection = this.redisService.getClient();
 
     const queues = Object.values(QUEUE_NAMES).map(
       (name) => new BullMQAdapter(new Queue(name, { connection })) as any
@@ -40,7 +32,6 @@ export class QueueBoardModule implements NestModule {
       },
     });
 
-    // ФІКС: Надійна Basic Auth замість вразливого query.token
     consumer
       .apply((req: Request, res: Response, next: NextFunction) => {
         const b64auth = (req.headers.authorization || '').split(' ')[1] || '';

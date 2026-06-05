@@ -32,8 +32,8 @@ bash scripts/server-bootstrap-ubuntu.sh
 x-logging: &default-logging
   driver: "json-file"
   options:
-    max-size: "50m"
-    max-file: "10"
+    max-size: "20m"
+    max-file: "5"
 
 services:
   postgres:
@@ -41,22 +41,29 @@ services:
     container_name: arcturus_postgres
     restart: always
     env_file: .env.production
+    shm_size: '2gb'
     command: 
       - "postgres"
       - "-c"
       - "max_connections=1000"
       - "-c"
-      - "shared_buffers=2GB"
+      - "shared_buffers=1GB"
       - "-c"
-      - "effective_cache_size=6GB"
+      - "effective_cache_size=3GB"
       - "-c"
-      - "maintenance_work_mem=512MB"
+      - "maintenance_work_mem=256MB"
       - "-c"
       - "checkpoint_completion_target=0.9"
       - "-c"
       - "wal_buffers=16MB"
       - "-c"
       - "default_statistics_target=100"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "work_mem=16MB"
     volumes:
       - arcturus_pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -77,11 +84,11 @@ services:
       - "--requirepass"
       - "${REDIS_PASSWORD}"
       - "--maxmemory"
-      - "2gb"
+      - "1gb"
       - "--maxmemory-policy"
       - "allkeys-lru"
       - "--tcp-keepalive"
-      - "300"
+      - "60"
     volumes:
       - arcturus_redis_data:/data
     healthcheck:
@@ -92,12 +99,10 @@ services:
     logging: *default-logging
 
   api:
-    build:
-      context: ./backend
-      dockerfile: apps/api/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY}-api:main
     container_name: arcturus_api
     restart: always
-    env_file: ./backend/.env.production
+    env_file: .env.production
     depends_on:
       postgres:
         condition: service_healthy
@@ -105,16 +110,18 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:4000:4000"
-    command: sh -c "npx prisma generate && npx prisma migrate deploy && node apps/api/dist/src/main.js"
+    command: sh -c "npx prisma migrate deploy && node apps/api/dist/src/main.js"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     logging: *default-logging
 
   workers:
-    build:
-      context: ./backend
-      dockerfile: apps/workers/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY}-workers:main
     container_name: arcturus_workers
     restart: always
-    env_file: ./backend/.env.production
+    env_file: .env.production
     depends_on:
       postgres:
         condition: service_healthy
@@ -128,12 +135,10 @@ services:
     logging: *default-logging
 
   scrapers:
-    build:
-      context: ./backend
-      dockerfile: apps/scrapers/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY}-scrapers:main
     container_name: arcturus_scrapers
     restart: always
-    env_file: ./backend/.env.production
+    env_file: .env.production
     depends_on:
       postgres:
         condition: service_healthy
@@ -144,19 +149,6 @@ services:
       resources:
         limits:
           memory: 4G
-    logging: *default-logging
-
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    container_name: arcturus_web
-    restart: always
-    env_file: ./web/.env.production
-    depends_on:
-      - api
-    ports:
-      - "3000:3000"
     logging: *default-logging
 
 volumes:
@@ -13798,6 +13790,12 @@ export class LiveController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('auction/:auctionId/ticket')
+  buyTicket(@Req() req: any, @Param('auctionId') auctionId: string) {
+    return this.liveService.buyAuctionTicket(req.user.id, auctionId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('auction/:auctionId/bid')
   placeBid(@Req() req: any, @Param('auctionId') auctionId: string, @Body() body: { amount: number }) {
     return this.liveService.placeBid(req.user.id, auctionId, body.amount);
@@ -13869,7 +13867,7 @@ export class LiveService {
     const active = await this.prisma.liveAuction.findFirst({ where: { streamId, status: 'active' } });
     if (active) throw new BadRequestException('Another auction is already active');
 
-    const endsAt = new Date(Date.now() + 30 * 1000); 
+    const endsAt = new Date(Date.now() + 60 * 1000); // 60 seconds
 
     const auction = await this.prisma.liveAuction.create({
       data: {
@@ -13886,10 +13884,43 @@ export class LiveService {
 
     this.realtime.emitCustom('live.auction_started', auction);
 
-    const timer = setTimeout(() => this.endAuction(auction.id), 30000);
+    const timer = setTimeout(() => this.endAuction(auction.id), 60000);
     this.activeAuctionTimers.set(auction.id, timer);
 
     return auction;
+  }
+
+  async buyAuctionTicket(userId: string, auctionId: string) {
+    const depositAmount = 500;
+
+    const auction = await this.prisma.liveAuction.findUnique({ where: { id: auctionId } });
+    if (!auction || auction.status !== 'active') throw new NotFoundException('Auction is not active');
+
+    const existing = await this.prisma.auctionTicket.findUnique({
+      where: { auctionId_userId: { auctionId, userId } }
+    });
+
+    if (existing) return existing;
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.vaultBalance < depositAmount) {
+      throw new BadRequestException('Insufficient Vault Balance to pay deposit (500 ₴ required).');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { vaultBalance: { decrement: depositAmount } }
+      });
+
+      await tx.vaultTransaction.create({
+        data: { userId, amount: -depositAmount, type: 'auction_deposit', description: `Locked deposit for auction ${auctionId}` }
+      });
+
+      return tx.auctionTicket.create({
+        data: { auctionId, userId, deposit: depositAmount, status: 'locked' }
+      });
+    });
   }
 
   async placeBid(userId: string, auctionId: string, amount: number) {
@@ -13898,14 +13929,22 @@ export class LiveService {
     
     if (amount <= auction.currentPrice) throw new BadRequestException('Bid too low');
 
+    const ticket = await this.prisma.auctionTicket.findUnique({
+      where: { auctionId_userId: { auctionId, userId } }
+    });
+
+    if (!ticket || ticket.status !== 'locked') {
+      throw new BadRequestException('You must pay the deposit to bid.');
+    }
+
     let newEndsAt = auction.endsAt!;
     const timeRemaining = newEndsAt.getTime() - Date.now();
-    if (timeRemaining < 10000) {
-      newEndsAt = new Date(Date.now() + 10000);
+    if (timeRemaining < 15000) {
+      newEndsAt = new Date(Date.now() + 15000);
       if (this.activeAuctionTimers.has(auctionId)) {
         clearTimeout(this.activeAuctionTimers.get(auctionId));
       }
-      const newTimer = setTimeout(() => this.endAuction(auctionId), 10000);
+      const newTimer = setTimeout(() => this.endAuction(auctionId), 15000);
       this.activeAuctionTimers.set(auctionId, newTimer);
     }
 
@@ -13932,7 +13971,7 @@ export class LiveService {
     
     const auction = await this.prisma.liveAuction.findUnique({
       where: { id: auctionId },
-      include: { inventoryItem: true }
+      include: { inventoryItem: true, tickets: true }
     });
 
     if (!auction || auction.status !== 'active') return;
@@ -13944,22 +13983,47 @@ export class LiveService {
       });
 
       if (auction.highestBidderId) {
-        const user = await tx.user.findUnique({ where: { id: auction.highestBidderId } });
+        const winner = await tx.user.findUnique({ where: { id: auction.highestBidderId } });
+        
         await tx.order.create({
           data: {
             inventoryItemId: auction.inventoryItemId,
             productTitle: auction.inventoryItem.titleSnapshot,
-            buyerName: user?.name || 'Live Bidder',
-            contact: user?.email || 'N/A',
+            buyerName: winner?.name || 'Live Winner',
+            contact: winner?.phone || winner?.email || 'N/A',
             sellPrice: auction.currentPrice,
             channel: 'live_auction',
             status: 'pending'
           }
         });
+        
         await tx.inventoryItem.update({
           where: { id: auction.inventoryItemId },
           data: { quantity: { decrement: 1 } }
         });
+
+        // Форфейт депозиту для переможця (йде в рахунок оплати, або залишаємо як штраф)
+        await tx.auctionTicket.update({
+          where: { auctionId_userId: { auctionId, userId: auction.highestBidderId } },
+          data: { status: 'forfeited' }
+        });
+      }
+
+      // Повернення депозитів тим, хто не виграв
+      for (const ticket of auction.tickets) {
+        if (ticket.userId !== auction.highestBidderId && ticket.status === 'locked') {
+          await tx.user.update({
+            where: { id: ticket.userId },
+            data: { vaultBalance: { increment: ticket.deposit } }
+          });
+          await tx.vaultTransaction.create({
+            data: { userId: ticket.userId, amount: ticket.deposit, type: 'auction_refund', description: 'Auction deposit returned' }
+          });
+          await tx.auctionTicket.update({
+            where: { id: ticket.id },
+            data: { status: 'refunded' }
+          });
+        }
       }
     });
 
@@ -16352,6 +16416,18 @@ export class MonetizationController {
     return this.monetization.buyBoost(req.user.id, body.inventoryItemId, body.days);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('signals/subscribe')
+  subscribeSignal(@Req() req: any, @Body() body: { query: string; type: string }) {
+    return this.monetization.buySignalSubscription(req.user.id, body.query, body.type);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('signals')
+  getSignals(@Req() req: any) {
+    return this.monetization.getUserSignals(req.user.id);
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Post('mystery-boxes/generate')
@@ -16453,6 +16529,48 @@ export class MonetizationService {
     });
   }
 
+  async buySignalSubscription(userId: string, targetQuery: string, type: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    
+    const cost = type === 'sms' ? 20000 : 5000; // 20k AC for SMS, 5k AC for Telegram
+
+    if (user.points < cost) {
+      throw new BadRequestException('Insufficient Arcturus Credits (AC)');
+    }
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days sub
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { points: { decrement: cost } }
+      });
+
+      await tx.pointTransaction.create({
+        data: {
+          userId,
+          amount: -cost,
+          type: 'spend',
+          description: `Subscribed to ${type.toUpperCase()} signals for ${targetQuery}`
+        }
+      });
+
+      return tx.signalSubscription.create({
+        data: { userId, targetQuery, type, expiresAt }
+      });
+    });
+  }
+
+  async getUserSignals(userId: string) {
+    return this.prisma.signalSubscription.findMany({
+      where: { userId, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  // Mystery Box logic remains the same
   async generateMysteryBoxes() {
     const staleLimit = new Date();
     staleLimit.setDate(staleLimit.getDate() - 60);
@@ -22341,6 +22459,8 @@ export const JOB_NAMES = {
   RUN_SCANNER_JOB: 'run-scanner',
   GLOBAL_SYNC_REFRESH: 'global-sync-refresh',
   SURGE_PRICING: 'surge-pricing',
+  AI_SMM_BROADCASTER: 'ai-smm-broadcaster',
+  LTV_MAXIMIZER: 'ltv-maximizer',
 } as const;
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\queue\queue.controller.ts =====
@@ -22380,6 +22500,16 @@ export class QueueController {
   @Post('scheduled-refresh')
   scheduledRefresh(): Promise<unknown> {
     return this.queueService.enqueueScheduledRefresh();
+  }
+
+  @Post('marketing/smm')
+  triggerSmm(): Promise<unknown> {
+    return this.queueService.enqueueAiSmmBroadcaster();
+  }
+
+  @Post('marketing/ltv')
+  triggerLtv(): Promise<unknown> {
+    return this.queueService.enqueueLtvMaximizer();
   }
 }
 
@@ -22468,8 +22598,15 @@ export class QueueService implements OnModuleDestroy {
   }
 
   async enqueueScannerJob(jobId: string): Promise<unknown> {
-    // 🔥 ВИПРАВЛЕНО НА RUN_SCANNER_JOB 🔥
     return this.scraperQueue.add(JOB_NAMES.RUN_SCANNER_JOB, { jobId }, { removeOnComplete: 10, removeOnFail: 20 });
+  }
+
+  async enqueueAiSmmBroadcaster(): Promise<unknown> {
+    return this.maintenanceQueue.add(JOB_NAMES.AI_SMM_BROADCASTER, {}, { removeOnComplete: 10, removeOnFail: 20 });
+  }
+
+  async enqueueLtvMaximizer(): Promise<unknown> {
+    return this.maintenanceQueue.add(JOB_NAMES.LTV_MAXIMIZER, {}, { removeOnComplete: 10, removeOnFail: 20 });
   }
 
   async stats(): Promise<unknown> {
@@ -24467,10 +24604,15 @@ export class ScannerExecutorService {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\scanner\scanner.controller.ts =====
 
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { ScannerExecutorService } from './scanner-executor.service';
 import { IngestListingInput, ScannerService } from './scanner.service';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin', 'operator')
 @Controller('scanner')
 export class ScannerController {
   constructor(
@@ -24521,6 +24663,11 @@ export class ScannerController {
     },
   ): Promise<unknown> {
     return this.executor.runJob(body);
+  }
+
+  @Post('jobs/clear-stuck')
+  clearStuckJobs(): Promise<unknown> {
+    return this.service.clearStuckJobs();
   }
 
   @Post('ingest')
@@ -24629,13 +24776,18 @@ export class ScannerService {
 
   private async getOrCreatePlaceholderItemId(): Promise<string> {
     const placeholder = await this.prisma.item.upsert({
-      where: { id: 'item_unresolved_placeholder' },
+      where: {
+        id: 'item_unresolved_placeholder',
+      },
       update: {},
       create: {
         id: 'item_unresolved_placeholder',
         kind: 'unknown',
         title: 'UNRESOLVED_PLACEHOLDER',
         conditionDefault: 'unknown',
+      },
+      select: {
+        id: true,
       },
     });
 
@@ -24755,6 +24907,24 @@ export class ScannerService {
     });
   }
 
+  async clearStuckJobs(): Promise<unknown> {
+    const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const result = await this.prisma.scanJob.updateMany({
+      where: {
+        status: { in: ['queued', 'running'] },
+        createdAt: { lt: fiveMinsAgo }
+      },
+      data: {
+        status: 'failed',
+        errorMessage: 'Force cleared stuck job (Timeout)',
+        finishedAt: new Date()
+      }
+    });
+
+    this.realtime.emitDashboardRefresh('stuck_jobs_cleared');
+    return { clearedCount: result.count };
+  }
+
   async ingestListings(body: { sourceCode: string; listings: IngestListingInput[] }): Promise<unknown[]> {
     const source = await this.prisma.marketSource.findUnique({
       where: { code: body.sourceCode },
@@ -24766,7 +24936,6 @@ export class ScannerService {
     const unresolvedOperations = [];
     const now = new Date();
     
-    // ФІКС: Замість raw-рядків формуємо масив безпечних промісів
     const upsertOperations = [];
 
     for (const listing of body.listings) {
@@ -24822,7 +24991,6 @@ export class ScannerService {
       }
     }
 
-    // ФІКС: Виконуємо запити безпечними пачками через транзакцію Prisma
     if (upsertOperations.length > 0) {
       const chunkSize = 200;
       for (let i = 0; i < upsertOperations.length; i += chunkSize) {
@@ -27691,8 +27859,8 @@ export class VaultController {
   }
 
   @Post('invest')
-  investInDeal(@Req() req: any, @Body() body: { dealId: string }) {
-    return this.vault.investInDeal(req.user.id, body.dealId);
+  investInDeal(@Req() req: any, @Body() body: { dealId: string; amount?: number }) {
+    return this.vault.investInDeal(req.user.id, body.dealId, body.amount);
   }
 }
 
@@ -27739,10 +27907,17 @@ export class VaultService {
   }
 
   async getInvestorPortfolio(userId: string) {
-    return this.prisma.inventoryItem.findMany({
+    const fullOwnership = await this.prisma.inventoryItem.findMany({
       where: { investorId: userId },
       include: { item: true, sales: true }
     });
+
+    const fractionalOwnership = await this.prisma.fractionalShare.findMany({
+      where: { userId },
+      include: { deal: { include: { watchlistItem: { include: { item: true } } } } }
+    });
+
+    return { fullOwnership, fractionalOwnership };
   }
 
   async createDepositLink(userId: string, amount: number) {
@@ -27750,16 +27925,14 @@ export class VaultService {
     const reference = `vault_${userId}_${Date.now()}`;
     const storeUrl = this.getStoreUrl();
 
-    // Якщо немає токена Монобанку в .env — імітуємо платіж 
     if (!this.monoToken || this.monoToken === '') {
-       console.warn('[VaultService] MONOBANK_TOKEN is missing. Emulating payment success.');
        await this.prisma.$transaction([
         this.prisma.user.update({
           where: { id: userId },
           data: { vaultBalance: { increment: amount } }
         }),
         this.prisma.vaultTransaction.create({
-          data: { userId, amount: amount, type: 'deposit', description: 'Simulated Local Deposit' }
+          data: { userId, amount: amount, type: 'deposit', description: 'Local Deposit' }
         })
        ]);
        return { url: `${storeUrl}/vault?success=true` };
@@ -27783,82 +27956,86 @@ export class VaultService {
     return { url: (data as any).pageUrl };
   }
 
-  async handleDepositWebhook(body: any) {
-    if (body.status === 'success' && body.reference?.startsWith('vault_')) {
-      const userId = body.reference.split('_')[1];
-      const amountUah = body.amount / 100;
-
-      await this.prisma.$transaction([
-        this.prisma.user.update({
-          where: { id: userId },
-          data: { vaultBalance: { increment: amountUah } }
-        }),
-        this.prisma.vaultTransaction.create({
-          data: { userId, amount: amountUah, type: 'deposit', description: 'Monobank Deposit' }
-        })
-      ]);
-    }
-    return { received: true };
-  }
-
-  async investInDeal(userId: string, dealId: string) {
+  async investInDeal(userId: string, dealId: string, fractionalAmount?: number) {
     const deal = await this.prisma.deal.findUnique({
       where: { id: dealId, status: 'open' },
-      include: { listing: true, watchlistItem: true }
+      include: { listing: true, watchlistItem: true, fractionalShares: true }
     });
 
     if (!deal) throw new NotFoundException('Deal not found or already closed');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.vaultBalance < deal.buyPrice) {
+    const amountToInvest = fractionalAmount ?? deal.buyPrice;
+
+    if (!user || user.vaultBalance < amountToInvest) {
       throw new BadRequestException('Insufficient Vault balance');
+    }
+
+    const currentFunded = deal.fractionalShares.reduce((sum, s) => sum + s.amount, 0);
+    if (currentFunded + amountToInvest > deal.buyPrice) {
+      throw new BadRequestException('Investment amount exceeds required capital for this deal');
     }
 
     return this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: userId },
-        data: { vaultBalance: { decrement: deal.buyPrice } }
+        data: { vaultBalance: { decrement: amountToInvest } }
       });
 
       await tx.vaultTransaction.create({
-        data: { userId, amount: -deal.buyPrice, type: 'investment', description: `Funded deal: ${deal.watchlistItem.titleSnapshot}` }
+        data: { userId, amount: -amountToInvest, type: 'investment', description: `Funded deal: ${deal.watchlistItem.titleSnapshot}` }
       });
 
-      await tx.deal.update({
-        where: { id: dealId },
-        data: { status: 'funded' }
-      });
+      const sharePercent = (amountToInvest / deal.buyPrice) * 100;
 
-      const inv = await tx.inventoryItem.create({
+      await tx.fractionalShare.create({
         data: {
-          itemId: deal.watchlistItem.itemId,
-          titleSnapshot: deal.watchlistItem.titleSnapshot,
-          purchasePrice: deal.buyPrice,
-          totalCost: deal.buyPrice,
-          expectedSalePriceManual: deal.targetSellPrice,
-          quantity: 1,
-          condition: 'used',
-          investorId: userId,
-          investorProfitShare: 0.8,
-          notes: 'Funded via Arcturus Vault',
+          dealId,
+          userId,
+          amount: amountToInvest,
+          sharePercent
         }
       });
 
-      await tx.purchaseOrder.create({
-        data: {
-          itemId: deal.watchlistItem.itemId,
-          watchlistItemId: deal.watchlistItemId,
-          inventoryItemId: inv.id,
-          titleSnapshot: deal.watchlistItem.titleSnapshot,
-          status: 'ordered',
-          plannedPrice: deal.buyPrice,
-          actualPrice: deal.buyPrice,
-          totalCost: deal.buyPrice,
-          notes: 'Auto-ordered via Vault Investor',
-        }
-      });
+      if (currentFunded + amountToInvest >= deal.buyPrice) {
+        await tx.deal.update({
+          where: { id: dealId },
+          data: { status: 'funded' }
+        });
 
-      return inv;
+        const inv = await tx.inventoryItem.create({
+          data: {
+            itemId: deal.watchlistItem.itemId,
+            titleSnapshot: deal.watchlistItem.titleSnapshot,
+            purchasePrice: deal.buyPrice,
+            totalCost: deal.buyPrice,
+            expectedSalePriceManual: deal.targetSellPrice,
+            quantity: 1,
+            condition: 'used',
+            investorId: fractionalAmount ? null : userId,
+            investorProfitShare: 0.8,
+            notes: 'Funded via Arcturus Vault (Crowdinvesting)',
+          }
+        });
+
+        await tx.purchaseOrder.create({
+          data: {
+            itemId: deal.watchlistItem.itemId,
+            watchlistItemId: deal.watchlistItemId,
+            inventoryItemId: inv.id,
+            titleSnapshot: deal.watchlistItem.titleSnapshot,
+            status: 'ordered',
+            plannedPrice: deal.buyPrice,
+            actualPrice: deal.buyPrice,
+            totalCost: deal.buyPrice,
+            notes: 'Auto-ordered via Vault Funding',
+          }
+        });
+
+        return { status: 'fully_funded', inventoryItem: inv };
+      }
+
+      return { status: 'partially_funded', sharePercent };
     });
   }
 }
@@ -29441,7 +29618,9 @@ CMD ["node", "dist/scraper-loop.js"]
     "playwright": "^1.42.1",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "string-similarity": "^4.0.4"
+    "string-similarity": "^4.0.4",
+    "bullmq": "^5.76.4",
+    "ioredis": "^5.4.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -29588,67 +29767,80 @@ import { runEbaySource } from './sources/ebay/ebay-source';
 import { runBrickOwlSource } from './sources/brickowl/brickowl-source';
 import { runBrickEconomySource } from './sources/brickeconomy/brickeconomy-source';
 
-let isShuttingDown = false;
+// Додаємо хард-таймаут (10 хвилин), щоб браузер ніколи не зависав намертво
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+  let timer: NodeJS.Timeout;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Scraper timed out after ${ms / 1000}s`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
 
-function setupGracefulShutdown() {
-  const shutdown = async () => {
-    isShuttingDown = true;
-    await browserManager.close();
-    await prisma.$disconnect();
-    process.exit(0);
-  };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
-}
+async function processQueue() {
+  // Шукаємо в БД найстарішу джобу, яка висить в черзі
+  const job = await prisma.scanJob.findFirst({
+    where: { status: 'queued' },
+    orderBy: { createdAt: 'asc' }
+  });
 
-async function runAll() {
-  const sources = [
-    { name: 'olx', fn: runOlxSource },
-    { name: 'bricklink', fn: runBrickLinkSource },
-    { name: 'ebay', fn: runEbaySource },
-    { name: 'brickowl', fn: runBrickOwlSource },
-    { name: 'brickeconomy', fn: runBrickEconomySource }
-  ];
+  if (!job) return; // Черга порожня
 
-  const results = await Promise.allSettled(sources.map(s => s.fn()));
+  console.log(`🚀 [Scraper DB-Poller] Picked up job ${job.id} -> ${job.sourceCode}`);
 
-  for (let i = 0; i < results.length; i++) {
-    if (results[i].status === 'rejected') {
-      const error = (results[i] as PromiseRejectedResult).reason;
-      await prisma.syncErrorLog.create({
-        data: {
-          scope: 'scraper_loop',
-          sourceCode: sources[i].name,
-          message: error instanceof Error ? error.message : String(error),
-        }
-      }).catch(() => {});
-    }
+  await prisma.scanJob.update({
+    where: { id: job.id },
+    data: { status: 'running', startedAt: new Date(), errorMessage: null }
+  });
+
+  try {
+    await browserManager.init();
+    const query = job.query;
+
+    await withTimeout((async () => {
+      switch (job.sourceCode) {
+        case 'olx': await runOlxSource(query); break;
+        case 'bricklink': await runBrickLinkSource(query); break;
+        case 'ebay': await runEbaySource(query); break;
+        case 'brickowl': await runBrickOwlSource(query); break;
+        case 'brickeconomy': await runBrickEconomySource(query); break;
+        default: throw new Error(`Unknown source: ${job.sourceCode}`);
+      }
+    })(), 10 * 60 * 1000);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.scanJob.update({ where: { id: job.id }, data: { status: 'success', finishedAt: new Date() } });
+      await tx.activityLog.create({ data: { action: 'worker.scanner.job_completed', payloadJson: { jobId: job.id, sourceCode: job.sourceCode } } });
+    });
+    
+    console.log(`✅ [Scraper] Job ${job.id} success`);
+
+  } catch (error: any) {
+    console.error(`❌ [Scraper] Job ${job.id} failed:`, error.message);
+    await prisma.$transaction(async (tx) => {
+      await tx.scanJob.update({ where: { id: job.id }, data: { status: 'failed', finishedAt: new Date(), errorMessage: error.message } });
+      await tx.syncErrorLog.create({ data: { scope: 'scanner_job', sourceCode: job.sourceCode, referenceId: job.id, message: 'Scanner job failed', detailsJson: { error: error.message } } });
+    });
+  } finally {
+    await browserManager.restart(); // Очищаємо RAM
   }
-
-  await browserManager.restart();
 }
 
 async function main() {
-  setupGracefulShutdown();
-  await browserManager.init();
-  const interval = Number(process.env.SCRAPER_INTERVAL_MS ?? 1200000);
+  console.log('🟢 Scraper DB-Polling Worker started and waiting for jobs...');
+  await prisma.activityLog.create({ data: { action: 'system.scraper_boot', payloadJson: { status: 'polling_db' } } }).catch(()=>{});
   
-  while (!isShuttingDown) {
+  while (true) {
     try {
-      await runAll();
-    } catch (error) {
-      console.error(error);
+      await processQueue();
+    } catch (e) {
+      console.error('❌ [Scraper Loop Error]', e);
     }
-    if (isShuttingDown) break;
-    await new Promise((res) => setTimeout(res, interval));
+    // Чекаємо 5 секунд перед наступною перевіркою бази
+    await new Promise(res => setTimeout(res, 5000));
   }
 }
 
-main().catch(async () => {
-  await browserManager.close();
-  await prisma.$disconnect();
-  process.exit(1);
-});
+main().catch(console.error);
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\browser-manager.js =====
 
@@ -29731,63 +29923,46 @@ chromium.use(stealth());
 
 export class BrowserManager {
   private browser: Browser | null = null;
-  private contextPool: BrowserContext[] = [];
-  private readonly MAX_CONTEXTS = parseInt(process.env.SCRAPER_MAX_CONTEXTS ?? '3', 10);
-  private contextIndex = 0;
+  private context: BrowserContext | null = null;
 
   async init(): Promise<void> {
     if (!this.browser) {
+      console.log('🖥️ [BrowserManager] Launching ultra-low memory Chromium...');
       this.browser = await chromium.launch({
         headless: true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
-          '--disable-blink-features=AutomationControlled',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process',
           '--disable-dev-shm-usage',
-          '--js-flags=--max-old-space-size=512',
-          '--disable-extensions',
-          '--disable-default-apps',
-          '--mute-audio',
-          '--no-first-run',
+          '--disable-gpu',
+          '--no-zygote',
+          '--single-process',
+          '--memory-pressure-off',
+          '--js-flags="--max-old-space-size=256 --gc-interval=100"' // Жорсткий ліміт RAM (256MB)
         ],
       });
-
-      for (let i = 0; i < this.MAX_CONTEXTS; i++) {
-        await this.createContext();
-      }
+    }
+    if (!this.context) {
+      const proxyStr = proxyManager.getRawProxy();
+      this.context = await this.browser.newContext({
+        proxy: proxyStr ? { server: proxyStr } : undefined,
+        viewport: { width: 1280, height: 720 },
+        userAgent: getRandomUserAgent(),
+        ignoreHTTPSErrors: true,
+      });
     }
   }
 
-  private async createContext(): Promise<void> {
-    if (!this.browser) return;
-    const proxyStr = proxyManager.getRawProxy();
-    const context = await this.browser.newContext({
-      proxy: proxyStr ? { server: proxyStr } : undefined,
-      viewport: { width: 1920, height: 1080 },
-      userAgent: getRandomUserAgent(),
-      ignoreHTTPSErrors: true,
-    });
-    this.contextPool.push(context);
-  }
-
-  private async getNextContext(): Promise<BrowserContext> {
-    if (this.contextPool.length === 0) await this.init();
-    const ctx = this.contextPool[this.contextIndex];
-    this.contextIndex = (this.contextIndex + 1) % this.contextPool.length;
-    return ctx;
-  }
-
   async fetchHtml(url: string): Promise<string> {
-    // ФІКС: Прибрано логіку рестарту посеред запитів, щоб уникнути Race Condition
     await this.init();
-    const context = await this.getNextContext();
-    const page = await context.newPage();
+    if (!this.context) throw new Error('Browser not initialized');
 
+    const page = await this.context.newPage();
+
+    // Блокуємо все візуальне, залишаємо лише голий HTML і скрипти для OLX
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
-      if (['image', 'media', 'font', 'stylesheet', 'websocket', 'other'].includes(type)) {
+      if (['image', 'media', 'font', 'stylesheet', 'websocket'].includes(type)) {
         route.abort().catch(() => {});
       } else {
         route.continue().catch(() => {});
@@ -29795,7 +29970,8 @@ export class BrowserManager {
     });
 
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 35000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      await page.waitForTimeout(3000); // Даємо 3 секунди React'у відрендерити ціни
       return await page.content();
     } finally {
       await page.close().catch(() => {});
@@ -29804,16 +29980,12 @@ export class BrowserManager {
 
   async restart(): Promise<void> {
     await this.close();
-    await this.init();
   }
 
   async close(): Promise<void> {
-    if (this.browser) {
-      await Promise.allSettled(this.contextPool.map(c => c.close()));
-      await this.browser.close();
-      this.browser = null;
-      this.contextPool = [];
-    }
+    if (this.context) { await this.context.close().catch(()=>{}); this.context = null; }
+    if (this.browser) { await this.browser.close().catch(()=>{}); this.browser = null; }
+    console.log('🧹 [BrowserManager] Memory freed.');
   }
 }
 
@@ -30931,18 +31103,21 @@ import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
 import { parseBrickeconomySearchHtml } from './brickeconomy-parser';
 
-export async function runBrickEconomySource(): Promise<void> {
+export async function runBrickEconomySource(specificQuery?: string | null): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'brickeconomy' } });
   if (!source || !source.enabled) return;
 
-  const activeWatchlist = await prisma.watchlistItem.findMany({
-    where: { active: true },
-    select: { item: { select: { setNumber: true } } }
-  });
+  let searchQueries: string[] = [];
 
-  const searchQueries = Array.from(
-    new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))
-  ) as string[];
+  if (specificQuery && specificQuery.trim()) {
+    searchQueries = [specificQuery.trim()];
+  } else {
+    const activeWatchlist = await prisma.watchlistItem.findMany({
+      where: { active: true },
+      select: { item: { select: { setNumber: true } } }
+    });
+    searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+  }
 
   if (searchQueries.length === 0) return;
 
@@ -30975,7 +31150,6 @@ export async function runBrickEconomySource(): Promise<void> {
         const externalIdEscaped = data.externalListingId.replace(/'/g, "''");
         const currency = data.currency ? `'${data.currency.replace(/'/g, "''")}'` : "'USD'";
 
-        // BrickEconomy не дає інформації про шипінг, ставимо 0
         creates.push(`('${listingId}', '${source.id}', 'brickeconomy', '${itemId}', '${externalIdEscaped}', '${titleRawEscaped}', '${urlEscaped}', NULL, ${price}, ${currency}, 0, ${currency}, 'newSealed', true, 'active', '${now}', '${now}')`);
 
         if (resolvedItemId != null) {
@@ -31394,18 +31568,21 @@ import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
 import { parseBrickLinkSearchHtml } from './bricklink-parser';
 
-export async function runBrickLinkSource(): Promise<void> {
+export async function runBrickLinkSource(specificQuery?: string | null): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'bricklink' } });
   if (!source || !source.enabled) return;
 
-  const activeWatchlist = await prisma.watchlistItem.findMany({
-    where: { active: true },
-    select: { item: { select: { setNumber: true } } }
-  });
+  let searchQueries: string[] = [];
 
-  const searchQueries = Array.from(
-    new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))
-  ) as string[];
+  if (specificQuery && specificQuery.trim()) {
+    searchQueries = [specificQuery.trim()];
+  } else {
+    const activeWatchlist = await prisma.watchlistItem.findMany({
+      where: { active: true },
+      select: { item: { select: { setNumber: true } } }
+    });
+    searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+  }
 
   if (searchQueries.length === 0) return;
 
@@ -31471,7 +31648,6 @@ export async function runBrickLinkSource(): Promise<void> {
         }
       }
 
-      // ФІКС: Скидаємо масив створюваних записів для очищення RAM
       if (creates.length >= 500) {
         await prisma.$executeRaw`
           INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
@@ -31488,11 +31664,10 @@ export async function runBrickLinkSource(): Promise<void> {
             "updatedAt" = EXCLUDED."updatedAt"
         `;
         itemsInserted += creates.length;
-        creates.length = 0; // Очищуємо пам'ять!
+        creates.length = 0; 
       }
     }
 
-    // Записуємо залишок, якщо такий є
     if (creates.length > 0) {
       await prisma.$executeRaw`
         INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
@@ -31841,18 +32016,21 @@ import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
 import { parseBrickowlSearchHtml } from './brickowl-parser';
 
-export async function runBrickOwlSource(): Promise<void> {
+export async function runBrickOwlSource(specificQuery?: string | null): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'brickowl' } });
   if (!source || !source.enabled) return;
 
-  const activeWatchlist = await prisma.watchlistItem.findMany({
-    where: { active: true },
-    select: { item: { select: { setNumber: true } } }
-  });
+  let searchQueries: string[] = [];
 
-  const searchQueries = Array.from(
-    new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))
-  ) as string[];
+  if (specificQuery && specificQuery.trim()) {
+    searchQueries = [specificQuery.trim()];
+  } else {
+    const activeWatchlist = await prisma.watchlistItem.findMany({
+      where: { active: true },
+      select: { item: { select: { setNumber: true } } }
+    });
+    searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+  }
 
   if (searchQueries.length === 0) return;
 
@@ -31918,7 +32096,6 @@ export async function runBrickOwlSource(): Promise<void> {
         }
       }
 
-      // ФІКС: Скидаємо масив створюваних записів для очищення RAM
       if (creates.length >= 500) {
         await prisma.$executeRaw`
           INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
@@ -31935,13 +32112,12 @@ export async function runBrickOwlSource(): Promise<void> {
             "updatedAt" = EXCLUDED."updatedAt"
         `;
         itemsInserted += creates.length;
-        creates.length = 0; // Очищуємо пам'ять!
+        creates.length = 0;
       }
 
       await new Promise((res) => setTimeout(res, 2500 + Math.random() * 3500));
     }
 
-    // Записуємо залишок, якщо такий є
     if (creates.length > 0) {
       await prisma.$executeRaw`
         INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
@@ -32299,18 +32475,21 @@ import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
 import { parseEbaySearchHtml } from './ebay-parser';
 
-export async function runEbaySource(): Promise<void> {
+export async function runEbaySource(specificQuery?: string | null): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'ebay' } });
   if (!source || !source.enabled) return;
 
-  const activeWatchlist = await prisma.watchlistItem.findMany({
-    where: { active: true },
-    select: { item: { select: { setNumber: true } } }
-  });
+  let searchQueries: string[] = [];
 
-  const searchQueries = Array.from(
-    new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))
-  ) as string[];
+  if (specificQuery && specificQuery.trim()) {
+    searchQueries = [specificQuery.trim()];
+  } else {
+    const activeWatchlist = await prisma.watchlistItem.findMany({
+      where: { active: true },
+      select: { item: { select: { setNumber: true } } }
+    });
+    searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+  }
 
   if (searchQueries.length === 0) return;
 
@@ -32376,7 +32555,6 @@ export async function runEbaySource(): Promise<void> {
         }
       }
 
-      // ФІКС: Скидаємо масив створюваних записів для очищення RAM
       if (creates.length >= 500) {
         await prisma.$executeRaw`
           INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
@@ -32393,11 +32571,10 @@ export async function runEbaySource(): Promise<void> {
             "updatedAt" = EXCLUDED."updatedAt"
         `;
         itemsInserted += creates.length;
-        creates.length = 0; // Очищуємо пам'ять!
+        creates.length = 0;
       }
     }
 
-    // Записуємо залишок, якщо такий є
     if (creates.length > 0) {
       await prisma.$executeRaw`
         INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
@@ -32811,18 +32988,24 @@ import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
 import { parseOlxSearchHtml } from './olx-parser';
 
-export async function runOlxSource(): Promise<void> {
+// 🔥 ФІКС: Тепер функція приймає конкретний запит з адмінки
+export async function runOlxSource(specificQuery?: string | null): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'olx' } });
   if (!source || !source.enabled) return;
 
-  const activeWatchlist = await prisma.watchlistItem.findMany({
-    where: { active: true },
-    select: { item: { select: { setNumber: true } } }
-  });
+  let searchQueries: string[] = [];
 
-  const searchQueries = Array.from(
-    new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))
-  ) as string[];
+  // Якщо ти ввів артикул в адмінці — парсимо ТІЛЬКИ його
+  if (specificQuery && specificQuery.trim()) {
+    searchQueries = [specificQuery.trim()];
+  } else {
+    // Інакше парсимо весь Watchlist
+    const activeWatchlist = await prisma.watchlistItem.findMany({
+      where: { active: true },
+      select: { item: { select: { setNumber: true } } }
+    });
+    searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+  }
 
   if (searchQueries.length === 0) return;
 
@@ -32879,7 +33062,6 @@ export async function runOlxSource(): Promise<void> {
         }
       }
 
-      // ФІКС: Скидаємо масив прямо в циклі, щоб не накопичувати RAM
       if (creates.length >= 500) {
         await prisma.$executeRaw`
           INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "status", "fetchedAt", "updatedAt")
@@ -32895,11 +33077,10 @@ export async function runOlxSource(): Promise<void> {
             "updatedAt" = EXCLUDED."updatedAt"
         `;
         itemsInserted += creates.length;
-        creates.length = 0; // Очищуємо пам'ять!
+        creates.length = 0; 
       }
     }
 
-    // Дозаписуємо залишки
     if (creates.length > 0) {
       await prisma.$executeRaw`
         INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "status", "fetchedAt", "updatedAt")
@@ -33047,10 +33228,13 @@ CMD ["node", "dist/main.js"]
     "@prisma/client": "^5.22.0",
     "bullmq": "^5.76.4",
     "dotenv": "^16.4.7",
-    "ioredis": "^5.4.2"
+    "ioredis": "^5.4.2",
+    "pdfkit": "^0.15.0",
+    "form-data": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/pdfkit": "^0.13.4",
     "@typescript-eslint/eslint-plugin": "^8.18.2",
     "@typescript-eslint/parser": "^8.18.2",
     "eslint": "^9.17.0",
@@ -33947,13 +34131,23 @@ function roi(profit: number, cost: number): number {
   return cost <= 0 ? 0 : toMoney((profit / cost) * 100);
 }
 
+type ListingType = {
+  id: string;
+  itemId: string;
+  price: number;
+  shippingPrice: number | null;
+  title: string;
+  url: string;
+};
+
 export async function detectDealsJob(): Promise<{ scannedListings: number; createdOrUpdated: number }> {
   const chunkSize = 2000;
   let scannedListings = 0;
   let createdOrUpdated = 0;
-
   let hasMore = true;
   let lastId: string | undefined = undefined;
+  
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
   while (hasMore) {
     const listingsQuery = await prisma.marketListing.findMany({
@@ -33962,10 +34156,10 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
       take: chunkSize,
       skip: lastId ? 1 : undefined,
       cursor: lastId ? { id: lastId } : undefined,
-      select: { id: true, itemId: true, price: true, shippingPrice: true }
+      select: { id: true, itemId: true, price: true, shippingPrice: true, title: true, url: true }
     });
 
-    const listings: Array<{ id: string; itemId: string; price: number; shippingPrice: number | null }> = listingsQuery;
+    const listings: ListingType[] = listingsQuery as ListingType[];
 
     if (listings.length === 0) {
       hasMore = false;
@@ -33975,14 +34169,12 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
     lastId = listings[listings.length - 1].id;
     scannedListings += listings.length;
 
-    const itemIds = Array.from(new Set<string>(listings.map((l) => String(l.itemId))));
+    const itemIds = Array.from(new Set<string>(listings.map((l: ListingType) => String(l.itemId))));
     
     const watchlistItems = await prisma.watchlistItem.findMany({
       where: { itemId: { in: itemIds }, active: true },
       select: { id: true, itemId: true, maxBuyPrice: true, desiredBuyPrice: true, targetSellPrice: true }
     });
-
-    if (watchlistItems.length === 0) continue;
 
     const watchlistMap = new Map<string, typeof watchlistItems>();
     for (const w of watchlistItems) {
@@ -33991,15 +34183,46 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
       watchlistMap.set(w.itemId, arr);
     }
 
+    const activeSignals = await prisma.signalSubscription.findMany({
+      where: { expiresAt: { gt: new Date() } },
+      include: { user: true }
+    });
+
     const creates: string[] = [];
     const now = new Date().toISOString();
 
     for (const listing of listings) {
+      const buyPrice = toMoney(listing.price + (listing.shippingPrice ?? 0));
+
+      for (const signal of activeSignals) {
+        if (signal.user.phone && listing.title.toLowerCase().includes(signal.targetQuery.toLowerCase())) {
+          const tgUsername = signal.user.phone.replace('@', '');
+          
+          if (botToken) {
+            try {
+              const chatIdRes = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates`);
+              const chatIdData = await chatIdRes.json();
+              if (chatIdData.ok) {
+                const update = chatIdData.result.find((u: any) => u.message?.from?.username === tgUsername);
+                if (update) {
+                  const chatId = update.message.chat.id;
+                  const text = `🚨 <b>Arcturus Signal Match</b> 🚨\n\nЗнайдено збіг для: <b>${signal.targetQuery}</b>\nНазва: ${listing.title}\nЦіна: ${buyPrice} ₴\n\nЛінк: ${listing.url}`;
+                  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
+                  });
+                }
+              }
+            } catch (e) {}
+          }
+        }
+      }
+
       const matchedWatchlists = watchlistMap.get(listing.itemId);
       if (!matchedWatchlists) continue;
 
       for (const watchlistItem of matchedWatchlists) {
-        const buyPrice = toMoney(listing.price + (listing.shippingPrice ?? 0));
         const targetSellPrice = toMoney(watchlistItem.targetSellPrice ?? watchlistItem.maxBuyPrice * 1.4);
         const profit = toMoney(targetSellPrice - buyPrice);
         const roiPercent = roi(profit, buyPrice);
@@ -35526,6 +35749,102 @@ export async function surgeScoutsJob(): Promise<{ surgesCreated: number }> {
   return { surgesCreated };
 }
 
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\jobs\vault-reports.job.ts =====
+
+import { prisma } from '../prisma';
+import PDFDocument from 'pdfkit';
+import FormData from 'form-data';
+
+export async function vaultReportsJob(): Promise<{ reportsGenerated: number }> {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) return { reportsGenerated: 0 };
+
+  const investors = await prisma.user.findMany({
+    where: { OR: [{ vaultBalance: { gt: 0 } }, { fundedItems: { some: {} } }] },
+    include: { fundedItems: { include: { item: true } } }
+  });
+
+  let reportsGenerated = 0;
+  const monthName = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+  for (const investor of investors) {
+    if (!investor.phone || !investor.phone.startsWith('@')) continue; 
+
+    const tgUsername = investor.phone.replace('@', '');
+    const chatIdRes = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates`);
+    const chatIdData = await chatIdRes.json();
+    
+    let chatId = null;
+    if (chatIdData.ok) {
+      const update = chatIdData.result.find((u: any) => u.message?.from?.username === tgUsername);
+      if (update) chatId = update.message.chat.id;
+    }
+
+    if (!chatId) continue;
+
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const buffers: Buffer[] = [];
+    doc.on('data', buffers.push.bind(buffers));
+    
+    const endPdf = new Promise<Buffer>((resolve) => {
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+    });
+
+    doc.fontSize(24).font('Helvetica-Bold').text('Arcturus Vault', { align: 'center' });
+    doc.fontSize(14).font('Helvetica').text(`Investor Report - ${monthName}`, { align: 'center' });
+    doc.moveDown(2);
+
+    doc.fontSize(18).font('Helvetica-Bold').text('Portfolio Summary');
+    doc.moveDown(0.5);
+    doc.fontSize(12).font('Helvetica').text(`Liquid Balance: ${investor.vaultBalance.toFixed(2)} UAH`);
+    doc.text(`Active Positions: ${investor.fundedItems.length}`);
+    
+    let totalInvested = 0;
+    let expectedYield = 0;
+
+    doc.moveDown(1);
+    if (investor.fundedItems.length > 0) {
+      doc.fontSize(14).font('Helvetica-Bold').text('Active Assets');
+      doc.moveDown(0.5);
+      
+      for (const item of investor.fundedItems) {
+        totalInvested += item.totalCost;
+        const projectedSell = item.expectedSalePriceManual ?? (item.totalCost * 1.35);
+        const projectedProfit = (projectedSell - item.totalCost) * (item.investorProfitShare ?? 0.8);
+        expectedYield += projectedProfit;
+
+        doc.fontSize(10).font('Helvetica-Bold').text(`${item.titleSnapshot}`);
+        doc.font('Helvetica').text(`Cost Basis: ${item.totalCost.toFixed(2)} UAH | Est. Yield: +${projectedProfit.toFixed(2)} UAH`);
+        doc.moveDown(0.5);
+      }
+    }
+
+    doc.moveDown(1);
+    doc.fontSize(14).font('Helvetica-Bold').text('Projections');
+    doc.fontSize(12).font('Helvetica').text(`Total Capital at Work: ${totalInvested.toFixed(2)} UAH`);
+    doc.text(`Estimated Future Dividend: +${expectedYield.toFixed(2)} UAH`);
+    doc.text(`Estimated Total NAV: ${(investor.vaultBalance + totalInvested + expectedYield).toFixed(2)} UAH`);
+
+    doc.end();
+    const pdfBuffer = await endPdf;
+
+    const form = new FormData();
+    form.append('chat_id', chatId.toString());
+    form.append('document', pdfBuffer, { filename: `Arcturus_Vault_${monthName.replace(' ', '_')}.pdf` });
+    form.append('caption', `📊 Ваша інвестиційна аналітика за ${monthName} готова.\n\nЗагальний капітал у роботі: ${totalInvested.toFixed(2)} ₴\nОчікувані дивіденди: +${expectedYield.toFixed(2)} ₴`);
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
+      method: 'POST',
+      body: form as any,
+      headers: form.getHeaders()
+    });
+
+    reportsGenerated++;
+  }
+
+  return { reportsGenerated };
+}
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\jobs\zero-touch-matcher.job.ts =====
 
 import { prisma } from '../prisma';
@@ -35841,6 +36160,7 @@ import { zeroTouchMatcherJob } from '../jobs/zero-touch-matcher.job';
 import { aiSmmBroadcasterJob } from '../jobs/ai-smm-broadcaster.job';
 import { ltvMaximizerJob } from '../jobs/ltv-maximizer.job';
 import { surgeScoutsJob } from '../jobs/surge-scouts.job';
+import { vaultReportsJob } from '../jobs/vault-reports.job';
 import { JOB_NAMES } from './queue.constants';
 
 export async function routeJob(job: Job): Promise<unknown> {
@@ -35866,6 +36186,7 @@ export async function routeJob(job: Job): Promise<unknown> {
     case JOB_NAMES.AI_SMM_BROADCASTER: return aiSmmBroadcasterJob();
     case JOB_NAMES.LTV_MAXIMIZER: return ltvMaximizerJob();
     case JOB_NAMES.SURGE_SCOUTS: return surgeScoutsJob();
+    case JOB_NAMES.VAULT_REPORTS: return vaultReportsJob();
     default: throw new Error(`Unknown job name: ${job.name}`);
   }
 }
@@ -35900,6 +36221,7 @@ export const JOB_NAMES = {
   AI_SMM_BROADCASTER: 'ai-smm-broadcaster',
   LTV_MAXIMIZER: 'ltv-maximizer',
   SURGE_SCOUTS: 'surge-scouts',
+  VAULT_REPORTS: 'vault-reports',
 } as const;
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\src\queue\redis-connection.ts =====
@@ -35970,6 +36292,8 @@ export async function registerRepeatableJobs(): Promise<void> {
   await maintenanceQueue.add(JOB_NAMES.AI_SMM_BROADCASTER, {}, { repeat: { every: 1000 * 60 * 60 * 4 }, jobId: 'rep:maint:smm', removeOnComplete: 5, removeOnFail: 10 });
   await maintenanceQueue.add(JOB_NAMES.LTV_MAXIMIZER, {}, { repeat: { every: 1000 * 60 * 60 * 24 }, jobId: 'rep:maint:ltv', removeOnComplete: 5, removeOnFail: 10 });
 
+  await maintenanceQueue.add(JOB_NAMES.VAULT_REPORTS, {}, { repeat: { pattern: '0 10 1 * *' }, jobId: 'rep:maint:vault_reports', removeOnComplete: 5, removeOnFail: 10 });
+
   await connection.quit();
 }
 
@@ -35987,16 +36311,17 @@ export function startWorkers() {
     [QUEUE_NAMES.MARKET]: Number(process.env.MARKET_CONCURRENCY) || 5,
     [QUEUE_NAMES.DECISIONS]: Number(process.env.DECISIONS_CONCURRENCY) || 5,
     [QUEUE_NAMES.MAINTENANCE]: Number(process.env.MAINTENANCE_CONCURRENCY) || 2,
-    [QUEUE_NAMES.SCRAPERS]: Number(process.env.SCRAPERS_CONCURRENCY) || 2, 
     [QUEUE_NAMES.SYNC]: Number(process.env.SYNC_CONCURRENCY) || 3,
   };
 
-  const workers = Object.values(QUEUE_NAMES).map((queueName) => {
+  // 🔥 ФІКС: Виключаємо чергу SCRAPERS. Її має обробляти окремий контейнер з браузером!
+  const activeQueues = Object.values(QUEUE_NAMES).filter(q => q !== QUEUE_NAMES.SCRAPERS);
+
+  const workers = activeQueues.map((queueName) => {
     const worker = new Worker(queueName, async (job: Job) => routeJob(job), { 
       connection, 
       concurrency: concurrencyLevels[queueName],
       lockDuration: 1000 * 60 * 5,
-      // 🔥 АГРЕСИВНА ОЧИСТКА ПАМ'ЯТІ РЕДІСА 🔥
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 20 },
       stalledInterval: 30000,
@@ -36017,6 +36342,81 @@ export function startWorkers() {
 
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
+}
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\nginx\arcturus-prod.conf =====
+
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=50r/s;
+limit_req_zone $binary_remote_addr zone=api_burst:10m rate=100r/s;
+limit_conn_zone $binary_remote_addr zone=addr_limit:10m;
+
+upstream arcturus_api {
+    server 127.0.0.1:4000 max_fails=3 fail_timeout=30s;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.arcturusbuild.com;
+    
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.arcturusbuild.com;
+
+    ssl_certificate /etc/letsencrypt/live/api.arcturusbuild.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.arcturusbuild.com/privkey.pem;
+    
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:MozSSL:10m;
+    ssl_session_tickets off;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    add_header Strict-Transport-Security "max-age=63072000" always;
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+
+    client_max_body_size 50M;
+
+    location /socket.io/ {
+        proxy_pass http://arcturus_api/socket.io/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+
+    location /api/ {
+        limit_req zone=api_limit burst=100 nodelay;
+        limit_conn addr_limit 50;
+        
+        proxy_pass http://arcturus_api/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\nginx\arcturus.conf =====
@@ -36159,11 +36559,54 @@ model User {
   promotedListings       PromotedListing[]
   mysteryBoxesBought     MysteryBox[]
   promoCodes             PromoCode[]
+  fractionalShares       FractionalShare[]  @relation("FractionalInvestments")
+  signals                SignalSubscription[] @relation("UserSignals")
+  auctionTickets         AuctionTicket[]    @relation("AuctionTickets")
 
   @@index([role, active])
   @@index([active])
   @@index([apiKey])
   @@index([referralCode])
+}
+
+model FractionalShare {
+  id           String   @id @default(cuid())
+  dealId       String
+  userId       String
+  amount       Float
+  sharePercent Float
+  createdAt    DateTime @default(now())
+  deal         Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user         User     @relation("FractionalInvestments", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@index([userId])
+}
+
+model SignalSubscription {
+  id          String   @id @default(cuid())
+  userId      String
+  targetQuery String
+  type        String   @default("telegram")
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  user        User     @relation("UserSignals", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([targetQuery])
+}
+
+model AuctionTicket {
+  id          String   @id @default(cuid())
+  auctionId   String
+  userId      String
+  deposit     Float
+  status      String   @default("locked")
+  createdAt   DateTime @default(now())
+  auction     LiveAuction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  user        User     @relation("AuctionTickets", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([auctionId, userId])
 }
 
 model PromoCode {
@@ -36234,6 +36677,7 @@ model LiveAuction {
   stream          LiveStream    @relation(fields: [streamId], references: [id], onDelete: Cascade)
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
   bids            LiveBid[]
+  tickets         AuctionTicket[]
 
   @@index([streamId, status])
 }
@@ -36648,6 +37092,7 @@ model Deal {
   updatedAt       DateTime      @default(now()) @updatedAt
   listing         MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id], onDelete: Cascade)
+  fractionalShares FractionalShare[]
 
   @@unique([watchlistItemId, listingId])
   @@index([status, score])
@@ -36703,7 +37148,7 @@ model Order {
   supplierCost     Float?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @default(now()) @updatedAt
-  deletedAt        DateTime?
+  deletedAt         DateTime?
   reserveRequest   ReserveRequest? @relation(fields: [reserveRequestId], references: [id], onDelete: SetNull)
   inventoryItem    InventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
   sale             Sale?           @relation(fields: [saleId], references: [id], onDelete: SetNull)
@@ -38151,6 +38596,35 @@ set -e
 cd packages/db
 npx prisma generate
 npx prisma db push
+
+===== FILE: C:\Users\Vlad\lego_trading_manager\backend\scripts\zero-downtime-deploy.sh =====
+
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "🚀 Starting Zero-Downtime Deployment for Arcturus..."
+
+docker compose -f docker-compose.prod.yml pull
+
+docker compose -f docker-compose.prod.yml up -d --no-deps --build postgres redis
+sleep 5
+
+echo "🔄 Starting new API instance..."
+docker compose -f docker-compose.prod.yml up -d --no-deps --scale api=2 --no-recreate api
+
+echo "⏳ Waiting for new API to be healthy..."
+sleep 15
+
+echo "🛑 Stopping old API instance..."
+docker rm -f $(docker ps -q --filter "name=arcturus_api" | head -n 1)
+
+echo "🔄 Scaling API back to 1..."
+docker compose -f docker-compose.prod.yml up -d --no-deps --scale api=1 --no-recreate api
+
+echo "🔄 Updating Workers & Scrapers..."
+docker compose -f docker-compose.prod.yml up -d --no-deps workers scrapers
+
+echo "✅ Deployment Successful!"
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\systemd\arcturus.service =====
 

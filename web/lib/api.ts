@@ -28,7 +28,7 @@ const CB_CONFIG = {
   RESET_TIMEOUT: 15000,
   BASE_BACKOFF: 250,
   MAX_BACKOFF: 3000,
-  TIMEOUT: 15000,
+  TIMEOUT: 35000,
 };
 
 function getCircuitState(endpoint: string): CircuitState {
@@ -82,10 +82,8 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
   if (path.startsWith('http')) {
     targetUrl = path;
   } else if (!isServer && cleanPath.startsWith('/api/')) {
-    // Клієнтський проксі через Next.js
     targetUrl = cleanPath;
   } else {
-    // SSR або прямий запит до NestJS
     let clean = cleanPath;
     if (clean.startsWith('/api/proxy/')) {
       clean = clean.replace('/api/proxy/', '/');
@@ -97,14 +95,12 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
     targetUrl = `${base}${clean}`;
   }
 
-  // --- ФІКС АВТОРИЗАЦІЇ ---
   if (requireAuth) {
     if (isServer) {
       const { cookies } = await import('next/headers');
       const token = (await cookies()).get('arcturus_admin_token')?.value;
       if (token) headers.set('Authorization', `Bearer ${token}`);
     } else {
-      // Додаємо токен з кук для клієнтських запитів
       const match = document.cookie.match(/(^|;\s*)arcturus_admin_token=([^;]+)/);
       if (match) {
         headers.set('Authorization', `Bearer ${decodeURIComponent(match[2])}`);
@@ -154,7 +150,6 @@ export async function request<T>(path: string, options: FetchOptions = {}): Prom
         let errorData;
         try { errorData = await response.json(); } catch {}
         
-        // Обробка 401 для клієнта
         if (response.status === 401 && !isServer) {
           window.dispatchEvent(new CustomEvent('arcturus:unauthorized'));
         }
