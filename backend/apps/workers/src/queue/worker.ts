@@ -10,16 +10,17 @@ export function startWorkers() {
     [QUEUE_NAMES.MARKET]: Number(process.env.MARKET_CONCURRENCY) || 5,
     [QUEUE_NAMES.DECISIONS]: Number(process.env.DECISIONS_CONCURRENCY) || 5,
     [QUEUE_NAMES.MAINTENANCE]: Number(process.env.MAINTENANCE_CONCURRENCY) || 2,
-    [QUEUE_NAMES.SCRAPERS]: Number(process.env.SCRAPERS_CONCURRENCY) || 2, 
     [QUEUE_NAMES.SYNC]: Number(process.env.SYNC_CONCURRENCY) || 3,
   };
 
-  const workers = Object.values(QUEUE_NAMES).map((queueName) => {
+  // 🔥 ФІКС: Виключаємо чергу SCRAPERS. Її має обробляти окремий контейнер з браузером!
+  const activeQueues = Object.values(QUEUE_NAMES).filter(q => q !== QUEUE_NAMES.SCRAPERS);
+
+  const workers = activeQueues.map((queueName) => {
     const worker = new Worker(queueName, async (job: Job) => routeJob(job), { 
       connection, 
       concurrency: concurrencyLevels[queueName],
       lockDuration: 1000 * 60 * 5,
-      // 🔥 АГРЕСИВНА ОЧИСТКА ПАМ'ЯТІ РЕДІСА 🔥
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 20 },
       stalledInterval: 30000,

@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import { Worker, Job } from 'bullmq';
+import Redis from 'ioredis';
 import { prisma } from './prisma';
 import { browserManager } from './common/browser-manager';
 import { runBrickLinkSource } from './sources/bricklink/bricklink-source';
@@ -7,64 +9,90 @@ import { runEbaySource } from './sources/ebay/ebay-source';
 import { runBrickOwlSource } from './sources/brickowl/brickowl-source';
 import { runBrickEconomySource } from './sources/brickeconomy/brickeconomy-source';
 
-let isShuttingDown = false;
+const redisUrl = process.env.REDIS_URL?.trim();
+const connection = redisUrl
+  ? new Redis(redisUrl, { maxRetriesPerRequest: null, enableReadyCheck: false })
+  : new Redis({
+      host: process.env.REDIS_HOST || '127.0.0.1',
+      port: Number(process.env.REDIS_PORT || 6379),
+      password: process.env.REDIS_PASSWORD,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false
+    });
 
-function setupGracefulShutdown() {
-  const shutdown = async () => {
-    isShuttingDown = true;
-    await browserManager.close();
-    await prisma.$disconnect();
-    process.exit(0);
-  };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
-}
+async function processJob(job: Job) {
+  if (job.name !== 'run-scanner') return;
 
-async function runAll() {
-  const sources = [
-    { name: 'olx', fn: runOlxSource },
-    { name: 'bricklink', fn: runBrickLinkSource },
-    { name: 'ebay', fn: runEbaySource },
-    { name: 'brickowl', fn: runBrickOwlSource },
-    { name: 'brickeconomy', fn: runBrickEconomySource }
-  ];
+  const jobId = job.data?.jobId;
+  if (!jobId) throw new Error('Missing jobId in payload');
 
-  const results = await Promise.allSettled(sources.map(s => s.fn()));
+  const scanJob = await prisma.scanJob.findUnique({ where: { id: jobId } });
+  if (!scanJob) throw new Error(`ScanJob not found: ${jobId}`);
 
-  for (let i = 0; i < results.length; i++) {
-    if (results[i].status === 'rejected') {
-      const error = (results[i] as PromiseRejectedResult).reason;
-      await prisma.syncErrorLog.create({
-        data: {
-          scope: 'scraper_loop',
-          sourceCode: sources[i].name,
-          message: error instanceof Error ? error.message : String(error),
-        }
-      }).catch(() => {});
+  console.log(`[Scraper Worker] 🚀 Starting job ${jobId} for source: ${scanJob.sourceCode}`);
+
+  await prisma.scanJob.update({
+    where: { id: jobId },
+    data: { status: 'running', startedAt: new Date(), errorMessage: null },
+  });
+
+  try {
+    await browserManager.init();
+
+    switch (scanJob.sourceCode) {
+      case 'olx': await runOlxSource(); break;
+      case 'bricklink': await runBrickLinkSource(); break;
+      case 'ebay': await runEbaySource(); break;
+      case 'brickowl': await runBrickOwlSource(); break;
+      case 'brickeconomy': await runBrickEconomySource(); break;
+      default: throw new Error(`Unknown source code: ${scanJob.sourceCode}`);
     }
-  }
 
-  await browserManager.restart();
+    await prisma.$transaction(async (tx) => {
+      await tx.scanJob.update({ where: { id: jobId }, data: { status: 'success', finishedAt: new Date() } });
+      await tx.activityLog.create({
+        data: { action: 'worker.scanner.job_completed', payloadJson: { jobId, sourceCode: scanJob.sourceCode } }
+      });
+    });
+
+    console.log(`[Scraper Worker] ✅ Job ${jobId} completed successfully.`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[Scraper Worker] ❌ Job ${jobId} failed:`, message);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.scanJob.update({ where: { id: jobId }, data: { status: 'failed', finishedAt: new Date(), errorMessage: message } });
+      await tx.syncErrorLog.create({
+        data: { scope: 'scanner_job', sourceCode: scanJob.sourceCode, referenceId: jobId, message: 'Scanner job failed', detailsJson: { error: message } }
+      });
+    });
+    throw error;
+  } finally {
+    // Жорстко вбиваємо браузер після кожної джоби, щоб пам'ять не текла
+    await browserManager.restart();
+  }
 }
 
-async function main() {
-  setupGracefulShutdown();
-  await browserManager.init();
-  const interval = Number(process.env.SCRAPER_INTERVAL_MS ?? 1200000);
-  
-  while (!isShuttingDown) {
-    try {
-      await runAll();
-    } catch (error) {
-      console.error(error);
-    }
-    if (isShuttingDown) break;
-    await new Promise((res) => setTimeout(res, interval));
-  }
-}
+console.log('🔥 Scraper Worker successfully connected to BullMQ and waiting for jobs...');
 
-main().catch(async () => {
+const worker = new Worker('scrapers', processJob, {
+  connection,
+  concurrency: 1, // 1 браузер за раз, щоб не покласти сервак
+  lockDuration: 1000 * 60 * 15, // 15 хвилин на виконання скрапінгу
+});
+
+worker.on('failed', (job, err) => {
+  console.error(`[Scraper Worker] Job ${job?.id} crashed hard:`, err);
+});
+
+// Граціозне завершення
+const shutdown = async () => {
+  console.log('Shutting down Scraper Worker...');
+  await worker.close();
   await browserManager.close();
   await prisma.$disconnect();
-  process.exit(1);
-});
+  process.exit(0);
+};
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

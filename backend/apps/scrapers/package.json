@@ -22,7 +22,9 @@
     "playwright": "^1.42.1",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "string-similarity": "^4.0.4"
+    "string-similarity": "^4.0.4",
+    "bullmq": "^5.76.4",
+    "ioredis": "^5.4.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
