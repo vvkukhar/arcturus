@@ -5,6 +5,7 @@ import { swrFetcher } from '@/lib/swr-fetcher';
 import { DatabaseZap, Loader2 } from 'lucide-react';
 import { DataTable } from '@/components/admin/data-table';
 import { StatusPill } from '@/components/admin/status-pill';
+import { useState, useEffect } from 'react';
 
 interface SourceRunLog {
   id: string;
@@ -26,6 +27,11 @@ interface SourceRunLog {
 export default function SourcesRunsPage() {
   const { data, isLoading } = useSWR<SourceRunLog[]>('/api/proxy/sync-runs', swrFetcher, { refreshInterval: 10000 });
   const rows = Array.isArray(data) ? data : [];
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10 hardware-accelerated">
@@ -56,9 +62,9 @@ export default function SourcesRunsPage() {
                 render: (row) => (
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-[var(--foreground)]">
-                      {new Date(row.startedAt).toLocaleString('uk-UA')}
+                      {mounted ? new Date(row.startedAt).toLocaleString('uk-UA') : ''}
                     </span>
-                    {row.finishedAt && (
+                    {mounted && row.finishedAt && (
                       <span className="text-xs font-mono text-slate-500 mt-0.5">
                         {((new Date(row.finishedAt).getTime() - new Date(row.startedAt).getTime()) / 1000).toFixed(1)}s duration
                       </span>

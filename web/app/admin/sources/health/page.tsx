@@ -5,7 +5,7 @@ import { swrFetcher } from '@/lib/swr-fetcher';
 import { Loader2, PlaySquare, Power, ShieldAlert } from 'lucide-react';
 import { StatusPill } from '@/components/admin/status-pill';
 import { apiFetch } from '@/lib/api';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface SourceHealth {
   sourceCode: string;
@@ -23,6 +23,11 @@ export default function SourcesHealthPage() {
   const { data, isLoading, mutate } = useSWR<SourceHealth[]>('/api/proxy/source-health/summary', swrFetcher, { refreshInterval: 5000 });
   const rows = Array.isArray(data) ? data : [];
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleToggle = async (sourceCode: string, currentStatus: boolean) => {
     if (loadingId) return;
@@ -112,7 +117,7 @@ export default function SourcesHealthPage() {
                     <td className="px-6 py-4">
                       <StatusPill value={row.latestRunStatus} />
                       <div className="text-[10px] font-bold text-slate-400 mt-1">
-                        {row.latestRunStartedAt ? new Date(row.latestRunStartedAt).toLocaleString('uk-UA') : 'Never'}
+                        {mounted && row.latestRunStartedAt ? new Date(row.latestRunStartedAt).toLocaleString('uk-UA') : 'Never'}
                       </div>
                     </td>
                     <td className="px-6 py-4">

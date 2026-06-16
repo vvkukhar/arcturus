@@ -353,7 +353,6 @@ export class PublicStoreService {
 
   async getReserveBoard(): Promise<unknown> {
     const rows = await this.prisma.reserveRequest.findMany({
-      include: { orders: true, inventoryItem: { include: { item: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } } } },
       orderBy: { createdAt: 'desc' },
       take: 500,
     });
@@ -363,7 +362,7 @@ export class PublicStoreService {
       approved: rows.filter((x) => x.status === 'approved'),
       contacted: rows.filter((x) => x.status === 'contacted'),
       rejected: rows.filter((x) => x.status === 'rejected'),
-      completed: rows.filter((x) => x.status === 'completed' || x.status === 'sold'),
+      completed: rows.filter((x) => x.status === 'completed'),
     };
   }
 
@@ -402,9 +401,52 @@ export class PublicStoreService {
     };
   }
 
+  // 🔥 ДИНАМІЧНИЙ ПОШУК ОПЦІЙ ДЛЯ ДРОПШИПУ
   async getDropshipOptions(reserveId: string): Promise<unknown[]> {
-    return this.prisma.decisionSnapshot.findMany({
-      where: { contextType: 'zero_touch', contextId: reserveId }
+    const reserve = await this.prisma.reserveRequest.findUnique({
+      where: { id: reserveId }
     });
+    
+    if (!reserve) return [];
+
+    // Шукаємо потенційні набори в базі за першим словом з назви (напр. 75192 або Millennium)
+    const possibleItems = await this.prisma.item.findMany({
+      where: { title: { contains: reserve.productTitle.split(' ')[0], mode: 'insensitive' } },
+      take: 5
+    });
+
+    const options = [];
+
+    for (const item of possibleItems) {
+      // Шукаємо найдешевший активний лістинг на ринку
+      const cheapestListing = await this.prisma.marketListing.findFirst({
+        where: { itemId: item.id, status: 'active' },
+        orderBy: { price: 'asc' },
+        include: { source: true }
+      });
+
+      if (!cheapestListing) continue;
+
+      const totalCost = cheapestListing.price + (cheapestListing.shippingPrice || 0);
+      const targetSellPrice = toMoney(totalCost * 1.35); // 35% маржі за замовчуванням
+      const expectedProfit = toMoney(targetSellPrice - totalCost);
+
+      // Якщо можна заробити більше 100 грн без ризику - пропонуємо дропшип
+      if (expectedProfit > 100) {
+        options.push({
+          id: `auto_drop_${cheapestListing.id}`,
+          payloadJson: {
+            reserveId: reserve.id,
+            listingId: cheapestListing.id,
+            listingUrl: cheapestListing.url,
+            cost: totalCost,
+            clientPrice: targetSellPrice,
+            profit: expectedProfit
+          }
+        });
+      }
+    }
+
+    return options;
   }
 }
