@@ -7,6 +7,20 @@ x-logging: &default-logging
     max-file: "5"
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: arcturus_redis
+    restart: always
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - arcturus_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
   api:
     build:
       context: .
@@ -15,6 +29,9 @@ services:
     restart: always
     ports:
       - "4000:4000"
+    depends_on:
+      redis:
+        condition: service_healthy
     logging: *default-logging
 
   workers:
@@ -23,6 +40,9 @@ services:
       dockerfile: apps/workers/Dockerfile
     container_name: arcturus_workers
     restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
     logging: *default-logging
 
   scrapers:
@@ -31,4 +51,10 @@ services:
       dockerfile: apps/scrapers/Dockerfile
     container_name: arcturus_scrapers
     restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
     logging: *default-logging
+
+volumes:
+  arcturus_redis_data:
