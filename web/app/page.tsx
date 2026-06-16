@@ -16,7 +16,7 @@ const FEATURES = [
 
 export default function HomePage() {
   const { t } = useI18n();
-  const { data: user, isLoading } = useSWR('/api/auth/me', swrFetcher);
+  const { data: user, isLoading } = useSWR<any>('/api/auth/me', swrFetcher);
 
   return (
     <main className="relative flex min-h-screen flex-col overflow-hidden bg-transparent font-sans">
@@ -35,7 +35,7 @@ export default function HomePage() {
             {t('nav.catalog' as any)}
           </Link>
           
-          {!isLoading && !user && (
+          {!isLoading && !user ? (
             <>
               <Link href="/login" className="hidden sm:flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-blue-600 dark:text-slate-300 transition-colors">
                 <LogIn size={16} /> {t('auth.signIn' as any)}
@@ -44,13 +44,13 @@ export default function HomePage() {
                 <UserPlus size={16} className="hidden sm:block" /> {t('auth.register' as any)}
               </Button>
             </>
-          )}
+          ) : null}
 
-          {!isLoading && user && (
+          {!isLoading && user ? (
             <Button href="/account" className="rounded-full px-6 shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40 gap-2">
               <User size={16} /> {t('nav.account' as any)}
             </Button>
-          )}
+          ) : null}
         </nav>
       </header>
 
