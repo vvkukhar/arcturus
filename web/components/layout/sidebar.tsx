@@ -33,7 +33,7 @@ export function Sidebar() {
 
   const menu = [
     {
-      title: 'Акаунт', // Для неавторизованих
+      title: 'Акаунт', 
       show: !isAuth,
       items: [
         { name: 'auth.signIn', path: '/login', icon: LogIn, show: !isAuth },
@@ -42,13 +42,13 @@ export function Sidebar() {
     },
     {
       title: 'sidebar.trading',
-      show: true,
+      show: isPro, // 🔥 ФІКС: Показуємо тільки адмінам та PRO
       items: [
-        { name: 'sidebar.market', path: '/market', icon: LineChart, show: true },
+        { name: 'sidebar.market', path: '/market', icon: LineChart, show: isPro },
         { name: 'sidebar.screener', path: '/screener', icon: Filter, show: isPro },
         { name: 'PRO Deals', path: '/deals', icon: Target, show: isPro },
-        { name: 'sidebar.indices', path: '/indices', icon: BarChart2, show: true },
-        { name: 'sidebar.orderbook', path: '/orderbook', icon: Activity, show: true },
+        { name: 'sidebar.indices', path: '/indices', icon: BarChart2, show: isPro },
+        { name: 'sidebar.orderbook', path: '/orderbook', icon: Activity, show: isPro },
       ]
     },
     {
@@ -77,7 +77,7 @@ export function Sidebar() {
       items: [
         { name: 'nav.catalog', path: '/store/catalog', icon: Package, show: true },
         { name: 'Mystery Boxes', path: '/store/mystery-boxes', icon: Gift, show: true },
-        { name: 'B2B Dropship', path: '/dropship', icon: Truck, show: isPro },
+        { name: 'B2B Dropship', path: '/dropship', icon: Truck, show: isPro }, 
         { name: 'sidebar.sell', path: '/sell', icon: Package, show: true },
         { name: 'nav.auth', path: '/authenticity', icon: ShieldCheck, show: true },
         { name: 'footer.faq', path: '/faq', icon: HelpCircle, show: true },

@@ -9,12 +9,18 @@ import { toast } from 'sonner';
 interface WalletPanelProps {
   finance: any;
   mutateFinance: () => void;
+  isLoading?: boolean;
 }
 
-export function WalletPanel({ finance, mutateFinance }: WalletPanelProps) {
+export function WalletPanel({ finance, mutateFinance, isLoading }: WalletPanelProps) {
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutCard, setPayoutCard] = useState('');
   const [isRequesting, setIsRequesting] = useState(false);
+
+  // 🔥 ФІКС: Якщо вантажиться — показуємо лоадер замість крашу
+  if (isLoading) {
+    return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-500 w-8 h-8" /></div>;
+  }
 
   const handlePayoutRequest = async (e: React.FormEvent) => {
     e.preventDefault();
