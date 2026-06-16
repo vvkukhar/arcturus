@@ -1,4 +1,3 @@
-# backend/apps/api/Dockerfile
 FROM node:22-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
@@ -6,6 +5,7 @@ COPY package.json package-lock.json* ./
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/api/package.json ./apps/api/
+COPY packages/db/prisma ./packages/db/prisma
 RUN npm install
 COPY . .
 WORKDIR /app/packages/db

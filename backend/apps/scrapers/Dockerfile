@@ -1,10 +1,10 @@
-# backend/apps/scrapers/Dockerfile
 FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS builder
 WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/scrapers/package.json ./apps/scrapers/
+COPY packages/db/prisma ./packages/db/prisma
 RUN npm install
 COPY . .
 WORKDIR /app/packages/db
