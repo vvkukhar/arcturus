@@ -1,4 +1,3 @@
-// web/components/providers/swr-provider.tsx
 'use client';
 
 import { SWRConfig } from 'swr';
@@ -8,12 +7,16 @@ import { useEffect } from 'react';
 export function SWRProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handleUnauthorized = async () => {
-      try {
-        await fetch('/api/auth/logout', { method: 'POST' });
-      } catch (e) {
-        console.error('Failed to clear session', e);
+      // Редіректимо на логін ТІЛЬКИ якщо юзер знаходиться в закритих зонах (Адмінка або Кабінет)
+      const pathname = window.location.pathname;
+      if (pathname.startsWith('/admin') || pathname.startsWith('/account')) {
+        try {
+          await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (e) {
+          console.error('Failed to clear session', e);
+        }
+        window.location.href = '/login';
       }
-      window.location.href = '/login';
     };
     
     window.addEventListener('arcturus:unauthorized', handleUnauthorized);
@@ -24,13 +27,12 @@ export function SWRProvider({ children }: { children: React.ReactNode }) {
     <SWRConfig
       value={{
         fetcher: swrFetcher,
-        // 🔥 ВИМИКАЄМО АГРЕСИВНІ ОНОВЛЕННЯ 🔥
-        revalidateOnFocus: false,      // Більше не оновлює дані при кліку на вікно
-        revalidateOnReconnect: false,  // Не спамить запитами при відновленні інтернету
-        revalidateIfStale: false,      // Кеш живе довше
-        dedupingInterval: 15000,       // Не дублює запити протягом 15 секунд
-        errorRetryCount: 1,            // Не спамить ретраями, якщо бекенд впав/спить
-        keepPreviousData: true,        // Тримає старі дані на екрані, поки вантажаться нові (без блимань)
+        revalidateOnFocus: false,      
+        revalidateOnReconnect: false,  
+        revalidateIfStale: false,      
+        dedupingInterval: 15000,       
+        errorRetryCount: 1,            
+        keepPreviousData: true,        
       }}
     >
       {children}
