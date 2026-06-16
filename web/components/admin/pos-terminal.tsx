@@ -25,16 +25,52 @@ export function PosTerminal() {
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const { push } = useToast();
 
+  const handleCheckout = async (method: 'cash' | 'card' | 'crypto') => {
+    if (cart.length === 0 || isProcessing) return;
+
+    try {
+      setIsProcessing(true);
+      await apiFetch('/api/proxy/pos/checkout', {
+        method: 'POST',
+        body: JSON.stringify({
+          items: cart.map(i => ({ inventoryItemId: i.inventoryItemId, quantity: i.quantity, price: i.price })),
+          paymentMethod: method
+        })
+      });
+      
+      push({ title: 'Success', message: 'Transaction completed successfully.' });
+      setCart([]);
+    } catch (err: any) {
+      push({ title: 'Checkout Failed', message: err.message });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (barcodeInputRef.current) {
-        barcodeInputRef.current.focus();
+      if (e.target instanceof HTMLInputElement && e.target !== barcodeInputRef.current) return;
+      if (e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.altKey && e.code === 'KeyC') {
+        e.preventDefault();
+        handleCheckout('card');
+      }
+      
+      if (e.altKey && e.code === 'KeyM') {
+        e.preventDefault();
+        handleCheckout('cash');
+      }
+
+      if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
+        if (barcodeInputRef.current && document.activeElement !== barcodeInputRef.current) {
+          barcodeInputRef.current.focus();
+        }
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, []);
+  }, [cart, isProcessing]);
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,28 +124,6 @@ export function PosTerminal() {
 
   const removeFromCart = (id: string) => {
     setCart(prev => prev.filter(i => i.inventoryItemId !== id));
-  };
-
-  const handleCheckout = async (method: 'cash' | 'card' | 'crypto') => {
-    if (cart.length === 0 || isProcessing) return;
-
-    try {
-      setIsProcessing(true);
-      await apiFetch('/api/proxy/pos/checkout', {
-        method: 'POST',
-        body: JSON.stringify({
-          items: cart.map(i => ({ inventoryItemId: i.inventoryItemId, quantity: i.quantity, price: i.price })),
-          paymentMethod: method
-        })
-      });
-      
-      push({ title: 'Success', message: 'Transaction completed successfully.' });
-      setCart([]);
-    } catch (err: any) {
-      push({ title: 'Checkout Failed', message: err.message });
-    } finally {
-      setIsProcessing(false);
-    }
   };
 
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -195,16 +209,20 @@ export function PosTerminal() {
           <button 
             disabled={cart.length === 0 || isProcessing}
             onClick={() => handleCheckout('card')}
-            className="w-full h-16 flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-lg disabled:opacity-50 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+            className="w-full h-16 flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-lg disabled:opacity-50 transition-all shadow-lg shadow-blue-500/20 active:scale-95 group"
           >
-            {isProcessing ? <Loader2 className="animate-spin" /> : <CreditCard />} Terminal (Card)
+            {isProcessing ? <Loader2 className="animate-spin" /> : <CreditCard />} 
+            Terminal (Card)
+            <kbd className="hidden sm:inline-block ml-2 px-2 py-1 bg-black/20 rounded text-[10px] font-mono group-hover:bg-black/30">Alt + C</kbd>
           </button>
           <button 
             disabled={cart.length === 0 || isProcessing}
             onClick={() => handleCheckout('cash')}
-            className="w-full h-16 flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-lg disabled:opacity-50 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+            className="w-full h-16 flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-lg disabled:opacity-50 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 group"
           >
-            {isProcessing ? <Loader2 className="animate-spin" /> : <Banknote />} Cash
+            {isProcessing ? <Loader2 className="animate-spin" /> : <Banknote />} 
+            Cash
+            <kbd className="hidden sm:inline-block ml-2 px-2 py-1 bg-black/20 rounded text-[10px] font-mono group-hover:bg-black/30">Alt + M</kbd>
           </button>
           <button 
             disabled={cart.length === 0 || isProcessing}

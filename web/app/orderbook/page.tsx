@@ -7,6 +7,7 @@ import { Activity, Loader2 } from 'lucide-react';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney } from '@/lib/format';
 import { getSocket } from '@/lib/socket';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 
 interface OrderBookEntry {
   priceStr: string;
@@ -30,12 +31,13 @@ export default function OrderBookPage() {
   const { t } = useI18n();
   const [mounted, setMounted] = useState(false);
 
-  const { data: catalogData, isLoading: catalogLoading } = useSWR<CatalogItem[]>('/api/public/catalog?limit=1', swrFetcher);
+  const { data: catalogData, isLoading: catalogLoading } = useSWR<CatalogItem[]>('/api/proxy/public/catalog?limit=1', swrFetcher);
   const target = Array.isArray(catalogData) && catalogData.length > 0 ? catalogData[0] : null;
 
   const { data: listingsData, isLoading: listingsLoading, mutate } = useSWR<Listing[]>(
-    target ? `/api/market/listings?itemId=${target.itemId}` : null,
-    swrFetcher
+    target ? `/api/proxy/market/listings?itemId=${target.itemId}` : null,
+    swrFetcher,
+    { refreshInterval: 5000 }
   );
 
   useEffect(() => {
@@ -63,6 +65,8 @@ export default function OrderBookPage() {
     const asksGen: OrderBookEntry[] = [];
     const bidsGen: OrderBookEntry[] = [];
 
+    const basePrice = target.expectedSalePriceManual ?? target.totalCost ?? 5000;
+
     if (Array.isArray(listingsData) && listingsData.length > 0) {
       const sortedAsks = listingsData
         .map(l => l.price + (l.shippingPrice || 0))
@@ -81,40 +85,29 @@ export default function OrderBookPage() {
           totalStr: formatMoney(askRunningTotal)
         });
       }
-
-      const floor = sortedAsks[0] || (target.expectedSalePriceManual ?? target.totalCost ?? 0);
-      let bidRunningTotal = 0;
-      for (let i = 1; i <= 12; i++) {
-        const bidPrice = floor * (1 - (i * 0.015));
-        const size = Math.floor(Math.random() * 5) + 1;
-        bidRunningTotal += (bidPrice * size);
-        bidsGen.push({
-          priceStr: formatMoney(bidPrice),
-          size,
-          totalStr: formatMoney(bidRunningTotal)
-        });
-      }
     } else {
-      const base = target.expectedSalePriceManual ?? target.totalCost ?? 5000;
       let askRun = 0;
       for (let i = 12; i >= 1; i--) {
-        const p = base * (1 + (i * 0.015));
+        const jitter = 1 + (Math.random() * 0.005 - 0.002);
+        const p = basePrice * (1 + (i * 0.015)) * jitter;
         askRun += p;
-        asksGen.push({ priceStr: formatMoney(p), size: 1, totalStr: formatMoney(askRun) });
+        asksGen.push({ priceStr: formatMoney(p), size: Math.floor(Math.random() * 3) + 1, totalStr: formatMoney(askRun) });
       }
-      let bidRun = 0;
-      for (let i = 1; i <= 12; i++) {
-        const p = base * (1 - (i * 0.015));
-        const sz = Math.floor(Math.random() * 4) + 1;
-        bidRun += p * sz;
-        bidsGen.push({ priceStr: formatMoney(p), size: sz, totalStr: formatMoney(bidRun) });
-      }
+    }
+
+    let bidRun = 0;
+    for (let i = 1; i <= 12; i++) {
+      const jitter = 1 + (Math.random() * 0.005 - 0.002);
+      const p = basePrice * (1 - (i * 0.015)) * jitter;
+      const sz = Math.floor(Math.random() * 5) + 1;
+      bidRun += p * sz;
+      bidsGen.push({ priceStr: formatMoney(p), size: sz, totalStr: formatMoney(bidRun) });
     }
 
     return { asks: asksGen, bids: bidsGen };
   }, [target, listingsData, mounted]);
 
-  if (!mounted || catalogLoading || (target && listingsLoading)) {
+  if (!mounted || catalogLoading || (target && listingsLoading && !listingsData)) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
   }
 
@@ -132,57 +125,59 @@ export default function OrderBookPage() {
         </div>
       </div>
 
-      <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden flex flex-col md:flex-row">
-        <div className="flex-1 border-b md:border-b-0 md:border-r border-[var(--border)]">
-          <div className="p-4 border-b border-[var(--border)] bg-slate-50/50 dark:bg-slate-900/50">
-            <h3 className="font-bold text-center text-red-500">{t('orderbook.asks' as any)}</h3>
+      <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden flex flex-col md:flex-row font-mono">
+        {/* ASKS */}
+        <div className="flex-1 border-b md:border-b-0 md:border-r border-[var(--border)] bg-[#0B0E14]">
+          <div className="p-4 border-b border-[var(--border)] bg-[#10141D]">
+            <h3 className="font-bold text-center text-red-500 uppercase tracking-widest">{t('orderbook.asks' as any)}</h3>
           </div>
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-right text-sm font-medium">
+          <div className="overflow-x-auto custom-scrollbar p-2">
+            <table className="w-full text-right text-sm">
               <thead>
                 <tr className="text-slate-500 text-xs">
-                  <th className="p-3">{t('orderbook.price' as any)}</th>
-                  <th className="p-3">{t('orderbook.size' as any)}</th>
-                  <th className="p-3">{t('orderbook.total' as any)}</th>
+                  <th className="p-2">{t('orderbook.price' as any)}</th>
+                  <th className="p-2">{t('orderbook.size' as any)}</th>
+                  <th className="p-2">{t('orderbook.total' as any)}</th>
                 </tr>
               </thead>
               <tbody>
                 {asks.length > 0 ? asks.map((ask, i) => (
-                  <tr key={i} className="relative hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                    <td className="p-3 text-red-500 font-bold relative z-10">{ask.priceStr}</td>
-                    <td className="p-3 relative z-10">{ask.size}</td>
-                    <td className="p-3 relative z-10">{ask.totalStr}</td>
+                  <tr key={i} className="relative hover:bg-white/5 cursor-crosshair transition-colors">
+                    <td className="p-2 font-black text-rose-500 relative z-10"><AnimatedNumber value={ask.priceStr} /></td>
+                    <td className="p-2 relative z-10 text-white"><AnimatedNumber value={ask.size} /></td>
+                    <td className="p-2 relative z-10 text-slate-400"><AnimatedNumber value={ask.totalStr} /></td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={3} className="p-6 text-center text-slate-400">{t('orderbook.noAsks' as any)}</td></tr>
+                  <tr><td colSpan={3} className="p-6 text-center text-slate-500">{t('orderbook.noAsks' as any)}</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
 
-        <div className="flex-1">
-          <div className="p-4 border-b border-[var(--border)] bg-slate-50/50 dark:bg-slate-900/50">
-            <h3 className="font-bold text-center text-green-500">{t('orderbook.bids' as any)}</h3>
+        {/* BIDS */}
+        <div className="flex-1 bg-[#0B0E14]">
+          <div className="p-4 border-b border-[var(--border)] bg-[#10141D]">
+            <h3 className="font-bold text-center text-emerald-500 uppercase tracking-widest">{t('orderbook.bids' as any)}</h3>
           </div>
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-right text-sm font-medium">
+          <div className="overflow-x-auto custom-scrollbar p-2">
+            <table className="w-full text-right text-sm">
               <thead>
                 <tr className="text-slate-500 text-xs">
-                  <th className="p-3">{t('orderbook.price' as any)}</th>
-                  <th className="p-3">{t('orderbook.size' as any)}</th>
-                  <th className="p-3">{t('orderbook.total' as any)}</th>
+                  <th className="p-2">{t('orderbook.price' as any)}</th>
+                  <th className="p-2">{t('orderbook.size' as any)}</th>
+                  <th className="p-2">{t('orderbook.total' as any)}</th>
                 </tr>
               </thead>
               <tbody>
                 {bids.length > 0 ? bids.map((bid, i) => (
-                  <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                    <td className="p-3 text-green-500 font-bold">{bid.priceStr}</td>
-                    <td className="p-3">{bid.size}</td>
-                    <td className="p-3">{bid.totalStr}</td>
+                  <tr key={i} className="hover:bg-white/5 cursor-crosshair transition-colors">
+                    <td className="p-2 font-black text-emerald-400 relative z-10"><AnimatedNumber value={bid.priceStr} /></td>
+                    <td className="p-2 relative z-10 text-white"><AnimatedNumber value={bid.size} /></td>
+                    <td className="p-2 relative z-10 text-slate-400"><AnimatedNumber value={bid.totalStr} /></td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={3} className="p-6 text-center text-slate-400">{t('orderbook.noBids' as any)}</td></tr>
+                  <tr><td colSpan={3} className="p-6 text-center text-slate-500">{t('orderbook.noBids' as any)}</td></tr>
                 )}
               </tbody>
             </table>

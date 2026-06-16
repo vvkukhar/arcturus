@@ -6,7 +6,7 @@ import { Activity, TrendingUp, TrendingDown, DollarSign, Package, Loader2 } from
 import dynamic from 'next/dynamic';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney } from '@/lib/format';
-import { ProGate } from '@/components/store/pro-gate'; // 🔥 Додали імпорт
+import { ProGate } from '@/components/store/pro-gate';
 
 const ResponsiveContainer = dynamic(
   () => import('recharts').then((mod) => mod.ResponsiveContainer),
@@ -18,12 +18,36 @@ const XAxis = dynamic(() => import('recharts').then((mod) => mod.XAxis), { ssr: 
 const YAxis = dynamic(() => import('recharts').then((mod) => mod.YAxis), { ssr: false });
 const Tooltip = dynamic(() => import('recharts').then((mod) => mod.Tooltip), { ssr: false });
 
+interface HistoryData {
+  date?: string;
+  month?: string;
+  revenue: number | string;
+}
+
+interface CatalogItem {
+  itemId: string;
+  totalCost: number;
+  expectedSalePriceManual?: number;
+  titleSnapshot: string;
+  item?: { setNumber: string };
+}
+
+interface PortfolioSummary {
+  inventory?: { expectedRevenue: number; inventoryItems: number };
+  sales?: { totalRevenue: number };
+}
+
+const parseVal = (val: string | number | undefined): number => {
+  if (val === undefined) return 0;
+  return typeof val === 'string' ? parseFloat(val.replace(/[^0-9.-]+/g, "")) || 0 : val;
+};
+
 export default function MarketPage() {
   const { t } = useI18n();
   
-  const { data: historyData, isLoading: hLoading } = useSWR<any[]>('/api/profit/monthly', swrFetcher);
-  const { data: catalogData, isLoading: cLoading } = useSWR<any[]>('/api/proxy/public/catalog?limit=10', swrFetcher);
-  const { data: stats, isLoading: sLoading } = useSWR<any>('/api/portfolio/summary', swrFetcher);
+  const { data: historyData, isLoading: hLoading } = useSWR<HistoryData[]>('/api/profit/monthly', swrFetcher);
+  const { data: catalogData, isLoading: cLoading } = useSWR<CatalogItem[]>('/api/proxy/public/catalog?limit=10', swrFetcher);
+  const { data: stats, isLoading: sLoading } = useSWR<PortfolioSummary>('/api/portfolio/summary', swrFetcher);
 
   if (hLoading || cLoading || sLoading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
@@ -31,7 +55,7 @@ export default function MarketPage() {
 
   const chartData = Array.isArray(historyData) ? historyData.map(d => ({
     time: d.date || d.month,
-    value: parseFloat(String(d.revenue).replace(/[^0-9.-]+/g, "")) || 0
+    value: parseVal(d.revenue)
   })) : [];
 
   const movers = Array.isArray(catalogData) ? catalogData
@@ -58,7 +82,6 @@ export default function MarketPage() {
   return (
     <ProGate>
       <div className="p-6 md:p-10 max-w-7xl mx-auto animate-fade-in-up">
-        {/* ...Весь контент сторінки Market без змін... */}
         <div className="mb-10">
           <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('market.title' as any)}</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('market.subtitle' as any)}</p>

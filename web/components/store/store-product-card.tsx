@@ -1,4 +1,3 @@
-// call:function_1{"queries":["web/components/store/store-product-card.tsx"]}
 'use client';
 
 import { memo, useState } from 'react';
@@ -56,7 +55,6 @@ function ProductCardComponent({ item }: Props) {
         >
           <SpotlightCard className="flex h-full flex-col border border-[var(--border)] bg-[var(--card)] transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 hover:border-blue-300 dark:hover:border-blue-700 rounded-[2.5rem] overflow-hidden transform-gpu relative">
             
-            {/* 🔥 ФІКС: Студійний світлий фон і object-contain + p-6 */}
             <div className="relative aspect-square w-full z-10 bg-white border-b border-[var(--border)] flex items-center justify-center overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-white to-slate-50 z-0 pointer-events-none" />
 
@@ -96,8 +94,14 @@ function ProductCardComponent({ item }: Props) {
                     src={imageUrl}
                     alt={title}
                     fill
-                    className="object-contain p-6 mix-blend-multiply transition-transform duration-700 group-hover:scale-110 z-10"
+                    className="object-contain p-6 mix-blend-multiply transition-all duration-700 ease-out-expo group-hover:scale-110 z-10"
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    onLoad={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      img.classList.remove('opacity-0', 'scale-95');
+                      img.classList.add('opacity-100', 'scale-100');
+                    }}
+                    style={{ opacity: 0, transform: 'scale(0.95)' }}
                   />
                 </div>
               ) : (
