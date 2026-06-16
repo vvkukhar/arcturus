@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, ShieldCheck, Zap, PackageSearch, Gem } from 'lucide-react';
+import useSWR from 'swr';
+import { ArrowRight, ShieldCheck, Zap, PackageSearch, Gem, LogIn, UserPlus, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Magnetic } from '@/components/ui/magnetic';
 import { useI18n } from '@/components/providers/i18n-provider';
+import { swrFetcher } from '@/lib/swr-fetcher';
 
 const FEATURES = [
   { icon: ShieldCheck, color: 'blue', titleKey: 'landing.feat1.title', descKey: 'landing.feat1.desc' },
@@ -14,6 +16,7 @@ const FEATURES = [
 
 export default function HomePage() {
   const { t } = useI18n();
+  const { data: user, isLoading } = useSWR('/api/auth/me', swrFetcher);
 
   return (
     <main className="relative flex min-h-screen flex-col overflow-hidden bg-transparent font-sans">
@@ -27,13 +30,27 @@ export default function HomePage() {
           </div>
           <span className="text-2xl font-black tracking-tighter text-[var(--foreground)]">ARCTURUS</span>
         </div>
-        <nav className="flex items-center gap-6">
-          <Link href="/store/catalog" className="text-sm font-bold text-slate-600 transition-colors hover:text-[var(--foreground)] dark:text-slate-300">
+        <nav className="flex items-center gap-4 sm:gap-6">
+          <Link href="/store/catalog" className="hidden sm:block text-sm font-bold text-slate-600 transition-colors hover:text-[var(--foreground)] dark:text-slate-300">
             {t('nav.catalog' as any)}
           </Link>
-          <Button href="/store/catalog" className="rounded-full px-6 shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40">
-            {t('landing.btn' as any)}
-          </Button>
+          
+          {!isLoading && !user && (
+            <>
+              <Link href="/login" className="hidden sm:flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-blue-600 dark:text-slate-300 transition-colors">
+                <LogIn size={16} /> {t('auth.signIn' as any)}
+              </Link>
+              <Button href="/register" className="rounded-full px-5 sm:px-6 shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40 gap-2">
+                <UserPlus size={16} className="hidden sm:block" /> {t('auth.register' as any)}
+              </Button>
+            </>
+          )}
+
+          {!isLoading && user && (
+            <Button href="/account" className="rounded-full px-6 shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40 gap-2">
+              <User size={16} /> {t('nav.account' as any)}
+            </Button>
+          )}
         </nav>
       </header>
 

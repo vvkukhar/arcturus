@@ -9,7 +9,8 @@ import { swrFetcher } from '@/lib/swr-fetcher';
 import { 
   LineChart, Activity, Filter, BarChart2, Clock, 
   FileText, PieChart, Wallet, Heart, TrendingUp, Package, 
-  HelpCircle, ShieldCheck, X, Crown, Target, Gift, Vault, Truck
+  HelpCircle, ShieldCheck, X, Crown, Target, Gift, Vault, Truck,
+  LogIn, UserPlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
@@ -31,6 +32,14 @@ export function Sidebar() {
   const isAuth = !!user;
 
   const menu = [
+    {
+      title: 'Акаунт', // Для неавторизованих
+      show: !isAuth,
+      items: [
+        { name: 'auth.signIn', path: '/login', icon: LogIn, show: !isAuth },
+        { name: 'auth.register', path: '/register', icon: UserPlus, show: !isAuth },
+      ]
+    },
     {
       title: 'sidebar.trading',
       show: true,
@@ -68,7 +77,7 @@ export function Sidebar() {
       items: [
         { name: 'nav.catalog', path: '/store/catalog', icon: Package, show: true },
         { name: 'Mystery Boxes', path: '/store/mystery-boxes', icon: Gift, show: true },
-        { name: 'B2B Dropship', path: '/dropship', icon: Truck, show: isPro }, // 🔥 ДОДАНО ДЛЯ ОПТОВИКІВ
+        { name: 'B2B Dropship', path: '/dropship', icon: Truck, show: isPro },
         { name: 'sidebar.sell', path: '/sell', icon: Package, show: true },
         { name: 'nav.auth', path: '/authenticity', icon: ShieldCheck, show: true },
         { name: 'footer.faq', path: '/faq', icon: HelpCircle, show: true },
@@ -107,7 +116,7 @@ export function Sidebar() {
             return (
               <div key={idx}>
                 <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 px-3">
-                  {isMounted ? t(section.title as any) : '...'}
+                  {isMounted && section.title.includes('Акаунт') ? 'Акаунт' : isMounted ? t(section.title as any) : '...'}
                 </h4>
                 <div className="space-y-1">
                   {visibleItems.map((item, iIdx) => {

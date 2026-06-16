@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Package, User, MapPin, ShieldCheck, Tag, Truck } from 'lucide-react';
+import { Search, Package, User, MapPin, ShieldCheck, Tag, Truck, LogIn, UserPlus } from 'lucide-react';
+import useSWR from 'swr';
+import { swrFetcher } from '@/lib/swr-fetcher';
 
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
@@ -10,14 +12,28 @@ export function CommandMenu() {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
-  const commands = useMemo(() => [
-    { name: 'Каталог наборів', path: '/store/catalog', icon: Package, category: 'Магазин' },
-    { name: 'Мій Кабінет', path: '/account', icon: User, category: 'Акаунт' },
-    { name: 'Відстежити замовлення', path: '/track', icon: MapPin, category: 'Магазин' },
-    { name: 'B2B Dropship Портал', path: '/dropship', icon: Truck, category: 'Магазин' },
-    { name: 'Виставити на продаж (5% комісія)', path: '/sell', icon: Tag, category: 'Маркетплейс' },
-    { name: 'Гарантія якості', path: '/authenticity', icon: ShieldCheck, category: 'Інформація' },
-  ], []);
+  const { data: user } = useSWR<any>('/api/auth/me', swrFetcher);
+
+  const commands = useMemo(() => {
+    const base = [
+      { name: 'Каталог наборів', path: '/store/catalog', icon: Package, category: 'Магазин' },
+      { name: 'Відстежити замовлення', path: '/track', icon: MapPin, category: 'Магазин' },
+      { name: 'B2B Dropship Портал', path: '/dropship', icon: Truck, category: 'Магазин' },
+      { name: 'Виставити на продаж (5% комісія)', path: '/sell', icon: Tag, category: 'Маркетплейс' },
+      { name: 'Гарантія якості', path: '/authenticity', icon: ShieldCheck, category: 'Інформація' },
+    ];
+
+    if (user) {
+      base.unshift({ name: 'Мій Кабінет', path: '/account', icon: User, category: 'Акаунт' });
+    } else {
+      base.unshift(
+        { name: 'Увійти в акаунт', path: '/login', icon: LogIn, category: 'Акаунт' },
+        { name: 'Створити акаунт (Реєстрація)', path: '/register', icon: UserPlus, category: 'Акаунт' }
+      );
+    }
+
+    return base;
+  }, [user]);
 
   const filteredCommands = useMemo(() => {
     if (!query) return commands;
