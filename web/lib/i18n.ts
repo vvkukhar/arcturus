@@ -325,6 +325,10 @@ export const dict = {
     'auth.s2.desc': 'Sealed boxes are weighed down to the gram and compared against our proprietary database of known, verified factory weights.',
     'auth.s3.title': 'Completeness',
     'auth.s3.desc': 'Used sets are manually counted and verified against official part lists.',
+    
+    // ДОДАНО: Переклади для авторизації
+    'auth.signIn': 'Sign In',
+    'auth.register': 'Register',
 
     'contact.title': 'Contact',
     'contact.subtitle': 'How can we help you?',
@@ -827,6 +831,10 @@ export const dict = {
     'auth.s2.desc': 'Запечатані коробки зважуються до грама та порівнюються з нашою базою даних підтверджених заводських показників.',
     'auth.s3.title': 'Комплектація',
     'auth.s3.desc': 'Вживані набори перевіряються подетально згідно з офіційними списками виробника.',
+
+    // ДОДАНО: Переклади для авторизації
+    'auth.signIn': 'Увійти',
+    'auth.register': 'Реєстрація',
 
     'contact.title': 'Контакти',
     'contact.subtitle': 'Чим ми можемо допомогти?',
