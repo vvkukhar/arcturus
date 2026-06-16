@@ -52,13 +52,25 @@ export class AuthService {
   async register(dto: RegisterDto): Promise<{ token: string; user: AuthUser }> {
     const adminCode = process.env.ADMIN_INVITE_CODE || 'arcturus-init';
     
-    let role = 'viewer'; 
+    let role = 'viewer';
+    let referredById: string | null = null;
+    let initialPoints = 500;
 
     if (dto.inviteCode && dto.inviteCode.trim() !== '') {
-      if (dto.inviteCode !== adminCode) {
-        throw new BadRequestException('Invalid invite code');
+      if (dto.inviteCode === adminCode) {
+        role = 'operator';
+        initialPoints = 0;
+      } else {
+        const referrer = await this.prisma.user.findUnique({
+          where: { referralCode: dto.inviteCode }
+        });
+        
+        if (!referrer) {
+          throw new BadRequestException('Invalid invite or referral code');
+        }
+        referredById = referrer.id;
+        initialPoints = 1000;
       }
-      role = 'operator';
     }
 
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
@@ -67,8 +79,32 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const user = await this.prisma.user.create({
-      data: { name: dto.name, email: dto.email, passwordHash: hashedPassword, role, active: true },
+    
+    const user = await this.prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: { 
+          name: dto.name, 
+          email: dto.email, 
+          passwordHash: hashedPassword, 
+          role, 
+          active: true,
+          points: initialPoints,
+          referredById
+        },
+      });
+
+      if (initialPoints > 0) {
+        await tx.pointTransaction.create({
+          data: {
+            userId: newUser.id,
+            amount: initialPoints,
+            type: 'earn',
+            description: referredById ? 'Syndicate Referral Welcome Bonus' : 'Welcome to Arcturus Bonus'
+          }
+        });
+      }
+
+      return newUser;
     });
 
     const rawToken = crypto.randomBytes(32).toString('hex');
