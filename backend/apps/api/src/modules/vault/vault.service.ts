@@ -119,6 +119,8 @@ export class VaultService {
           data: { status: 'funded' }
         });
 
+        const isSoleInvestor = (currentFunded === 0 && amountToInvest >= deal.buyPrice);
+
         const inv = await tx.inventoryItem.create({
           data: {
             itemId: deal.watchlistItem.itemId,
@@ -128,7 +130,7 @@ export class VaultService {
             expectedSalePriceManual: deal.targetSellPrice,
             quantity: 1,
             condition: 'used',
-            investorId: fractionalAmount ? null : userId,
+            investorId: isSoleInvestor ? userId : null,
             investorProfitShare: 0.8,
             notes: 'Funded via Arcturus Vault (Crowdinvesting)',
           }

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { toMoney } from '@arcturus/shared';
+import { toMoney, extractSetNumber } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -409,9 +409,11 @@ export class PublicStoreService {
     
     if (!reserve) return [];
 
-    // Шукаємо потенційні набори в базі за першим словом з назви (напр. 75192 або Millennium)
+    const setNumber = extractSetNumber(reserve.productTitle);
+
+    // Шукаємо потенційні набори в базі за артикулом або першим словом з назви
     const possibleItems = await this.prisma.item.findMany({
-      where: { title: { contains: reserve.productTitle.split(' ')[0], mode: 'insensitive' } },
+      where: setNumber ? { setNumber } : { title: { contains: reserve.productTitle.split(' ')[0], mode: 'insensitive' } },
       take: 5
     });
 

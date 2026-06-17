@@ -1,3 +1,4 @@
+# backend/docker-compose.prod.yml
 version: '3.8'
 
 x-logging: &default-logging
@@ -9,7 +10,6 @@ x-logging: &default-logging
 services:
   redis:
     image: redis:7-alpine
-    container_name: arcturus_redis
     restart: always
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-LegoRedis2026}"]
     volumes:
@@ -25,7 +25,6 @@ services:
     build:
       context: ./backend
       dockerfile: apps/api/Dockerfile
-    container_name: arcturus_api
     restart: always
     ports:
       - "4000:4000"
@@ -38,7 +37,6 @@ services:
     build:
       context: ./backend
       dockerfile: apps/workers/Dockerfile
-    container_name: arcturus_workers
     restart: always
     depends_on:
       redis:
@@ -49,7 +47,6 @@ services:
     build:
       context: ./backend
       dockerfile: apps/scrapers/Dockerfile
-    container_name: arcturus_scrapers
     restart: always
     depends_on:
       redis:

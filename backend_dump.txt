@@ -29,6 +29,8 @@ bash scripts/server-bootstrap-ubuntu.sh
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\docker-compose.prod.yml =====
 
+version: '3.8'
+
 x-logging: &default-logging
   driver: "json-file"
   options:
@@ -36,123 +38,56 @@ x-logging: &default-logging
     max-file: "5"
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: arcturus_postgres
-    restart: always
-    env_file: .env.production
-    shm_size: '2gb'
-    command: 
-      - "postgres"
-      - "-c"
-      - "max_connections=1000"
-      - "-c"
-      - "shared_buffers=1GB"
-      - "-c"
-      - "effective_cache_size=3GB"
-      - "-c"
-      - "maintenance_work_mem=256MB"
-      - "-c"
-      - "checkpoint_completion_target=0.9"
-      - "-c"
-      - "wal_buffers=16MB"
-      - "-c"
-      - "default_statistics_target=100"
-      - "-c"
-      - "random_page_cost=1.1"
-      - "-c"
-      - "effective_io_concurrency=200"
-      - "-c"
-      - "work_mem=16MB"
-    volumes:
-      - arcturus_pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    logging: *default-logging
-
   redis:
     image: redis:7-alpine
     container_name: arcturus_redis
     restart: always
-    command: 
-      - "redis-server"
-      - "--appendonly"
-      - "yes"
-      - "--requirepass"
-      - "${REDIS_PASSWORD}"
-      - "--maxmemory"
-      - "1gb"
-      - "--maxmemory-policy"
-      - "allkeys-lru"
-      - "--tcp-keepalive"
-      - "60"
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-LegoRedis2026}"]
     volumes:
       - arcturus_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-LegoRedis2026}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
     logging: *default-logging
 
   api:
-    image: ghcr.io/${GITHUB_REPOSITORY}-api:main
+    build:
+      context: ./backend
+      dockerfile: apps/api/Dockerfile
     container_name: arcturus_api
     restart: always
-    env_file: .env.production
+    ports:
+      - "4000:4000"
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "127.0.0.1:4000:4000"
-    command: sh -c "npx prisma migrate deploy && node apps/api/dist/src/main.js"
-    deploy:
-      resources:
-        limits:
-          memory: 2G
     logging: *default-logging
 
   workers:
-    image: ghcr.io/${GITHUB_REPOSITORY}-workers:main
+    build:
+      context: ./backend
+      dockerfile: apps/workers/Dockerfile
     container_name: arcturus_workers
     restart: always
-    env_file: .env.production
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
-    command: sh -c "node apps/workers/dist/main.js"
-    deploy:
-      resources:
-        limits:
-          memory: 2G
     logging: *default-logging
 
   scrapers:
-    image: ghcr.io/${GITHUB_REPOSITORY}-scrapers:main
+    build:
+      context: ./backend
+      dockerfile: apps/scrapers/Dockerfile
     container_name: arcturus_scrapers
     restart: always
-    env_file: .env.production
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
-    command: sh -c "node apps/scrapers/dist/scraper-loop.js"
-    deploy:
-      resources:
-        limits:
-          memory: 4G
     logging: *default-logging
 
 volumes:
-  arcturus_pg_data:
   arcturus_redis_data:
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\docker-compose.yml =====
@@ -784,14 +719,14 @@ volumes:
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\Dockerfile =====
 
-# backend/apps/api/Dockerfile
-FROM node:22-alpine AS builder
+FROM node:18-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
 COPY package.json package-lock.json* ./
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/api/package.json ./apps/api/
+COPY packages/db/prisma ./packages/db/prisma
 RUN npm install
 COPY . .
 WORKDIR /app/packages/db
@@ -801,14 +736,14 @@ RUN npm run build
 WORKDIR /app/apps/api
 RUN npm run build
 
-FROM node:22-alpine AS runner
+FROM node:18-alpine AS runner
 WORKDIR /app
 RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/api
 EXPOSE 4000
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=../../packages/db/prisma/schema.prisma && node dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma db push --schema=../../packages/db/prisma/schema.prisma --accept-data-loss && node dist/src/main.js"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\global-market-sweep.ts =====
 
@@ -29620,13 +29555,13 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arcturus?schema=publi
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\Dockerfile =====
 
-# backend/apps/scrapers/Dockerfile
 FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS builder
 WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/scrapers/package.json ./apps/scrapers/
+COPY packages/db/prisma ./packages/db/prisma
 RUN npm install
 COPY . .
 WORKDIR /app/packages/db
@@ -29641,7 +29576,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/scrapers
-CMD ["node", "dist/scraper-loop.js"]
+CMD ["node", "dist/src/scraper-loop.js"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\package.json =====
 
@@ -33227,14 +33162,14 @@ module.exports = {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\Dockerfile =====
 
-# backend/apps/workers/Dockerfile
-FROM node:22-alpine AS builder
+FROM node:18-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
 COPY package.json package-lock.json* ./
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/workers/package.json ./apps/workers/
+COPY packages/db/prisma ./packages/db/prisma
 RUN npm install
 COPY . .
 WORKDIR /app/packages/db
@@ -33244,13 +33179,13 @@ RUN npm run build
 WORKDIR /app/apps/workers
 RUN npm run build
 
-FROM node:22-alpine AS runner
+FROM node:18-alpine AS runner
 WORKDIR /app
 RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/workers
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\package.json =====
 
