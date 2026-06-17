@@ -10,4 +10,5 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/scrapers
-CMD ["node", "dist/src/scraper-loop.js"]
+# Запускаємо скрапери безпосередньо з вихідного TypeScript-коду
+CMD ["npx", "tsx", "src/scraper-loop.ts"]

@@ -12,4 +12,5 @@ RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/workers
-CMD ["node", "dist/src/main.js"]
+# Запускаємо воркери безпосередньо з вихідного TypeScript-коду
+CMD ["npx", "tsx", "src/main.ts"]
