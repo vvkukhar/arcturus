@@ -21,4 +21,4 @@ RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/workers
-CMD ["sh", "-c", "node $(find /app -type f -name main.js | grep dist | head -n 1)"]
+CMD ["npm", "start"]

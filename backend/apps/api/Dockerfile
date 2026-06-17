@@ -22,4 +22,4 @@ ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/api
 EXPOSE 4000
-CMD ["sh", "-c", "npx prisma db push --schema=../../packages/db/prisma/schema.prisma --accept-data-loss && node $(find /app -type f -name main.js | grep dist | head -n 1)"]
+CMD ["sh", "-c", "npx prisma db push --schema=../../packages/db/prisma/schema.prisma --accept-data-loss && npm run start:prod"]
