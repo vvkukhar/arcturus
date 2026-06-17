@@ -19,4 +19,4 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/scrapers
-CMD ["node", "dist/src/scraper-loop.js"]
+CMD ["node", "dist/scraper-loop.js"]
