@@ -19,4 +19,4 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/scrapers
-CMD ["node", "dist/scraper-loop.js"]
+CMD ["sh", "-c", "node $(find /app -type f -name scraper-loop.js | grep dist | head -n 1)"]
