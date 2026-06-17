@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:18-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
 COPY package.json package-lock.json* ./
@@ -15,11 +15,11 @@ RUN npm run build
 WORKDIR /app/apps/api
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:18-alpine AS runner
 WORKDIR /app
 RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/api
 EXPOSE 4000
-CMD ["sh", "-c", "npx prisma db push --schema=../../packages/db/prisma/schema.prisma --accept-data-loss && npm run start:prod"]
+CMD ["sh", "-c", "npx prisma db push --schema=../../packages/db/prisma/schema.prisma --accept-data-loss && node dist/src/main.js"]
