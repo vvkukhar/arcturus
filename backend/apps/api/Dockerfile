@@ -1,19 +1,10 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
-COPY package.json package-lock.json* ./
-COPY packages/db/package.json ./packages/db/
-COPY packages/shared/package.json ./packages/shared/
-COPY apps/api/package.json ./apps/api/
-COPY packages/db/prisma ./packages/db/prisma
-RUN npm install
+# Копіюємо все і збираємо монорепу повністю, як локально
 COPY . .
-WORKDIR /app/packages/db
-RUN npx prisma generate
-WORKDIR /app/packages/shared
-RUN npm run build
-WORKDIR /app/apps/api
-RUN npm run build
+RUN npm install
+RUN npm run build:all
 
 FROM node:18-alpine AS runner
 WORKDIR /app
@@ -22,4 +13,5 @@ ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/api
 EXPOSE 4000
-CMD ["sh", "-c", "npx prisma db push --schema=../../packages/db/prisma/schema.prisma --accept-data-loss && node dist/src/main.js"]
+# Шукаємо main.js динамічно в папці dist
+CMD ["sh", "-c", "npx prisma db push --schema=../../packages/db/prisma/schema.prisma --accept-data-loss && node $(find ./dist -type f -name main.js | head -n 1)"]
