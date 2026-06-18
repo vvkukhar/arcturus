@@ -4,15 +4,8 @@ RUN apk add --no-cache openssl
 COPY . .
 RUN npm install
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
-
-# Компілюємо всі залежні воркспейси монорепозиторію
-RUN npm run build:shared
-RUN npm run build:db
-RUN npm run build:scrapers
-
-# Компілюємо API
-WORKDIR /app/apps/api
-RUN npx nest build
+# Збираємо весь монорепозиторій однією командою
+RUN npm run build:all
 
 FROM node:20-alpine AS runner
 WORKDIR /app
