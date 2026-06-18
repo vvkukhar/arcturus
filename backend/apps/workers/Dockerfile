@@ -20,4 +20,4 @@ RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/workers
-CMD ["sh", "-c", "node $(find dist -name main.js | head -n 1)"]
+CMD ["sh", "-c", "echo '=== 🔍 DEBUG WORKERS: DIST FOLDER ===' && find dist && echo '=== 🚀 STARTING WORKER ===' && FILE=$(find dist -name main.js | head -n 1) && echo \"Executing: node $FILE\" && node $FILE || (echo '❌ WORKER CRASHED (See error above) ❌' && sleep 600)"]

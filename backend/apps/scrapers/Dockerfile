@@ -19,4 +19,4 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/scrapers
-CMD ["sh", "-c", "node $(find dist -name scraper-loop.js | head -n 1)"]
+CMD ["sh", "-c", "echo '=== 🔍 DEBUG SCRAPERS: DIST FOLDER ===' && find dist && echo '=== 🚀 STARTING SCRAPER ===' && FILE=$(find dist -name scraper-loop.js | head -n 1) && echo \"Executing: node $FILE\" && node $FILE || (echo '❌ SCRAPER CRASHED (See error above) ❌' && sleep 600)"]
