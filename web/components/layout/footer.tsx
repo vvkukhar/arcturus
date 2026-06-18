@@ -54,7 +54,7 @@ export function Footer() {
               <li><Link href="/contact" className="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('footer.contact' as any)}</Link></li>
               <li><Link href="/faq" className="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t('footer.faq' as any)}</Link></li>
               <li className="text-sm font-semibold text-slate-500 dark:text-slate-400 pt-2">support@arcturus.store</li>
-              <li className="text-sm font-semibold text-slate-500 dark:text-slate-400">+380 (50) 123-45-67</li>
+              <li className="text-sm font-semibold text-slate-500 dark:text-slate-400">+380 (93) 118-22-35</li>
             </ul>
           </div>
 
