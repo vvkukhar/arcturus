@@ -5,13 +5,12 @@ COPY . .
 RUN npm install
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
 
-# 🔥 ФІКС: компілюємо пакет БД перед спільним кодом
-WORKDIR /app/packages/db
-RUN npm run build
+# Компілюємо всі залежні воркспейси монорепозиторію
+RUN npm run build:shared
+RUN npm run build:db
+RUN npm run build:scrapers
 
-WORKDIR /app/packages/shared
-RUN npm run build
-
+# Компілюємо самих воркерів
 WORKDIR /app/apps/workers
 RUN npx tsc -p tsconfig.json
 
