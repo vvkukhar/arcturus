@@ -10,9 +10,9 @@
     "ignoreDeprecations": "5.0",
     "baseUrl": ".",
     "paths": {
-      "@arcturus/shared": ["packages/shared/src"],
-      "@arcturus/db": ["packages/db/src"],
-      "@arcturus/scrapers": ["apps/scrapers/src"]
+      "@arcturus/shared": ["packages/shared/dist"],
+      "@arcturus/db": ["packages/db/dist"],
+      "@arcturus/scrapers": ["apps/scrapers/dist"]
     }
   }
 }
