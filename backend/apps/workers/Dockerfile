@@ -4,10 +4,14 @@ RUN apk add --no-cache openssl
 COPY . .
 RUN npm install
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
-WORKDIR /app/packages/shared
-RUN npm run build
+
+# 🔥 ФІКС: компілюємо пакет БД перед спільним кодом
 WORKDIR /app/packages/db
 RUN npm run build
+
+WORKDIR /app/packages/shared
+RUN npm run build
+
 WORKDIR /app/apps/workers
 RUN npx tsc -p tsconfig.json
 
