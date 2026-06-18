@@ -4,7 +4,10 @@ RUN apk add --no-cache openssl
 COPY . .
 RUN npm install
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
-RUN npm run build:all
+WORKDIR /app/packages/shared
+RUN npm run build
+WORKDIR /app/apps/workers
+RUN npx tsc -p tsconfig.json
 
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -12,5 +15,4 @@ RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/workers
-# Запускаємо воркери безпосередньо з вихідного TypeScript-коду
-CMD ["npx", "tsx", "src/main.ts"]
+CMD ["sh", "-c", "node $(find dist -name main.js | head -n 1)"]
