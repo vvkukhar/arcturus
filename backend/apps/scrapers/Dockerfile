@@ -5,6 +5,8 @@ RUN npm install
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
 WORKDIR /app/packages/shared
 RUN npm run build
+WORKDIR /app/packages/db
+RUN npm run build
 WORKDIR /app/apps/scrapers
 RUN npx tsc -p tsconfig.json
 

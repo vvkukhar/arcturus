@@ -40,7 +40,6 @@ x-logging: &default-logging
 services:
   redis:
     image: redis:7-alpine
-    container_name: arcturus_redis
     restart: always
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-LegoRedis2026}"]
     volumes:
@@ -56,7 +55,6 @@ services:
     build:
       context: ./backend
       dockerfile: apps/api/Dockerfile
-    container_name: arcturus_api
     restart: always
     ports:
       - "4000:4000"
@@ -69,7 +67,6 @@ services:
     build:
       context: ./backend
       dockerfile: apps/workers/Dockerfile
-    container_name: arcturus_workers
     restart: always
     depends_on:
       redis:
@@ -80,7 +77,6 @@ services:
     build:
       context: ./backend
       dockerfile: apps/scrapers/Dockerfile
-    container_name: arcturus_scrapers
     restart: always
     depends_on:
       redis:
@@ -567,6 +563,7 @@ PUBLIC_STORE_BASE_URL=http://localhost:3000
 API_BASE=http://localhost:4000/api
 ADMIN_TOKEN=supersecret
 
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\.eslintrc.cjs =====
 
 module.exports = {
@@ -719,31 +716,25 @@ volumes:
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\Dockerfile =====
 
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
-COPY package.json package-lock.json* ./
-COPY packages/db/package.json ./packages/db/
-COPY packages/shared/package.json ./packages/shared/
-COPY apps/api/package.json ./apps/api/
-COPY packages/db/prisma ./packages/db/prisma
-RUN npm install
 COPY . .
-WORKDIR /app/packages/db
-RUN npx prisma generate
+RUN npm install
+RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
 WORKDIR /app/packages/shared
 RUN npm run build
 WORKDIR /app/apps/api
-RUN npm run build
+RUN npx nest build
 
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/api
 EXPOSE 4000
-CMD ["sh", "-c", "npx prisma db push --schema=../../packages/db/prisma/schema.prisma --accept-data-loss && node dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma db push --schema=../../packages/db/prisma/schema.prisma --accept-data-loss && node $(find dist -name main.js | head -n 1)"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\global-market-sweep.ts =====
 
@@ -3017,7 +3008,6 @@ export class DealExplanationService {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\ai\openai.service.ts =====
 
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 
 @Injectable()
@@ -3025,9 +3015,9 @@ export class OpenAiService {
   private openai: OpenAI;
   private readonly logger = new Logger(OpenAiService.name);
 
-  constructor(private configService: ConfigService) {
+  constructor() {
     this.openai = new OpenAI({
-      apiKey: this.configService.get<string>('OPENAI_API_KEY') || process.env.OPENAI_API_KEY || 'unconfigured_key_fallback',
+      apiKey: process.env.OPENAI_API_KEY || 'unconfigured_key_fallback',
     });
   }
 
@@ -3039,7 +3029,7 @@ export class OpenAiService {
   }) {
     try {
       const response = await this.openai.chat.completions.create({
-        model: this.configService.get('OPENAI_MODEL') || 'gpt-4o',
+        model: process.env.OPENAI_MODEL || 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -3053,7 +3043,6 @@ export class OpenAiService {
         response_format: { type: 'json_object' },
       });
 
-      // ФІКС: Зачищаємо markdown
       let content = response.choices[0].message.content || '{}';
       content = content.replace(/^```json\n?/i, '').replace(/```$/i, '').trim();
 
@@ -3063,7 +3052,8 @@ export class OpenAiService {
       return null;
     }
   }
-async generateNegotiationScript(data: {
+
+  async generateNegotiationScript(data: {
     title: string;
     currentPrice: number;
     targetPrice: number;
@@ -3086,7 +3076,7 @@ async generateNegotiationScript(data: {
       `;
 
       const response = await this.openai.chat.completions.create({
-        model: this.configService.get('OPENAI_MODEL') || 'gpt-4o',
+        model: process.env.OPENAI_MODEL || 'gpt-4o',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
       });
@@ -3097,10 +3087,11 @@ async generateNegotiationScript(data: {
       return { script: `Вітаю! Готовий забрати "${data.title}" за ${data.targetPrice} грн хоч сьогодні через Укрпошту. Що скажете?` }; // Fallback
     }
   }
+  
   async generateMarketInsight(recentTrends: any) {
     try {
       const response = await this.openai.chat.completions.create({
-        model: this.configService.get('OPENAI_MODEL') || 'gpt-4o',
+        model: process.env.OPENAI_MODEL || 'gpt-4o',
         messages: [
           {
             role: 'user',
@@ -3115,7 +3106,6 @@ async generateNegotiationScript(data: {
     }
   }
 }
-
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\allocation\allocation.controller.ts =====
 
@@ -19054,17 +19044,16 @@ export class UpdateOrderDto {
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\payments\liqpay.service.ts =====
 
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class LiqPayService {
-  constructor(private config: ConfigService) {}
+  constructor() {}
 
   private getKeys() {
     return {
-      public: this.config.get('LIQPAY_PUBLIC_KEY'),
-      private: this.config.get('LIQPAY_PRIVATE_KEY'),
+      public: process.env.LIQPAY_PUBLIC_KEY || '',
+      private: process.env.LIQPAY_PRIVATE_KEY || '',
     };
   }
 
@@ -19079,8 +19068,8 @@ export class LiqPayService {
       currency: 'UAH',
       description,
       order_id: orderId,
-      result_url: `${this.config.get('PUBLIC_STORE_BASE_URL')}/success`,
-      server_url: `${this.config.get('API_BASE')}/payments/liqpay-callback`,
+      result_url: `${process.env.PUBLIC_STORE_BASE_URL}/success`,
+      server_url: `${process.env.API_BASE}/payments/liqpay-callback`,
     };
 
     const data = Buffer.from(JSON.stringify(params)).toString('base64');
@@ -21497,7 +21486,7 @@ export class PublicStoreModule {}
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\src\modules\public\public-store.service.ts =====
 
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { toMoney } from '@arcturus/shared';
+import { toMoney, extractSetNumber } from '@arcturus/shared';
 import { ActivityService } from '../activity/activity.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21907,9 +21896,11 @@ export class PublicStoreService {
     
     if (!reserve) return [];
 
-    // Шукаємо потенційні набори в базі за першим словом з назви (напр. 75192 або Millennium)
+    const setNumber = extractSetNumber(reserve.productTitle);
+
+    // Шукаємо потенційні набори в базі за артикулом або першим словом з назви
     const possibleItems = await this.prisma.item.findMany({
-      where: { title: { contains: reserve.productTitle.split(' ')[0], mode: 'insensitive' } },
+      where: setNumber ? { setNumber } : { title: { contains: reserve.productTitle.split(' ')[0], mode: 'insensitive' } },
       take: 5
     });
 
@@ -27989,6 +27980,8 @@ export class VaultService {
           data: { status: 'funded' }
         });
 
+        const isSoleInvestor = (currentFunded === 0 && amountToInvest >= deal.buyPrice);
+
         const inv = await tx.inventoryItem.create({
           data: {
             itemId: deal.watchlistItem.itemId,
@@ -27998,7 +27991,7 @@ export class VaultService {
             expectedSalePriceManual: deal.targetSellPrice,
             quantity: 1,
             condition: 'used',
-            investorId: fractionalAmount ? null : userId,
+            investorId: isSoleInvestor ? userId : null,
             investorProfitShare: 0.8,
             notes: 'Funded via Arcturus Vault (Crowdinvesting)',
           }
@@ -29553,30 +29546,25 @@ process.env.CORS_ORIGINS = process.env.CORS_ORIGINS ?? 'http://localhost:3000';
 
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arcturus?schema=public
 
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\Dockerfile =====
 
-FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS builder
+FROM mcr.microsoft.com/playwright:v1.44.0-jammy AS builder
 WORKDIR /app
-COPY package.json package-lock.json* ./
-COPY packages/db/package.json ./packages/db/
-COPY packages/shared/package.json ./packages/shared/
-COPY apps/scrapers/package.json ./apps/scrapers/
-COPY packages/db/prisma ./packages/db/prisma
-RUN npm install
 COPY . .
-WORKDIR /app/packages/db
-RUN npx prisma generate
+RUN npm install
+RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
 WORKDIR /app/packages/shared
 RUN npm run build
 WORKDIR /app/apps/scrapers
-RUN npm run build
+RUN npx tsc -p tsconfig.json
 
-FROM mcr.microsoft.com/playwright:v1.42.1-jammy AS runner
+FROM mcr.microsoft.com/playwright:v1.44.0-jammy AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/scrapers
-CMD ["node", "dist/src/scraper-loop.js"]
+CMD ["sh", "-c", "node $(find dist -name scraper-loop.js | head -n 1)"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\package.json =====
 
@@ -33132,6 +33120,7 @@ README.md
 
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arcturus?schema=public
 
+
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\.eslintrc.cjs =====
 
 module.exports = {
@@ -33162,30 +33151,24 @@ module.exports = {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\Dockerfile =====
 
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
-COPY package.json package-lock.json* ./
-COPY packages/db/package.json ./packages/db/
-COPY packages/shared/package.json ./packages/shared/
-COPY apps/workers/package.json ./apps/workers/
-COPY packages/db/prisma ./packages/db/prisma
-RUN npm install
 COPY . .
-WORKDIR /app/packages/db
-RUN npx prisma generate
+RUN npm install
+RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
 WORKDIR /app/packages/shared
 RUN npm run build
 WORKDIR /app/apps/workers
-RUN npm run build
+RUN npx tsc -p tsconfig.json
 
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/workers
-CMD ["node", "dist/src/main.js"]
+CMD ["sh", "-c", "node $(find dist -name main.js | head -n 1)"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\package.json =====
 
