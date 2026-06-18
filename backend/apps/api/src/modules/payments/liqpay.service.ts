@@ -1,15 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class LiqPayService {
-  constructor(private config: ConfigService) {}
+  constructor() {}
 
   private getKeys() {
     return {
-      public: this.config.get('LIQPAY_PUBLIC_KEY'),
-      private: this.config.get('LIQPAY_PRIVATE_KEY'),
+      public: process.env.LIQPAY_PUBLIC_KEY || '',
+      private: process.env.LIQPAY_PRIVATE_KEY || '',
     };
   }
 
@@ -24,8 +23,8 @@ export class LiqPayService {
       currency: 'UAH',
       description,
       order_id: orderId,
-      result_url: `${this.config.get('PUBLIC_STORE_BASE_URL')}/success`,
-      server_url: `${this.config.get('API_BASE')}/payments/liqpay-callback`,
+      result_url: `${process.env.PUBLIC_STORE_BASE_URL}/success`,
+      server_url: `${process.env.API_BASE}/payments/liqpay-callback`,
     };
 
     const data = Buffer.from(JSON.stringify(params)).toString('base64');

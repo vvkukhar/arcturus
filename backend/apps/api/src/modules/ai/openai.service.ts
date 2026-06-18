@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 
 @Injectable()
@@ -7,9 +6,9 @@ export class OpenAiService {
   private openai: OpenAI;
   private readonly logger = new Logger(OpenAiService.name);
 
-  constructor(private configService: ConfigService) {
+  constructor() {
     this.openai = new OpenAI({
-      apiKey: this.configService.get<string>('OPENAI_API_KEY') || process.env.OPENAI_API_KEY || 'unconfigured_key_fallback',
+      apiKey: process.env.OPENAI_API_KEY || 'unconfigured_key_fallback',
     });
   }
 
@@ -21,7 +20,7 @@ export class OpenAiService {
   }) {
     try {
       const response = await this.openai.chat.completions.create({
-        model: this.configService.get('OPENAI_MODEL') || 'gpt-4o',
+        model: process.env.OPENAI_MODEL || 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -35,7 +34,6 @@ export class OpenAiService {
         response_format: { type: 'json_object' },
       });
 
-      // ФІКС: Зачищаємо markdown
       let content = response.choices[0].message.content || '{}';
       content = content.replace(/^```json\n?/i, '').replace(/```$/i, '').trim();
 
@@ -45,7 +43,8 @@ export class OpenAiService {
       return null;
     }
   }
-async generateNegotiationScript(data: {
+
+  async generateNegotiationScript(data: {
     title: string;
     currentPrice: number;
     targetPrice: number;
@@ -68,7 +67,7 @@ async generateNegotiationScript(data: {
       `;
 
       const response = await this.openai.chat.completions.create({
-        model: this.configService.get('OPENAI_MODEL') || 'gpt-4o',
+        model: process.env.OPENAI_MODEL || 'gpt-4o',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
       });
@@ -79,10 +78,11 @@ async generateNegotiationScript(data: {
       return { script: `Вітаю! Готовий забрати "${data.title}" за ${data.targetPrice} грн хоч сьогодні через Укрпошту. Що скажете?` }; // Fallback
     }
   }
+  
   async generateMarketInsight(recentTrends: any) {
     try {
       const response = await this.openai.chat.completions.create({
-        model: this.configService.get('OPENAI_MODEL') || 'gpt-4o',
+        model: process.env.OPENAI_MODEL || 'gpt-4o',
         messages: [
           {
             role: 'user',
