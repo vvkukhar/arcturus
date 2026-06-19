@@ -47,6 +47,7 @@ services:
       context: ./backend
       dockerfile: apps/scrapers/Dockerfile
     restart: always
+    shm_size: '1gb'
     depends_on:
       redis:
         condition: service_healthy

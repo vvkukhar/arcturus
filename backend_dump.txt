@@ -132,7 +132,7 @@ services:
       redis:
         condition: service_started
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/arcturus
+      DATABASE_URL: postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=40&pool_timeout=60
       REDIS_HOST: redis
       REDIS_PORT: 6379
       PORT: 4000
@@ -155,7 +155,7 @@ services:
       redis:
         condition: service_started
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/arcturus
+      DATABASE_URL: postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=40&pool_timeout=60
       REDIS_HOST: redis
       REDIS_PORT: 6379
       NODE_ENV: production
@@ -547,7 +547,7 @@ test
 NODE_ENV=development
 PORT=4000
 
-DATABASE_URL=postgresql://arcturus:arcturus_password@localhost:5432/arcturus?schema=public
+DATABASE_URL=postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=40&pool_timeout=60
 
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -642,7 +642,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=40&pool_timeout=60
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
@@ -722,10 +722,8 @@ RUN apk add --no-cache openssl
 COPY . .
 RUN npm install
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
-WORKDIR /app/packages/shared
-RUN npm run build
-WORKDIR /app/apps/api
-RUN npx nest build
+# Збираємо весь монорепозиторій однією командою
+RUN npm run build:all
 
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -734,7 +732,7 @@ ENV NODE_ENV=production
 COPY --from=builder /app /app
 WORKDIR /app/apps/api
 EXPOSE 4000
-CMD ["sh", "-c", "npx prisma db push --schema=../../packages/db/prisma/schema.prisma --accept-data-loss && node $(find dist -name main.js | head -n 1)"]
+CMD ["sh", "-c", "node $(find dist -name main.js | head -n 1)"]
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\global-market-sweep.ts =====
 
@@ -29544,7 +29542,7 @@ process.env.CORS_ORIGINS = process.env.CORS_ORIGINS ?? 'http://localhost:3000';
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\.env.example =====
 
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arcturus?schema=public
+DATABASE_URL=postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=40&pool_timeout=60
 
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\Dockerfile =====
@@ -29554,10 +29552,8 @@ WORKDIR /app
 COPY . .
 RUN npm install
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
-WORKDIR /app/packages/shared
-RUN npm run build
-WORKDIR /app/apps/scrapers
-RUN npx tsc -p tsconfig.json
+# Збираємо весь монорепозиторій однією командою
+RUN npm run build:all
 
 FROM mcr.microsoft.com/playwright:v1.44.0-jammy AS runner
 WORKDIR /app
@@ -33118,7 +33114,7 @@ README.md
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\.env.example =====
 
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arcturus?schema=public
+DATABASE_URL=postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=40&pool_timeout=60
 
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\workers\.eslintrc.cjs =====
@@ -33157,10 +33153,8 @@ RUN apk add --no-cache openssl
 COPY . .
 RUN npm install
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
-WORKDIR /app/packages/shared
-RUN npm run build
-WORKDIR /app/apps/workers
-RUN npx tsc -p tsconfig.json
+# Збираємо весь монорепозиторій однією командою
+RUN npm run build:all
 
 FROM node:20-alpine AS runner
 WORKDIR /app
