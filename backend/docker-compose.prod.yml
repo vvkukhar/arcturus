@@ -12,29 +12,29 @@ services:
     restart: always
     environment:
       POSTGRES_USER: arcturus
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-LegoDatabase2026}
+      # Жорстко фіксуємо пароль, щоб уникнути багів Coolify
+      POSTGRES_PASSWORD: LegoDatabase2026
       POSTGRES_DB: arcturus
     volumes:
-      - arcturus_pg_data_v2:/var/lib/postgresql/data
+      - arcturus_pg_data_v3:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U arcturus -d arcturus"]
-      interval: 5s
+      interval: 2s
       timeout: 5s
-      retries: 10
-      start_period: 10s
+      retries: 30
     logging: *default-logging
 
   redis:
     image: redis:7-alpine
     restart: always
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-LegoRedis2026}"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "LegoRedis2026"]
     volumes:
-      - arcturus_redis_data:/data
+      - arcturus_redis_data_v2:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-LegoRedis2026}", "ping"]
-      interval: 5s
+      test: ["CMD", "redis-cli", "-a", "LegoRedis2026", "ping"]
+      interval: 2s
       timeout: 5s
-      retries: 5
+      retries: 15
     logging: *default-logging
 
   api:
@@ -78,5 +78,5 @@ services:
     logging: *default-logging
 
 volumes:
-  arcturus_redis_data:
-  arcturus_pg_data_v2:
+  arcturus_redis_data_v2:
+  arcturus_pg_data_v3:
