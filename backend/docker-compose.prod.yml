@@ -15,13 +15,13 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-LegoDatabase2026}
       POSTGRES_DB: arcturus
     volumes:
-      - arcturus_pg_data:/var/lib/postgresql/data
+      - arcturus_pg_data_v2:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U arcturus -d arcturus"]
-      interval: 10s
-      timeout: 10s
-      retries: 15
-      start_period: 40s
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     logging: *default-logging
 
   redis:
@@ -44,7 +44,6 @@ services:
     restart: always
     ports:
       - "4000:4000"
-    # 🔥 ФІКС: Створюємо таблиці в новій базі перед запуском сервера
     command: sh -c "npx prisma db push --schema=packages/db/prisma/schema.prisma --accept-data-loss && node $$(find dist -name main.js | head -n 1)"
     depends_on:
       postgres:
@@ -80,4 +79,4 @@ services:
 
 volumes:
   arcturus_redis_data:
-  arcturus_pg_data:
+  arcturus_pg_data_v2:
