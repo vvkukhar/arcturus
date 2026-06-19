@@ -45,7 +45,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=5&pool_timeout=60
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
