@@ -1,7 +1,7 @@
 import { prisma } from '../prisma';
 
 export async function recomputeMarketSnapshotsJob(): Promise<{ totalItems: number; snapshotsCreated: number }> {
-  const chunkSize = 500;
+  const chunkSize = 100; // 🔥 Зменшено з 500 до 100
   let snapshotsCreated = 0;
   let totalItems = 0;
 
@@ -130,7 +130,7 @@ export async function recomputeMarketSnapshotsJob(): Promise<{ totalItems: numbe
       snapshotsCreated += snapshotData.length;
     }
 
-    await new Promise((res) => setTimeout(res, 100));
+    await new Promise((res) => setTimeout(res, 200)); // 🔥 Додали паузу 200мс між чанками, щоб дати БД видихнути
   }
 
   return { totalItems, snapshotsCreated };

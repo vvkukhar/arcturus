@@ -12,7 +12,7 @@ export async function recomputeDecisionsJob(): Promise<{
   let inventoryEvaluated = 0;
   let listingsEvaluated = 0;
 
-  const chunkSize = 500;
+  const chunkSize = 100; // 🔥 Зменшено з 500 до 100
 
   let hasMoreInv = true;
   let lastInvId: string | undefined = undefined;
@@ -85,7 +85,7 @@ export async function recomputeDecisionsJob(): Promise<{
       await prisma.$transaction(dbOperations);
     }
 
-    await new Promise((res) => setTimeout(res, 50));
+    await new Promise((res) => setTimeout(res, 200)); // 🔥 Пауза
   }
 
   let hasMoreListings = true;
@@ -184,7 +184,7 @@ export async function recomputeDecisionsJob(): Promise<{
       await prisma.$transaction(dbOperations);
     }
 
-    await new Promise((res) => setTimeout(res, 50));
+    await new Promise((res) => setTimeout(res, 200)); // 🔥 Пауза
   }
 
   await prisma.activityLog.create({

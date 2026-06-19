@@ -18,7 +18,7 @@ type ListingType = {
 };
 
 export async function detectDealsJob(): Promise<{ scannedListings: number; createdOrUpdated: number }> {
-  const chunkSize = 2000;
+  const chunkSize = 300; // 🔥 Зменшено з 2000 до 300
   let scannedListings = 0;
   let createdOrUpdated = 0;
   let hasMore = true;
@@ -129,7 +129,7 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
     }
 
     if (creates.length > 0) {
-      const dbChunkSize = 500; 
+      const dbChunkSize = 100; // 🔥 Зменшено з 500 до 100
       for (let i = 0; i < creates.length; i += dbChunkSize) {
         const chunk = creates.slice(i, i + dbChunkSize);
         await prisma.$executeRawUnsafe(`
@@ -146,6 +146,8 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
         `);
       }
     }
+    
+    await new Promise((res) => setTimeout(res, 200)); // 🔥 Пауза 200мс між чанками
   }
 
   await prisma.activityLog.create({
