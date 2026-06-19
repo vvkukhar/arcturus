@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const token = await getAdminToken();
 
-    // Якщо немає токена, повертаємо 200 і null, щоб не тригерити глобальний редірект на логін
+    // Якщо немає токена, повертаємо 200 і null
     if (!token) {
       return NextResponse.json(null, { status: 200 }); 
     }
@@ -19,6 +19,12 @@ export async function GET() {
     });
 
     if (!res.ok) {
+      // ФІКС: Якщо токен невалідний або протух (401), примусово видаляємо куку
+      if (res.status === 401) {
+        const response = NextResponse.json(null, { status: 200 });
+        response.cookies.delete('arcturus_admin_token');
+        return response;
+      }
       return NextResponse.json(null, { status: 200 });
     }
 
