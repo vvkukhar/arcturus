@@ -15,7 +15,7 @@ services:
       POSTGRES_PASSWORD: LegoDatabase2026
       POSTGRES_DB: arcturus
     volumes:
-      - arcturus_pg_data_v4:/var/lib/postgresql/data
+      - arcturus_pg_data_v5:/var/lib/postgresql/data
     logging: *default-logging
 
   redis:
@@ -23,7 +23,7 @@ services:
     restart: always
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "LegoRedis2026"]
     volumes:
-      - arcturus_redis_data_v3:/data
+      - arcturus_redis_data_v4:/data
     logging: *default-logging
 
   api:
@@ -33,7 +33,8 @@ services:
     restart: always
     ports:
       - "4000:4000"
-    command: sh -c "npx prisma db push --schema=packages/db/prisma/schema.prisma --accept-data-loss && node $$(find dist -name main.js | head -n 1)"
+    # 🔥 ФІКС: Абсолютний шлях до схеми + очікування 10 сек поки підніметься БД
+    command: sh -c "sleep 10 && npx prisma db push --schema=/app/packages/db/prisma/schema.prisma --accept-data-loss && node $$(find dist -name main.js | head -n 1)"
     depends_on:
       - postgres
       - redis
@@ -61,5 +62,5 @@ services:
     logging: *default-logging
 
 volumes:
-  arcturus_redis_data_v3:
-  arcturus_pg_data_v4:
+  arcturus_redis_data_v4:
+  arcturus_pg_data_v5:
