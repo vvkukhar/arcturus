@@ -42,7 +42,7 @@ services:
       redis:
         condition: service_started
     environment:
-      DATABASE_URL: postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=5&pool_timeout=60
+      DATABASE_URL: postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=40&pool_timeout=60
       REDIS_HOST: redis
       REDIS_PORT: 6379
       PORT: 4000
@@ -65,7 +65,7 @@ services:
       redis:
         condition: service_started
     environment:
-      DATABASE_URL: postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=5&pool_timeout=60
+      DATABASE_URL: postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=40&pool_timeout=60
       REDIS_HOST: redis
       REDIS_PORT: 6379
       NODE_ENV: production
