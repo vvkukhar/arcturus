@@ -8,20 +8,14 @@ x-logging: &default-logging
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16
     restart: always
     environment:
       POSTGRES_USER: arcturus
-      # Жорстко фіксуємо пароль, щоб уникнути багів Coolify
       POSTGRES_PASSWORD: LegoDatabase2026
       POSTGRES_DB: arcturus
     volumes:
-      - arcturus_pg_data_v3:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U arcturus -d arcturus"]
-      interval: 2s
-      timeout: 5s
-      retries: 30
+      - arcturus_pg_data_v4:/var/lib/postgresql/data
     logging: *default-logging
 
   redis:
@@ -29,12 +23,7 @@ services:
     restart: always
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "LegoRedis2026"]
     volumes:
-      - arcturus_redis_data_v2:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "LegoRedis2026", "ping"]
-      interval: 2s
-      timeout: 5s
-      retries: 15
+      - arcturus_redis_data_v3:/data
     logging: *default-logging
 
   api:
@@ -46,10 +35,8 @@ services:
       - "4000:4000"
     command: sh -c "npx prisma db push --schema=packages/db/prisma/schema.prisma --accept-data-loss && node $$(find dist -name main.js | head -n 1)"
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     logging: *default-logging
 
   workers:
@@ -58,10 +45,8 @@ services:
       dockerfile: apps/workers/Dockerfile
     restart: always
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     logging: *default-logging
 
   scrapers:
@@ -71,12 +56,10 @@ services:
     restart: always
     shm_size: '1gb'
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     logging: *default-logging
 
 volumes:
-  arcturus_redis_data_v2:
-  arcturus_pg_data_v3:
+  arcturus_redis_data_v3:
+  arcturus_pg_data_v4:
