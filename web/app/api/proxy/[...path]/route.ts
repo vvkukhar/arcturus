@@ -41,6 +41,7 @@ async function handleProxy(req: NextRequest, props: { params: Promise<{ path: st
 
     responseHeaders.delete('content-encoding');
     responseHeaders.delete('transfer-encoding');
+    responseHeaders.delete('content-length'); // 🔥 ДОДАНО: видаляємо старий content-length, бо Next.js декомпресує тіло
     responseHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     responseHeaders.set('Pragma', 'no-cache');
     responseHeaders.set('Expires', '0');

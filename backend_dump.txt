@@ -38,17 +38,23 @@ x-logging: &default-logging
     max-file: "5"
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: arcturus
+      POSTGRES_PASSWORD: LegoDatabase2026
+      POSTGRES_DB: arcturus
+    volumes:
+      - pg_data_v10:/var/lib/postgresql/data
+    logging: *default-logging
+
   redis:
     image: redis:7-alpine
     restart: always
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-LegoRedis2026}"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "LegoRedis2026"]
     volumes:
-      - arcturus_redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-LegoRedis2026}", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - redis_data_v10:/data
     logging: *default-logging
 
   api:
@@ -56,11 +62,20 @@ services:
       context: ./backend
       dockerfile: apps/api/Dockerfile
     restart: always
-    ports:
-      - "4000:4000"
+    ports:               # 🔥 ЗМІНИТИ expose НА ports
+      - "4000:4000"      # 🔥 ПОВЕРНУТИ ЦЕЙ РЯДОК
+    environment:
+      - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
+      - REDIS_URL=redis://:LegoRedis2026@redis:6379
+      - NODE_ENV=production
+      - PORT=4000
+      - CORS_ORIGINS=https://www.arcturusbuild.com,http://localhost:3000
+      - ADMIN_TOKEN=supersecret
+      - JWT_SECRET=ArcturusSecretKey2026
+    command: sh -c "until npx prisma db push --schema=/app/packages/db/prisma/schema.prisma --accept-data-loss; do echo 'Waiting for DB...'; sleep 5; done; echo 'DB Ready!'; node $$(find dist -name main.js | head -n 1)"
     depends_on:
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     logging: *default-logging
 
   workers:
@@ -68,9 +83,16 @@ services:
       context: ./backend
       dockerfile: apps/workers/Dockerfile
     restart: always
+    environment:
+      - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
+      - REDIS_URL=redis://:LegoRedis2026@redis:6379
+      - NODE_ENV=production
+    # Жорстко чекаємо 45 секунд, поки API накотить міграції
+    command: sh -c "sleep 45 && node $$(find dist -name main.js | head -n 1)"
     depends_on:
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
+      - api
     logging: *default-logging
 
   scrapers:
@@ -78,13 +100,22 @@ services:
       context: ./backend
       dockerfile: apps/scrapers/Dockerfile
     restart: always
+    shm_size: '1gb'
+    environment:
+      - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
+      - REDIS_URL=redis://:LegoRedis2026@redis:6379
+      - NODE_ENV=production
+    # Жорстко чекаємо 45 секунд
+    command: sh -c "sleep 45 && node $$(find dist -name scraper-loop.js | head -n 1)"
     depends_on:
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
+      - api
     logging: *default-logging
 
 volumes:
-  arcturus_redis_data:
+  redis_data_v10:
+  pg_data_v10:
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\docker-compose.yml =====
 
@@ -720,9 +751,13 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
 COPY . .
-RUN npm install
+# Фікс для обриву мережі під час білду
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm install --no-fund --no-audit || \
+    (sleep 5 && npm install --no-fund --no-audit)
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
-# Збираємо весь монорепозиторій однією командою
 RUN npm run build:all
 
 FROM node:20-alpine AS runner
@@ -29550,9 +29585,13 @@ DATABASE_URL=postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-e
 FROM mcr.microsoft.com/playwright:v1.44.0-jammy AS builder
 WORKDIR /app
 COPY . .
-RUN npm install
+# Фікс для обриву мережі під час білду
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm install --no-fund --no-audit || \
+    (sleep 5 && npm install --no-fund --no-audit)
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
-# Збираємо весь монорепозиторій однією командою
 RUN npm run build:all
 
 FROM mcr.microsoft.com/playwright:v1.44.0-jammy AS runner
@@ -33151,9 +33190,13 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
 COPY . .
-RUN npm install
+# Фікс для обриву мережі під час білду
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm install --no-fund --no-audit || \
+    (sleep 5 && npm install --no-fund --no-audit)
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
-# Збираємо весь монорепозиторій однією командою
 RUN npm run build:all
 
 FROM node:20-alpine AS runner
@@ -34100,7 +34143,7 @@ type ListingType = {
 };
 
 export async function detectDealsJob(): Promise<{ scannedListings: number; createdOrUpdated: number }> {
-  const chunkSize = 2000;
+  const chunkSize = 300; // 🔥 Зменшено з 2000 до 300
   let scannedListings = 0;
   let createdOrUpdated = 0;
   let hasMore = true;
@@ -34211,7 +34254,7 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
     }
 
     if (creates.length > 0) {
-      const dbChunkSize = 500; 
+      const dbChunkSize = 100; // 🔥 Зменшено з 500 до 100
       for (let i = 0; i < creates.length; i += dbChunkSize) {
         const chunk = creates.slice(i, i + dbChunkSize);
         await prisma.$executeRawUnsafe(`
@@ -34228,6 +34271,8 @@ export async function detectDealsJob(): Promise<{ scannedListings: number; creat
         `);
       }
     }
+    
+    await new Promise((res) => setTimeout(res, 200)); // 🔥 Пауза 200мс між чанками
   }
 
   await prisma.activityLog.create({
@@ -34986,7 +35031,7 @@ export async function recomputeDecisionsJob(): Promise<{
   let inventoryEvaluated = 0;
   let listingsEvaluated = 0;
 
-  const chunkSize = 500;
+  const chunkSize = 100; // 🔥 Зменшено з 500 до 100
 
   let hasMoreInv = true;
   let lastInvId: string | undefined = undefined;
@@ -35059,7 +35104,7 @@ export async function recomputeDecisionsJob(): Promise<{
       await prisma.$transaction(dbOperations);
     }
 
-    await new Promise((res) => setTimeout(res, 50));
+    await new Promise((res) => setTimeout(res, 200)); // 🔥 Пауза
   }
 
   let hasMoreListings = true;
@@ -35158,7 +35203,7 @@ export async function recomputeDecisionsJob(): Promise<{
       await prisma.$transaction(dbOperations);
     }
 
-    await new Promise((res) => setTimeout(res, 50));
+    await new Promise((res) => setTimeout(res, 200)); // 🔥 Пауза
   }
 
   await prisma.activityLog.create({
@@ -35173,7 +35218,7 @@ export async function recomputeDecisionsJob(): Promise<{
 import { prisma } from '../prisma';
 
 export async function recomputeMarketSnapshotsJob(): Promise<{ totalItems: number; snapshotsCreated: number }> {
-  const chunkSize = 500;
+  const chunkSize = 100; // 🔥 Зменшено з 500 до 100
   let snapshotsCreated = 0;
   let totalItems = 0;
 
@@ -35302,7 +35347,7 @@ export async function recomputeMarketSnapshotsJob(): Promise<{ totalItems: numbe
       snapshotsCreated += snapshotData.length;
     }
 
-    await new Promise((res) => setTimeout(res, 100));
+    await new Promise((res) => setTimeout(res, 200)); // 🔥 Додали паузу 200мс між чанками, щоб дати БД видихнути
   }
 
   return { totalItems, snapshotsCreated };
