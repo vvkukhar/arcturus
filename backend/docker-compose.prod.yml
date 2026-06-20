@@ -31,8 +31,8 @@ services:
       context: ./backend
       dockerfile: apps/api/Dockerfile
     restart: always
-    ports:
-      - "4000:4000" # 🔥 ПОВЕРНУЛИ ПОРТ, щоб Nginx його бачив
+    ports:               # 🔥 ЗМІНИТИ expose НА ports
+      - "4000:4000"      # 🔥 ПОВЕРНУТИ ЦЕЙ РЯДОК
     environment:
       - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
       - REDIS_URL=redis://:LegoRedis2026@redis:6379
