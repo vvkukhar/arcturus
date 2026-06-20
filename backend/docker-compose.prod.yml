@@ -31,14 +31,16 @@ services:
       context: ./backend
       dockerfile: apps/api/Dockerfile
     restart: always
-    expose:
-      - "4000"
+    ports:
+      - "4000:4000" # 🔥 ПОВЕРНУЛИ ПОРТ, щоб Nginx його бачив
     environment:
       - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
       - REDIS_URL=redis://:LegoRedis2026@redis:6379
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=4000
-    # Безкінечний цикл доки не створить таблиці, потім запуск
+      - CORS_ORIGINS=https://www.arcturusbuild.com,http://localhost:3000
+      - ADMIN_TOKEN=supersecret
+      - JWT_SECRET=ArcturusSecretKey2026
     command: sh -c "until npx prisma db push --schema=/app/packages/db/prisma/schema.prisma --accept-data-loss; do echo 'Waiting for DB...'; sleep 5; done; echo 'DB Ready!'; node $$(find dist -name main.js | head -n 1)"
     depends_on:
       - postgres
