@@ -10,12 +10,8 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: always
-    environment:
-      POSTGRES_USER: arcturus
-      POSTGRES_PASSWORD: LegoDatabase2026
-      POSTGRES_DB: arcturus
     volumes:
-      - pg_data_v7:/var/lib/postgresql/data
+      - pg_data_v8:/var/lib/postgresql/data
     logging: *default-logging
 
   redis:
@@ -23,7 +19,7 @@ services:
     restart: always
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "LegoRedis2026"]
     volumes:
-      - redis_data_v7:/data
+      - redis_data_v8:/data
     logging: *default-logging
 
   api:
@@ -33,12 +29,8 @@ services:
     restart: always
     ports:
       - "4000:4000"
-    environment:
-      # Вказуємо ім'я сервісу "postgres" та "redis" як хост
-      - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
-      - REDIS_URL=redis://:LegoRedis2026@redis:6379
-    # Нескінченний цикл, поки не створить таблиці
-    command: sh -c "until npx prisma db push --schema=/app/packages/db/prisma/schema.prisma --accept-data-loss; do echo 'Waiting for postgres...'; sleep 5; done; echo 'Database ready, starting API...'; node $$(find dist -name main.js | head -n 1)"
+    # Стукаємо в базу кожні 5 сек, поки вона не прокинеться
+    command: sh -c "until npx prisma db push --schema=/app/packages/db/prisma/schema.prisma --accept-data-loss; do echo 'Waiting for DB...'; sleep 5; done; echo 'DB Ready!'; node $$(find dist -name main.js | head -n 1)"
     depends_on:
       - postgres
       - redis
@@ -49,11 +41,8 @@ services:
       context: ./backend
       dockerfile: apps/workers/Dockerfile
     restart: always
-    environment:
-      - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
-      - REDIS_URL=redis://:LegoRedis2026@redis:6379
-    # Чекаємо 30 сек
-    command: sh -c "sleep 30 && node $$(find dist -name main.js | head -n 1)"
+    # Чекаємо 45 сек, щоб API точно встигло створити таблиці
+    command: sh -c "sleep 45 && node $$(find dist -name main.js | head -n 1)"
     depends_on:
       - postgres
       - redis
@@ -65,16 +54,13 @@ services:
       dockerfile: apps/scrapers/Dockerfile
     restart: always
     shm_size: '1gb'
-    environment:
-      - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
-      - REDIS_URL=redis://:LegoRedis2026@redis:6379
-    # Чекаємо 30 сек
-    command: sh -c "sleep 30 && node $$(find dist -name scraper-loop.js | head -n 1)"
+    # Чекаємо 45 сек, щоб API точно встигло створити таблиці
+    command: sh -c "sleep 45 && node $$(find dist -name scraper-loop.js | head -n 1)"
     depends_on:
       - postgres
       - redis
     logging: *default-logging
 
 volumes:
-  redis_data_v7:
-  pg_data_v7:
+  redis_data_v8:
+  pg_data_v8:
