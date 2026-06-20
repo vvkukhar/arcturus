@@ -56,8 +56,9 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
   app.enableShutdownHooks();
 
-  const port = process.env.PORT || 4000;
-  const httpServer = await app.listen(port, '0.0.0.0');
+const port = 4000;
+const httpServer = await app.listen(port, '0.0.0.0');
+console.log(`[Arcturus] API is forcefully listening on 0.0.0.0:${port}`);
 
   const realtimeGateway = app.get(RealtimeGateway);
   const rawIo = new SocketIOServer(httpServer, {
