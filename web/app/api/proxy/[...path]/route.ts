@@ -39,9 +39,11 @@ async function handleProxy(req: NextRequest, props: { params: Promise<{ path: st
     const response = await fetch(backendUrl.toString(), options);
     const responseHeaders = new Headers(response.headers);
 
+    // 🔥 ГОЛОВНИЙ ФІКС ДЛЯ VERCEL 502 BAD GATEWAY
     responseHeaders.delete('content-encoding');
     responseHeaders.delete('transfer-encoding');
-    responseHeaders.delete('content-length'); // 🔥 ДОДАНО: видаляємо старий content-length, бо Next.js декомпресує тіло
+    responseHeaders.delete('content-length'); 
+    
     responseHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     responseHeaders.set('Pragma', 'no-cache');
     responseHeaders.set('Expires', '0');
@@ -51,7 +53,8 @@ async function handleProxy(req: NextRequest, props: { params: Promise<{ path: st
       statusText: response.statusText,
       headers: responseHeaders,
     });
-  } catch {
+  } catch (error) {
+    console.error('[Proxy Error]', error);
     return NextResponse.json({ ok: false, error: 'Gateway Timeout' }, { status: 504 });
   }
 }
