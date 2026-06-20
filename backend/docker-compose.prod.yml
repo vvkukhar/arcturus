@@ -15,12 +15,7 @@ services:
       POSTGRES_PASSWORD: LegoDatabase2026
       POSTGRES_DB: arcturus
     volumes:
-      - pg_data_v9:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U arcturus -d arcturus"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      - pg_data_v10:/var/lib/postgresql/data
     logging: *default-logging
 
   redis:
@@ -28,12 +23,7 @@ services:
     restart: always
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "LegoRedis2026"]
     volumes:
-      - redis_data_v9:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "LegoRedis2026", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      - redis_data_v10:/data
     logging: *default-logging
 
   api:
@@ -42,24 +32,17 @@ services:
       dockerfile: apps/api/Dockerfile
     restart: always
     expose:
-      - "4000" # Тільки expose, жодних ports! Це звільнить сервер від конфліктів.
+      - "4000"
     environment:
       - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
       - REDIS_URL=redis://:LegoRedis2026@redis:6379
-      - NODE_ENV=development # Вмикаємо логи, щоб бачити кожен крок
+      - NODE_ENV=development
       - PORT=4000
-    command: sh -c "npx prisma db push --schema=/app/packages/db/prisma/schema.prisma --accept-data-loss && node $$(find dist -name main.js | head -n 1)"
+    # Безкінечний цикл доки не створить таблиці, потім запуск
+    command: sh -c "until npx prisma db push --schema=/app/packages/db/prisma/schema.prisma --accept-data-loss; do echo 'Waiting for DB...'; sleep 5; done; echo 'DB Ready!'; node $$(find dist -name main.js | head -n 1)"
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/api/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      - postgres
+      - redis
     logging: *default-logging
 
   workers:
@@ -71,10 +54,12 @@ services:
       - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
       - REDIS_URL=redis://:LegoRedis2026@redis:6379
       - NODE_ENV=production
-    command: sh -c "node $$(find dist -name main.js | head -n 1)"
+    # Жорстко чекаємо 45 секунд, поки API накотить міграції
+    command: sh -c "sleep 45 && node $$(find dist -name main.js | head -n 1)"
     depends_on:
-      api:
-        condition: service_healthy # Чекає, поки API повністю підніметься!
+      - postgres
+      - redis
+      - api
     logging: *default-logging
 
   scrapers:
@@ -87,12 +72,14 @@ services:
       - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
       - REDIS_URL=redis://:LegoRedis2026@redis:6379
       - NODE_ENV=production
-    command: sh -c "node $$(find dist -name scraper-loop.js | head -n 1)"
+    # Жорстко чекаємо 45 секунд
+    command: sh -c "sleep 45 && node $$(find dist -name scraper-loop.js | head -n 1)"
     depends_on:
-      api:
-        condition: service_healthy # Чекає, поки API повністю підніметься!
+      - postgres
+      - redis
+      - api
     logging: *default-logging
 
 volumes:
-  redis_data_v9:
-  pg_data_v9:
+  redis_data_v10:
+  pg_data_v10:
