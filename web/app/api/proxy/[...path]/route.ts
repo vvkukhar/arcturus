@@ -22,6 +22,11 @@ async function handleProxy(req: NextRequest, props: { params: Promise<{ path: st
 
   headers.delete('host');
   headers.delete('connection');
+  
+  // 🔥 ГАРАНТІЯ №1: Забороняємо бекенду стискати відповідь (вимкне gzip/br).
+  // Це виключає конфлікти з Content-Length та Content-Encoding на рівні Vercel.
+  headers.delete('accept-encoding');
+  
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
   const options: RequestInit & { duplex?: 'half' } = {
@@ -37,25 +42,29 @@ async function handleProxy(req: NextRequest, props: { params: Promise<{ path: st
 
   try {
     const response = await fetch(backendUrl.toString(), options);
+    
+    // 🔥 ГАРАНТІЯ №2: Повністю зчитуємо тіло в буфер (уникаємо стрімінгу, який крашить Vercel)
+    const buffer = await response.arrayBuffer();
+    
     const responseHeaders = new Headers(response.headers);
-
-    // 🔥 ГОЛОВНИЙ ФІКС ДЛЯ VERCEL 502 BAD GATEWAY
     responseHeaders.delete('content-encoding');
     responseHeaders.delete('transfer-encoding');
-    responseHeaders.delete('content-length'); 
+    responseHeaders.delete('content-length');
     
+    // Забороняємо браузеру кешувати ці приватні дані
     responseHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     responseHeaders.set('Pragma', 'no-cache');
     responseHeaders.set('Expires', '0');
 
-    return new NextResponse(response.body, {
+    // Next.js автоматично проставить правильний Content-Length на основі розміру buffer
+    return new NextResponse(buffer, {
       status: response.status,
       statusText: response.statusText,
       headers: responseHeaders,
     });
   } catch (error) {
     console.error('[Proxy Error]', error);
-    return NextResponse.json({ ok: false, error: 'Gateway Timeout' }, { status: 504 });
+    return NextResponse.json({ ok: false, error: 'Gateway Timeout or Backend Unreachable' }, { status: 504 });
   }
 }
 
