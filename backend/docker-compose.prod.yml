@@ -14,10 +14,8 @@ services:
       POSTGRES_USER: arcturus
       POSTGRES_PASSWORD: LegoDatabase2026
       POSTGRES_DB: arcturus
-    ports:
-      - "5432:5432"
     volumes:
-      - pg_data_v6:/var/lib/postgresql/data
+      - pg_data_v7:/var/lib/postgresql/data
     logging: *default-logging
 
   redis:
@@ -25,7 +23,7 @@ services:
     restart: always
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "LegoRedis2026"]
     volumes:
-      - redis_data_v6:/data
+      - redis_data_v7:/data
     logging: *default-logging
 
   api:
@@ -36,10 +34,11 @@ services:
     ports:
       - "4000:4000"
     environment:
+      # Вказуємо ім'я сервісу "postgres" та "redis" як хост
       - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
       - REDIS_URL=redis://:LegoRedis2026@redis:6379
-    # 🔥 ФІКС: Безкінечний цикл. API кожні 5 сек пробує підключитися. Не крашиться!
-    command: sh -c "for i in 1 2 3 4 5 6 7 8 9 10; do npx prisma db push --schema=/app/packages/db/prisma/schema.prisma --accept-data-loss && break || sleep 5; done; node $$(find dist -name main.js | head -n 1)"
+    # Нескінченний цикл, поки не створить таблиці
+    command: sh -c "until npx prisma db push --schema=/app/packages/db/prisma/schema.prisma --accept-data-loss; do echo 'Waiting for postgres...'; sleep 5; done; echo 'Database ready, starting API...'; node $$(find dist -name main.js | head -n 1)"
     depends_on:
       - postgres
       - redis
@@ -53,7 +52,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
       - REDIS_URL=redis://:LegoRedis2026@redis:6379
-    # Даємо API 30 секунд на створення бази, щоб воркери не спамили помилками
+    # Чекаємо 30 сек
     command: sh -c "sleep 30 && node $$(find dist -name main.js | head -n 1)"
     depends_on:
       - postgres
@@ -69,7 +68,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
       - REDIS_URL=redis://:LegoRedis2026@redis:6379
-    # Даємо API 30 секунд на створення бази
+    # Чекаємо 30 сек
     command: sh -c "sleep 30 && node $$(find dist -name scraper-loop.js | head -n 1)"
     depends_on:
       - postgres
@@ -77,5 +76,5 @@ services:
     logging: *default-logging
 
 volumes:
-  redis_data_v6:
-  pg_data_v6:
+  redis_data_v7:
+  pg_data_v7:
