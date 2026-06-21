@@ -39,7 +39,7 @@ export class NovaPoshtaService {
     deliveryString: string;
     weight: number;
     cost: number;
-    isPaid?: boolean; // 🔥 ДОДАНО ДЛЯ ПІСЛЯПЛАТИ
+    isPaid?: boolean;
   }): Promise<string> {
     if (!this.apiKey) {
       throw new BadRequestException('NOVA_POSHTA_API_KEY is missing');
@@ -87,14 +87,20 @@ export class NovaPoshtaService {
     const recipientRef = counterpartyRes[0].Ref;
     const contactRecipientRef = counterpartyRes[0].ContactPerson.data[0].Ref;
 
+    // Жорсткий формат дати DD.MM.YYYY для Нової Пошти
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+
     // 🔥 БАЗОВІ ОПЦІЇ ДОСТАВКИ 🔥
     const documentOptions: any = {
       PayerType: 'Recipient',
       PaymentMethod: 'Cash',
-      DateTime: new Date().toLocaleDateString('uk-UA').replace(/\./g, '.'),
-      CargoType: 'Cargo',
+      DateTime: `${dd}.${mm}.${yyyy}`,
+      CargoType: 'Parcel', // 🔥 Змінено з 'Cargo' на 'Parcel' (Посилка)
       VolumeGeneral: '0.01',
-      Weight: params.weight.toString(), // ДИНАМІЧНА ВАГА
+      Weight: params.weight.toString(),
       ServiceType: 'WarehouseWarehouse',
       SeatsAmount: '1',
       Description: `LEGO Order ${params.orderId.slice(-6)}`,
@@ -109,9 +115,18 @@ export class NovaPoshtaService {
       RecipientAddress: warehouseRef,
       ContactRecipient: contactRecipientRef,
       RecipientsPhone: params.phone,
+      // 🔥 ФІКС ПОМИЛКИ "OptionsSeat is empty": Передаємо габарити посилки!
+      OptionsSeat: [
+        {
+          volumetricVolume: "0.01",
+          volumetricWidth: "20",
+          volumetricLength: "20",
+          volumetricHeight: "20",
+          weight: params.weight.toString()
+        }
+      ]
     };
 
-    // 🔥 ДОДАЄМО ПІСЛЯПЛАТУ ЯКЩО НЕ ОПЛАЧЕНО 🔥
     if (!params.isPaid) {
       documentOptions.BackwardDeliveryData = [
         {
@@ -127,7 +142,6 @@ export class NovaPoshtaService {
     return documentRes[0].IntDocNumber;
   }
 
-  // 🔥 ФІКС ТУТ: Термо-етикетки 100х100
   async getBulkPdfLink(ttns: string[]): Promise<string> {
     if (ttns.length === 0) throw new BadRequestException('No TTNs provided');
     if (!this.apiKey) throw new BadRequestException('NOVA_POSHTA_API_KEY is missing');
@@ -157,7 +171,7 @@ export class NovaPoshtaService {
            await this.prisma.$transaction(async (tx) => {
              await tx.order.update({
                where: { id: order.id },
-               data: { status: 'sold', deliveryStatus: 'Отримано' } // ФІКС ЛАЙВ СТАТУСУ
+               data: { status: 'sold', deliveryStatus: 'Отримано' }
              });
              const phoneStr = order.contact.replace(/[^\d+]/g, '');
              await tx.clientProfile.upsert({
