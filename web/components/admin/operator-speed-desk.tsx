@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { CheckCircle2, XCircle, PackageSearch, Zap } from 'lucide-react';
+import { CheckCircle2, XCircle, PackageSearch, Zap, ExternalLink, Hash } from 'lucide-react';
 import { useI18n } from '@/components/providers/i18n-provider';
 import { formatMoney } from '@/lib/format';
 
@@ -30,6 +30,8 @@ export function OperatorSpeedDesk({
   const { t } = useI18n();
   const [optimisticItems, setOptimisticItems] = useState<UnresolvedRow[]>([]);
   const [streak, setStreak] = useState(0);
+  const [manualSetNo, setManualSetNo] = useState(''); // 🔥 Стейт для ручного вводу артикула
+  
   const lastActionTimeRef = useRef(Date.now());
   const isProcessingRef = useRef(false);
 
@@ -47,6 +49,12 @@ export function OperatorSpeedDesk({
   }, [streak]);
 
   const currentItem = optimisticItems[0];
+  const resolvedSetNo = currentItem?.extractedSetNo || manualSetNo; // Якщо є витягнутий - беремо його, якщо ні - ручний
+
+  // Скидаємо ручний ввід при зміні товару
+  useEffect(() => {
+    setManualSetNo('');
+  }, [currentItem?.id]);
 
   const preloadedImages = useMemo(() => {
     return optimisticItems.slice(1, 4).map(item => item.listing?.imageUrl).filter(Boolean) as string[];
@@ -77,13 +85,14 @@ export function OperatorSpeedDesk({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!currentItem || isProcessingRef.current) return;
       const target = e.target as HTMLElement;
+      // Якщо фокус у полі вводу - гарячі клавіші не працюють
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
       
       switch(e.key) {
         case 'Enter':
           e.preventDefault();
-          if (currentItem.extractedSetNo) {
-            executeAction('resolve', currentItem.id, currentItem.extractedSetNo);
+          if (resolvedSetNo) {
+            executeAction('resolve', currentItem.id, resolvedSetNo);
           }
           break;
         case ' ':
@@ -96,7 +105,7 @@ export function OperatorSpeedDesk({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentItem, executeAction]);
+  }, [currentItem, executeAction, resolvedSetNo]);
 
   if (optimisticItems.length === 0) {
     return (
@@ -143,14 +152,30 @@ export function OperatorSpeedDesk({
       </div>
 
       <div key={currentItem.id} className="grid md:grid-cols-2 gap-8 items-center min-h-[300px] animate-in slide-in-from-right-8 fade-in duration-200">
-        <div className="bg-[var(--background)] rounded-[2rem] p-6 border border-[var(--border)] flex items-center justify-center h-full">
-          {currentItem.listing?.imageUrl ? (
-            <img src={currentItem.listing.imageUrl} alt="Listing" className="max-h-[250px] object-contain mix-blend-multiply dark:mix-blend-normal rounded-xl" />
+        
+        {/* Фотка або Заглушка */}
+        <div className="bg-[var(--background)] rounded-[2rem] p-6 border border-[var(--border)] flex flex-col items-center justify-center h-full relative group">
+          {currentItem.listing?.imageUrl && !currentItem.listing.imageUrl.includes('data:image') ? (
+            <img src={currentItem.listing.imageUrl} alt="Listing" className="max-h-[300px] w-full object-contain mix-blend-multiply dark:mix-blend-normal rounded-xl" />
           ) : (
-            <PackageSearch size={64} className="text-slate-300 dark:text-slate-700" />
+            <div className="text-center text-slate-400">
+              <PackageSearch size={64} className="mx-auto mb-4 opacity-50" />
+              <p className="font-bold text-sm">Фото відсутнє</p>
+            </div>
+          )}
+          {currentItem.listing?.url && (
+            <a 
+              href={currentItem.listing.url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="absolute bottom-4 right-4 bg-black/80 backdrop-blur text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black"
+            >
+              Відкрити лістинг <ExternalLink size={14}/>
+            </a>
           )}
         </div>
 
+        {/* Інфо та Дії */}
         <div className="flex flex-col h-full justify-center">
           <div className="inline-flex px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black uppercase tracking-widest text-slate-500 mb-4 w-fit border border-[var(--border)]">
             {currentItem.sourceCode}
@@ -164,6 +189,23 @@ export function OperatorSpeedDesk({
             {formatMoney(currentItem.listing?.price)}
           </div>
 
+          {/* 🔥 БЛОК РУЧНОГО ВВОДУ АРТИКУЛА */}
+          {!currentItem.extractedSetNo && (
+            <div className="mb-6 animate-in fade-in">
+              <label className="text-[10px] font-black uppercase tracking-widest text-orange-500 mb-2 flex items-center gap-1">
+                <Hash size={14}/> Бот не знайшов артикул. Введіть вручну:
+              </label>
+              <input 
+                type="text"
+                autoFocus
+                placeholder="Наприклад: 10333"
+                value={manualSetNo}
+                onChange={(e) => setManualSetNo(e.target.value)}
+                className="w-full bg-[var(--background)] border border-orange-200 dark:border-orange-900/50 rounded-xl px-4 py-3 font-bold text-lg outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-[var(--foreground)] placeholder:text-slate-400"
+              />
+            </div>
+          )}
+
           <div className="flex gap-4 mt-auto">
             <button 
               onClick={() => executeAction('dismiss', currentItem.id)}
@@ -176,13 +218,13 @@ export function OperatorSpeedDesk({
             </button>
 
             <button 
-              disabled={!currentItem.extractedSetNo}
-              onClick={() => currentItem.extractedSetNo && executeAction('resolve', currentItem.id, currentItem.extractedSetNo)}
+              disabled={!resolvedSetNo}
+              onClick={() => resolvedSetNo && executeAction('resolve', currentItem.id, resolvedSetNo)}
               className="flex-1 flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 border-emerald-100 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 group"
             >
               <CheckCircle2 size={28} className="group-hover:scale-110 transition-transform" />
               <div className="flex items-center gap-2">
-                <span className="font-bold uppercase tracking-wider text-xs">Map to #{currentItem.extractedSetNo || '???'}</span>
+                <span className="font-bold uppercase tracking-wider text-xs">Map to #{resolvedSetNo || '???'}</span>
               </div>
             </button>
           </div>

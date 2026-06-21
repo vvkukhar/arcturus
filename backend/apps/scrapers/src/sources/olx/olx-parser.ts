@@ -4,7 +4,7 @@ import { OlxParsedListing } from './olx-types';
 function parsePrice(raw: string): { amount: number; currency: string } | null {
   const cleanRaw = raw.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // Шукаємо число, до якого жорстко прив'язана валюта (до або після)
+  // Шукаємо число, до якого жорстко прив'язана валюта
   const matchAfter = cleanRaw.match(/(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(грн|UAH|EUR|€|\$|£)/i);
   const matchBefore = cleanRaw.match(/(\$|€|£|EUR)\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
 
@@ -41,7 +41,6 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
 
   const amount = Number(normalizedDigits);
 
-  // Захист від сміття (якщо парсер все ж зловив злитий артикул на 10+ мільйонів)
   if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
     return null;
   }
@@ -93,8 +92,22 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
     if (seen.has(url)) return;
     seen.add(url);
 
+    // 🔥 ФІКС З КАРТИНКАМИ OLX: Шукаємо у srcset, відкидаючи base64 заглушки
     const containerForImg = $(element).closest('[data-cy="l-card"], article, div');
-    const imageUrl = containerForImg.find('img').first().attr('src') ?? containerForImg.find('img').first().attr('data-src') ?? null;
+    const imgNode = containerForImg.find('img').first();
+    let imageUrl = null;
+
+    if (imgNode.length > 0) {
+      const src = imgNode.attr('src');
+      const srcset = imgNode.attr('srcset');
+
+      if (srcset) {
+        // У OLX srcset має формат "url1 1x, url2 2x". Беремо перший урл.
+        imageUrl = srcset.split(' ')[0];
+      } else if (src && !src.startsWith('data:image')) {
+        imageUrl = src;
+      }
+    }
 
     result.push({
       externalListingId: href,
