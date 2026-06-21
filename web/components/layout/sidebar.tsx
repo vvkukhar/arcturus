@@ -10,7 +10,7 @@ import {
   LineChart, Activity, Filter, BarChart2, Clock, 
   FileText, PieChart, Wallet, Heart, TrendingUp, Package, 
   HelpCircle, ShieldCheck, X, Crown, Target, Gift, Vault, Truck,
-  LogIn, UserPlus
+  LogIn, UserPlus, Network // 🔥 ДОДАЛИ Network СЮДИ
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
