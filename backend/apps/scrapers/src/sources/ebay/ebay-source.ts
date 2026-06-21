@@ -36,7 +36,7 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
 
   try {
     const unresolvedOperations: any[] = [];
-    const creates: any[] = [];
+    const upsertOperations: any[] = [];
     const now = new Date();
 
     for (const query of searchQueries) {
@@ -58,25 +58,41 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
           sealed: listing.sealed,
         });
 
-        creates.push({
-          id: listingId,
-          sourceId: source.id,
-          sourceCode: 'ebay',
-          itemId,
-          externalListingId: listing.externalListingId,
-          titleRaw: listing.titleRaw,
-          url: listing.url,
-          imageUrl: listing.imageUrl ?? null,
-          price: listing.price || 0,
-          currency: listing.currency || 'USD',
-          shippingPrice,
-          shippingCurrency: listing.shippingCurrency || listing.currency || 'USD',
-          condition: listing.condition ?? null,
-          sealed: listing.sealed ?? false,
-          status: 'active',
-          fetchedAt: now,
-          updatedAt: now,
-        });
+        // 🔥 ВИКОРИСТОВУЄМО НАДІЙНИЙ PRISMA UPSERT
+        upsertOperations.push(
+          prisma.marketListing.upsert({
+            where: { id: listingId },
+            update: {
+              price: listing.price || 0,
+              shippingPrice,
+              status: 'active',
+              fetchedAt: now,
+              updatedAt: now,
+            },
+            create: {
+              id: listingId,
+              sourceId: source.id,
+              sourceCode: 'ebay',
+              itemId,
+              externalListingId: listing.externalListingId,
+              externalId: listing.externalListingId,
+              titleRaw: listing.titleRaw,
+              title: listing.titleRaw,
+              url: listing.url,
+              imageUrl: listing.imageUrl ?? null,
+              price: listing.price || 0,
+              currency: listing.currency || 'USD',
+              shippingPrice,
+              shippingCurrency: listing.shippingCurrency || listing.currency || 'USD',
+              condition: listing.condition ?? null,
+              sealed: listing.sealed ?? false,
+              status: 'active',
+              fetchedAt: now,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            }
+          })
+        );
 
         if (resolvedItemId == null) {
           unresolvedOperations.push({
@@ -88,43 +104,15 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
           itemsMatched += 1;
         }
       }
-
-      if (creates.length >= 500) {
-        await prisma.$executeRaw`
-          INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
-          SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
-            "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
-            "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
-            "shippingPrice" float, "shippingCurrency" text, "condition" text, "sealed" boolean, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
-          )
-          ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
-            "price" = EXCLUDED."price",
-            "shippingPrice" = EXCLUDED."shippingPrice",
-            "status" = 'active',
-            "fetchedAt" = EXCLUDED."fetchedAt",
-            "updatedAt" = EXCLUDED."updatedAt"
-        `;
-        itemsInserted += creates.length;
-        creates.length = 0;
-      }
     }
 
-    if (creates.length > 0) {
-      await prisma.$executeRaw`
-        INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
-        SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
-          "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
-          "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
-          "shippingPrice" float, "shippingCurrency" text, "condition" text, "sealed" boolean, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
-        )
-        ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
-          "price" = EXCLUDED."price",
-          "shippingPrice" = EXCLUDED."shippingPrice",
-          "status" = 'active',
-          "fetchedAt" = EXCLUDED."fetchedAt",
-          "updatedAt" = EXCLUDED."updatedAt"
-      `;
-      itemsInserted += creates.length;
+    if (upsertOperations.length > 0) {
+      const chunkSize = 50;
+      for (let i = 0; i < upsertOperations.length; i += chunkSize) {
+        const chunk = upsertOperations.slice(i, i + chunkSize);
+        await prisma.$transaction(chunk);
+        itemsInserted += chunk.length;
+      }
     }
 
     for (const u of unresolvedOperations) {
