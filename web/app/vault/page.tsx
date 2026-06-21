@@ -95,34 +95,34 @@ export default function VaultPage() {
                          fractionalOwnership.reduce((sum: number, f: any) => sum + (f.amount * 0.35) * 0.8, 0);
 
   return (
-    <div className="bg-[#020617] text-white min-h-screen">
+    <div className="bg-[var(--background)] text-[var(--foreground)] min-h-screen transition-colors duration-300">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 animate-in fade-in duration-700 pb-24">
         
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12 border-b border-slate-800 pb-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12 border-b border-[var(--border)] pb-8">
           <div className="flex items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.2)] border border-amber-500/20">
               <Vault size={32} />
             </div>
             <div>
               <h1 className="text-4xl font-black tracking-tight font-mono">Arcturus Vault</h1>
-              <p className="font-medium text-slate-400 mt-1 uppercase tracking-widest text-xs">Crowdinvesting & Capital Management</p>
+              <p className="font-medium text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest text-xs">Crowdinvesting & Capital Management</p>
             </div>
           </div>
           <div className="flex gap-4 text-right">
             <div>
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Liquid Capital</div>
-              <div className="text-3xl font-black text-emerald-400 font-mono">{formatMoney(Number(balance || 0))}</div>
+              <div className="text-3xl font-black text-emerald-500 dark:text-emerald-400 font-mono">{formatMoney(Number(balance || 0))}</div>
             </div>
           </div>
         </div>
 
         <div className="grid lg:grid-cols-12 gap-8 mb-12">
-          <div className="lg:col-span-8 bg-[#0B0F19] border border-slate-800 p-8 rounded-[2rem] shadow-2xl relative overflow-hidden">
+          <div className="lg:col-span-8 bg-[var(--card)] border border-[var(--border)] p-8 rounded-[2rem] shadow-sm relative overflow-hidden transition-colors">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-xl font-black flex items-center gap-2">
                 <BarChart2 className="text-amber-500" /> Projected NAV
               </h2>
-              <div className="px-3 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black uppercase tracking-widest rounded border border-amber-500/20">
+              <div className="px-3 py-1 bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest rounded border border-amber-200 dark:border-amber-500/20">
                 + {formatMoney(projectedYield)} YIELD
               </div>
             </div>
@@ -137,7 +137,7 @@ export default function VaultPage() {
                   </defs>
                   <XAxis dataKey="name" hide />
                   <YAxis hide domain={['auto', 'auto']} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0F172A', borderRadius: '12px', border: '1px solid #1E293B' }} itemStyle={{ color: '#F8FAFC', fontWeight: '900', fontFamily: 'monospace' }} />
+                  <Tooltip contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)' }} itemStyle={{ color: 'var(--foreground)', fontWeight: '900', fontFamily: 'monospace' }} />
                   <Area type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorVal)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -145,7 +145,7 @@ export default function VaultPage() {
           </div>
 
           <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="bg-[#0B0F19] border border-slate-800 p-8 rounded-[2rem] shadow-2xl flex-1 flex flex-col justify-center">
+            <div className="bg-[var(--card)] border border-[var(--border)] p-8 rounded-[2rem] shadow-sm flex-1 flex flex-col justify-center transition-colors">
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Fund Account</div>
               <form onSubmit={handleDeposit} className="flex flex-col gap-4">
                 <input 
@@ -155,46 +155,46 @@ export default function VaultPage() {
                   value={depositAmount}
                   onChange={e => setDepositAmount(e.target.value)}
                   placeholder="Amount (min 1000 ₴)"
-                  className="w-full bg-[#131825] border border-slate-700 rounded-xl px-5 py-4 font-bold font-mono outline-none focus:border-amber-500 text-white placeholder-slate-600"
+                  className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-5 py-4 font-bold font-mono outline-none focus:border-amber-500 text-[var(--foreground)] placeholder-slate-400 dark:placeholder-slate-600 transition-colors"
                 />
                 <button 
                   type="submit"
                   disabled={loadingId === 'deposit' || !depositAmount}
-                  className="bg-amber-500 hover:bg-amber-600 text-black px-8 py-4 rounded-xl font-black transition-transform active:scale-95 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.3)] disabled:opacity-50"
+                  className="bg-amber-500 hover:bg-amber-600 text-white dark:text-black px-8 py-4 rounded-xl font-black transition-transform active:scale-95 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.3)] disabled:opacity-50"
                 >
-                  {loadingId === 'deposit' ? <Loader2 className="animate-spin text-black" /> : <PiggyBank />} Deposit Capital
+                  {loadingId === 'deposit' ? <Loader2 className="animate-spin" /> : <PiggyBank />} Deposit Capital
                 </button>
               </form>
             </div>
-            <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-[2rem] flex justify-between items-center">
+            <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-6 rounded-[2rem] flex justify-between items-center transition-colors">
               <div>
-                <div className="text-emerald-500 font-black text-sm uppercase tracking-widest mb-1">Active Positions</div>
-                <div className="text-3xl font-black font-mono text-white">{fullOwnership.length + fractionalOwnership.length}</div>
+                <div className="text-emerald-600 dark:text-emerald-500 font-black text-sm uppercase tracking-widest mb-1">Active Positions</div>
+                <div className="text-3xl font-black font-mono text-[var(--foreground)]">{fullOwnership.length + fractionalOwnership.length}</div>
               </div>
               <PieChart className="text-emerald-500 opacity-50" size={48} />
             </div>
           </div>
         </div>
 
-        <h2 className="text-2xl font-black mb-8 border-b border-slate-800 pb-4">Crowdinvesting Deals (Fractional)</h2>
+        <h2 className="text-2xl font-black mb-8 border-b border-[var(--border)] pb-4">Crowdinvesting Deals (Fractional)</h2>
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
           {safeDeals.map(deal => (
-            <div key={deal.id} className="bg-[#0B0F19] border border-slate-800 p-6 rounded-[2rem] hover:border-amber-500/50 transition-colors group relative overflow-hidden">
-              <div className="font-bold text-lg leading-tight line-clamp-2 mb-6 group-hover:text-amber-400 transition-colors relative z-10">{deal.title}</div>
-              <div className="flex justify-between items-center mb-8 bg-[#131825] p-4 rounded-xl border border-slate-800 relative z-10">
+            <div key={deal.id} className="bg-[var(--card)] border border-[var(--border)] p-6 rounded-[2rem] hover:border-amber-500/50 transition-colors group relative overflow-hidden shadow-sm">
+              <div className="font-bold text-lg leading-tight line-clamp-2 mb-6 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors relative z-10">{deal.title}</div>
+              <div className="flex justify-between items-center mb-8 bg-[var(--background)] p-4 rounded-xl border border-[var(--border)] relative z-10 transition-colors">
                 <div>
                   <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Required Capital</div>
                   <div className="text-xl font-black font-mono">{formatMoney(deal.buyPrice)}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">Est. Return</div>
-                  <div className="text-xl font-black text-emerald-400 font-mono">+{formatMoney(deal.profit * 0.8)}</div>
+                  <div className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-500 tracking-widest">Est. Return</div>
+                  <div className="text-xl font-black text-emerald-500 dark:text-emerald-400 font-mono">+{formatMoney(deal.profit * 0.8)}</div>
                 </div>
               </div>
               <button 
                 onClick={() => handleInvest(deal.id, deal.buyPrice)}
                 disabled={loadingId === deal.id || Number(balance || 0) < 500}
-                className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 border border-slate-700 relative z-10"
+                className="w-full py-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 border border-[var(--border)] relative z-10"
               >
                 {loadingId === deal.id ? <Loader2 className="animate-spin" /> : <TrendingUp size={18} className="text-amber-500" />} 
                 Buy Fractional Share
@@ -202,8 +202,8 @@ export default function VaultPage() {
             </div>
           ))}
           {safeDeals.length === 0 && (
-            <div className="col-span-full py-20 text-center border border-dashed border-slate-800 rounded-[2rem]">
-              <div className="text-slate-600 font-mono font-bold uppercase tracking-widest">No active deals match criteria</div>
+            <div className="col-span-full py-20 text-center border-2 border-dashed border-[var(--border)] rounded-[2rem] bg-[var(--card)]/50">
+              <div className="text-slate-500 font-mono font-bold uppercase tracking-widest">No active deals match criteria</div>
             </div>
           )}
         </div>
