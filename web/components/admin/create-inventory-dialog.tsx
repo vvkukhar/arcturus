@@ -1,4 +1,3 @@
-// call:function_1{"queries":["web/components/admin/create-inventory-dialog.tsx"]}
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -15,7 +14,6 @@ function parseNumber(value: string, fallback: number | null = null): number | nu
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-// Компресія зображень на клієнті перед відправкою (як на sell page)
 const compressImage = async (file: File, maxWidth = 1920): Promise<File> => {
   if (!file.type.startsWith('image/')) return file;
   return new Promise((resolve, reject) => {
@@ -55,16 +53,13 @@ export function CreateInventoryDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   
-  // States
   const [itemSearch, setItemSearch] = useState('');
   const [itemId, setItemId] = useState('');
   const [titleSnapshot, setTitleSnapshot] = useState('');
   
-  // Category & Theme
   const [kind, setKind] = useState('set');
   const [theme, setTheme] = useState('');
 
-  // Financials & Condition
   const [purchasePrice, setPurchasePrice] = useState('');
   const [expectedSalePriceManual, setExpectedSalePriceManual] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -73,7 +68,6 @@ export function CreateInventoryDialog() {
   const [source, setSource] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Images
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -129,7 +123,6 @@ export function CreateInventoryDialog() {
       if (parsedQty === null || parsedQty < 1) throw new Error('Кількість має бути мінімум 1');
       if (!titleSnapshot.trim()) throw new Error('Введіть назву або оберіть товар з каталогу');
 
-      // 1. Створюємо товар
       const res = await apiFetch<any>('/api/admin/inventory/create', {
         method: 'POST',
         body: JSON.stringify({ 
@@ -149,7 +142,6 @@ export function CreateInventoryDialog() {
 
       const createdId = res?.data?.id || res?.id;
 
-      // 2. Якщо є фотки - завантажуємо їх
       if (files.length > 0 && createdId) {
         for (let i = 0; i < files.length; i++) {
           const compressed = await compressImage(files[i]);
@@ -157,7 +149,6 @@ export function CreateInventoryDialog() {
           formData.append('inventoryItemId', createdId);
           formData.append('file', compressed);
 
-          // Використовуємо apiFetch, він вміє обробляти FormData і прокидати токен
           await apiFetch('/api/admin/media/inventory-image', {
             method: 'POST',
             body: formData,
@@ -186,8 +177,10 @@ export function CreateInventoryDialog() {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+    // 🔥 ФІКС ТУТ: items-start та pt-[5vh] замість items-center
+    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-900/60 p-4 pt-[5vh] backdrop-blur-sm animate-in fade-in duration-200">
+      {/* 🔥 ФІКС ТУТ: max-h-[85vh] замість 90vh, щоб точно поміщалось */}
+      <div className="w-full max-w-3xl max-h-[85vh] flex flex-col rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
         
         {/* Header */}
         <div className="p-6 md:p-8 border-b border-[var(--border)] shrink-0 flex justify-between items-center bg-[var(--background)]/50">
@@ -330,7 +323,7 @@ export function CreateInventoryDialog() {
               <div className="space-y-1.5 flex flex-col justify-end pb-1">
                 <label className="flex h-[46px] items-center justify-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2 cursor-pointer hover:bg-[var(--card)] transition-colors shadow-sm">
                   <input type="checkbox" checked={sealed} onChange={(e) => setSealed(e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-5 w-5" />
-                  <span className="font-bold text-[var(--foreground)] text-sm">Заводські Пломби</span>
+                  <span className="font-bold text-[var(--foreground)] text-sm">Заводські Пломби (Sealed)</span>
                 </label>
               </div>
 

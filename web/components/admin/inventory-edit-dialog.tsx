@@ -1,4 +1,3 @@
-// call:function_1{"queries":["web/components/admin/inventory-edit-dialog.tsx"]}
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -91,8 +90,10 @@ export function InventoryEditDialog({ item }: Props) {
   const inputClasses = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-bold text-[var(--foreground)] focus:bg-[var(--card)] focus:border-blue-500 outline-none transition-all shadow-sm placeholder:text-slate-500";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+    // 🔥 ФІКС ТУТ: items-start та pt-[5vh] замість items-center
+    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-900/60 p-4 pt-[5vh] backdrop-blur-sm animate-in fade-in duration-200">
+      {/* 🔥 ФІКС ТУТ: max-h-[85vh] замість 90vh */}
+      <div className="w-full max-w-3xl max-h-[85vh] flex flex-col rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
         
         {/* Header */}
         <div className="p-6 md:p-8 border-b border-[var(--border)] shrink-0 flex justify-between items-center bg-[var(--background)]/50">
