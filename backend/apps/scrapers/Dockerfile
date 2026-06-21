@@ -14,5 +14,9 @@ FROM mcr.microsoft.com/playwright:v1.44.0-jammy AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app /app
+
+# 🔥 ФІКС PLAYWRIGHT: Докачуємо правильну версію Chromium для нашої версії бібліотеки
+RUN npx playwright install chromium
+
 WORKDIR /app/apps/scrapers
 CMD ["sh", "-c", "node $(find dist -name scraper-loop.js | head -n 1)"]
