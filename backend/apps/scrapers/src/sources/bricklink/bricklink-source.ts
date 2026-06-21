@@ -40,7 +40,8 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
     const now = new Date();
 
     for (const query of searchQueries) {
-      const url = `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(query)}#T=S`;
+      // Шукаємо в каталозі Bricklink
+      const url = `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(query)}#T=A`;
       const html = await browserManager.fetchHtml(url);
       const listings = parseBrickLinkSearchHtml(html);
 
@@ -58,13 +59,14 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
           sealed: listing.sealed,
         });
 
-        // 🔥 ВИКОРИСТОВУЄМО НАДІЙНИЙ PRISMA UPSERT ЗАМІСТЬ СИРОГО SQL
         upsertOperations.push(
           prisma.marketListing.upsert({
             where: { id: listingId },
             update: {
               price: listing.price || 0,
               shippingPrice,
+              condition: listing.condition,
+              sealed: listing.sealed,
               status: 'active',
               fetchedAt: now,
               updatedAt: now,

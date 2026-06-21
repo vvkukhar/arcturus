@@ -2,53 +2,38 @@ import * as cheerio from 'cheerio';
 import { BrickLinkParsedListing } from './bricklink-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
-  const cleanRaw = raw.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  // Очищаємо від HTML-пробілів та символу "~" (Bricklink часто пише ~US $15.00)
+  const cleanRaw = raw.replace(/~/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
-  const matchAfter = cleanRaw.match(/(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(грн|UAH|EUR|€|\$|£)/i);
-  const matchBefore = cleanRaw.match(/(\$|€|£|EUR)\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
+  // Регулярка суто під формат Bricklink: Валюта + Пробіл + Число
+  // Наприклад: US $15.50, EUR 120.00, £ 45.00
+  const match = cleanRaw.match(/(US \$|EUR|€|£|GBP|CA \$|AU \$)\s*(\d{1,3}(?:[,.\s]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
 
-  let numberPart = '';
-  let currencyPart = '';
+  if (!match) return null;
 
-  if (matchAfter) {
-    numberPart = matchAfter[1];
-    currencyPart = matchAfter[2];
-  } else if (matchBefore) {
-    currencyPart = matchBefore[1];
-    numberPart = matchBefore[2];
-  } else {
-    return null;
-  }
+  const currencyPart = match[1].toUpperCase();
+  const numberPart = match[2];
 
-  const digits = numberPart.replace(/[^\d.,]/g, '');
-
-  let normalizedDigits = digits;
+  // Нормалізуємо число (1,000.50 -> 1000.50 або 15,50 -> 15.50)
+  let digits = numberPart.replace(/\s/g, '');
   if (digits.includes(',') && digits.includes('.')) {
-    if (digits.lastIndexOf(',') > digits.lastIndexOf('.')) {
-      normalizedDigits = digits.replace(/\./g, '').replace(',', '.');
-    } else {
-      normalizedDigits = digits.replace(/,/g, '');
-    }
-  } else if (digits.includes(',')) {
-    const parts = digits.split(',');
-    if (parts[parts.length - 1].length <= 2) {
-      normalizedDigits = digits.replace(',', '.');
-    } else {
-      normalizedDigits = digits.replace(/,/g, '');
-    }
+     digits = digits.replace(/,/g, '');
+  } else {
+     digits = digits.replace(',', '.');
   }
 
-  const amount = Number(normalizedDigits);
+  const amount = Number(digits);
 
-  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
+  // Запобіжник від мільярдів
+  if (Number.isNaN(amount) || amount <= 0 || amount > 500000) {
     return null;
   }
 
-  let currency = 'UAH';
-  const currUpper = currencyPart.toUpperCase();
-  if (currUpper.includes('$')) currency = 'USD';
-  if (currUpper.includes('EUR') || currUpper.includes('€')) currency = 'EUR';
-  if (currUpper.includes('£')) currency = 'GBP';
+  let currency = 'USD';
+  if (currencyPart.includes('EUR') || currencyPart.includes('€')) currency = 'EUR';
+  else if (currencyPart.includes('£') || currencyPart.includes('GBP')) currency = 'GBP';
+  else if (currencyPart.includes('CA')) currency = 'CAD';
+  else if (currencyPart.includes('AU')) currency = 'AUD';
 
   return { amount, currency };
 }
@@ -68,13 +53,21 @@ export function parseBrickLinkSearchHtml(html: string): BrickLinkParsedListing[]
     const title = $(element).text().replace(/\s+/g, ' ').trim();
     const href = $(element).attr('href')?.trim() ?? '';
 
-    if (!title || !href || (!href.includes('item.page') && !href.includes('store.asp'))) {
+    // 1. Беремо тільки лінки на товари
+    if (!title || !href || !href.includes('item.page')) {
+      return;
+    }
+
+    // 🔥 АНТИ-СМІТТЯ ФІКС: Пропускаємо наклейки (?P=), коробки (?O=), інструкції (?I=)
+    // Дозволяємо тільки Сети (?S=) та Мініфігурки (?M=)
+    if (!href.includes('?S=') && !href.includes('?M=')) {
       return;
     }
 
     const container = $(element).closest('tr, div, li');
+    const rowText = container.text().toLowerCase();
     
-    // Шукаємо комірку чи блок з валютою
+    // Шукаємо ціну точково
     const priceNodes = container.find('b, strong, td, span').filter(function() {
       const t = $(this).text();
       return t.includes('$') || t.includes('EUR') || t.includes('€') || t.includes('£');
@@ -84,7 +77,7 @@ export function parseBrickLinkSearchHtml(html: string): BrickLinkParsedListing[]
     if (priceNodes.length > 0) {
       priceText = priceNodes.last().text();
     } else {
-      priceText = container.text().replace(title, '');
+      priceText = container.text();
     }
 
     const priceParsed = parsePrice(priceText);
@@ -95,6 +88,14 @@ export function parseBrickLinkSearchHtml(html: string): BrickLinkParsedListing[]
     seen.add(url);
 
     const imageUrl = container.find('img').first().attr('src') ?? container.find('img').first().attr('data-src') ?? null;
+
+    // Визначаємо стан
+    const isNew = rowText.includes('new');
+    const isIncomplete = rowText.includes('incomplete');
+    
+    let condition = isNew ? 'new' : 'used';
+    if (isIncomplete) condition = 'incomplete';
+    const sealed = isNew && rowText.includes('sealed');
 
     result.push({
       externalListingId: href,
@@ -108,9 +109,9 @@ export function parseBrickLinkSearchHtml(html: string): BrickLinkParsedListing[]
       shippingPrice: null,
       shippingCurrency: null,
       country: 'EU',
-      condition: 'used',
-      sealed: false,
-      completenessPercent: 100,
+      condition,
+      sealed,
+      completenessPercent: isIncomplete ? 80 : 100,
       quantityAvailable: 1,
     });
   });
