@@ -154,6 +154,41 @@ export class ScannerService {
 
     if (!source) throw new NotFoundException('Source not found');
 
+    // 🔥 АВТОМАТИЧНЕ ДОДАВАННЯ В WATCHLIST ДЛЯ АДХОК-ПОШУКУ
+    if (body.query) {
+      const setNumber = this.extractSetNumber(body.query);
+      if (setNumber) {
+        // Знаходимо цей набір в глобальній базі (Rebrickable)
+        const item = await this.prisma.item.findFirst({ where: { setNumber } });
+        
+        if (item) {
+          const existingWl = await this.prisma.watchlistItem.findFirst({ where: { itemId: item.id } });
+          
+          if (!existingWl) {
+            // Додаємо в Watchlist з "нескінченними" лімітами, щоб він 100% затригерив угоду (Deal)
+            await this.prisma.watchlistItem.create({
+              data: {
+                itemId: item.id,
+                titleSnapshot: item.title,
+                desiredBuyPrice: 50000, 
+                maxBuyPrice: 999999, // Гарантує, що все знайдене буде "Buy"
+                targetSellPrice: 1000000, 
+                active: true,
+                priority: 85,
+                notes: 'Auto-added via manual scanner search'
+              }
+            });
+            this.realtime.emitDashboardRefresh('watchlist_auto_added');
+          } else if (!existingWl.active) {
+            await this.prisma.watchlistItem.update({
+              where: { id: existingWl.id },
+              data: { active: true }
+            });
+          }
+        }
+      }
+    }
+
     const job = await this.prisma.scanJob.create({
       data: { sourceCode: body.sourceCode, query: body.query ?? '', status: 'queued' },
     });
