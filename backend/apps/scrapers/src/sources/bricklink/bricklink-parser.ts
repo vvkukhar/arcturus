@@ -2,50 +2,64 @@ import * as cheerio from 'cheerio';
 import { BrickLinkParsedListing } from './bricklink-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
-  const normalized = raw.replace(/\s+/g, ' ').trim();
+  const cleanRaw = raw.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
-  if (!normalized) {
+  const matchAfter = cleanRaw.match(/(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(грн|UAH|EUR|€|\$|£)/i);
+  const matchBefore = cleanRaw.match(/(\$|€|£|EUR)\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
+
+  let numberPart = '';
+  let currencyPart = '';
+
+  if (matchAfter) {
+    numberPart = matchAfter[1];
+    currencyPart = matchAfter[2];
+  } else if (matchBefore) {
+    currencyPart = matchBefore[1];
+    numberPart = matchBefore[2];
+  } else {
     return null;
   }
 
-  const digits = normalized
-    .replace(/[^\d.,]/g, '')
-    .replace(/\s/g, '')
-    .replace(',', '.');
+  const digits = numberPart.replace(/[^\d.,]/g, '');
 
-  const amount = Number(digits);
+  let normalizedDigits = digits;
+  if (digits.includes(',') && digits.includes('.')) {
+    if (digits.lastIndexOf(',') > digits.lastIndexOf('.')) {
+      normalizedDigits = digits.replace(/\./g, '').replace(',', '.');
+    } else {
+      normalizedDigits = digits.replace(/,/g, '');
+    }
+  } else if (digits.includes(',')) {
+    const parts = digits.split(',');
+    if (parts[parts.length - 1].length <= 2) {
+      normalizedDigits = digits.replace(',', '.');
+    } else {
+      normalizedDigits = digits.replace(/,/g, '');
+    }
+  }
 
-  if (Number.isNaN(amount) || amount <= 0) {
+  const amount = Number(normalizedDigits);
+
+  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
     return null;
   }
 
-  const currency = normalized.includes('$')
-    ? 'USD'
-    : normalized.toLowerCase().includes('eur') || normalized.includes('€')
-      ? 'EUR'
-      : 'USD';
+  let currency = 'UAH';
+  const currUpper = currencyPart.toUpperCase();
+  if (currUpper.includes('$')) currency = 'USD';
+  if (currUpper.includes('EUR') || currUpper.includes('€')) currency = 'EUR';
+  if (currUpper.includes('£')) currency = 'GBP';
 
-  return {
-    amount,
-    currency,
-  };
+  return { amount, currency };
 }
 
 function normalizeUrl(rawUrl: string): string {
-  if (rawUrl.startsWith('http')) {
-    return rawUrl;
-  }
-
-  if (rawUrl.startsWith('/')) {
-    return `https://www.bricklink.com${rawUrl}`;
-  }
-
+  if (rawUrl.startsWith('http')) return rawUrl;
+  if (rawUrl.startsWith('/')) return `https://www.bricklink.com${rawUrl}`;
   return `https://www.bricklink.com/${rawUrl}`;
 }
 
-export function parseBrickLinkSearchHtml(
-  html: string,
-): BrickLinkParsedListing[] {
+export function parseBrickLinkSearchHtml(html: string): BrickLinkParsedListing[] {
   const $ = cheerio.load(html);
   const result: BrickLinkParsedListing[] = [];
   const seen = new Set<string>();
@@ -54,34 +68,33 @@ export function parseBrickLinkSearchHtml(
     const title = $(element).text().replace(/\s+/g, ' ').trim();
     const href = $(element).attr('href')?.trim() ?? '';
 
-    if (!title || !href) {
-      return;
-    }
-
-    if (!href.includes('item.page') && !href.includes('store.asp')) {
+    if (!title || !href || (!href.includes('item.page') && !href.includes('store.asp'))) {
       return;
     }
 
     const container = $(element).closest('tr, div, li');
-    const parentText = container.text() || $(element).parent().text();
-    const priceParsed = parsePrice(parentText);
+    
+    // Шукаємо комірку чи блок з валютою
+    const priceNodes = container.find('b, strong, td, span').filter(function() {
+      const t = $(this).text();
+      return t.includes('$') || t.includes('EUR') || t.includes('€') || t.includes('£');
+    });
 
-    if (!priceParsed) {
-      return;
+    let priceText = '';
+    if (priceNodes.length > 0) {
+      priceText = priceNodes.last().text();
+    } else {
+      priceText = container.text().replace(title, '');
     }
+
+    const priceParsed = parsePrice(priceText);
+    if (!priceParsed) return;
 
     const url = normalizeUrl(href);
-
-    if (seen.has(url)) {
-      return;
-    }
-
+    if (seen.has(url)) return;
     seen.add(url);
 
-    const imageUrl =
-      container.find('img').first().attr('src') ??
-      container.find('img').first().attr('data-src') ??
-      null;
+    const imageUrl = container.find('img').first().attr('src') ?? container.find('img').first().attr('data-src') ?? null;
 
     result.push({
       externalListingId: href,

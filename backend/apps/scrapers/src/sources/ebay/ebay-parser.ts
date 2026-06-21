@@ -2,15 +2,53 @@ import * as cheerio from 'cheerio';
 import { EbayParsedListing } from './ebay-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
-  const normalized = raw.replace(/\s+/g, ' ').trim();
-  if (!normalized) return null;
+  const cleanRaw = raw.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
-  const digits = normalized.replace(/[^\d.,]/g, '').replace(/\s/g, '').replace(',', '.');
-  const amount = Number(digits);
+  const matchAfter = cleanRaw.match(/(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(грн|UAH|EUR|€|\$|£)/i);
+  const matchBefore = cleanRaw.match(/(\$|€|£|EUR)\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
 
-  if (Number.isNaN(amount) || amount <= 0) return null;
+  let numberPart = '';
+  let currencyPart = '';
 
-  const currency = normalized.includes('£') ? 'GBP' : normalized.includes('€') ? 'EUR' : 'USD';
+  if (matchAfter) {
+    numberPart = matchAfter[1];
+    currencyPart = matchAfter[2];
+  } else if (matchBefore) {
+    currencyPart = matchBefore[1];
+    numberPart = matchBefore[2];
+  } else {
+    return null;
+  }
+
+  const digits = numberPart.replace(/[^\d.,]/g, '');
+
+  let normalizedDigits = digits;
+  if (digits.includes(',') && digits.includes('.')) {
+    if (digits.lastIndexOf(',') > digits.lastIndexOf('.')) {
+      normalizedDigits = digits.replace(/\./g, '').replace(',', '.');
+    } else {
+      normalizedDigits = digits.replace(/,/g, '');
+    }
+  } else if (digits.includes(',')) {
+    const parts = digits.split(',');
+    if (parts[parts.length - 1].length <= 2) {
+      normalizedDigits = digits.replace(',', '.');
+    } else {
+      normalizedDigits = digits.replace(/,/g, '');
+    }
+  }
+
+  const amount = Number(normalizedDigits);
+
+  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
+    return null;
+  }
+
+  let currency = 'UAH';
+  const currUpper = currencyPart.toUpperCase();
+  if (currUpper.includes('$')) currency = 'USD';
+  if (currUpper.includes('EUR') || currUpper.includes('€')) currency = 'EUR';
+  if (currUpper.includes('£')) currency = 'GBP';
 
   return { amount, currency };
 }
