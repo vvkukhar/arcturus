@@ -117,7 +117,8 @@ export class PublicStoreService {
     });
 
     if (!params.q) {
-      await this.redis.set(cacheKey, data, 300);
+      // 🔥 ФІКС: 3 секунди кешу замість 300
+      await this.redis.set(cacheKey, data, 3);
     }
 
     return data;

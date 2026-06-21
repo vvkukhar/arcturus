@@ -1,12 +1,16 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class DropshipService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly payments: PaymentsService
+    private readonly payments: PaymentsService,
+    private readonly realtime: RealtimeGateway,
+    private readonly redis: RedisService
   ) {}
 
   async getWholesaleCatalog() {
@@ -87,6 +91,11 @@ export class DropshipService {
 
       return order;
     });
+
+    // 🔥 ФІКС: Зкидаємо кеш каталогу та шлемо івенти на фронт
+    await this.redis.delPattern('public_catalog*');
+    this.realtime.emitDashboardRefresh('dropship_order_created');
+    this.realtime.emitInventoryRefresh({ inventoryItemId: payload.inventoryItemId, reason: 'dropship_sale' });
 
     if (payload.paymentMethod === 'card') {
       const checkout = await this.payments.createCheckoutSession(result.id);
