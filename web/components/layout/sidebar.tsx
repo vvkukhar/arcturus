@@ -68,6 +68,7 @@ export function Sidebar() {
         { name: 'sidebar.watchlist', path: '/account/watchlist', icon: Heart, show: isAuth },
         { name: 'sidebar.performance', path: '/account/performance', icon: TrendingUp, show: isAuth },
         { name: 'Arcturus Vault', path: '/vault', icon: Vault, show: isPro },
+        { name: 'The Syndicate', path: '/syndicate', icon: Network, show: isAuth }, // 🔥 ДОДАЛИ СЮДИ
         { name: 'Arcturus PRO', path: '/pro', icon: Crown, show: isAuth },
       ]
     },

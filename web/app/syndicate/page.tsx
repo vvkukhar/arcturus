@@ -27,7 +27,8 @@ export default function SyndicatePage() {
 
   const copyToClipboard = () => {
     if (dash?.referralCode) {
-      navigator.clipboard.writeText(`https://arcturus.store/register?ref=${dash.referralCode}`);
+      // 🔥 ТЕПЕР БЕРЕ ПОТОЧНИЙ ДОМЕН ДИНАМІЧНО
+      navigator.clipboard.writeText(`${window.location.origin}/register?ref=${dash.referralCode}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -81,7 +82,10 @@ export default function SyndicatePage() {
           {dash.referralCode ? (
             <div className="flex flex-col sm:flex-row gap-4 max-w-3xl">
               <div className="flex-1 bg-black/50 border border-slate-700 rounded-2xl p-5 flex items-center justify-between shadow-inner">
-                <span className="font-mono text-emerald-400 font-bold truncate text-lg">arcturus.store/register?ref={dash.referralCode}</span>
+                {/* 🔥 ТЕПЕР БЕРЕ ПОТОЧНИЙ ДОМЕН ДИНАМІЧНО */}
+                <span className="font-mono text-emerald-400 font-bold truncate text-lg">
+                  {typeof window !== 'undefined' ? window.location.host : 'arcturusbuild.com'}/register?ref={dash.referralCode}
+                </span>
               </div>
               <button 
                 onClick={copyToClipboard} 
