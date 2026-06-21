@@ -1,6 +1,5 @@
 import { Job } from 'bullmq';
 import { PrismaClient } from '@prisma/client';
-import axios from 'axios';
 
 const prisma = new PrismaClient();
 
@@ -19,15 +18,31 @@ export async function processCategorySniperJob(job: Job): Promise<unknown> {
   const rawListings: FeedListing[] = [];
 
   try {
-    const olxResponse = await axios.get(`${process.env.SCRAPERS_API_URL || 'http://localhost:3002'}/feed/olx`, { timeout: 10000 }).catch(() => ({ data: [] }));
-    if (Array.isArray(olxResponse.data)) rawListings.push(...olxResponse.data);
+    // 🔥 ФІКС: Більше ніяких http запитів до порту 3002, який не існує. 
+    // Тягнемо з власної БД найсвіжіші активні лістинги!
+    const recentListings = await prisma.marketListing.findMany({
+      where: { 
+        status: 'active',
+        fetchedAt: { gt: new Date(Date.now() - 30 * 60 * 1000) } // за останні 30 хвилин
+      },
+      take: 100
+    });
 
-    const ebayResponse = await axios.get(`${process.env.SCRAPERS_API_URL || 'http://localhost:3002'}/feed/ebay`, { timeout: 10000 }).catch(() => ({ data: [] }));
-    if (Array.isArray(ebayResponse.data)) rawListings.push(...ebayResponse.data);
+    for (const l of recentListings) {
+      rawListings.push({
+        source: l.sourceCode as any,
+        externalId: l.externalListingId,
+        title: l.title,
+        price: l.price,
+        url: l.url,
+        imageUrl: l.imageUrl
+      });
+    }
   } catch (err) {
-    console.warn('[Category Sniper] Target feed collection warning:', err);
+    console.warn('[Category Sniper] Target DB collection warning:', err);
   }
 
+  // Заглушка для демо
   if (rawListings.length === 0) {
     rawListings.push({
       source: 'olx',
@@ -78,7 +93,6 @@ export async function processCategorySniperJob(job: Job): Promise<unknown> {
         });
       }
 
-      // 🔥 ФІКС 1: Обходимо баг типів Prisma, роблячи find + update/create
       const listingId = `ml_${listing.source}_${listing.externalId}`;
       let marketListing = await prisma.marketListing.findUnique({ where: { id: listingId } });
       
@@ -123,7 +137,6 @@ export async function processCategorySniperJob(job: Job): Promise<unknown> {
         });
       }
 
-      // 🔥 ФІКС 2: Обходимо баг типів Prisma для Deal
       const existingDeal = await prisma.deal.findFirst({
         where: { watchlistItemId: watchlistItem.id, listingId: marketListing.id }
       });

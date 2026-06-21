@@ -1,4 +1,4 @@
-import { httpClient } from '../../common/http-client';
+import { browserManager } from '../../common/browser-manager';
 import { estimateUaShippingBySource } from '../../common/shipping-estimator';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
 import { stableListingId } from '../../common/listing-id';
@@ -41,8 +41,10 @@ export async function runBrickOwlSource(specificQuery?: string | null): Promise<
 
     for (const query of searchQueries) {
       const url = `https://www.brickowl.com/search/catalog?query=${encodeURIComponent(query)}`;
-      const response = await httpClient.get<string>(url);
-      const listings = parseBrickowlSearchHtml(response.data);
+      
+      // 🔥 ФІКС: browserManager замість httpClient (обхід Cloudflare)
+      const html = await browserManager.fetchHtml(url);
+      const listings = parseBrickowlSearchHtml(html);
 
       for (const listing of listings) {
         itemsSeen += 1;

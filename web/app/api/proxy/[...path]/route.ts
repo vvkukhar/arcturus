@@ -9,8 +9,8 @@ async function handleProxy(req: NextRequest, props: { params: Promise<{ path: st
     const { path } = await props.params;
     const token = await getAdminToken();
     
-    // ФІКС БЕЗПЕКИ: Видаляємо крапки, щоб унеможливити Directory Traversal
-    const sanitizedPath = path.map(p => p.replace(/[^a-zA-Z0-9\-_]/g, '')).join('/');
+    // 🔥 ФІКС БЕЗПЕКИ ТА РОУТИНГУ: замість кривої регулярки юзаємо encodeURIComponent
+    const sanitizedPath = path.map(p => encodeURIComponent(p)).join('/');
     
     if (!token && !sanitizedPath.startsWith('public/')) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
@@ -19,7 +19,6 @@ async function handleProxy(req: NextRequest, props: { params: Promise<{ path: st
     const url = new URL(req.url);
     const backendUrl = `${appConfig.apiBaseUrl}/${sanitizedPath}${url.search}`;
     
-    // 🔥 1. БУДУЄМО ЧИСТІ ЗАГОЛОВКИ (уникаємо багів Vercel з gzip/brotli)
     const headers = new Headers();
     headers.set('Accept', 'application/json');
     
@@ -38,7 +37,6 @@ async function handleProxy(req: NextRequest, props: { params: Promise<{ path: st
       redirect: 'manual',
     };
 
-    // 🔥 2. БЕЗПЕЧНЕ ЧИТАННЯ ТІЛА ЗАПИТУ (без duplex: 'half', який крашить Vercel)
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       const buffer = await req.arrayBuffer();
       if (buffer.byteLength > 0) {
@@ -48,23 +46,21 @@ async function handleProxy(req: NextRequest, props: { params: Promise<{ path: st
 
     const response = await fetch(backendUrl, options);
     
-    // 🔥 3. ДІАГНОСТИКА: Якщо бекенд (Nginx/Render) сам лежить або видає 502/500
     if (response.status >= 500) {
        const errText = await response.text().catch(() => '');
        return NextResponse.json(
          { ok: false, error: `Backend Error ${response.status}`, details: errText, url: backendUrl }, 
-         { status: response.status } // Ми повернемо цей статус чисто в JSON
+         { status: response.status } 
        );
     }
 
-    // 🔥 4. ЗАЛІЗОБЕТОННЕ ЧИТАННЯ ВІДПОВІДІ (завантажуємо як текст, уникаємо NextResponse(stream))
     const resText = await response.text();
     
     let data;
     try {
       data = resText ? JSON.parse(resText) : null;
     } catch {
-      data = resText; // Якщо це не JSON, віддаємо як є
+      data = resText; 
     }
 
     return NextResponse.json(data, {

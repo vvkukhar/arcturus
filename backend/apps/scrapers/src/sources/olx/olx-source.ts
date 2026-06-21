@@ -14,11 +14,9 @@ export async function runOlxSource(specificQuery?: string | null): Promise<void>
 
   let searchQueries: string[] = [];
 
-  // Якщо ти ввів артикул в адмінці — парсимо ТІЛЬКИ його
   if (specificQuery && specificQuery.trim()) {
     searchQueries = [specificQuery.trim()];
   } else {
-    // Інакше парсимо весь Watchlist
     const activeWatchlist = await prisma.watchlistItem.findMany({
       where: { active: true },
       select: { item: { select: { setNumber: true } } }
@@ -41,7 +39,10 @@ export async function runOlxSource(specificQuery?: string | null): Promise<void>
     const now = new Date();
 
     for (const query of searchQueries) {
-      const url = `https://www.olx.ua/uk/list/q-lego-${encodeURIComponent(query)}/`;
+      // 🔥 ФІКС: OLX потребує дефіси замість пробілів та нижній регістр для правильного пошуку
+      const formattedQuery = query.replace(/\s+/g, '-').toLowerCase();
+      const url = `https://www.olx.ua/uk/list/q-lego-${encodeURIComponent(formattedQuery)}/`;
+      
       const html = await browserManager.fetchHtml(url);
       const listings = parseOlxSearchHtml(html);
 
@@ -52,7 +53,6 @@ export async function runOlxSource(specificQuery?: string | null): Promise<void>
         const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
         const listingId = stableListingId('olx', listing.externalListingId);
         
-        // 🔥 ВИКОРИСТОВУЄМО НАДІЙНИЙ PRISMA UPSERT ЗАМІСТЬ СИРОГО SQL
         upsertOperations.push(
           prisma.marketListing.upsert({
             where: { id: listingId },
@@ -98,7 +98,6 @@ export async function runOlxSource(specificQuery?: string | null): Promise<void>
       }
     }
 
-    // Безпечне збереження батчами
     if (upsertOperations.length > 0) {
       const chunkSize = 50;
       for (let i = 0; i < upsertOperations.length; i += chunkSize) {

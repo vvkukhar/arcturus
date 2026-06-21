@@ -1,4 +1,4 @@
-import { httpClient } from '../../common/http-client';
+import { browserManager } from '../../common/browser-manager';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
 import { stableListingId } from '../../common/listing-id';
 import { logSourceError } from '../../common/source-error-logger';
@@ -38,8 +38,10 @@ export async function runBrickEconomySource(specificQuery?: string | null): Prom
 
     for (const query of searchQueries) {
       const url = `https://www.brickeconomy.com/search?query=${encodeURIComponent(query)}`;
-      const response = await httpClient.get<string>(url);
-      const marketData = parseBrickeconomySearchHtml(response.data);
+      
+      // 🔥 ФІКС: browserManager замість httpClient
+      const html = await browserManager.fetchHtml(url);
+      const marketData = parseBrickeconomySearchHtml(html);
 
       for (const data of marketData) {
         itemsSeen += 1;

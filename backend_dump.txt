@@ -62,8 +62,8 @@ services:
       context: ./backend
       dockerfile: apps/api/Dockerfile
     restart: always
-    ports:               # 🔥 ЗМІНИТИ expose НА ports
-      - "4000:4000"      # 🔥 ПОВЕРНУТИ ЦЕЙ РЯДОК
+    expose:              # 🔥 ЗМІНИТИ ports НА expose
+      - "4000"           # 🔥 ПРИБРАТИ ДРУГИЙ ПОРТ, залишити тільки внутрішній
     environment:
       - DATABASE_URL=postgresql://arcturus:LegoDatabase2026@postgres:5432/arcturus?schema=public
       - REDIS_URL=redis://:LegoRedis2026@redis:6379
@@ -2044,8 +2044,9 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
   app.enableShutdownHooks();
 
-  const port = process.env.PORT || 4000;
-  const httpServer = await app.listen(port, '0.0.0.0');
+const port = 4000;
+const httpServer = await app.listen(port, '0.0.0.0');
+console.log(`[Arcturus] API is forcefully listening on 0.0.0.0:${port}`);
 
   const realtimeGateway = app.get(RealtimeGateway);
   const rawIo = new SocketIOServer(httpServer, {
@@ -8019,9 +8020,11 @@ import { DropshipController } from './dropship.controller';
 import { DropshipService } from './dropship.service';
 import { AuthModule } from '../auth/auth.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { RealtimeModule } from '../realtime/realtime.module'; // 🔥 ДОДАЛИ
+import { RedisModule } from '../redis/redis.module'; // 🔥 ДОДАЛИ
 
 @Module({
-  imports: [PrismaModule, AuthModule, PaymentsModule],
+  imports: [PrismaModule, AuthModule, PaymentsModule, RealtimeModule, RedisModule],
   controllers: [DropshipController],
   providers: [DropshipService],
 })
@@ -8032,12 +8035,16 @@ export class DropshipModule {}
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class DropshipService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly payments: PaymentsService
+    private readonly payments: PaymentsService,
+    private readonly realtime: RealtimeGateway,
+    private readonly redis: RedisService
   ) {}
 
   async getWholesaleCatalog() {
@@ -8118,6 +8125,11 @@ export class DropshipService {
 
       return order;
     });
+
+    // 🔥 ФІКС: Зкидаємо кеш каталогу та шлемо івенти на фронт
+    await this.redis.delPattern('public_catalog*');
+    this.realtime.emitDashboardRefresh('dropship_order_created');
+    this.realtime.emitInventoryRefresh({ inventoryItemId: payload.inventoryItemId, reason: 'dropship_sale' });
 
     if (payload.paymentMethod === 'card') {
       const checkout = await this.payments.createCheckoutSession(result.id);
@@ -21637,7 +21649,8 @@ export class PublicStoreService {
     });
 
     if (!params.q) {
-      await this.redis.set(cacheKey, data, 300);
+      // 🔥 ФІКС: 3 секунди кешу замість 300
+      await this.redis.set(cacheKey, data, 3);
     }
 
     return data;
@@ -24904,6 +24917,41 @@ export class ScannerService {
 
     if (!source) throw new NotFoundException('Source not found');
 
+    // 🔥 АВТОМАТИЧНЕ ДОДАВАННЯ В WATCHLIST ДЛЯ АДХОК-ПОШУКУ
+    if (body.query) {
+      const setNumber = this.extractSetNumber(body.query);
+      if (setNumber) {
+        // Знаходимо цей набір в глобальній базі (Rebrickable)
+        const item = await this.prisma.item.findFirst({ where: { setNumber } });
+        
+        if (item) {
+          const existingWl = await this.prisma.watchlistItem.findFirst({ where: { itemId: item.id } });
+          
+          if (!existingWl) {
+            // Додаємо в Watchlist з "нескінченними" лімітами, щоб він 100% затригерив угоду (Deal)
+            await this.prisma.watchlistItem.create({
+              data: {
+                itemId: item.id,
+                titleSnapshot: item.title,
+                desiredBuyPrice: 50000, 
+                maxBuyPrice: 999999, // Гарантує, що все знайдене буде "Buy"
+                targetSellPrice: 1000000, 
+                active: true,
+                priority: 85,
+                notes: 'Auto-added via manual scanner search'
+              }
+            });
+            this.realtime.emitDashboardRefresh('watchlist_auto_added');
+          } else if (!existingWl.active) {
+            await this.prisma.watchlistItem.update({
+              where: { id: existingWl.id },
+              data: { active: true }
+            });
+          }
+        }
+      }
+    }
+
     const job = await this.prisma.scanJob.create({
       data: { sourceCode: body.sourceCode, query: body.query ?? '', status: 'queued' },
     });
@@ -25109,7 +25157,7 @@ export class NovaPoshtaService {
     deliveryString: string;
     weight: number;
     cost: number;
-    isPaid?: boolean; // 🔥 ДОДАНО ДЛЯ ПІСЛЯПЛАТИ
+    isPaid?: boolean;
   }): Promise<string> {
     if (!this.apiKey) {
       throw new BadRequestException('NOVA_POSHTA_API_KEY is missing');
@@ -25157,14 +25205,20 @@ export class NovaPoshtaService {
     const recipientRef = counterpartyRes[0].Ref;
     const contactRecipientRef = counterpartyRes[0].ContactPerson.data[0].Ref;
 
+    // Жорсткий формат дати DD.MM.YYYY для Нової Пошти
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+
     // 🔥 БАЗОВІ ОПЦІЇ ДОСТАВКИ 🔥
     const documentOptions: any = {
       PayerType: 'Recipient',
       PaymentMethod: 'Cash',
-      DateTime: new Date().toLocaleDateString('uk-UA').replace(/\./g, '.'),
-      CargoType: 'Cargo',
+      DateTime: `${dd}.${mm}.${yyyy}`,
+      CargoType: 'Parcel', // 🔥 Змінено з 'Cargo' на 'Parcel' (Посилка)
       VolumeGeneral: '0.01',
-      Weight: params.weight.toString(), // ДИНАМІЧНА ВАГА
+      Weight: params.weight.toString(),
       ServiceType: 'WarehouseWarehouse',
       SeatsAmount: '1',
       Description: `LEGO Order ${params.orderId.slice(-6)}`,
@@ -25179,9 +25233,18 @@ export class NovaPoshtaService {
       RecipientAddress: warehouseRef,
       ContactRecipient: contactRecipientRef,
       RecipientsPhone: params.phone,
+      // 🔥 ФІКС ПОМИЛКИ "OptionsSeat is empty": Передаємо габарити посилки!
+      OptionsSeat: [
+        {
+          volumetricVolume: "0.01",
+          volumetricWidth: "20",
+          volumetricLength: "20",
+          volumetricHeight: "20",
+          weight: params.weight.toString()
+        }
+      ]
     };
 
-    // 🔥 ДОДАЄМО ПІСЛЯПЛАТУ ЯКЩО НЕ ОПЛАЧЕНО 🔥
     if (!params.isPaid) {
       documentOptions.BackwardDeliveryData = [
         {
@@ -25197,7 +25260,6 @@ export class NovaPoshtaService {
     return documentRes[0].IntDocNumber;
   }
 
-  // 🔥 ФІКС ТУТ: Термо-етикетки 100х100
   async getBulkPdfLink(ttns: string[]): Promise<string> {
     if (ttns.length === 0) throw new BadRequestException('No TTNs provided');
     if (!this.apiKey) throw new BadRequestException('NOVA_POSHTA_API_KEY is missing');
@@ -25227,7 +25289,7 @@ export class NovaPoshtaService {
            await this.prisma.$transaction(async (tx) => {
              await tx.order.update({
                where: { id: order.id },
-               data: { status: 'sold', deliveryStatus: 'Отримано' } // ФІКС ЛАЙВ СТАТУСУ
+               data: { status: 'sold', deliveryStatus: 'Отримано' }
              });
              const phoneStr = order.contact.replace(/[^\d+]/g, '');
              await tx.clientProfile.upsert({
@@ -29598,6 +29660,10 @@ FROM mcr.microsoft.com/playwright:v1.44.0-jammy AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app /app
+
+# 🔥 ФІКС PLAYWRIGHT: Докачуємо правильну версію Chromium для нашої версії бібліотеки
+RUN npx playwright install chromium
+
 WORKDIR /app/apps/scrapers
 CMD ["sh", "-c", "node $(find dist -name scraper-loop.js | head -n 1)"]
 
@@ -29940,12 +30006,7 @@ export class BrowserManager {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--no-zygote',
-          '--single-process',
-          '--memory-pressure-off',
-          '--disable-extensions',
-          '--js-flags="--max-old-space-size=256 --gc-interval=100"'
+          '--disable-gpu'
         ],
       });
     }
@@ -31600,7 +31661,7 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
 
   try {
     const unresolvedOperations: any[] = [];
-    const creates: any[] = [];
+    const upsertOperations: any[] = [];
     const now = new Date();
 
     for (const query of searchQueries) {
@@ -31622,25 +31683,41 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
           sealed: listing.sealed,
         });
 
-        creates.push({
-          id: listingId,
-          sourceId: source.id,
-          sourceCode: 'bricklink',
-          itemId,
-          externalListingId: listing.externalListingId,
-          titleRaw: listing.titleRaw,
-          url: listing.url,
-          imageUrl: listing.imageUrl ?? null,
-          price: listing.price || 0,
-          currency: listing.currency || 'USD',
-          shippingPrice,
-          shippingCurrency: listing.shippingCurrency || listing.currency || 'USD',
-          condition: listing.condition ?? null,
-          sealed: listing.sealed ?? false,
-          status: 'active',
-          fetchedAt: now,
-          updatedAt: now,
-        });
+        // 🔥 ВИКОРИСТОВУЄМО НАДІЙНИЙ PRISMA UPSERT ЗАМІСТЬ СИРОГО SQL
+        upsertOperations.push(
+          prisma.marketListing.upsert({
+            where: { id: listingId },
+            update: {
+              price: listing.price || 0,
+              shippingPrice,
+              status: 'active',
+              fetchedAt: now,
+              updatedAt: now,
+            },
+            create: {
+              id: listingId,
+              sourceId: source.id,
+              sourceCode: 'bricklink',
+              itemId,
+              externalListingId: listing.externalListingId,
+              externalId: listing.externalListingId,
+              titleRaw: listing.titleRaw,
+              title: listing.titleRaw,
+              url: listing.url,
+              imageUrl: listing.imageUrl ?? null,
+              price: listing.price || 0,
+              currency: listing.currency || 'USD',
+              shippingPrice,
+              shippingCurrency: listing.shippingCurrency || listing.currency || 'USD',
+              condition: listing.condition ?? null,
+              sealed: listing.sealed ?? false,
+              status: 'active',
+              fetchedAt: now,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            }
+          })
+        );
 
         if (resolvedItemId == null) {
           unresolvedOperations.push({
@@ -31652,43 +31729,15 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
           itemsMatched += 1;
         }
       }
-
-      if (creates.length >= 500) {
-        await prisma.$executeRaw`
-          INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
-          SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
-            "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
-            "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
-            "shippingPrice" float, "shippingCurrency" text, "condition" text, "sealed" boolean, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
-          )
-          ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
-            "price" = EXCLUDED."price",
-            "shippingPrice" = EXCLUDED."shippingPrice",
-            "status" = 'active',
-            "fetchedAt" = EXCLUDED."fetchedAt",
-            "updatedAt" = EXCLUDED."updatedAt"
-        `;
-        itemsInserted += creates.length;
-        creates.length = 0; 
-      }
     }
 
-    if (creates.length > 0) {
-      await prisma.$executeRaw`
-        INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
-        SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
-          "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
-          "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
-          "shippingPrice" float, "shippingCurrency" text, "condition" text, "sealed" boolean, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
-        )
-        ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
-          "price" = EXCLUDED."price",
-          "shippingPrice" = EXCLUDED."shippingPrice",
-          "status" = 'active',
-          "fetchedAt" = EXCLUDED."fetchedAt",
-          "updatedAt" = EXCLUDED."updatedAt"
-      `;
-      itemsInserted += creates.length;
+    if (upsertOperations.length > 0) {
+      const chunkSize = 50;
+      for (let i = 0; i < upsertOperations.length; i += chunkSize) {
+        const chunk = upsertOperations.slice(i, i + chunkSize);
+        await prisma.$transaction(chunk);
+        itemsInserted += chunk.length;
+      }
     }
 
     for (const u of unresolvedOperations) {
@@ -32507,7 +32556,7 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
 
   try {
     const unresolvedOperations: any[] = [];
-    const creates: any[] = [];
+    const upsertOperations: any[] = [];
     const now = new Date();
 
     for (const query of searchQueries) {
@@ -32529,25 +32578,41 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
           sealed: listing.sealed,
         });
 
-        creates.push({
-          id: listingId,
-          sourceId: source.id,
-          sourceCode: 'ebay',
-          itemId,
-          externalListingId: listing.externalListingId,
-          titleRaw: listing.titleRaw,
-          url: listing.url,
-          imageUrl: listing.imageUrl ?? null,
-          price: listing.price || 0,
-          currency: listing.currency || 'USD',
-          shippingPrice,
-          shippingCurrency: listing.shippingCurrency || listing.currency || 'USD',
-          condition: listing.condition ?? null,
-          sealed: listing.sealed ?? false,
-          status: 'active',
-          fetchedAt: now,
-          updatedAt: now,
-        });
+        // 🔥 ВИКОРИСТОВУЄМО НАДІЙНИЙ PRISMA UPSERT
+        upsertOperations.push(
+          prisma.marketListing.upsert({
+            where: { id: listingId },
+            update: {
+              price: listing.price || 0,
+              shippingPrice,
+              status: 'active',
+              fetchedAt: now,
+              updatedAt: now,
+            },
+            create: {
+              id: listingId,
+              sourceId: source.id,
+              sourceCode: 'ebay',
+              itemId,
+              externalListingId: listing.externalListingId,
+              externalId: listing.externalListingId,
+              titleRaw: listing.titleRaw,
+              title: listing.titleRaw,
+              url: listing.url,
+              imageUrl: listing.imageUrl ?? null,
+              price: listing.price || 0,
+              currency: listing.currency || 'USD',
+              shippingPrice,
+              shippingCurrency: listing.shippingCurrency || listing.currency || 'USD',
+              condition: listing.condition ?? null,
+              sealed: listing.sealed ?? false,
+              status: 'active',
+              fetchedAt: now,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            }
+          })
+        );
 
         if (resolvedItemId == null) {
           unresolvedOperations.push({
@@ -32559,43 +32624,15 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
           itemsMatched += 1;
         }
       }
-
-      if (creates.length >= 500) {
-        await prisma.$executeRaw`
-          INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
-          SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
-            "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
-            "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
-            "shippingPrice" float, "shippingCurrency" text, "condition" text, "sealed" boolean, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
-          )
-          ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
-            "price" = EXCLUDED."price",
-            "shippingPrice" = EXCLUDED."shippingPrice",
-            "status" = 'active',
-            "fetchedAt" = EXCLUDED."fetchedAt",
-            "updatedAt" = EXCLUDED."updatedAt"
-        `;
-        itemsInserted += creates.length;
-        creates.length = 0;
-      }
     }
 
-    if (creates.length > 0) {
-      await prisma.$executeRaw`
-        INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
-        SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
-          "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
-          "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
-          "shippingPrice" float, "shippingCurrency" text, "condition" text, "sealed" boolean, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
-        )
-        ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
-          "price" = EXCLUDED."price",
-          "shippingPrice" = EXCLUDED."shippingPrice",
-          "status" = 'active',
-          "fetchedAt" = EXCLUDED."fetchedAt",
-          "updatedAt" = EXCLUDED."updatedAt"
-      `;
-      itemsInserted += creates.length;
+    if (upsertOperations.length > 0) {
+      const chunkSize = 50;
+      for (let i = 0; i < upsertOperations.length; i += chunkSize) {
+        const chunk = upsertOperations.slice(i, i + chunkSize);
+        await prisma.$transaction(chunk);
+        itemsInserted += chunk.length;
+      }
     }
 
     for (const u of unresolvedOperations) {
@@ -32762,13 +32799,18 @@ import * as cheerio from 'cheerio';
 import { OlxParsedListing } from './olx-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
-  const normalized = raw.replace(/\s+/g, ' ').trim();
+  // 🔥 ГОЛОВНИЙ ФІКС: Шукаємо цифри ТІЛЬКИ поруч із валютою!
+  // Це відріже артикули (75192) та кількість деталей (7541) з назви.
+  const match = raw.match(/(\d[\d\s.,]*)\s*(грн|UAH|\$|€|eur)/i);
 
-  if (!normalized) {
+  if (!match) {
     return null;
   }
 
-  const digits = normalized
+  const numberPart = match[1];
+  const currencyPart = match[2];
+
+  const digits = numberPart
     .replace(/[^\d.,]/g, '')
     .replace(/\s/g, '')
     .replace(',', '.');
@@ -32779,11 +32821,9 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
     return null;
   }
 
-  const currency = normalized.includes('$')
-    ? 'USD'
-    : normalized.toLowerCase().includes('eur') || normalized.includes('€')
-      ? 'EUR'
-      : 'UAH';
+  let currency = 'UAH';
+  if (currencyPart.includes('$')) currency = 'USD';
+  if (currencyPart.toLowerCase().includes('eur') || currencyPart.includes('€')) currency = 'EUR';
 
   return {
     amount,
@@ -32809,7 +32849,9 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
   const seen = new Set<string>();
 
   $('a').each((_, element) => {
-    const title = $(element).text().replace(/\s+/g, ' ').trim();
+    // На OLX назви зазвичай лежать в h6
+    const titleElement = $(element).find('h6');
+    const title = (titleElement.length > 0 ? titleElement.text() : $(element).text()).replace(/\s+/g, ' ').trim();
     const href = $(element).attr('href')?.trim() ?? '';
 
     if (!title || !href) {
@@ -32993,7 +33035,6 @@ import { getOrCreatePlaceholderItemId } from '../../common/placeholder-item';
 import { prisma } from '../../prisma';
 import { parseOlxSearchHtml } from './olx-parser';
 
-// 🔥 ФІКС: Тепер функція приймає конкретний запит з адмінки
 export async function runOlxSource(specificQuery?: string | null): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'olx' } });
   if (!source || !source.enabled) return;
@@ -33023,7 +33064,7 @@ export async function runOlxSource(specificQuery?: string | null): Promise<void>
 
   try {
     const unresolvedOperations: any[] = [];
-    const creates: any[] = [];
+    const upsertOperations: any[] = [];
     const now = new Date();
 
     for (const query of searchQueries) {
@@ -33038,23 +33079,39 @@ export async function runOlxSource(specificQuery?: string | null): Promise<void>
         const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
         const listingId = stableListingId('olx', listing.externalListingId);
         
-        creates.push({
-          id: listingId,
-          sourceId: source.id,
-          sourceCode: 'olx',
-          itemId,
-          externalListingId: listing.externalListingId,
-          titleRaw: listing.titleRaw,
-          url: listing.url,
-          imageUrl: listing.imageUrl ?? null,
-          price: listing.price || 0,
-          currency: 'UAH',
-          shippingPrice: listing.shippingPrice || 0,
-          shippingCurrency: 'UAH',
-          status: 'active',
-          fetchedAt: now,
-          updatedAt: now,
-        });
+        // 🔥 ВИКОРИСТОВУЄМО НАДІЙНИЙ PRISMA UPSERT ЗАМІСТЬ СИРОГО SQL
+        upsertOperations.push(
+          prisma.marketListing.upsert({
+            where: { id: listingId },
+            update: {
+              price: listing.price || 0,
+              shippingPrice: listing.shippingPrice || 0,
+              status: 'active',
+              fetchedAt: now,
+              updatedAt: now,
+            },
+            create: {
+              id: listingId,
+              sourceId: source.id,
+              sourceCode: 'olx',
+              itemId,
+              externalListingId: listing.externalListingId,
+              externalId: listing.externalListingId,
+              titleRaw: listing.titleRaw,
+              title: listing.titleRaw,
+              url: listing.url,
+              imageUrl: listing.imageUrl ?? null,
+              price: listing.price || 0,
+              currency: 'UAH',
+              shippingPrice: listing.shippingPrice || 0,
+              shippingCurrency: 'UAH',
+              status: 'active',
+              fetchedAt: now,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            }
+          })
+        );
 
         if (resolvedItemId == null) {
           unresolvedOperations.push({
@@ -33066,41 +33123,16 @@ export async function runOlxSource(specificQuery?: string | null): Promise<void>
           itemsMatched += 1;
         }
       }
-
-      if (creates.length >= 500) {
-        await prisma.$executeRaw`
-          INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "status", "fetchedAt", "updatedAt")
-          SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
-            "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
-            "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
-            "shippingPrice" float, "shippingCurrency" text, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
-          )
-          ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
-            "price" = EXCLUDED."price",
-            "status" = 'active',
-            "fetchedAt" = EXCLUDED."fetchedAt",
-            "updatedAt" = EXCLUDED."updatedAt"
-        `;
-        itemsInserted += creates.length;
-        creates.length = 0; 
-      }
     }
 
-    if (creates.length > 0) {
-      await prisma.$executeRaw`
-        INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "status", "fetchedAt", "updatedAt")
-        SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
-          "id" text, "sourceId" text, "sourceCode" text, "itemId" text, "externalListingId" text, 
-          "titleRaw" text, "url" text, "imageUrl" text, "price" float, "currency" text, 
-          "shippingPrice" float, "shippingCurrency" text, "status" text, "fetchedAt" timestamp, "updatedAt" timestamp
-        )
-        ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
-          "price" = EXCLUDED."price",
-          "status" = 'active',
-          "fetchedAt" = EXCLUDED."fetchedAt",
-          "updatedAt" = EXCLUDED."updatedAt"
-      `;
-      itemsInserted += creates.length;
+    // Безпечне збереження батчами
+    if (upsertOperations.length > 0) {
+      const chunkSize = 50;
+      for (let i = 0; i < upsertOperations.length; i += chunkSize) {
+        const chunk = upsertOperations.slice(i, i + chunkSize);
+        await prisma.$transaction(chunk);
+        itemsInserted += chunk.length;
+      }
     }
 
     for (const u of unresolvedOperations) {

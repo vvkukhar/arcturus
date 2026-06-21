@@ -41,7 +41,8 @@ export class BrowserManager {
 
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
-      if (['image', 'media', 'font', 'stylesheet', 'websocket', 'other'].includes(type)) {
+      // 🔥 ФІКС: Блокуємо тільки візуал. Дозволяємо XHR, fetch, websocket і other
+      if (['image', 'media', 'font', 'stylesheet'].includes(type)) {
         route.abort().catch(() => {});
       } else {
         route.continue().catch(() => {});
@@ -49,8 +50,9 @@ export class BrowserManager {
     });
 
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.waitForTimeout(3000);
+      // 🔥 ФІКС: Чекаємо networkidle замість domcontentloaded
+      await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+      await page.waitForTimeout(2000); // Страхувальна пауза для відпрацювання JS
       return await page.content();
     } finally {
       await page.close().catch(() => {});
