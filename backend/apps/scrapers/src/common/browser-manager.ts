@@ -18,12 +18,7 @@ export class BrowserManager {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--no-zygote',
-          '--single-process',
-          '--memory-pressure-off',
-          '--disable-extensions',
-          '--js-flags="--max-old-space-size=256 --gc-interval=100"'
+          '--disable-gpu'
         ],
       });
     }
