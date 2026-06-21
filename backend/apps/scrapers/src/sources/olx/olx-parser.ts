@@ -2,13 +2,18 @@ import * as cheerio from 'cheerio';
 import { OlxParsedListing } from './olx-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
-  const normalized = raw.replace(/\s+/g, ' ').trim();
+  // 🔥 ГОЛОВНИЙ ФІКС: Шукаємо цифри ТІЛЬКИ поруч із валютою!
+  // Це відріже артикули (75192) та кількість деталей (7541) з назви.
+  const match = raw.match(/(\d[\d\s.,]*)\s*(грн|UAH|\$|€|eur)/i);
 
-  if (!normalized) {
+  if (!match) {
     return null;
   }
 
-  const digits = normalized
+  const numberPart = match[1];
+  const currencyPart = match[2];
+
+  const digits = numberPart
     .replace(/[^\d.,]/g, '')
     .replace(/\s/g, '')
     .replace(',', '.');
@@ -19,11 +24,9 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
     return null;
   }
 
-  const currency = normalized.includes('$')
-    ? 'USD'
-    : normalized.toLowerCase().includes('eur') || normalized.includes('€')
-      ? 'EUR'
-      : 'UAH';
+  let currency = 'UAH';
+  if (currencyPart.includes('$')) currency = 'USD';
+  if (currencyPart.toLowerCase().includes('eur') || currencyPart.includes('€')) currency = 'EUR';
 
   return {
     amount,
@@ -49,7 +52,9 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
   const seen = new Set<string>();
 
   $('a').each((_, element) => {
-    const title = $(element).text().replace(/\s+/g, ' ').trim();
+    // На OLX назви зазвичай лежать в h6
+    const titleElement = $(element).find('h6');
+    const title = (titleElement.length > 0 ? titleElement.text() : $(element).text()).replace(/\s+/g, ' ').trim();
     const href = $(element).attr('href')?.trim() ?? '';
 
     if (!title || !href) {
