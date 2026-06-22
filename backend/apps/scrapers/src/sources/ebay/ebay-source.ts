@@ -1,4 +1,4 @@
-import { httpClient } from '../../common/http-client';
+import { browserManager } from '../../common/browser-manager';
 import { estimateUaShippingBySource } from '../../common/shipping-estimator';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
 import { stableListingId } from '../../common/listing-id';
@@ -10,7 +10,7 @@ import { prisma } from '../../prisma';
 import { parseEbaySearchHtml } from './ebay-parser';
 
 export async function runEbaySource(specificQuery?: string | null): Promise<void> {
-  console.log('[EbaySource] Starting runEbaySource (Fast HTTP Mode)');
+  console.log('[EbaySource] Starting runEbaySource (Browser Mode)');
   const source = await prisma.marketSource.findUnique({ where: { code: 'ebay' } });
   
   if (!source || !source.enabled) {
@@ -54,18 +54,10 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
       console.log(`[EbaySource] Processing query: ${query}`);
       const url = `https://www.ebay.de/sch/i.html?_nkw=lego+${encodeURIComponent(query)}&_sacat=0`;
       
-      console.log(`[EbaySource] Fetching via HTTP Client: ${url}`);
+      console.log(`[EbaySource] Fetching via Browser Manager: ${url}`);
       
-      // Використовуємо легкий HTTP клієнт замість важкого браузера
-      // Він автоматично ротує проксі через axios-retry у разі помилки 403
-      const response = await httpClient.get(url);
-      const html = response.data;
+      const html = await browserManager.fetchHtml(url, '.s-item');
       
-      if (!html || html.length < 10000) {
-        console.error(`[EbaySource] Response HTML too small (${html?.length} bytes). Akamai blocked this IP. Skipping to next.`);
-        continue; 
-      }
-
       const listings = parseEbaySearchHtml(html);
       console.log(`[EbaySource] Fetched ${listings.length} listings for query ${query}`);
 
@@ -129,7 +121,6 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
         }
       }
       
-      // Маленька пауза, щоб не ДДОСити eBay
       await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
     }
 

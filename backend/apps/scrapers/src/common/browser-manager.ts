@@ -29,8 +29,10 @@ export class BrowserManager {
     }
   }
 
-  async fetchHtml(url: string, waitForSelector?: string, retries = 2): Promise<string> {
-    console.log(`[BrowserManager] fetchHtml called for URL: ${url}`);
+  // 🔥 ФІКС: ЗБІЛЬШИЛИ КІЛЬКІСТЬ СПРОБ ДО 15 🔥
+  // IPRoyal має багато IP, нам просто треба знайти той, що не в чорному списку eBay.
+  async fetchHtml(url: string, waitForSelector?: string, retries = 15): Promise<string> {
+    console.log(`[BrowserManager] fetchHtml called for URL: ${url}. Retries left: ${retries}`);
     await this.init();
     
     if (!this.browser) {
@@ -115,8 +117,10 @@ export class BrowserManager {
       console.error(`[BrowserManager] ERROR fetching ${url}:`, e.message);
       
       if (retries > 0) {
-        console.log(`[BrowserManager] Proxy blocked/failed. Retrying with new IP... (${retries} attempts left)`);
+        console.log(`[BrowserManager] Proxy blocked/failed. Retrying with new IP... (${retries - 1} attempts left)`);
         await context.close().catch(() => {});
+        // Робимо малесеньку паузу перед наступною спробою
+        await new Promise(res => setTimeout(res, 1000));
         return this.fetchHtml(url, waitForSelector, retries - 1);
       }
       throw e;
