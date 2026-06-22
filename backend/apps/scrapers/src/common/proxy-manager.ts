@@ -8,13 +8,14 @@ export class ProxyManager {
   private pool: ProxyNode[] = [];
   private currentIndex = 0;
   private readonly MAX_FAILURES = 3;
-  private readonly COOLDOWN_MS = 15 * 60 * 1000; // 15 хвилин кулдауну для "спаленого" проксі
+  private readonly COOLDOWN_MS = 15 * 60 * 1000; // 15 хвилин кулдауну
 
   constructor() {
     const proxyList = process.env.PROXY_LIST?.split(',') || [];
     this.pool = proxyList
       .map(p => p.trim())
-      .filter(Boolean)
+      // 🔥 ЗАХИСТ ВІД ДУРНЯ: Ігноруємо дефолтну заглушку, якщо ти забув її змінити
+      .filter(p => p && !p.includes('user:pass@ip:port') && p.startsWith('http'))
       .map(url => ({ url, failures: 0, cooldownUntil: 0 }));
   }
 
@@ -24,7 +25,6 @@ export class ProxyManager {
     const now = Date.now();
     let attempts = 0;
 
-    // Шукаємо живий проксі, який не в кулдауні
     while (attempts < this.pool.length) {
       const proxy = this.pool[this.currentIndex];
       this.currentIndex = (this.currentIndex + 1) % this.pool.length;
@@ -35,8 +35,6 @@ export class ProxyManager {
       attempts++;
     }
 
-    // Якщо всі в кулдауні, повертаємо null (скрапер піде з твого рідного IP на свій страх і ризик, 
-    // або краще перервати запит)
     console.warn('[ProxyManager] ⚠️ All proxies are currently in cooldown!');
     return undefined;
   }
@@ -51,7 +49,7 @@ export class ProxyManager {
       
       if (proxy.failures >= this.MAX_FAILURES) {
         proxy.cooldownUntil = Date.now() + this.COOLDOWN_MS;
-        proxy.failures = 0; // Скидаємо лічильник для наступного разу
+        proxy.failures = 0;
         console.error(`[ProxyManager] 🔴 Proxy burned! Sending to cooldown for 15 mins: ${proxy.url}`);
       }
     }
@@ -61,7 +59,7 @@ export class ProxyManager {
     if (!url) return;
     const proxy = this.pool.find(p => p.url === url || p.url.includes(url));
     if (proxy && proxy.failures > 0) {
-      proxy.failures = 0; // Якщо проксі відпрацював нормально, скидаємо "штрафні" бали
+      proxy.failures = 0;
     }
   }
 
