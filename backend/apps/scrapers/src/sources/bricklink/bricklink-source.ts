@@ -1,5 +1,3 @@
-// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\bricklink\bricklink-source.ts
-
 import { browserManager } from '../../common/browser-manager';
 import { estimateUaShippingBySource } from '../../common/shipping-estimator';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
@@ -48,8 +46,9 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
         ? `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${query}-1#T=S&O={"iconly":0}`
         : `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(query)}#T=A`;
       
-      const html = await browserManager.fetchHtml(url);
-      const listings = parseBrickLinkSearchHtml(html);
+      const waitFor = isDigitsOnly ? 'table' : 'a[href*="item.page"]';
+      const html = await browserManager.fetchHtml(url, waitFor);
+      const listings = parseBrickLinkSearchHtml(html, `LEGO ${query}`);
 
       for (const listing of listings) {
         itemsSeen += 1;
