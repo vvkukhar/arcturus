@@ -18,7 +18,6 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
     currencyPart = matchBefore[1];
     numberPart = matchBefore[2];
   } else {
-    console.error(`[BrickOwlParser] Failed to match price regex for: "${cleanRaw}"`);
     return null;
   }
 
@@ -41,10 +40,7 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   }
 
   const amount = Number(normalizedDigits);
-  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
-    console.error(`[BrickOwlParser] Invalid amount parsed: ${amount} from "${cleanRaw}"`);
-    return null;
-  }
+  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) return null;
 
   let currency = 'UAH';
   const currUpper = currencyPart.toUpperCase();
@@ -56,16 +52,12 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
 }
 
 export function parseBrickowlSearchHtml(html: string): BrickowlParsedListing[] {
-  console.log(`[BrickOwlParser] Starting HTML parse...`);
   const $ = cheerio.load(html);
   const result: BrickowlParsedListing[] = [];
   const seen = new Set<string>();
 
-  const elements = $('.ws_item, .category-item, .item-row');
-  console.log(`[BrickOwlParser] Found ${elements.length} item elements`);
-
-  elements.each((_, element) => {
-    const titleElement = $(element).find('.name a, h2 a').first();
+  $('.item-row, .product-list-item').each((_, element) => {
+    const titleElement = $(element).find('.name a, h2 a, h3 a').first();
     const title = titleElement.text().replace(/\s+/g, ' ').trim();
     const href = titleElement.attr('href')?.trim() ?? '';
     
@@ -75,10 +67,7 @@ export function parseBrickowlSearchHtml(html: string): BrickowlParsedListing[] {
     const priceText = $(element).find('.price').text();
     const priceParsed = parsePrice(priceText);
     
-    if (!priceParsed) {
-      console.warn(`[BrickOwlParser] Could not parse price for ${title}`);
-      return;
-    }
+    if (!priceParsed) return;
 
     const url = href.startsWith('http') ? href : `https://www.brickowl.com${href}`;
     if (seen.has(url)) return;
@@ -106,6 +95,5 @@ export function parseBrickowlSearchHtml(html: string): BrickowlParsedListing[] {
     });
   });
 
-  console.log(`[BrickOwlParser] Successfully parsed ${result.length} listings`);
   return result;
 }

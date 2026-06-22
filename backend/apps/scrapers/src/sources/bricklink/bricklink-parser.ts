@@ -7,10 +7,7 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   const cleanRaw = raw.replace(/~/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
   const match = cleanRaw.match(/(US \$|EUR|€|£|GBP|CA \$|AU \$)\s*(\d{1,3}(?:[,.\s]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
 
-  if (!match) {
-    console.error(`[BrickLinkParser] Failed to match price regex for: "${cleanRaw}"`);
-    return null;
-  }
+  if (!match) return null;
 
   const currencyPart = match[1].toUpperCase();
   const numberPart = match[2];
@@ -27,10 +24,7 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   }
 
   const amount = Number(digits);
-  if (Number.isNaN(amount) || amount <= 0 || amount > 500000) {
-    console.error(`[BrickLinkParser] Invalid amount parsed: ${amount} from "${cleanRaw}"`);
-    return null;
-  }
+  if (Number.isNaN(amount) || amount <= 0 || amount > 500000) return null;
 
   let currency = 'USD';
   if (currencyPart.includes('EUR') || currencyPart.includes('€')) currency = 'EUR';
@@ -41,65 +35,37 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   return { amount, currency };
 }
 
-function normalizeUrl(rawUrl: string): string {
-  if (rawUrl.startsWith('http')) return rawUrl;
-  if (rawUrl.startsWith('/')) return `https://www.bricklink.com${rawUrl}`;
-  return `https://www.bricklink.com/${rawUrl}`;
-}
-
 export function parseBrickLinkSearchHtml(html: string): BrickLinkParsedListing[] {
-  console.log(`[BrickLinkParser] Starting HTML parse...`);
   const $ = cheerio.load(html);
   const result: BrickLinkParsedListing[] = [];
   const seen = new Set<string>();
 
-  const anchors = $('a');
-  console.log(`[BrickLinkParser] Found ${anchors.length} anchor tags`);
-
-  anchors.each((_, element) => {
-    const title = $(element).text().replace(/\s+/g, ' ').trim();
-    const href = $(element).attr('href')?.trim() ?? '';
-
-    if (!title || !href || (!href.includes('item.page') && !href.includes('store.asp'))) return;
-    if (!href.includes('?S=') && !href.includes('?M=')) return;
-
-    const container = $(element).closest('tr, div, li, .ps-item');
-    const rowText = container.text().toLowerCase();
+  $('tr.item').each((_, element) => {
+    const titleElement = $(element).find('strong');
+    const title = titleElement.text().replace(/\s+/g, ' ').trim() || 'LEGO Set';
     
-    const priceNodes = container.find('b, strong, td, span').filter(function() {
-      const t = $(this).text();
-      return t.includes('$') || t.includes('EUR') || t.includes('€') || t.includes('£');
-    });
+    const hrefElement = $(element).find('a[href*="store.asp"]');
+    const href = hrefElement.attr('href')?.trim() ?? '';
+    if (!href) return;
 
-    let priceText = '';
-    if (priceNodes.length > 0) {
-      priceText = priceNodes.last().text();
-    } else {
-      priceText = container.text();
-    }
-
+    const priceText = $(element).find('td').filter((i, el) => $(el).text().includes('$') || $(el).text().includes('EUR')).text();
     const priceParsed = parsePrice(priceText);
-    if (!priceParsed) {
-      console.warn(`[BrickLinkParser] Could not parse price for ${title}`);
-      return;
-    }
+    
+    if (!priceParsed) return;
 
-    const url = normalizeUrl(href);
+    const url = `https://www.bricklink.com${href.startsWith('/') ? href : '/' + href}`;
     if (seen.has(url)) return;
     seen.add(url);
 
-    const imageUrl = container.find('img').first().attr('src') ?? container.find('img').first().attr('data-src') ?? null;
-    const isNew = rowText.includes('new');
-    const isIncomplete = rowText.includes('incomplete');
-    let condition = isNew ? 'new' : 'used';
-    if (isIncomplete) condition = 'incomplete';
-    const sealed = isNew && rowText.includes('sealed');
+    const conditionText = $(element).text().toLowerCase();
+    const isNew = conditionText.includes('new');
+    const sealed = isNew && conditionText.includes('sealed');
 
     result.push({
-      externalListingId: href,
+      externalListingId: href.split('&')[0],
       titleRaw: title,
       url,
-      imageUrl,
+      imageUrl: null,
       sellerName: null,
       sellerRating: null,
       price: priceParsed.amount,
@@ -107,13 +73,12 @@ export function parseBrickLinkSearchHtml(html: string): BrickLinkParsedListing[]
       shippingPrice: null,
       shippingCurrency: null,
       country: 'EU',
-      condition,
+      condition: isNew ? 'new' : 'used',
       sealed,
-      completenessPercent: isIncomplete ? 80 : 100,
+      completenessPercent: isNew ? 100 : 100,
       quantityAvailable: 1,
     });
   });
 
-  console.log(`[BrickLinkParser] Successfully parsed ${result.length} listings`);
   return result;
 }

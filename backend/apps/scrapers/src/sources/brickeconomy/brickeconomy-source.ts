@@ -10,35 +10,25 @@ import { prisma } from '../../prisma';
 import { parseBrickeconomySearchHtml } from './brickeconomy-parser';
 
 export async function runBrickEconomySource(specificQuery?: string | null): Promise<void> {
-  console.log('[BrickEconomySource] Starting runBrickEconomySource');
   const source = await prisma.marketSource.findUnique({ where: { code: 'brickeconomy' } });
   
-  if (!source || !source.enabled) {
-    console.error('[BrickEconomySource] Source not found or disabled');
-    return;
-  }
+  if (!source || !source.enabled) return;
 
   let searchQueries: string[] = [];
 
   if (specificQuery && specificQuery.trim()) {
     searchQueries = [specificQuery.trim()];
-    console.log(`[BrickEconomySource] Using specific query: ${specificQuery}`);
   } else {
     const activeWatchlist = await prisma.watchlistItem.findMany({
       where: { active: true },
       select: { item: { select: { setNumber: true } } }
     });
     searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
-    console.log(`[BrickEconomySource] Found ${searchQueries.length} unique set numbers in watchlist`);
   }
 
-  if (searchQueries.length === 0) {
-    console.error('[BrickEconomySource] Search queries array is empty');
-    return;
-  }
+  if (searchQueries.length === 0) return;
 
   const runId = await startSourceRun('brickeconomy');
-  console.log(`[BrickEconomySource] Created Run ID: ${runId}`);
 
   let itemsSeen = 0;
   let itemsMatched = 0;
@@ -50,12 +40,10 @@ export async function runBrickEconomySource(specificQuery?: string | null): Prom
     const now = new Date();
 
     for (const query of searchQueries) {
-      console.log(`[BrickEconomySource] Processing query: ${query}`);
       const url = `https://www.brickeconomy.com/search?query=${encodeURIComponent(query)}`;
       
-      const html = await browserManager.fetchHtml(url, '.searchlist-item, .row.ItemRow');
+      const html = await browserManager.fetchHtml(url);
       const marketData = parseBrickeconomySearchHtml(html);
-      console.log(`[BrickEconomySource] Fetched ${marketData.length} listings for query ${query}`);
 
       for (const data of marketData) {
         itemsSeen += 1;
@@ -102,7 +90,6 @@ export async function runBrickEconomySource(specificQuery?: string | null): Prom
       }
     }
 
-    console.log(`[BrickEconomySource] Executing ${upsertOperations.length} DB upsert operations...`);
     if (upsertOperations.length > 0) {
       const chunkSize = 50;
       for (let i = 0; i < upsertOperations.length; i += chunkSize) {
@@ -111,12 +98,9 @@ export async function runBrickEconomySource(specificQuery?: string | null): Prom
         itemsInserted += chunk.length;
       }
     }
-    console.log(`[BrickEconomySource] DB upserts complete.`);
 
-    console.log(`[BrickEconomySource] Run complete. Finishing run logs.`);
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
   } catch (error) {
-    console.error(`[BrickEconomySource] FATAL ERROR:`, error);
     const message = error instanceof Error ? error.message : String(error);
     await logSourceError({ scope: 'scraper', sourceCode: 'brickeconomy', message: 'BrickEconomy source failed', detailsJson: { error: message } });
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });

@@ -18,7 +18,6 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
     currencyPart = matchBefore[1];
     numberPart = matchBefore[2];
   } else {
-    console.error(`[BrickEconomyParser] Failed to match price regex for: "${cleanRaw}"`);
     return null;
   }
 
@@ -41,10 +40,7 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   }
 
   const amount = Number(normalizedDigits);
-  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
-    console.error(`[BrickEconomyParser] Invalid amount parsed: ${amount} from "${cleanRaw}"`);
-    return null;
-  }
+  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) return null;
 
   let currency = 'UAH';
   const currUpper = currencyPart.toUpperCase();
@@ -56,15 +52,11 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
 }
 
 export function parseBrickeconomySearchHtml(html: string): BrickeconomyParsedListing[] {
-  console.log(`[BrickEconomyParser] Starting HTML parse...`);
   const $ = cheerio.load(html);
   const result: BrickeconomyParsedListing[] = [];
   const seen = new Set<string>();
 
-  const elements = $('.searchlist-item, .row.ItemRow');
-  console.log(`[BrickEconomyParser] Found ${elements.length} item elements`);
-
-  elements.each((_, element) => {
+  $('.searchlist-item, .row.ItemRow, .mb-5').each((_, element) => {
     const titleElement = $(element).find('h4 a, h3 a, .title a').first();
     const title = titleElement.text().replace(/\s+/g, ' ').trim();
     const href = titleElement.attr('href')?.trim() ?? '';
@@ -75,10 +67,7 @@ export function parseBrickeconomySearchHtml(html: string): BrickeconomyParsedLis
     const priceText = $(element).find('.val-current, .price').text();
     const priceParsed = parsePrice(priceText);
     
-    if (!priceParsed) {
-      console.warn(`[BrickEconomyParser] Could not parse price for ${title}`);
-      return;
-    }
+    if (!priceParsed) return;
 
     const url = `https://www.brickeconomy.com${href}`;
     if (seen.has(url)) return;
@@ -94,6 +83,5 @@ export function parseBrickeconomySearchHtml(html: string): BrickeconomyParsedLis
     });
   });
 
-  console.log(`[BrickEconomyParser] Successfully parsed ${result.length} listings`);
   return result;
 }

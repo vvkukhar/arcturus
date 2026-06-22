@@ -15,7 +15,6 @@ export class BrowserManager {
   async init(): Promise<void> {
     console.log('[BrowserManager] init() called');
     if (!this.browser) {
-      console.log('[BrowserManager] Launching new chromium browser...');
       this.browser = await chromium.launch({
         headless: true,
         args: [
@@ -25,10 +24,10 @@ export class BrowserManager {
           '--disable-gpu',
           '--disable-web-security',
           '--disable-features=IsolateOrigins,site-per-process',
-          '--window-size=1920,1080'
+          '--window-size=1920,1080',
+          '--disable-blink-features=AutomationControlled'
         ],
       });
-      console.log('[BrowserManager] Browser launched successfully');
     }
     if (!this.context) {
       const proxyStr = proxyManager.getRawProxy();
@@ -39,8 +38,16 @@ export class BrowserManager {
         userAgent: getRandomUserAgent(),
         ignoreHTTPSErrors: true,
         javaScriptEnabled: true,
+        extraHTTPHeaders: {
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Upgrade-Insecure-Requests': '1',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Sec-Fetch-User': '?1'
+        }
       });
-      console.log('[BrowserManager] Context created successfully');
     }
   }
 
@@ -49,26 +56,24 @@ export class BrowserManager {
     await this.init();
     
     if (!this.context) {
-      console.error('[BrowserManager] Context is null after init!');
       throw new Error('Browser not initialized');
     }
 
-    console.log(`[BrowserManager] Opening new page...`);
     const page = await this.context.newPage();
-    console.log(`[BrowserManager] New page created for ${url}`);
 
     try {
-      console.log(`[BrowserManager] Navigating to ${url}...`);
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      });
+
       const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
       console.log(`[BrowserManager] Navigation complete. Status: ${response?.status()}`);
 
       if (waitForSelector) {
-        console.log(`[BrowserManager] Waiting for selector: ${waitForSelector}`);
         await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 15000 }).catch(e => {
-          console.error(`[BrowserManager] Selector ${waitForSelector} timeout:`, e.message);
+          console.error(`[BrowserManager] Selector timeout:`, e.message);
         });
       } else {
-        console.log(`[BrowserManager] Waiting standard delay...`);
         await page.waitForTimeout(4000 + Math.random() * 2000);
       }
 
@@ -79,18 +84,15 @@ export class BrowserManager {
       console.error(`[BrowserManager] ERROR fetching ${url}:`, e.message);
       throw e;
     } finally {
-      console.log(`[BrowserManager] Closing page for ${url}`);
       await page.close().catch(() => {});
     }
   }
 
   async restart(): Promise<void> {
-    console.log('[BrowserManager] Restarting browser...');
     await this.close();
   }
 
   async close(): Promise<void> {
-    console.log('[BrowserManager] Closing browser and context...');
     if (this.context) { 
       await this.context.close().catch(()=>{}); 
       this.context = null; 

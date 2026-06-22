@@ -12,35 +12,25 @@ import { prisma } from '../../prisma';
 import { parseBrickLinkSearchHtml } from './bricklink-parser';
 
 export async function runBrickLinkSource(specificQuery?: string | null): Promise<void> {
-  console.log('[BrickLinkSource] Starting runBrickLinkSource');
   const source = await prisma.marketSource.findUnique({ where: { code: 'bricklink' } });
   
-  if (!source || !source.enabled) {
-    console.error('[BrickLinkSource] Source not found or disabled');
-    return;
-  }
+  if (!source || !source.enabled) return;
 
   let searchQueries: string[] = [];
 
   if (specificQuery && specificQuery.trim()) {
     searchQueries = [specificQuery.trim()];
-    console.log(`[BrickLinkSource] Using specific query: ${specificQuery}`);
   } else {
     const activeWatchlist = await prisma.watchlistItem.findMany({
       where: { active: true },
       select: { item: { select: { setNumber: true } } }
     });
     searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
-    console.log(`[BrickLinkSource] Found ${searchQueries.length} unique set numbers in watchlist`);
   }
 
-  if (searchQueries.length === 0) {
-    console.error('[BrickLinkSource] Search queries array is empty');
-    return;
-  }
+  if (searchQueries.length === 0) return;
 
   const runId = await startSourceRun('bricklink');
-  console.log(`[BrickLinkSource] Created Run ID: ${runId}`);
 
   let itemsSeen = 0;
   let itemsMatched = 0;
@@ -53,17 +43,19 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
     const now = new Date();
 
     for (const query of searchQueries) {
-      console.log(`[BrickLinkSource] Processing query: ${query}`);
-      const url = `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(query)}#T=A`;
+      const isDigitsOnly = /^\d+$/.test(query);
+      const url = isDigitsOnly 
+        ? `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${query}-1#T=S&O={"iconly":0}`
+        : `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(query)}#T=A`;
       
-      const html = await browserManager.fetchHtml(url, 'a[href*="item.page"]');
+      const html = await browserManager.fetchHtml(url);
       const listings = parseBrickLinkSearchHtml(html);
-      console.log(`[BrickLinkSource] Fetched ${listings.length} listings for query ${query}`);
 
       for (const listing of listings) {
         itemsSeen += 1;
 
-        const resolvedItemId = await resolveItemIdFromTitle(listing.titleRaw);
+        const resolvedTitle = isDigitsOnly ? `LEGO ${query}` : listing.titleRaw;
+        const resolvedItemId = await resolveItemIdFromTitle(resolvedTitle);
         const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
         const listingId = stableListingId('bricklink', listing.externalListingId);
 
@@ -93,8 +85,8 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
               itemId,
               externalListingId: listing.externalListingId,
               externalId: listing.externalListingId,
-              titleRaw: listing.titleRaw,
-              title: listing.titleRaw,
+              titleRaw: resolvedTitle,
+              title: resolvedTitle,
               url: listing.url,
               imageUrl: listing.imageUrl ?? null,
               price: listing.price || 0,
@@ -115,7 +107,7 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
           unresolvedOperations.push({
             listingId,
             sourceCode: 'bricklink',
-            titleRaw: listing.titleRaw,
+            titleRaw: resolvedTitle,
           });
         } else {
           itemsMatched += 1;
@@ -123,7 +115,6 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
       }
     }
 
-    console.log(`[BrickLinkSource] Executing ${upsertOperations.length} DB upsert operations...`);
     if (upsertOperations.length > 0) {
       const chunkSize = 50;
       for (let i = 0; i < upsertOperations.length; i += chunkSize) {
@@ -132,17 +123,13 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
         itemsInserted += chunk.length;
       }
     }
-    console.log(`[BrickLinkSource] DB upserts complete.`);
 
-    console.log(`[BrickLinkSource] Enqueueing ${unresolvedOperations.length} unresolved matches...`);
     for (const u of unresolvedOperations) {
       await enqueueUnresolvedMatch(u);
     }
 
-    console.log(`[BrickLinkSource] Run complete. Finishing run logs.`);
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
   } catch (error) {
-    console.error(`[BrickLinkSource] FATAL ERROR:`, error);
     const message = error instanceof Error ? error.message : String(error);
     await logSourceError({ scope: 'scraper', sourceCode: 'bricklink', message: 'BrickLink source failed', detailsJson: { error: message } });
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });

@@ -18,7 +18,6 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
     currencyPart = matchBefore[1];
     numberPart = matchBefore[2];
   } else {
-    console.error(`[EbayParser] Failed to match price regex for: "${cleanRaw}"`);
     return null;
   }
 
@@ -41,10 +40,7 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   }
 
   const amount = Number(normalizedDigits);
-  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
-    console.error(`[EbayParser] Invalid amount parsed: ${amount} from "${cleanRaw}"`);
-    return null;
-  }
+  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) return null;
 
   let currency = 'UAH';
   const currUpper = currencyPart.toUpperCase();
@@ -56,15 +52,11 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
 }
 
 export function parseEbaySearchHtml(html: string): EbayParsedListing[] {
-  console.log(`[EbayParser] Starting HTML parse...`);
   const $ = cheerio.load(html);
   const result: EbayParsedListing[] = [];
   const seen = new Set<string>();
 
-  const elements = $('.s-item');
-  console.log(`[EbayParser] Found ${elements.length} .s-item elements`);
-
-  elements.each((_, element) => {
+  $('.s-item').each((_, element) => {
     const titleElement = $(element).find('.s-item__title');
     const title = titleElement.text().replace(/\s+/g, ' ').trim();
     const href = $(element).find('a.s-item__link').attr('href')?.trim() ?? '';
@@ -76,10 +68,7 @@ export function parseEbaySearchHtml(html: string): EbayParsedListing[] {
 
     const priceText = $(element).find('.s-item__price').text();
     const priceParsed = parsePrice(priceText);
-    if (!priceParsed) {
-      console.warn(`[EbayParser] Could not parse price for ${title}`);
-      return;
-    }
+    if (!priceParsed) return;
 
     const url = href.split('?')[0];
     if (seen.has(url)) return;
@@ -108,6 +97,5 @@ export function parseEbaySearchHtml(html: string): EbayParsedListing[] {
     });
   });
 
-  console.log(`[EbayParser] Successfully parsed ${result.length} listings`);
   return result;
 }
