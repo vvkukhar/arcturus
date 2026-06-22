@@ -1,5 +1,3 @@
-// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\browser-manager.ts
-
 import { chromium } from 'playwright-extra';
 import { Browser, BrowserContext } from 'playwright';
 import stealth from 'puppeteer-extra-plugin-stealth';
@@ -13,7 +11,6 @@ export class BrowserManager {
   private context: BrowserContext | null = null;
 
   async init(): Promise<void> {
-    console.log('[BrowserManager] init() called');
     if (!this.browser) {
       this.browser = await chromium.launch({
         headless: true,
@@ -31,7 +28,6 @@ export class BrowserManager {
     }
     if (!this.context) {
       const proxyStr = proxyManager.getRawProxy();
-      console.log(`[BrowserManager] Creating context. Proxy: ${proxyStr || 'NONE'}`);
       this.context = await this.browser.newContext({
         proxy: proxyStr ? { server: proxyStr } : undefined,
         viewport: { width: 1920, height: 1080 },
@@ -52,7 +48,6 @@ export class BrowserManager {
   }
 
   async fetchHtml(url: string, waitForSelector?: string): Promise<string> {
-    console.log(`[BrowserManager] fetchHtml called for URL: ${url}`);
     await this.init();
     
     if (!this.context) {
@@ -61,25 +56,40 @@ export class BrowserManager {
 
     const page = await this.context.newPage();
 
+    // 🔥 АГРЕСИВНЕ БЛОКУВАННЯ ТРАФІКУ 🔥
+    // Не вантажимо картинки, стилі, шрифти та медіа. 
+    // Це прискорює резидентні проксі в 10 разів і економить твої гроші.
+    await page.route('**/*', (route) => {
+      const type = route.request().resourceType();
+      const reqUrl = route.request().url();
+      
+      if (
+        ['image', 'media', 'font', 'stylesheet', 'other'].includes(type) ||
+        reqUrl.includes('google-analytics') || 
+        reqUrl.includes('doubleclick') || 
+        reqUrl.includes('tracker')
+      ) {
+        route.abort('aborted').catch(() => {});
+      } else {
+        route.continue().catch(() => {});
+      }
+    });
+
     try {
       await page.addInitScript(() => {
         Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
       });
 
-      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      console.log(`[BrowserManager] Navigation complete. Status: ${response?.status()}`);
+      // Збільшено таймаут до 60с, оскільки резидентні IP можуть трохи "думати"
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
       if (waitForSelector) {
-        await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 15000 }).catch(e => {
-          console.error(`[BrowserManager] Selector timeout:`, e.message);
-        });
+        await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 15000 }).catch(() => {});
       } else {
-        await page.waitForTimeout(4000 + Math.random() * 2000);
+        await page.waitForTimeout(3000 + Math.random() * 2000);
       }
 
-      const html = await page.content();
-      console.log(`[BrowserManager] Successfully fetched HTML. Length: ${html.length}`);
-      return html;
+      return await page.content();
     } catch (e: any) {
       console.error(`[BrowserManager] ERROR fetching ${url}:`, e.message);
       throw e;
