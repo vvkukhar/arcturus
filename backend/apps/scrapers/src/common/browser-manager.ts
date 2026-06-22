@@ -2,8 +2,8 @@ import { chromium } from 'playwright-extra';
 import { Browser } from 'playwright';
 import stealth from 'puppeteer-extra-plugin-stealth';
 import { proxyManager } from './proxy-manager';
-import { getRandomUserAgent } from './user-agents';
 
+// Підключаємо маскування під реального юзера
 chromium.use(stealth());
 
 export class BrowserManager {
@@ -11,7 +11,7 @@ export class BrowserManager {
 
   async init(): Promise<void> {
     if (!this.browser) {
-      console.log('[BrowserManager] Launching new chromium browser...');
+      console.log('[BrowserManager] Launching new stealth chromium browser...');
       this.browser = await chromium.launch({
         headless: true,
         args: [
@@ -19,9 +19,6 @@ export class BrowserManager {
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process',
-          '--window-size=1920,1080',
           '--disable-blink-features=AutomationControlled'
         ],
       });
@@ -29,8 +26,6 @@ export class BrowserManager {
     }
   }
 
-  // 🔥 ФІКС: ЗБІЛЬШИЛИ КІЛЬКІСТЬ СПРОБ ДО 15 🔥
-  // IPRoyal має багато IP, нам просто треба знайти той, що не в чорному списку eBay.
   async fetchHtml(url: string, waitForSelector?: string, retries = 15): Promise<string> {
     console.log(`[BrowserManager] fetchHtml called for URL: ${url}. Retries left: ${retries}`);
     await this.init();
@@ -56,10 +51,10 @@ export class BrowserManager {
       }
     }
 
+    // Створюємо максимально природний контекст без кривих кастомних заголовків
     const context = await this.browser.newContext({
       proxy: proxyConfig,
       viewport: { width: 1920, height: 1080 },
-      userAgent: getRandomUserAgent(),
       ignoreHTTPSErrors: true,
       javaScriptEnabled: true,
       locale: 'de-DE',
@@ -68,6 +63,7 @@ export class BrowserManager {
 
     const page = await context.newPage();
 
+    // Блокуємо сміття для прискорення завантаження та економії трафіку IPRoyal
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
       const reqUrl = route.request().url();
@@ -85,10 +81,6 @@ export class BrowserManager {
     });
 
     try {
-      await page.addInitScript(() => {
-        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-      });
-
       console.log(`[BrowserManager] Navigating to ${url}...`);
       const response = await page.goto(url, { waitUntil: 'commit', timeout: 30000 });
       console.log(`[BrowserManager] Navigation commit. Status: ${response?.status()}`);
@@ -103,6 +95,7 @@ export class BrowserManager {
       const html = await page.content();
       console.log(`[BrowserManager] Successfully fetched HTML. Length: ${html.length}`);
 
+      // Захист від капчі/заглушки (якщо менше 5 КБ — це явно блок)
       if (html.length < 5000) {
         throw new Error(`Page too small (${html.length} bytes), likely a CAPTCHA or block page.`);
       }
@@ -119,8 +112,8 @@ export class BrowserManager {
       if (retries > 0) {
         console.log(`[BrowserManager] Proxy blocked/failed. Retrying with new IP... (${retries - 1} attempts left)`);
         await context.close().catch(() => {});
-        // Робимо малесеньку паузу перед наступною спробою
-        await new Promise(res => setTimeout(res, 1000));
+        // Робимо паузу перед наступною спробою
+        await new Promise(res => setTimeout(res, 1500));
         return this.fetchHtml(url, waitForSelector, retries - 1);
       }
       throw e;
