@@ -60,23 +60,12 @@ export class BrowserManager {
       userAgent: getRandomUserAgent(),
       ignoreHTTPSErrors: true,
       javaScriptEnabled: true,
-      extraHTTPHeaders: {
-        'Accept-Language': 'en-US,en;q=0.9,de;q=0.8',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Cache-Control': 'max-age=0'
-      }
+      locale: 'de-DE',
+      timezoneId: 'Europe/Berlin',
     });
 
     const page = await context.newPage();
 
-    // Блокуємо сміття для прискорення
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
       const reqUrl = route.request().url();
@@ -112,13 +101,10 @@ export class BrowserManager {
       const html = await page.content();
       console.log(`[BrowserManager] Successfully fetched HTML. Length: ${html.length}`);
 
-      // 🔥 ФІКС ЗМЕНШЕНО ЛІМІТ ДО 5000 БАЙТ 🔥
-      // eBay block pages важать ~1985 байт. Все, що більше 5000 — скоріш за все реальна сторінка.
       if (html.length < 5000) {
         throw new Error(`Page too small (${html.length} bytes), likely a CAPTCHA or block page.`);
       }
 
-      // Додаткова перевірка на явні капчі
       const lowerHtml = html.toLowerCase();
       if (lowerHtml.includes('security challenge') || lowerHtml.includes('verify you are human')) {
         throw new Error('CAPTCHA keyword detected in HTML.');
