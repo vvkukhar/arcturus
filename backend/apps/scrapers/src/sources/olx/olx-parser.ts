@@ -1,5 +1,3 @@
-// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\olx\olx-parser.ts
-
 import * as cheerio from 'cheerio';
 import { OlxParsedListing } from './olx-types';
 
@@ -18,7 +16,7 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
     currencyPart = matchBefore[1];
     numberPart = matchBefore[2];
   } else {
-    console.error(`[OlxParser] Failed to match price regex for: "${cleanRaw}"`);
+    console.error(`[OlxParser] Failed to match price regex for: "${cleanRaw.slice(0, 50)}..."`);
     return null;
   }
 
@@ -42,7 +40,7 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
 
   const amount = Number(normalizedDigits);
   if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
-    console.error(`[OlxParser] Invalid amount parsed: ${amount} from "${cleanRaw}"`);
+    console.error(`[OlxParser] Invalid amount parsed: ${amount} from "${cleanRaw.slice(0, 50)}..."`);
     return null;
   }
 
@@ -80,13 +78,15 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
       return;
     }
 
-    const priceElement = $(element).find('[data-testid="ad-price"]');
+    const container = $(element).closest('[data-cy="l-card"], article, div').clone();
+    container.find('style, script').remove();
+
+    const priceElement = container.find('[data-testid="ad-price"]');
     let priceText = '';
     
     if (priceElement.length > 0) {
       priceText = priceElement.text();
     } else {
-      const container = $(element).closest('[data-cy="l-card"], article, div');
       priceText = (container.text() || $(element).parent().text()).replace(rawTitleText, '');
     }
 
@@ -100,8 +100,7 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
     if (seen.has(url)) return;
     seen.add(url);
 
-    const containerForImg = $(element).closest('[data-cy="l-card"], article, div');
-    const imgNode = containerForImg.find('img').first();
+    const imgNode = container.find('img').first();
     let imageUrl = null;
 
     if (imgNode.length > 0) {

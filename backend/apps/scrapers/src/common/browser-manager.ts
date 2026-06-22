@@ -29,7 +29,7 @@ export class BrowserManager {
     }
   }
 
-  async fetchHtml(url: string, waitForSelector?: string, retries = 1): Promise<string> {
+  async fetchHtml(url: string, waitForSelector?: string, retries = 2): Promise<string> {
     console.log(`[BrowserManager] fetchHtml called for URL: ${url}`);
     await this.init();
     
@@ -40,7 +40,6 @@ export class BrowserManager {
     const proxyStr = proxyManager.getRawProxy();
     console.log(`[BrowserManager] Creating FRESH context. Proxy: ${proxyStr ? 'IPRoyal Active' : 'NONE'}`);
     
-    // 🔥 ФІКС 407 ПОМИЛКИ: Правильно парсимо проксі для Playwright
     let proxyConfig = undefined;
     if (proxyStr) {
       try {
@@ -62,25 +61,27 @@ export class BrowserManager {
       ignoreHTTPSErrors: true,
       javaScriptEnabled: true,
       extraHTTPHeaders: {
-        'Accept-Language': 'en-US,en;q=0.9,de-DE;q=0.8',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9,de;q=0.8',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
         'Upgrade-Insecure-Requests': '1',
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1'
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0'
       }
     });
 
     const page = await context.newPage();
 
-    // Блокуємо сміття для прискорення
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
       const reqUrl = route.request().url();
       
       if (
-        ['image', 'media', 'font', 'stylesheet', 'other'].includes(type) ||
+        ['image', 'media', 'font', 'stylesheet'].includes(type) ||
         reqUrl.includes('google-analytics') || 
         reqUrl.includes('doubleclick') || 
         reqUrl.includes('tracker')
@@ -97,24 +98,29 @@ export class BrowserManager {
       });
 
       console.log(`[BrowserManager] Navigating to ${url}...`);
-      const response = await page.goto(url, { waitUntil: 'commit', timeout: 30000 });
-      console.log(`[BrowserManager] Navigation commit. Status: ${response?.status()}`);
+      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      console.log(`[BrowserManager] Navigation complete. Status: ${response?.status()}`);
 
       if (waitForSelector) {
         console.log(`[BrowserManager] Waiting for selector: ${waitForSelector}`);
-        await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 10000 }).catch(() => {});
+        await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 15000 }).catch(() => {});
       } else {
-        await page.waitForTimeout(2000 + Math.random() * 2000);
+        await page.waitForTimeout(4000 + Math.random() * 2000);
       }
 
       const html = await page.content();
       console.log(`[BrowserManager] Successfully fetched HTML. Length: ${html.length}`);
+
+      if (html.length < 35000 && !url.includes('olx.ua')) {
+        throw new Error(`Page too small (${html.length} bytes), likely a CAPTCHA or block page.`);
+      }
+
       return html;
     } catch (e: any) {
       console.error(`[BrowserManager] ERROR fetching ${url}:`, e.message);
       
       if (retries > 0) {
-        console.log(`[BrowserManager] Proxy node failed. Retrying... (${retries} attempts left)`);
+        console.log(`[BrowserManager] Proxy blocked/failed. Retrying with new IP... (${retries} attempts left)`);
         await context.close().catch(() => {});
         return this.fetchHtml(url, waitForSelector, retries - 1);
       }
