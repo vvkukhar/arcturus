@@ -40,10 +40,23 @@ export class BrowserManager {
     const proxyStr = proxyManager.getRawProxy();
     console.log(`[BrowserManager] Creating FRESH context. Proxy: ${proxyStr ? 'IPRoyal Active' : 'NONE'}`);
     
-    // Створюємо НОВИЙ контекст для КОЖНОГО запиту. 
-    // Це примусово закриває TCP-з'єднання і змушує IPRoyal видавати новий IP щоразу!
+    // 🔥 ФІКС 407 ПОМИЛКИ: Правильно парсимо проксі для Playwright
+    let proxyConfig = undefined;
+    if (proxyStr) {
+      try {
+        const proxyUrl = new URL(proxyStr);
+        proxyConfig = {
+          server: `${proxyUrl.protocol}//${proxyUrl.host}`,
+          username: proxyUrl.username ? decodeURIComponent(proxyUrl.username) : undefined,
+          password: proxyUrl.password ? decodeURIComponent(proxyUrl.password) : undefined,
+        };
+      } catch (e) {
+        console.error('[BrowserManager] Failed to parse proxy string');
+      }
+    }
+
     const context = await this.browser.newContext({
-      proxy: proxyStr ? { server: proxyStr } : undefined,
+      proxy: proxyConfig,
       viewport: { width: 1920, height: 1080 },
       userAgent: getRandomUserAgent(),
       ignoreHTTPSErrors: true,
@@ -61,11 +74,18 @@ export class BrowserManager {
 
     const page = await context.newPage();
 
-    // Блокуємо сміття для прискорення (економить трафік на IPRoyal)
+    // Блокуємо сміття для прискорення
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
-      if (['image', 'media', 'font', 'stylesheet'].includes(type)) {
-        route.abort().catch(() => {});
+      const reqUrl = route.request().url();
+      
+      if (
+        ['image', 'media', 'font', 'stylesheet', 'other'].includes(type) ||
+        reqUrl.includes('google-analytics') || 
+        reqUrl.includes('doubleclick') || 
+        reqUrl.includes('tracker')
+      ) {
+        route.abort('aborted').catch(() => {});
       } else {
         route.continue().catch(() => {});
       }
@@ -77,7 +97,6 @@ export class BrowserManager {
       });
 
       console.log(`[BrowserManager] Navigating to ${url}...`);
-      // Використовуємо 'commit' замість 'domcontentloaded' - це в рази швидше для повільних проксі
       const response = await page.goto(url, { waitUntil: 'commit', timeout: 30000 });
       console.log(`[BrowserManager] Navigation commit. Status: ${response?.status()}`);
 
@@ -94,9 +113,8 @@ export class BrowserManager {
     } catch (e: any) {
       console.error(`[BrowserManager] ERROR fetching ${url}:`, e.message);
       
-      // АВТОРЕТРАЙ: Якщо попався мертвий IP, одразу беремо новий і повторюємо
       if (retries > 0) {
-        console.log(`[BrowserManager] Dead proxy node detected. Retrying... (${retries} attempts left)`);
+        console.log(`[BrowserManager] Proxy node failed. Retrying... (${retries} attempts left)`);
         await context.close().catch(() => {});
         return this.fetchHtml(url, waitForSelector, retries - 1);
       }
