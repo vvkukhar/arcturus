@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-extra';
-import { Browser, BrowserContext } from 'playwright';
+import { Browser } from 'playwright';
 import stealth from 'puppeteer-extra-plugin-stealth';
 import { proxyManager } from './proxy-manager';
 import { getRandomUserAgent } from './user-agents';
@@ -8,10 +8,10 @@ chromium.use(stealth());
 
 export class BrowserManager {
   private browser: Browser | null = null;
-  private context: BrowserContext | null = null;
 
   async init(): Promise<void> {
     if (!this.browser) {
+      console.log('[BrowserManager] Launching new chromium browser...');
       this.browser = await chromium.launch({
         headless: true,
         args: [
@@ -25,51 +25,47 @@ export class BrowserManager {
           '--disable-blink-features=AutomationControlled'
         ],
       });
-    }
-    if (!this.context) {
-      const proxyStr = proxyManager.getRawProxy();
-      this.context = await this.browser.newContext({
-        proxy: proxyStr ? { server: proxyStr } : undefined,
-        viewport: { width: 1920, height: 1080 },
-        userAgent: getRandomUserAgent(),
-        ignoreHTTPSErrors: true,
-        javaScriptEnabled: true,
-        extraHTTPHeaders: {
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-          'Upgrade-Insecure-Requests': '1',
-          'Sec-Fetch-Dest': 'document',
-          'Sec-Fetch-Mode': 'navigate',
-          'Sec-Fetch-Site': 'none',
-          'Sec-Fetch-User': '?1'
-        }
-      });
+      console.log('[BrowserManager] Browser launched successfully');
     }
   }
 
-  async fetchHtml(url: string, waitForSelector?: string): Promise<string> {
+  async fetchHtml(url: string, waitForSelector?: string, retries = 1): Promise<string> {
+    console.log(`[BrowserManager] fetchHtml called for URL: ${url}`);
     await this.init();
     
-    if (!this.context) {
+    if (!this.browser) {
       throw new Error('Browser not initialized');
     }
 
-    const page = await this.context.newPage();
+    const proxyStr = proxyManager.getRawProxy();
+    console.log(`[BrowserManager] Creating FRESH context. Proxy: ${proxyStr ? 'IPRoyal Active' : 'NONE'}`);
+    
+    // Створюємо НОВИЙ контекст для КОЖНОГО запиту. 
+    // Це примусово закриває TCP-з'єднання і змушує IPRoyal видавати новий IP щоразу!
+    const context = await this.browser.newContext({
+      proxy: proxyStr ? { server: proxyStr } : undefined,
+      viewport: { width: 1920, height: 1080 },
+      userAgent: getRandomUserAgent(),
+      ignoreHTTPSErrors: true,
+      javaScriptEnabled: true,
+      extraHTTPHeaders: {
+        'Accept-Language': 'en-US,en;q=0.9,de-DE;q=0.8',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1'
+      }
+    });
 
-    // 🔥 АГРЕСИВНЕ БЛОКУВАННЯ ТРАФІКУ 🔥
-    // Не вантажимо картинки, стилі, шрифти та медіа. 
-    // Це прискорює резидентні проксі в 10 разів і економить твої гроші.
+    const page = await context.newPage();
+
+    // Блокуємо сміття для прискорення (економить трафік на IPRoyal)
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
-      const reqUrl = route.request().url();
-      
-      if (
-        ['image', 'media', 'font', 'stylesheet', 'other'].includes(type) ||
-        reqUrl.includes('google-analytics') || 
-        reqUrl.includes('doubleclick') || 
-        reqUrl.includes('tracker')
-      ) {
-        route.abort('aborted').catch(() => {});
+      if (['image', 'media', 'font', 'stylesheet'].includes(type)) {
+        route.abort().catch(() => {});
       } else {
         route.continue().catch(() => {});
       }
@@ -80,21 +76,34 @@ export class BrowserManager {
         Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
       });
 
-      // Збільшено таймаут до 60с, оскільки резидентні IP можуть трохи "думати"
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      console.log(`[BrowserManager] Navigating to ${url}...`);
+      // Використовуємо 'commit' замість 'domcontentloaded' - це в рази швидше для повільних проксі
+      const response = await page.goto(url, { waitUntil: 'commit', timeout: 30000 });
+      console.log(`[BrowserManager] Navigation commit. Status: ${response?.status()}`);
 
       if (waitForSelector) {
-        await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 15000 }).catch(() => {});
+        console.log(`[BrowserManager] Waiting for selector: ${waitForSelector}`);
+        await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 10000 }).catch(() => {});
       } else {
-        await page.waitForTimeout(3000 + Math.random() * 2000);
+        await page.waitForTimeout(2000 + Math.random() * 2000);
       }
 
-      return await page.content();
+      const html = await page.content();
+      console.log(`[BrowserManager] Successfully fetched HTML. Length: ${html.length}`);
+      return html;
     } catch (e: any) {
       console.error(`[BrowserManager] ERROR fetching ${url}:`, e.message);
+      
+      // АВТОРЕТРАЙ: Якщо попався мертвий IP, одразу беремо новий і повторюємо
+      if (retries > 0) {
+        console.log(`[BrowserManager] Dead proxy node detected. Retrying... (${retries} attempts left)`);
+        await context.close().catch(() => {});
+        return this.fetchHtml(url, waitForSelector, retries - 1);
+      }
       throw e;
     } finally {
-      await page.close().catch(() => {});
+      console.log(`[BrowserManager] Closing context to force IP rotation`);
+      await context.close().catch(() => {});
     }
   }
 
@@ -103,10 +112,6 @@ export class BrowserManager {
   }
 
   async close(): Promise<void> {
-    if (this.context) { 
-      await this.context.close().catch(()=>{}); 
-      this.context = null; 
-    }
     if (this.browser) { 
       await this.browser.close().catch(()=>{}); 
       this.browser = null; 
