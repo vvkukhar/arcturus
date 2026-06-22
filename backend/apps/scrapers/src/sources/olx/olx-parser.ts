@@ -1,10 +1,10 @@
+// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\olx\olx-parser.ts
+
 import * as cheerio from 'cheerio';
 import { OlxParsedListing } from './olx-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
   const cleanRaw = raw.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-
-  // Шукаємо число, до якого жорстко прив'язана валюта
   const matchAfter = cleanRaw.match(/(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(грн|UAH|EUR|€|\$|£)/i);
   const matchBefore = cleanRaw.match(/(\$|€|£|EUR)\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
 
@@ -18,12 +18,13 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
     currencyPart = matchBefore[1];
     numberPart = matchBefore[2];
   } else {
+    console.error(`[OlxParser] Failed to match price regex for: "${cleanRaw}"`);
     return null;
   }
 
   const digits = numberPart.replace(/[^\d.,]/g, '');
-
   let normalizedDigits = digits;
+  
   if (digits.includes(',') && digits.includes('.')) {
     if (digits.lastIndexOf(',') > digits.lastIndexOf('.')) {
       normalizedDigits = digits.replace(/\./g, '').replace(',', '.');
@@ -40,8 +41,8 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   }
 
   const amount = Number(normalizedDigits);
-
   if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
+    console.error(`[OlxParser] Invalid amount parsed: ${amount} from "${cleanRaw}"`);
     return null;
   }
 
@@ -61,11 +62,15 @@ function normalizeUrl(rawUrl: string): string {
 }
 
 export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
+  console.log(`[OlxParser] Starting HTML parse...`);
   const $ = cheerio.load(html);
   const result: OlxParsedListing[] = [];
   const seen = new Set<string>();
 
-  $('a').each((_, element) => {
+  const anchors = $('a');
+  console.log(`[OlxParser] Found ${anchors.length} anchor tags`);
+
+  anchors.each((_, element) => {
     const titleElement = $(element).find('h6');
     const rawTitleText = titleElement.length > 0 ? titleElement.text() : $(element).text();
     const title = rawTitleText.replace(/\s+/g, ' ').trim();
@@ -86,13 +91,15 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
     }
 
     const priceParsed = parsePrice(priceText);
-    if (!priceParsed) return;
+    if (!priceParsed) {
+      console.warn(`[OlxParser] Could not parse price for ${title}`);
+      return;
+    }
 
     const url = normalizeUrl(href);
     if (seen.has(url)) return;
     seen.add(url);
 
-    // 🔥 ФІКС З КАРТИНКАМИ OLX: Шукаємо у srcset, відкидаючи base64 заглушки
     const containerForImg = $(element).closest('[data-cy="l-card"], article, div');
     const imgNode = containerForImg.find('img').first();
     let imageUrl = null;
@@ -102,7 +109,6 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
       const srcset = imgNode.attr('srcset');
 
       if (srcset) {
-        // У OLX srcset має формат "url1 1x, url2 2x". Беремо перший урл.
         imageUrl = srcset.split(' ')[0];
       } else if (src && !src.startsWith('data:image')) {
         imageUrl = src;
@@ -128,5 +134,6 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
     });
   });
 
+  console.log(`[OlxParser] Successfully parsed ${result.length} listings`);
   return result;
 }

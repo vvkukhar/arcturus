@@ -1,3 +1,5 @@
+// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickowl\brickowl-source.ts
+
 import { browserManager } from '../../common/browser-manager';
 import { estimateUaShippingBySource } from '../../common/shipping-estimator';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
@@ -10,24 +12,35 @@ import { prisma } from '../../prisma';
 import { parseBrickowlSearchHtml } from './brickowl-parser';
 
 export async function runBrickOwlSource(specificQuery?: string | null): Promise<void> {
+  console.log('[BrickOwlSource] Starting runBrickOwlSource');
   const source = await prisma.marketSource.findUnique({ where: { code: 'brickowl' } });
-  if (!source || !source.enabled) return;
+  
+  if (!source || !source.enabled) {
+    console.error('[BrickOwlSource] Source not found or disabled');
+    return;
+  }
 
   let searchQueries: string[] = [];
 
   if (specificQuery && specificQuery.trim()) {
     searchQueries = [specificQuery.trim()];
+    console.log(`[BrickOwlSource] Using specific query: ${specificQuery}`);
   } else {
     const activeWatchlist = await prisma.watchlistItem.findMany({
       where: { active: true },
       select: { item: { select: { setNumber: true } } }
     });
     searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+    console.log(`[BrickOwlSource] Found ${searchQueries.length} unique set numbers in watchlist`);
   }
 
-  if (searchQueries.length === 0) return;
+  if (searchQueries.length === 0) {
+    console.error('[BrickOwlSource] Search queries array is empty');
+    return;
+  }
 
   const runId = await startSourceRun('brickowl');
+  console.log(`[BrickOwlSource] Created Run ID: ${runId}`);
 
   let itemsSeen = 0;
   let itemsMatched = 0;
@@ -40,11 +53,12 @@ export async function runBrickOwlSource(specificQuery?: string | null): Promise<
     const now = new Date();
 
     for (const query of searchQueries) {
+      console.log(`[BrickOwlSource] Processing query: ${query}`);
       const url = `https://www.brickowl.com/search/catalog?query=${encodeURIComponent(query)}`;
       
-      // 🔥 ФІКС: browserManager замість httpClient (обхід Cloudflare)
-      const html = await browserManager.fetchHtml(url);
+      const html = await browserManager.fetchHtml(url, '.ws_item, .category-item');
       const listings = parseBrickowlSearchHtml(html);
+      console.log(`[BrickOwlSource] Fetched ${listings.length} listings for query ${query}`);
 
       for (const listing of listings) {
         itemsSeen += 1;
@@ -92,6 +106,7 @@ export async function runBrickOwlSource(specificQuery?: string | null): Promise<
       }
 
       if (creates.length >= 500) {
+        console.log(`[BrickOwlSource] Executing raw insert for ${creates.length} items...`);
         await prisma.$executeRaw`
           INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
           SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
@@ -108,12 +123,14 @@ export async function runBrickOwlSource(specificQuery?: string | null): Promise<
         `;
         itemsInserted += creates.length;
         creates.length = 0;
+        console.log(`[BrickOwlSource] DB insert complete.`);
       }
 
       await new Promise((res) => setTimeout(res, 2500 + Math.random() * 3500));
     }
 
     if (creates.length > 0) {
+      console.log(`[BrickOwlSource] Executing final raw insert for ${creates.length} items...`);
       await prisma.$executeRaw`
         INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
         SELECT * FROM jsonb_to_recordset(${JSON.stringify(creates)}::jsonb) AS x(
@@ -131,12 +148,15 @@ export async function runBrickOwlSource(specificQuery?: string | null): Promise<
       itemsInserted += creates.length;
     }
 
+    console.log(`[BrickOwlSource] Enqueueing ${unresolvedOperations.length} unresolved matches...`);
     for (const u of unresolvedOperations) {
       await enqueueUnresolvedMatch(u);
     }
 
+    console.log(`[BrickOwlSource] Run complete. Finishing run logs.`);
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
   } catch (error) {
+    console.error(`[BrickOwlSource] FATAL ERROR:`, error);
     const message = error instanceof Error ? error.message : String(error);
     await logSourceError({ scope: 'scraper', sourceCode: 'brickowl', message: 'BrickOwl source failed', detailsJson: { error: message } });
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });

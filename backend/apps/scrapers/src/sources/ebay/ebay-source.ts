@@ -1,3 +1,5 @@
+// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\ebay\ebay-source.ts
+
 import { browserManager } from '../../common/browser-manager';
 import { estimateUaShippingBySource } from '../../common/shipping-estimator';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
@@ -10,24 +12,35 @@ import { prisma } from '../../prisma';
 import { parseEbaySearchHtml } from './ebay-parser';
 
 export async function runEbaySource(specificQuery?: string | null): Promise<void> {
+  console.log('[EbaySource] Starting runEbaySource');
   const source = await prisma.marketSource.findUnique({ where: { code: 'ebay' } });
-  if (!source || !source.enabled) return;
+  
+  if (!source || !source.enabled) {
+    console.error('[EbaySource] Source not found or disabled');
+    return;
+  }
 
   let searchQueries: string[] = [];
 
   if (specificQuery && specificQuery.trim()) {
     searchQueries = [specificQuery.trim()];
+    console.log(`[EbaySource] Using specific query: ${specificQuery}`);
   } else {
     const activeWatchlist = await prisma.watchlistItem.findMany({
       where: { active: true },
       select: { item: { select: { setNumber: true } } }
     });
     searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+    console.log(`[EbaySource] Found ${searchQueries.length} unique set numbers in watchlist`);
   }
 
-  if (searchQueries.length === 0) return;
+  if (searchQueries.length === 0) {
+    console.error('[EbaySource] Search queries array is empty');
+    return;
+  }
 
   const runId = await startSourceRun('ebay');
+  console.log(`[EbaySource] Created Run ID: ${runId}`);
 
   let itemsSeen = 0;
   let itemsMatched = 0;
@@ -40,9 +53,12 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
     const now = new Date();
 
     for (const query of searchQueries) {
+      console.log(`[EbaySource] Processing query: ${query}`);
       const url = `https://www.ebay.com/sch/i.html?_nkw=lego+${encodeURIComponent(query)}&_sacat=0`;
-      const html = await browserManager.fetchHtml(url);
+      
+      const html = await browserManager.fetchHtml(url, '.s-item');
       const listings = parseEbaySearchHtml(html);
+      console.log(`[EbaySource] Fetched ${listings.length} listings for query ${query}`);
 
       for (const listing of listings) {
         itemsSeen += 1;
@@ -58,7 +74,6 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
           sealed: listing.sealed,
         });
 
-        // 🔥 ВИКОРИСТОВУЄМО НАДІЙНИЙ PRISMA UPSERT
         upsertOperations.push(
           prisma.marketListing.upsert({
             where: { id: listingId },
@@ -106,6 +121,7 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
       }
     }
 
+    console.log(`[EbaySource] Executing ${upsertOperations.length} DB upsert operations...`);
     if (upsertOperations.length > 0) {
       const chunkSize = 50;
       for (let i = 0; i < upsertOperations.length; i += chunkSize) {
@@ -114,13 +130,17 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
         itemsInserted += chunk.length;
       }
     }
+    console.log(`[EbaySource] DB upserts complete.`);
 
+    console.log(`[EbaySource] Enqueueing ${unresolvedOperations.length} unresolved matches...`);
     for (const u of unresolvedOperations) {
       await enqueueUnresolvedMatch(u);
     }
 
+    console.log(`[EbaySource] Run complete. Finishing run logs.`);
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
   } catch (error) {
+    console.error(`[EbaySource] FATAL ERROR:`, error);
     const message = error instanceof Error ? error.message : String(error);
     await logSourceError({ scope: 'scraper', sourceCode: 'ebay', message: 'eBay source failed', detailsJson: { error: message } });
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });

@@ -1,3 +1,5 @@
+// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickeconomy\brickeconomy-source.ts
+
 import { browserManager } from '../../common/browser-manager';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
 import { stableListingId } from '../../common/listing-id';
@@ -8,24 +10,35 @@ import { prisma } from '../../prisma';
 import { parseBrickeconomySearchHtml } from './brickeconomy-parser';
 
 export async function runBrickEconomySource(specificQuery?: string | null): Promise<void> {
+  console.log('[BrickEconomySource] Starting runBrickEconomySource');
   const source = await prisma.marketSource.findUnique({ where: { code: 'brickeconomy' } });
-  if (!source || !source.enabled) return;
+  
+  if (!source || !source.enabled) {
+    console.error('[BrickEconomySource] Source not found or disabled');
+    return;
+  }
 
   let searchQueries: string[] = [];
 
   if (specificQuery && specificQuery.trim()) {
     searchQueries = [specificQuery.trim()];
+    console.log(`[BrickEconomySource] Using specific query: ${specificQuery}`);
   } else {
     const activeWatchlist = await prisma.watchlistItem.findMany({
       where: { active: true },
       select: { item: { select: { setNumber: true } } }
     });
     searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+    console.log(`[BrickEconomySource] Found ${searchQueries.length} unique set numbers in watchlist`);
   }
 
-  if (searchQueries.length === 0) return;
+  if (searchQueries.length === 0) {
+    console.error('[BrickEconomySource] Search queries array is empty');
+    return;
+  }
 
   const runId = await startSourceRun('brickeconomy');
+  console.log(`[BrickEconomySource] Created Run ID: ${runId}`);
 
   let itemsSeen = 0;
   let itemsMatched = 0;
@@ -33,15 +46,16 @@ export async function runBrickEconomySource(specificQuery?: string | null): Prom
   let itemsUpdated = 0;
 
   try {
-    const creates: string[] = [];
-    const now = new Date().toISOString();
+    const upsertOperations: any[] = [];
+    const now = new Date();
 
     for (const query of searchQueries) {
+      console.log(`[BrickEconomySource] Processing query: ${query}`);
       const url = `https://www.brickeconomy.com/search?query=${encodeURIComponent(query)}`;
       
-      // 🔥 ФІКС: browserManager замість httpClient
-      const html = await browserManager.fetchHtml(url);
+      const html = await browserManager.fetchHtml(url, '.searchlist-item, .row.ItemRow');
       const marketData = parseBrickeconomySearchHtml(html);
+      console.log(`[BrickEconomySource] Fetched ${marketData.length} listings for query ${query}`);
 
       for (const data of marketData) {
         itemsSeen += 1;
@@ -50,40 +64,59 @@ export async function runBrickEconomySource(specificQuery?: string | null): Prom
         const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
         const listingId = stableListingId('brickeconomy', data.externalListingId);
 
-        const price = data.price || 0;
-        const titleRawEscaped = data.titleRaw.replace(/'/g, "''");
-        const urlEscaped = data.url.replace(/'/g, "''");
-        const externalIdEscaped = data.externalListingId.replace(/'/g, "''");
-        const currency = data.currency ? `'${data.currency.replace(/'/g, "''")}'` : "'USD'";
+        upsertOperations.push(
+          prisma.marketListing.upsert({
+            where: { id: listingId },
+            update: {
+              price: data.price || 0,
+              status: 'active',
+              fetchedAt: now,
+              updatedAt: now,
+            },
+            create: {
+              id: listingId,
+              sourceId: source.id,
+              sourceCode: 'brickeconomy',
+              itemId,
+              externalListingId: data.externalListingId,
+              externalId: data.externalListingId,
+              titleRaw: data.titleRaw,
+              title: data.titleRaw,
+              url: data.url,
+              imageUrl: data.imageUrl ?? null,
+              price: data.price || 0,
+              currency: data.currency || 'USD',
+              shippingPrice: 0,
+              shippingCurrency: data.currency || 'USD',
+              condition: 'newSealed',
+              sealed: true,
+              status: 'active',
+              fetchedAt: now,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            }
+          })
+        );
 
-        creates.push(`('${listingId}', '${source.id}', 'brickeconomy', '${itemId}', '${externalIdEscaped}', '${titleRawEscaped}', '${urlEscaped}', NULL, ${price}, ${currency}, 0, ${currency}, 'newSealed', true, 'active', '${now}', '${now}')`);
-
-        if (resolvedItemId != null) {
-          itemsMatched += 1;
-        }
+        if (resolvedItemId != null) itemsMatched += 1;
       }
-      await new Promise((res) => setTimeout(res, 3000 + Math.random() * 3000));
     }
 
-    if (creates.length > 0) {
-      const dbChunkSize = 500;
-      for (let i = 0; i < creates.length; i += dbChunkSize) {
-        const chunk = creates.slice(i, i + dbChunkSize);
-        await prisma.$executeRawUnsafe(`
-          INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
-          VALUES ${chunk.join(',')}
-          ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
-            "price" = EXCLUDED."price",
-            "status" = 'active',
-            "fetchedAt" = EXCLUDED."fetchedAt",
-            "updatedAt" = EXCLUDED."updatedAt"
-        `);
+    console.log(`[BrickEconomySource] Executing ${upsertOperations.length} DB upsert operations...`);
+    if (upsertOperations.length > 0) {
+      const chunkSize = 50;
+      for (let i = 0; i < upsertOperations.length; i += chunkSize) {
+        const chunk = upsertOperations.slice(i, i + chunkSize);
+        await prisma.$transaction(chunk);
         itemsInserted += chunk.length;
       }
     }
+    console.log(`[BrickEconomySource] DB upserts complete.`);
 
+    console.log(`[BrickEconomySource] Run complete. Finishing run logs.`);
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
   } catch (error) {
+    console.error(`[BrickEconomySource] FATAL ERROR:`, error);
     const message = error instanceof Error ? error.message : String(error);
     await logSourceError({ scope: 'scraper', sourceCode: 'brickeconomy', message: 'BrickEconomy source failed', detailsJson: { error: message } });
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });

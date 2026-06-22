@@ -1,9 +1,10 @@
+// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickowl\brickowl-parser.ts
+
 import * as cheerio from 'cheerio';
 import { BrickowlParsedListing } from './brickowl-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
   const cleanRaw = raw.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-
   const matchAfter = cleanRaw.match(/(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(грн|UAH|EUR|€|\$|£)/i);
   const matchBefore = cleanRaw.match(/(\$|€|£|EUR)\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
 
@@ -17,12 +18,13 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
     currencyPart = matchBefore[1];
     numberPart = matchBefore[2];
   } else {
+    console.error(`[BrickOwlParser] Failed to match price regex for: "${cleanRaw}"`);
     return null;
   }
 
   const digits = numberPart.replace(/[^\d.,]/g, '');
-
   let normalizedDigits = digits;
+  
   if (digits.includes(',') && digits.includes('.')) {
     if (digits.lastIndexOf(',') > digits.lastIndexOf('.')) {
       normalizedDigits = digits.replace(/\./g, '').replace(',', '.');
@@ -39,8 +41,8 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   }
 
   const amount = Number(normalizedDigits);
-
   if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
+    console.error(`[BrickOwlParser] Invalid amount parsed: ${amount} from "${cleanRaw}"`);
     return null;
   }
 
@@ -54,12 +56,16 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
 }
 
 export function parseBrickowlSearchHtml(html: string): BrickowlParsedListing[] {
+  console.log(`[BrickOwlParser] Starting HTML parse...`);
   const $ = cheerio.load(html);
   const result: BrickowlParsedListing[] = [];
   const seen = new Set<string>();
 
-  $('.ws_item').each((_, element) => {
-    const titleElement = $(element).find('.name a');
+  const elements = $('.ws_item, .category-item, .item-row');
+  console.log(`[BrickOwlParser] Found ${elements.length} item elements`);
+
+  elements.each((_, element) => {
+    const titleElement = $(element).find('.name a, h2 a').first();
     const title = titleElement.text().replace(/\s+/g, ' ').trim();
     const href = titleElement.attr('href')?.trim() ?? '';
     
@@ -69,13 +75,16 @@ export function parseBrickowlSearchHtml(html: string): BrickowlParsedListing[] {
     const priceText = $(element).find('.price').text();
     const priceParsed = parsePrice(priceText);
     
-    if (!priceParsed) return;
+    if (!priceParsed) {
+      console.warn(`[BrickOwlParser] Could not parse price for ${title}`);
+      return;
+    }
 
-    const url = `https://www.brickowl.com${href}`;
+    const url = href.startsWith('http') ? href : `https://www.brickowl.com${href}`;
     if (seen.has(url)) return;
     seen.add(url);
 
-    const imageUrl = $(element).find('.image img').attr('src') ?? null;
+    const imageUrl = $(element).find('.image img, .img-responsive').attr('src') ?? null;
     const isNew = title.toLowerCase().includes('new');
 
     result.push({
@@ -97,5 +106,6 @@ export function parseBrickowlSearchHtml(html: string): BrickowlParsedListing[] {
     });
   });
 
+  console.log(`[BrickOwlParser] Successfully parsed ${result.length} listings`);
   return result;
 }
