@@ -3,6 +3,12 @@ import { OlxParsedListing } from './olx-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
   const cleanRaw = raw.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  // Якщо в текст потрапив шматок CSS-класу, тихо ігноруємо, це не помилка
+  if (cleanRaw.includes('{') || cleanRaw.includes('}') || cleanRaw.includes('css-')) {
+    return null;
+  }
+
   const matchAfter = cleanRaw.match(/(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(грн|UAH|EUR|€|\$|£)/i);
   const matchBefore = cleanRaw.match(/(\$|€|£|EUR)\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
 
@@ -16,7 +22,7 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
     currencyPart = matchBefore[1];
     numberPart = matchBefore[2];
   } else {
-    console.error(`[OlxParser] Failed to match price regex for: "${cleanRaw.slice(0, 50)}..."`);
+    // Тихо ігноруємо, якщо це просто текст без ціни
     return null;
   }
 
@@ -40,7 +46,6 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
 
   const amount = Number(normalizedDigits);
   if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
-    console.error(`[OlxParser] Invalid amount parsed: ${amount} from "${cleanRaw.slice(0, 50)}..."`);
     return null;
   }
 
@@ -62,6 +67,10 @@ function normalizeUrl(rawUrl: string): string {
 export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
   console.log(`[OlxParser] Starting HTML parse...`);
   const $ = cheerio.load(html);
+  
+  // 🔥 ГЛОБАЛЬНА ЧИСТКА ВІД СМІТТЯ 🔥
+  $('style, script, noscript').remove();
+  
   const result: OlxParsedListing[] = [];
   const seen = new Set<string>();
 
@@ -78,29 +87,27 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
       return;
     }
 
-    const container = $(element).closest('[data-cy="l-card"], article, div').clone();
-    container.find('style, script').remove();
-
-    const priceElement = container.find('[data-testid="ad-price"]');
+    const priceElement = $(element).find('[data-testid="ad-price"]');
     let priceText = '';
     
     if (priceElement.length > 0) {
       priceText = priceElement.text();
     } else {
+      const container = $(element).closest('[data-cy="l-card"], article, div');
       priceText = (container.text() || $(element).parent().text()).replace(rawTitleText, '');
     }
 
     const priceParsed = parsePrice(priceText);
     if (!priceParsed) {
-      console.warn(`[OlxParser] Could not parse price for ${title}`);
-      return;
+      return; // Тихо пропускаємо, якщо ціну не знайдено
     }
 
     const url = normalizeUrl(href);
     if (seen.has(url)) return;
     seen.add(url);
 
-    const imgNode = container.find('img').first();
+    const containerForImg = $(element).closest('[data-cy="l-card"], article, div');
+    const imgNode = containerForImg.find('img').first();
     let imageUrl = null;
 
     if (imgNode.length > 0) {

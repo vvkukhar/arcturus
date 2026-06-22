@@ -76,12 +76,13 @@ export class BrowserManager {
 
     const page = await context.newPage();
 
+    // Блокуємо сміття для прискорення
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
       const reqUrl = route.request().url();
       
       if (
-        ['image', 'media', 'font', 'stylesheet'].includes(type) ||
+        ['image', 'media', 'font', 'stylesheet', 'other'].includes(type) ||
         reqUrl.includes('google-analytics') || 
         reqUrl.includes('doubleclick') || 
         reqUrl.includes('tracker')
@@ -98,8 +99,8 @@ export class BrowserManager {
       });
 
       console.log(`[BrowserManager] Navigating to ${url}...`);
-      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      console.log(`[BrowserManager] Navigation complete. Status: ${response?.status()}`);
+      const response = await page.goto(url, { waitUntil: 'commit', timeout: 30000 });
+      console.log(`[BrowserManager] Navigation commit. Status: ${response?.status()}`);
 
       if (waitForSelector) {
         console.log(`[BrowserManager] Waiting for selector: ${waitForSelector}`);
@@ -111,8 +112,16 @@ export class BrowserManager {
       const html = await page.content();
       console.log(`[BrowserManager] Successfully fetched HTML. Length: ${html.length}`);
 
-      if (html.length < 35000 && !url.includes('olx.ua')) {
+      // 🔥 ФІКС ЗМЕНШЕНО ЛІМІТ ДО 5000 БАЙТ 🔥
+      // eBay block pages важать ~1985 байт. Все, що більше 5000 — скоріш за все реальна сторінка.
+      if (html.length < 5000) {
         throw new Error(`Page too small (${html.length} bytes), likely a CAPTCHA or block page.`);
+      }
+
+      // Додаткова перевірка на явні капчі
+      const lowerHtml = html.toLowerCase();
+      if (lowerHtml.includes('security challenge') || lowerHtml.includes('verify you are human')) {
+        throw new Error('CAPTCHA keyword detected in HTML.');
       }
 
       return html;
