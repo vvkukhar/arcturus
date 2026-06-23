@@ -2,8 +2,8 @@ import { chromium } from 'playwright-extra';
 import { Browser } from 'playwright';
 import stealth from 'puppeteer-extra-plugin-stealth';
 import { proxyManager } from './proxy-manager';
+import { getRandomUserAgent } from './user-agents';
 
-// Підключаємо маскування під реального юзера
 chromium.use(stealth());
 
 export class BrowserManager {
@@ -51,7 +51,6 @@ export class BrowserManager {
       }
     }
 
-    // Створюємо максимально природний контекст без кривих кастомних заголовків
     const context = await this.browser.newContext({
       proxy: proxyConfig,
       viewport: { width: 1920, height: 1080 },
@@ -63,7 +62,7 @@ export class BrowserManager {
 
     const page = await context.newPage();
 
-    // Блокуємо сміття для прискорення завантаження та економії трафіку IPRoyal
+    // Блокуємо сміття
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
       const reqUrl = route.request().url();
@@ -87,7 +86,13 @@ export class BrowserManager {
 
       if (waitForSelector) {
         console.log(`[BrowserManager] Waiting for selector: ${waitForSelector}`);
-        await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 15000 }).catch(() => {});
+        try {
+          // 🔥 ФІКС: Більше ніяких .catch(() => {})
+          // Якщо селектор не з'явився — це капча. Викидаємо помилку, щоб змінити IP!
+          await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 15000 });
+        } catch (err) {
+          throw new Error(`Timeout waiting for ${waitForSelector}. Page is likely blocked or a CAPTCHA.`);
+        }
       } else {
         await page.waitForTimeout(4000 + Math.random() * 2000);
       }
@@ -95,7 +100,6 @@ export class BrowserManager {
       const html = await page.content();
       console.log(`[BrowserManager] Successfully fetched HTML. Length: ${html.length}`);
 
-      // Захист від капчі/заглушки (якщо менше 5 КБ — це явно блок)
       if (html.length < 5000) {
         throw new Error(`Page too small (${html.length} bytes), likely a CAPTCHA or block page.`);
       }
@@ -112,7 +116,6 @@ export class BrowserManager {
       if (retries > 0) {
         console.log(`[BrowserManager] Proxy blocked/failed. Retrying with new IP... (${retries - 1} attempts left)`);
         await context.close().catch(() => {});
-        // Робимо паузу перед наступною спробою
         await new Promise(res => setTimeout(res, 1500));
         return this.fetchHtml(url, waitForSelector, retries - 1);
       }
