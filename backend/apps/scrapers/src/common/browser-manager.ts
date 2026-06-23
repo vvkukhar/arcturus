@@ -2,8 +2,8 @@ import { chromium } from 'playwright-extra';
 import { Browser } from 'playwright';
 import stealth from 'puppeteer-extra-plugin-stealth';
 import { proxyManager } from './proxy-manager';
-import { getRandomUserAgent } from './user-agents';
 
+// Stealth-плагін ховає той факт, що це автоматизований браузер
 chromium.use(stealth());
 
 export class BrowserManager {
@@ -19,14 +19,15 @@ export class BrowserManager {
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-gpu',
-          '--disable-blink-features=AutomationControlled'
+          '--disable-blink-features=AutomationControlled',
+          '--window-size=1920,1080'
         ],
       });
       console.log('[BrowserManager] Browser launched successfully');
     }
   }
 
-  async fetchHtml(url: string, waitForSelector?: string, retries = 15): Promise<string> {
+  async fetchHtml(url: string, waitForSelector?: string, retries = 10): Promise<string> {
     console.log(`[BrowserManager] fetchHtml called for URL: ${url}. Retries left: ${retries}`);
     await this.init();
     
@@ -51,9 +52,12 @@ export class BrowserManager {
       }
     }
 
+    // Створюємо чистий контекст. Жодних кастомних заголовків!
+    // Тільки зафіксований User-Agent під версію Chromium 124 (яка у нас в Docker)
     const context = await this.browser.newContext({
       proxy: proxyConfig,
       viewport: { width: 1920, height: 1080 },
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
       ignoreHTTPSErrors: true,
       javaScriptEnabled: true,
       locale: 'de-DE',
@@ -62,17 +66,11 @@ export class BrowserManager {
 
     const page = await context.newPage();
 
-    // Блокуємо сміття
+    // Блокуємо ТІЛЬКИ картинки та відео для економії трафіку IPRoyal.
+    // Стилі і скрипти не чіпаємо, щоб не тригерити захист Akamai на eBay.
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
-      const reqUrl = route.request().url();
-      
-      if (
-        ['image', 'media', 'font', 'stylesheet', 'other'].includes(type) ||
-        reqUrl.includes('google-analytics') || 
-        reqUrl.includes('doubleclick') || 
-        reqUrl.includes('tracker')
-      ) {
+      if (['image', 'media'].includes(type)) {
         route.abort('aborted').catch(() => {});
       } else {
         route.continue().catch(() => {});
@@ -81,26 +79,26 @@ export class BrowserManager {
 
     try {
       console.log(`[BrowserManager] Navigating to ${url}...`);
-      const response = await page.goto(url, { waitUntil: 'commit', timeout: 30000 });
+      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
       console.log(`[BrowserManager] Navigation commit. Status: ${response?.status()}`);
+
+      // Якщо це eBay і ми отримали 403 Forbidden відразу на рівні HTTP — це бан IP
+      if (response?.status() === 403 || response?.status() === 401) {
+         throw new Error(`Access Denied by Server (HTTP ${response.status()})`);
+      }
 
       if (waitForSelector) {
         console.log(`[BrowserManager] Waiting for selector: ${waitForSelector}`);
-        try {
-          // 🔥 ФІКС: Більше ніяких .catch(() => {})
-          // Якщо селектор не з'явився — це капча. Викидаємо помилку, щоб змінити IP!
-          await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 15000 });
-        } catch (err) {
-          throw new Error(`Timeout waiting for ${waitForSelector}. Page is likely blocked or a CAPTCHA.`);
-        }
+        await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 15000 }).catch(() => {});
       } else {
-        await page.waitForTimeout(4000 + Math.random() * 2000);
+        await page.waitForTimeout(3000 + Math.random() * 2000);
       }
 
       const html = await page.content();
       console.log(`[BrowserManager] Successfully fetched HTML. Length: ${html.length}`);
 
-      if (html.length < 5000) {
+      // Захист від сторінок-капч. Капчі зазвичай важать менше 10 КБ.
+      if (html.length < 10000) {
         throw new Error(`Page too small (${html.length} bytes), likely a CAPTCHA or block page.`);
       }
 
@@ -116,7 +114,8 @@ export class BrowserManager {
       if (retries > 0) {
         console.log(`[BrowserManager] Proxy blocked/failed. Retrying with new IP... (${retries - 1} attempts left)`);
         await context.close().catch(() => {});
-        await new Promise(res => setTimeout(res, 1500));
+        // Робимо невелику паузу, щоб IPRoyal встиг перекинути нас на новий вузол
+        await new Promise(res => setTimeout(res, 2000));
         return this.fetchHtml(url, waitForSelector, retries - 1);
       }
       throw e;
