@@ -27,7 +27,7 @@ export class BrowserManager {
     }
   }
 
-  async fetchHtml(url: string, waitForSelector?: string, retries = 10): Promise<string> {
+  async fetchHtml(url: string, waitForSelector?: string, retries = 15): Promise<string> {
     console.log(`[BrowserManager] fetchHtml called for URL: ${url}. Retries left: ${retries}`);
     await this.init();
     
@@ -53,7 +53,6 @@ export class BrowserManager {
     }
 
     // Створюємо чистий контекст. Жодних кастомних заголовків!
-    // Тільки зафіксований User-Agent під версію Chromium 124 (яка у нас в Docker)
     const context = await this.browser.newContext({
       proxy: proxyConfig,
       viewport: { width: 1920, height: 1080 },
@@ -67,10 +66,16 @@ export class BrowserManager {
     const page = await context.newPage();
 
     // Блокуємо ТІЛЬКИ картинки та відео для економії трафіку IPRoyal.
-    // Стилі і скрипти не чіпаємо, щоб не тригерити захист Akamai на eBay.
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
-      if (['image', 'media'].includes(type)) {
+      const reqUrl = route.request().url();
+      
+      if (
+        ['image', 'media'].includes(type) ||
+        reqUrl.includes('google-analytics') || 
+        reqUrl.includes('doubleclick') || 
+        reqUrl.includes('tracker')
+      ) {
         route.abort('aborted').catch(() => {});
       } else {
         route.continue().catch(() => {});
@@ -79,25 +84,31 @@ export class BrowserManager {
 
     try {
       console.log(`[BrowserManager] Navigating to ${url}...`);
-      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      const response = await page.goto(url, { waitUntil: 'commit', timeout: 30000 });
       console.log(`[BrowserManager] Navigation commit. Status: ${response?.status()}`);
 
-      // Якщо це eBay і ми отримали 403 Forbidden відразу на рівні HTTP — це бан IP
-      if (response?.status() === 403 || response?.status() === 401) {
+      if (response?.status() === 403 || response?.status() === 401 || response?.status() === 429) {
          throw new Error(`Access Denied by Server (HTTP ${response.status()})`);
       }
 
       if (waitForSelector) {
         console.log(`[BrowserManager] Waiting for selector: ${waitForSelector}`);
-        await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 15000 }).catch(() => {});
+        try {
+          // 🔥 ФІКС: БЕЗ .catch(() => {}) 🔥
+          // Якщо селектор не з'явився - це 100% капча, навіть якщо HTTP статус 200.
+          // Цей блок викине помилку і змусить IPRoyal змінити IP-адресу.
+          await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 15000 });
+        } catch (err) {
+          throw new Error(`Timeout waiting for ${waitForSelector}. The page is likely a 200 OK CAPTCHA.`);
+        }
       } else {
-        await page.waitForTimeout(3000 + Math.random() * 2000);
+        await page.waitForTimeout(4000 + Math.random() * 2000);
       }
 
       const html = await page.content();
       console.log(`[BrowserManager] Successfully fetched HTML. Length: ${html.length}`);
 
-      // Захист від сторінок-капч. Капчі зазвичай важать менше 10 КБ.
+      // Захист від відвертих капч
       if (html.length < 10000) {
         throw new Error(`Page too small (${html.length} bytes), likely a CAPTCHA or block page.`);
       }
