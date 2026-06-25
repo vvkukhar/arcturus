@@ -1,4 +1,3 @@
-===== FILE: C:\Users\Vlad\lego_trading_manager\web\lib\i18n.ts =====
 export const dict: Record<'en' | 'uk', Record<string, string>> = {
   en: {
     'common.save': 'Save',
