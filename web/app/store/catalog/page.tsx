@@ -1,10 +1,10 @@
-// call:function_1{"queries":["web/app/store/catalog/page.tsx"]}
 import { Metadata } from 'next';
 import { Blocks } from 'lucide-react';
 import { ProductCard } from '@/components/store/store-product-card';
 import { CatalogFilters } from '@/components/store/catalog-filters';
 import { appConfig } from '@/lib/config';
 import Link from 'next/link';
+import { dict } from '@/lib/i18n';
 
 export const revalidate = 0;
 
@@ -54,6 +54,9 @@ export default async function CatalogPage(props: Props) {
     console.error('Catalog fetch error:', err);
   }
 
+  // Оскільки це серверний компонент, використовуємо українську локалізацію за замовчуванням
+  const t = (key: keyof typeof dict.uk) => dict.uk[key] || dict.en[key] || key;
+
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8 animate-in fade-in duration-500 transform-gpu min-h-screen">
       
@@ -63,13 +66,13 @@ export default async function CatalogPage(props: Props) {
         <div className="relative z-10 flex flex-col lg:flex-row justify-between gap-8 lg:items-end">
           <div className="max-w-2xl text-white">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-black uppercase tracking-widest mb-6">
-              <Blocks size={14} /> Arcturus Collection
+              <Blocks size={14} /> {t('catalog.hero.badge' as any)}
             </div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight mb-4">
-              Преміальний <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Каталог</span>
+              {t('catalog.hero.title1' as any)} <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">{t('catalog.hero.title2' as any)}</span>
             </h1>
             <p className="text-lg text-slate-400 font-medium">
-              Знайдіть ідеальний сет для своєї колекції. Всі набори перевірені та готові до відправки.
+              {t('catalog.hero.desc' as any)}
             </p>
           </div>
           
@@ -89,7 +92,6 @@ export default async function CatalogPage(props: Props) {
               .replace(/-+/g, '-')
               .replace(/^-|-$/g, '');
             
-            // 🔥 ФІКС ТУТ: використовуємо -id- замість --
             const safeSlug = `${baseSlug}-id-${item.id}`;
             const safeImage = item.images?.[0]?.imageUrl || item.imageUrl || item.item?.imageUrl || '';
             
@@ -113,10 +115,10 @@ export default async function CatalogPage(props: Props) {
           <div className="w-24 h-24 bg-slate-100 dark:bg-slate-900 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner">
             <Blocks className="w-10 h-10 text-slate-400" />
           </div>
-          <h3 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Нічого не знайдено</h3>
-          <p className="mt-3 text-lg font-medium text-slate-500 max-w-md">На жаль, за вашими критеріями немає вільних наборів. Спробуйте змінити фільтри.</p>
+          <h3 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('catalog.empty.title' as any)}</h3>
+          <p className="mt-3 text-lg font-medium text-slate-500 max-w-md">{t('catalog.empty.subtitle' as any)}</p>
           <Link href="/store/catalog" className="mt-8 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 text-sm font-black transition-transform hover:scale-105 active:scale-95 shadow-xl">
-            Скинути пошук
+            {t('catalog.reset' as any)}
           </Link>
         </div>
       )}

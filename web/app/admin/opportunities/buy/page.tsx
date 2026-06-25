@@ -4,10 +4,11 @@ import { DataTable } from '@/components/admin/data-table';
 import { SectionCard } from '@/components/admin/section-card';
 import { StatusPill } from '@/components/admin/status-pill';
 import { TableSearchForm } from '@/components/admin/table-search-form';
-import { AiNegotiateButton } from '@/components/admin/ai-negotiate-button'; // <--- ДОДАНО
+import { AiNegotiateButton } from '@/components/admin/ai-negotiate-button'; 
 import { api } from '@/lib/api';
 import { formatMoney, formatPercent } from '@/lib/format';
 import type { OpportunityItem } from '@/lib/types';
+import { dict } from '@/lib/i18n';
 
 type Props = {
   searchParams: Promise<{
@@ -29,6 +30,7 @@ export default async function AdminBuyOpportunitiesPage({ searchParams }: Props)
   const resolvedParams = await searchParams;
   const q = resolvedParams.q;
   const rows = await getBuyOpportunities();
+  const t = (key: keyof typeof dict.uk) => dict.uk[key] || dict.en[key] || key;
   
   const filtered = q
     ? rows.filter((row) =>
@@ -38,13 +40,16 @@ export default async function AdminBuyOpportunitiesPage({ searchParams }: Props)
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-      <SectionCard title="Buy Opportunities" contentClassName="p-0 sm:p-6">
+      <div className="bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm">
+        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.opps.buy.title' as any)}</h1>
+      </div>
+      <SectionCard title={t('admin.opps.buy.title' as any)} contentClassName="p-0 sm:p-6">
         <div className="mb-6 px-4 sm:px-0">
-          <TableSearchForm placeholder="Search buy opportunities by title or item ID" />
+          <TableSearchForm placeholder={t('admin.opps.buy.search' as any)} />
         </div>
         <DataTable
           rows={filtered}
-          emptyText="No buy opportunities available at the moment."
+          emptyText={t('admin.opps.buy.empty' as any)}
           getRowKey={(row) => `${row.itemId}-${row.sourceCode}`}
           columns={[
             {
@@ -103,11 +108,10 @@ export default async function AdminBuyOpportunitiesPage({ searchParams }: Props)
               header: '',
               render: (row) => (
                 <div className="flex items-center justify-end gap-2">
-                  {/* 💥 Асьо наша кнопка AI Торгу */}
                   <AiNegotiateButton 
                     title={row.title} 
                     currentPrice={row.totalBuy ?? 0} 
-                    targetPrice={row.totalBuy ? row.totalBuy * 0.85 : 0} // Намагаємось збити ще 15%
+                    targetPrice={row.totalBuy ? row.totalBuy * 0.85 : 0} 
                   />
                   <Link
                     href={`/admin/opportunities/buy/${row.itemId}`}

@@ -6,6 +6,7 @@ import { ItemAutocomplete } from '@/components/admin/item-autocomplete';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
 import { Loader2, Plus, X, Search, DollarSign, Activity } from 'lucide-react';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 function parseNumber(value: string, fallback: number | null = null): number | null {
   if (!value.trim()) return fallback;
@@ -15,6 +16,7 @@ function parseNumber(value: string, fallback: number | null = null): number | nu
 
 export function CreateWatchlistDialog() {
   const router = useRouter();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   
   const [itemSearch, setItemSearch] = useState('');
@@ -69,7 +71,7 @@ export function CreateWatchlistDialog() {
       router.refresh();
       handleClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add target');
+      setError(err instanceof Error ? err.message : t('common.error' as any));
     } finally {
       setLoading(false);
     }
@@ -79,7 +81,7 @@ export function CreateWatchlistDialog() {
     return (
       <Button onClick={() => setOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 rounded-xl px-5 h-11">
         <Plus className="h-4 w-4" />
-        Add to Watchlist
+        {t('admin.ui.watch.add' as any)}
       </Button>
     );
   }
@@ -90,15 +92,14 @@ export function CreateWatchlistDialog() {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden text-left">
         
-        {/* Header */}
         <div className="p-6 md:p-8 border-b border-[var(--border)] shrink-0 flex justify-between items-center bg-[var(--background)]/50">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md">
               <Plus className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Add Target to Watchlist</h2>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Configure scanner parameters</p>
+              <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">{t('admin.ui.watch.add' as any)}</h2>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">{t('admin.ui.watch.addDesc' as any)}</p>
             </div>
           </div>
           <button onClick={handleClose} className="rounded-full p-2 bg-[var(--card)] border border-[var(--border)] hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 transition-colors shadow-sm">
@@ -106,7 +107,6 @@ export function CreateWatchlistDialog() {
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-6 md:p-8 flex-1 overflow-y-auto custom-scrollbar space-y-6">
           {error && (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">
@@ -116,14 +116,14 @@ export function CreateWatchlistDialog() {
 
           <div className="space-y-4">
             <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-indigo-500 border-b border-[var(--border)] pb-2">
-              <Search size={16} /> 1. Asset Selection
+              <Search size={16} /> {t('admin.ui.watch.step1' as any)}
             </h3>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Search Catalog *</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.watch.search' as any)}</label>
               <ItemAutocomplete
                 value={itemSearch}
                 onChangeAction={setItemSearch}
-                placeholder="Type Set Number or Name..."
+                placeholder=""
                 onPickAction={(item) => {
                   setItemSearch(item.title);
                   setItemId(item.id);
@@ -132,24 +132,23 @@ export function CreateWatchlistDialog() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Title Snapshot</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.watch.titleSnap' as any)}</label>
               <input 
                 required 
                 value={titleSnapshot} 
                 onChange={(e) => setTitleSnapshot(e.target.value)} 
                 className={inputClasses} 
-                placeholder="Will auto-fill from search"
               />
             </div>
           </div>
 
           <div className="space-y-4">
             <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-emerald-500 border-b border-[var(--border)] pb-2">
-              <DollarSign size={16} /> 2. Procurement Targets
+              <DollarSign size={16} /> {t('admin.ui.watch.step2' as any)}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Desired Buy Price (₴) *</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.watch.desBuy' as any)}</label>
                 <input
                   required
                   type="number"
@@ -157,11 +156,10 @@ export function CreateWatchlistDialog() {
                   value={desiredBuyPrice}
                   onChange={(e) => setDesiredBuyPrice(e.target.value)}
                   className={inputClasses}
-                  placeholder="Perfect entry price"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Max Buy Price (₴) *</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.watch.maxBuy' as any)}</label>
                 <input
                   required
                   type="number"
@@ -169,28 +167,25 @@ export function CreateWatchlistDialog() {
                   value={maxBuyPrice}
                   onChange={(e) => setMaxBuyPrice(e.target.value)}
                   className={inputClasses}
-                  placeholder="Absolute limit"
                 />
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Target Sell Price (₴)</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.watch.targetSell' as any)}</label>
               <input
                 type="number"
                 step="0.01"
                 value={targetSellPrice}
                 onChange={(e) => setTargetSellPrice(e.target.value)}
                 className={inputClasses}
-                placeholder="Expected exit (Used for AI scoring)"
               />
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="p-6 md:p-8 border-t border-[var(--border)] shrink-0 flex justify-end gap-3 bg-[var(--background)]/50">
           <Button type="button" variant="ghost" className="px-8 h-12 rounded-xl font-bold" onClick={handleClose} disabled={loading}>
-            Cancel
+            {t('common.cancel' as any)}
           </Button>
           <Button 
             onClick={handleSubmit} 
@@ -198,7 +193,7 @@ export function CreateWatchlistDialog() {
             disabled={loading || !itemId || !desiredBuyPrice || !maxBuyPrice}
           >
             {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Activity className="mr-2 h-5 w-5" />} 
-            {loading ? 'Adding...' : 'Start Monitoring'}
+            {loading ? t('common.loading' as any) : t('admin.ui.watch.start' as any)}
           </Button>
         </div>
 

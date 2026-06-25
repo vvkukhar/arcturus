@@ -11,10 +11,12 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function OrderFulfillmentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { t } = useI18n();
   const { data: order, isLoading, mutate } = useSWR<any>(`/api/admin/orders/${id}`, swrFetcher);
   const [isCompleting, setIsCompleting] = useState(false);
 
@@ -35,7 +37,7 @@ export default function OrderFulfillmentPage({ params }: { params: Promise<{ id:
       mutate();
       router.refresh();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to complete order');
+      toast.error(err.message || t('common.error' as any));
     } finally {
       setIsCompleting(false);
     }

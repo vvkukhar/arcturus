@@ -4,12 +4,14 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function ProSuccessPage() {
   const router = useRouter();
+  const { t } = useI18n();
 
   useEffect(() => {
-    fetch('/api/auth/me', { cache: 'no-store' }); // Force revalidate session
+    fetch('/api/auth/me', { cache: 'no-store' }); 
   }, []);
 
   return (
@@ -20,16 +22,16 @@ export default function ProSuccessPage() {
           <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-[2rem] bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 text-white">
             <CheckCircle className="h-12 w-12" strokeWidth={2.5} />
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-[var(--foreground)] mb-4">Вітаємо у клубі!</h1>
+          <h1 className="text-4xl font-black tracking-tight text-[var(--foreground)] mb-4">{t('pro.success.title' as any)}</h1>
           <p className="text-slate-600 dark:text-slate-400 font-medium leading-relaxed mb-8">
-            Оплату успішно підтверджено. Ваша PRO підписка активована і діє наступні 30 днів. 
+            {t('pro.success.desc' as any)}
           </p>
           <div className="flex flex-col gap-4">
             <Button onClick={() => router.push('/deals')} size="lg" className="w-full h-16 rounded-[2rem] text-lg bg-indigo-600 hover:bg-indigo-700 text-white">
-              Перейти до Угод
+              {t('pro.success.btn1' as any)}
             </Button>
             <Button onClick={() => router.push('/screener')} variant="outline" size="lg" className="w-full h-16 rounded-[2rem] text-lg">
-              Відкрити Скрінер
+              {t('pro.success.btn2' as any)}
             </Button>
           </div>
         </div>

@@ -11,80 +11,87 @@ import {
 } from 'lucide-react';
 import { NotificationBadge } from '@/components/admin/notification-badge';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 const menuGroups = [
   {
     title: 'Overview & Activity',
     items: [
-      { href: '/admin/dashboard', label: 'Dashboard', icon: Gauge },
-      { href: '/admin/activity', label: 'Activity Logs', icon: ScrollText },
+      { href: '/admin/dashboard', label: 'admin.dashboard', icon: Gauge },
+      { href: '/admin/activity', label: 'admin.activity.title', icon: ScrollText },
     ]
   },
   {
     title: 'Trading & AI',
     items: [
-      { href: '/admin/algo', label: 'Algorithm Settings', icon: BrainCircuit },
-      { href: '/admin/marketing', label: 'AI Marketing Hub', icon: Megaphone },
-      { href: '/admin/arbitrage', label: 'Global Arbitrage', icon: Globe },
+      { href: '/admin/algo', label: 'admin.algo.title', icon: BrainCircuit },
+      { href: '/admin/marketing', label: 'admin.marketing.title', icon: Megaphone },
+      { href: '/admin/arbitrage', label: 'admin.arbitrage.title', icon: Globe },
     ]
   },
   {
     title: 'Market Intelligence',
     items: [
-      { href: '/admin/scanner', label: 'Scanner Control', icon: ScanSearch },
-      { href: '/admin/operator/unresolved', label: 'Operator Queue', icon: SearchCheck },
-      { href: '/admin/opportunities/demand', label: 'Demand Heatmap', icon: Flame },
-      { href: '/admin/opportunities/buy', label: 'Buy Opportunities', icon: ChartColumn },
-      { href: '/admin/opportunities/sell', label: 'Sell Opportunities', icon: ChartColumn },
-      { href: '/admin/repricer', label: 'Valuation Models', icon: BadgeDollarSign },
+      { href: '/admin/scanner', label: 'admin.scanner.title', icon: ScanSearch },
+      { href: '/admin/operator/unresolved', label: 'operator.title', icon: SearchCheck },
+      { href: '/admin/opportunities/demand', label: 'admin.demand', icon: Flame },
+      { href: '/admin/opportunities/buy', label: 'admin.opps.buy.title', icon: ChartColumn },
+      { href: '/admin/opportunities/sell', label: 'admin.opps.sell.title', icon: ChartColumn },
+      { href: '/admin/repricer', label: 'sidebar.valuation', icon: BadgeDollarSign },
     ]
   },
   {
     title: 'Execution Flows',
     items: [
-      { href: '/admin/flows/purchase', label: 'Purchase Flow', icon: Boxes },
-      { href: '/admin/flows/reprice', label: 'Reprice Flow', icon: RefreshCw },
-      { href: '/admin/flows/review', label: 'Review Flow', icon: ClipboardList },
+      { href: '/admin/flows/purchase', label: 'admin.flows.purchase.title', icon: Boxes },
+      { href: '/admin/flows/reprice', label: 'admin.flows.reprice.title', icon: RefreshCw },
+      { href: '/admin/flows/review', label: 'admin.flows.review.title', icon: ClipboardList },
     ]
   },
   {
     title: 'Core & Inventory',
     items: [
-      { href: '/admin/inventory', label: 'Inventory Manager', icon: Package },
-      { href: '/admin/watchlist', label: 'Watchlist', icon: Wallet },
-      { href: '/admin/orders', label: 'Orders List', icon: Package },
-      { href: '/admin/orders/board', label: 'Orders Board', icon: KanbanSquare },
-      { href: '/admin/reserves', label: 'Client Reserves', icon: MailCheck },
+      { href: '/admin/inventory', label: 'admin.inventory.title', icon: Package },
+      { href: '/admin/watchlist', label: 'admin.watchlist.title', icon: Wallet },
+      { href: '/admin/orders', label: 'admin.orders.title', icon: Package },
+      { href: '/admin/orders/board', label: 'admin.orders.subtitle', icon: KanbanSquare },
+      { href: '/admin/reserves', label: 'admin.reserves.title', icon: MailCheck },
     ]
   },
   {
     title: 'Finance & Sales',
     items: [
-      { href: '/admin/pos', label: 'POS Terminal', icon: ScanBarcode },
-      { href: '/admin/sales', label: 'Sales Records', icon: ReceiptText },
-      { href: '/admin/payouts', label: 'Seller Payouts', icon: Coins },
-      { href: '/admin/returns', label: 'Returns & Refunds', icon: CornerDownLeft },
-      { href: '/admin/profit', label: 'Profit & Loss', icon: Coins },
-      { href: '/admin/allocation', label: 'Capital Allocation', icon: ChartNoAxesCombined },
+      { href: '/admin/pos', label: 'admin.ui.pos.summary', icon: ScanBarcode },
+      { href: '/admin/sales', label: 'admin.sales.title', icon: ReceiptText },
+      { href: '/admin/payouts', label: 'admin.payouts', icon: Coins },
+      { href: '/admin/returns', label: 'returns.title', icon: CornerDownLeft },
+      { href: '/admin/profit', label: 'admin.profit.title', icon: Coins },
+      { href: '/admin/allocation', label: 'admin.allocation.title', icon: ChartNoAxesCombined },
     ]
   },
   {
     title: 'System Health',
     items: [
-      { href: '/admin/suppliers', label: 'Supplier CRM', icon: Shield },
-      { href: '/admin/collaboration', label: 'Team & Users', icon: Handshake },
-      { href: '/admin/sync', label: 'Sync Center', icon: RefreshCw },
-      { href: '/admin/sources/health', label: 'Scraper Health', icon: Activity },
-      { href: '/admin/sources/runs', label: 'Scraper Logs', icon: DatabaseZap },
-      { href: '/admin/sources/errors', label: 'Sync Errors', icon: AlertTriangle },
+      { href: '/admin/suppliers', label: 'admin.suppliers', icon: Shield },
+      { href: '/admin/collaboration', label: 'admin.collab.title', icon: Handshake },
+      { href: '/admin/sync', label: 'admin.sync.title', icon: RefreshCw },
+      { href: '/admin/sources/health', label: 'admin.activity.title', icon: Activity },
+      { href: '/admin/sources/runs', label: 'admin.activity.recent', icon: DatabaseZap },
+      { href: '/admin/sources/errors', label: 'admin.error.title', icon: AlertTriangle },
     ]
   }
 ];
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <aside className={cn("shrink-0 border-r border-[var(--border)] bg-[var(--card)] flex flex-col h-screen transition-all duration-300", collapsed ? "w-20" : "w-72")}>
@@ -92,7 +99,7 @@ export function AdminSidebar() {
         {!collapsed && (
           <Link className="block outline-none" href="/store/catalog">
             <div className="text-2xl font-black tracking-tight text-[var(--foreground)] hover:text-blue-600 transition-colors">Arcturus</div>
-            <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-blue-500">Control Panel</div>
+            <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-blue-500">{mounted ? t('admin.ui.sidebar.workspace' as any) : '...'}</div>
           </Link>
         )}
         {collapsed && (
@@ -132,7 +139,7 @@ export function AdminSidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    title={collapsed ? item.label : undefined}
+                    title={collapsed ? (mounted ? t(item.label as any) : item.label) : undefined}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 outline-none",
                       active
@@ -142,7 +149,7 @@ export function AdminSidebar() {
                     )}
                   >
                     <Icon size={18} strokeWidth={active ? 2.5 : 2} />
-                    {!collapsed && <span>{item.label}</span>}
+                    {!collapsed && <span>{mounted ? t(item.label as any) : item.label}</span>}
                   </Link>
                 );
               })}

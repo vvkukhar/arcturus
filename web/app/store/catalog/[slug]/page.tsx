@@ -9,6 +9,7 @@ import { AddToCartButton } from './add-to-cart-button';
 import { ConversionEngine } from '@/components/store/conversion-engine';
 import { ProductPageOfferButton } from './product-page-offer-button';
 import { cn } from '@/lib/utils';
+import { dict } from '@/lib/i18n';
 
 interface ProductDetail {
   id: string;
@@ -84,6 +85,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const theme = product.item?.theme || 'LEGO';
   const kind = product.item?.kind?.toLowerCase() || 'set';
   
+  // Since it's a server component we just pick 'uk' translations 
+  const t = (key: keyof typeof dict.uk) => dict.uk[key] || dict.en[key] || key;
+
   const kindLabelUA = kind === 'minifigure' ? 'Мініфігурка' : kind === 'bundle' ? 'Лот / Колекція' : kind === 'part' ? 'Деталь' : 'Набір';
   const priceLabelUA = kind === 'minifigure' ? 'Вартість фігурки' : kind === 'bundle' ? 'Вартість лоту' : 'Вартість набору';
 
@@ -124,7 +128,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       
       <Link href="/store/catalog" className="relative z-10 inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[var(--card)] border border-[var(--border)] text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-900 hover:scale-105 transition-all mb-10 text-[var(--foreground)] shadow-sm">
         <ArrowLeft className="h-4 w-4" />
-        Назад до каталогу
+        {t('catalog.back' as any)}
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 relative z-10">
@@ -146,7 +150,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               ) : (
                 <div className="flex flex-col h-full w-full items-center justify-center text-slate-300 dark:text-slate-400 z-10">
                   <Package className="h-24 w-24 mb-4" strokeWidth={1} />
-                  <span className="font-bold uppercase tracking-widest text-xs">Зображення очікується</span>
+                  <span className="font-bold uppercase tracking-widest text-xs">{t('store.imagePending' as any)}</span>
                 </div>
               )}
               
@@ -167,7 +171,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <div className="lg:col-span-5 flex flex-col justify-center">
           <div className="mb-6">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 mb-4 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Стан: {product.condition}
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> {t('store.condition' as any)}: {product.condition}
             </div>
             <h1 className="text-4xl sm:text-5xl font-black text-[var(--foreground)] tracking-tight leading-[1.1] mb-6">
               {title}
@@ -181,7 +185,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <div className="relative z-10">
               <div className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">{priceLabelUA}</div>
               <div className="text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                {price > 0 ? formatMoney(price) : 'Запит ціни'}
+                {price > 0 ? formatMoney(price) : t('store.priceRequest' as any)}
               </div>
             </div>
           </div>
@@ -192,7 +196,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 <Hash size={20} />
               </div>
               <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Артикул</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('store.sku' as any)}</div>
                 <div className="font-bold text-lg text-[var(--foreground)] leading-tight mt-0.5">{product.item?.setNumber || 'N/A'}</div>
               </div>
             </div>
@@ -201,7 +205,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 <Layers size={20} />
               </div>
               <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Тип</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('store.type' as any)}</div>
                 <div className="font-black text-lg text-[var(--foreground)] leading-tight mt-0.5">{kindLabelUA}</div>
               </div>
             </div>
@@ -213,11 +217,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 <User size={24} />
               </div>
               <div className="flex-1">
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Перевірений продавець</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">{t('store.verifiedSeller' as any)}</div>
                 <div className="font-bold text-lg text-[var(--foreground)] leading-tight">{product.seller.name}</div>
               </div>
               <Link href={`/seller/${product.seller.id}`} className="px-5 py-3 bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] font-bold rounded-xl text-sm hover:border-indigo-500 hover:text-indigo-600 transition-colors shadow-sm">
-                Профіль
+                {t('store.sellerProfile' as any)}
               </Link>
             </div>
           )}
@@ -225,7 +229,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           {product.notes && (
             <div className="mb-10 space-y-3 bg-[var(--card)] p-6 rounded-[1.5rem] border border-[var(--border)] shadow-sm">
               <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                <Info size={16} className="text-blue-500" /> Нотатки колекціонера
+                <Info size={16} className="text-blue-500" /> {t('store.collectorNotes' as any)}
               </h3>
               <p className="text-[var(--foreground)] font-medium leading-relaxed whitespace-pre-wrap text-sm">
                 {product.notes}
@@ -263,15 +267,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <div className="flex items-center gap-3 p-5 rounded-[1.5rem] bg-[var(--card)] border border-[var(--border)] shadow-sm">
               <ShieldCheck className="h-8 w-8 text-blue-500 shrink-0" />
               <div>
-                <div className="text-sm font-black text-[var(--foreground)]">Оригінал</div>
-                <div className="text-xs font-bold text-slate-500">Перевірено експертами</div>
+                <div className="text-sm font-black text-[var(--foreground)]">{t('store.original' as any)}</div>
+                <div className="text-xs font-bold text-slate-500">{t('store.verifiedBy' as any)}</div>
               </div>
             </div>
             <div className="flex items-center gap-3 p-5 rounded-[1.5rem] bg-[var(--card)] border border-[var(--border)] shadow-sm">
               <Truck className="h-8 w-8 text-emerald-500 shrink-0" />
               <div>
-                <div className="text-sm font-black text-[var(--foreground)]">Відправка</div>
-                <div className="text-xs font-bold text-slate-500">Захищене пакування</div>
+                <div className="text-sm font-black text-[var(--foreground)]">{t('store.dispatch' as any)}</div>
+                <div className="text-xs font-bold text-slate-500">{t('store.safePack' as any)}</div>
               </div>
             </div>
           </div>

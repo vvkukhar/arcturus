@@ -7,6 +7,7 @@ import { StatusPill } from '@/components/admin/status-pill';
 import { TableSearchForm } from '@/components/admin/table-search-form';
 import { api } from '@/lib/api';
 import type { ReserveRequest } from '@/lib/types';
+import { dict } from '@/lib/i18n';
 
 type Props = {
   searchParams: Promise<{
@@ -34,12 +35,13 @@ export default async function AdminReservesPage({ searchParams }: Props) {
   const resolvedParams = await searchParams;
   const { q, status } = resolvedParams;
   const rows = await getReserves(q, status);
+  const t = (key: keyof typeof dict.uk) => dict.uk[key] || dict.en[key] || key;
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--card)] border border-[var(--border)] p-6 rounded-[2rem] shadow-sm">
         <div>
-          <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Reserve Requests</h1>
+          <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.reserves.title' as any)}</h1>
           <p className="mt-1 text-sm font-medium text-slate-500">
             Manage incoming customer reservations and orders from the public store.
           </p>
@@ -48,13 +50,13 @@ export default async function AdminReservesPage({ searchParams }: Props) {
 
       <SectionCard title="Active Requests" contentClassName="p-0 sm:p-6">
         <div className="mb-6 space-y-4 px-4 sm:px-0">
-          <TableSearchForm placeholder="Search reserves by product, name, contact..." />
+          <TableSearchForm placeholder={t('admin.reserves.search' as any)} />
           <ReserveFilters currentStatus={status ?? 'all'} />
         </div>
 
         <DataTable
           rows={rows}
-          emptyText="No reserve requests found."
+          emptyText={t('admin.reserves.empty' as any)}
           getRowKey={(row) => row.id}
           columns={[
             {

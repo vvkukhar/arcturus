@@ -5,10 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { UserPlus, ArrowRight, Loader2, Mail, KeyRound, User, KeySquare, Gift, ShieldAlert } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -57,7 +59,7 @@ function RegisterForm() {
       
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : t('common.error' as any));
       setLoading(false);
     }
   };
@@ -66,7 +68,6 @@ function RegisterForm() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-[#020617] p-6 overflow-hidden selection:bg-emerald-500/30">
-      {/* Анімований бекграунд (Сітка + Сяйво) */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20" />
         <div className="absolute right-[20%] top-[-10%] h-[600px] w-[600px] rounded-full bg-emerald-600/20 blur-[120px] mix-blend-screen animate-pulse" style={{ animationDuration: '9s' }} />
@@ -75,7 +76,6 @@ function RegisterForm() {
 
       <div className="relative z-10 w-full max-w-[460px] py-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
         
-        {/* Декоративний елемент */}
         <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-[1.8rem] bg-gradient-to-br from-emerald-400 to-teal-600 shadow-[0_0_40px_rgba(16,185,129,0.4)] border border-white/20 backdrop-blur-xl transform transition-transform hover:scale-105 hover:-rotate-3">
           <UserPlus className="h-9 w-9 text-white drop-shadow-lg" strokeWidth={2.5} />
         </div>
@@ -84,10 +84,7 @@ function RegisterForm() {
           <div className="absolute inset-0 rounded-[2.5rem] ring-1 ring-inset ring-white/10 pointer-events-none" />
           
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-black tracking-tight text-white">Реєстрація</h1>
-            <p className="mt-2 text-sm font-medium text-slate-400">
-              Створіть акаунт для доступу до колекцій.
-            </p>
+            <h1 className="text-3xl font-black tracking-tight text-white">{t('auth.register' as any)}</h1>
           </div>
 
           <div className={`mb-8 flex items-center gap-4 p-4 rounded-2xl border ${isReferred ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'} shadow-inner`}>
@@ -109,9 +106,8 @@ function RegisterForm() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Інпут ПІБ */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Повне Ім'я</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('contact.name' as any)}</label>
               <div className="relative group">
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 blur transition-opacity duration-300 group-focus-within:opacity-30" />
                 <div className="relative flex items-center">
@@ -124,15 +120,14 @@ function RegisterForm() {
                     onChange={handleChange}
                     disabled={loading}
                     className="w-full h-14 rounded-2xl border border-white/10 bg-black/40 px-4 pl-12 text-sm font-bold text-white outline-none transition-all placeholder:text-slate-600 focus:border-emerald-500 focus:bg-black/60 shadow-inner"
-                    placeholder="Іванов Іван"
+                    placeholder="Ім'я"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Інпут Email */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Email</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('contact.email' as any)}</label>
               <div className="relative group">
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 blur transition-opacity duration-300 group-focus-within:opacity-30" />
                 <div className="relative flex items-center">
@@ -145,13 +140,12 @@ function RegisterForm() {
                     onChange={handleChange}
                     disabled={loading}
                     className="w-full h-14 rounded-2xl border border-white/10 bg-black/40 px-4 pl-12 text-sm font-bold text-white outline-none transition-all placeholder:text-slate-600 focus:border-emerald-500 focus:bg-black/60 shadow-inner"
-                    placeholder="investor@arcturus.store"
+                    placeholder="mail@arcturus.store"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Інпут Password */}
             <div className="space-y-1.5">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Пароль</label>
               <div className="relative group">
@@ -166,15 +160,14 @@ function RegisterForm() {
                     onChange={handleChange}
                     disabled={loading}
                     className="w-full h-14 rounded-2xl border border-white/10 bg-black/40 px-4 pl-12 text-sm font-bold text-white outline-none transition-all placeholder:text-slate-600 focus:border-emerald-500 focus:bg-black/60 shadow-inner"
-                    placeholder="Мінімум 6 символів"
+                    placeholder="Min 6 chars"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Інпут Invite Code */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Код запрошення (Опціонально)</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Invite Code (Optional)</label>
               <div className="relative group">
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 blur transition-opacity duration-300 group-focus-within:opacity-30" />
                 <div className="relative flex items-center">
@@ -192,7 +185,6 @@ function RegisterForm() {
               </div>
             </div>
 
-            {/* Submit Button */}
             <div className="pt-6">
               <button
                 type="submit"
@@ -208,7 +200,7 @@ function RegisterForm() {
                     <Loader2 className="h-6 w-6 animate-spin" />
                   ) : (
                     <>
-                      Створити Акаунт
+                      {t('auth.register' as any)}
                       <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                     </>
                   )}
@@ -217,12 +209,11 @@ function RegisterForm() {
             </div>
           </form>
 
-          {/* Footer Link */}
           <div className="mt-8 text-center animate-in fade-in slide-in-from-bottom-4 delay-200">
             <p className="text-sm font-medium text-slate-500">
               Вже є акаунт?{' '}
               <Link href="/login" className="font-bold text-emerald-400 hover:text-emerald-300 transition-colors underline decoration-emerald-400/30 underline-offset-4">
-                Увійти
+                {t('auth.signIn' as any)}
               </Link>
             </p>
           </div>

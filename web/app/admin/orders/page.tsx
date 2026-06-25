@@ -10,8 +10,10 @@ import { StatusPill } from '@/components/admin/status-pill';
 import { formatMoney } from '@/lib/format';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function AdminOrdersListPage() {
+  const { t } = useI18n();
   const { data: orders, isLoading, mutate } = useSWR<any[]>('/api/proxy/orders', swrFetcher, { refreshInterval: 10000 }); 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [processing, setProcessing] = useState(false);
@@ -151,7 +153,7 @@ export default function AdminOrdersListPage() {
                 type="number" 
                 value={globalWeight} 
                 onChange={e => setGlobalWeight(e.target.value)}
-                className="w-full h-14 bg-white dark:bg-black border border-[var(--border)] px-4 rounded-xl font-black text-xl outline-none focus:border-blue-500"
+                className="w-full h-14 bg-[var(--background)] border border-[var(--border)] px-4 rounded-xl font-black text-xl outline-none focus:border-blue-500 text-[var(--foreground)]"
               />
             </div>
 
@@ -169,7 +171,7 @@ export default function AdminOrdersListPage() {
                       placeholder={globalWeight}
                       value={individualWeights[order.id] || ''}
                       onChange={e => setIndividualWeights(prev => ({...prev, [order.id]: e.target.value}))}
-                      className="w-full h-10 px-3 border border-[var(--border)] bg-[var(--card)] rounded-lg text-sm font-bold outline-none focus:border-blue-500 text-center"
+                      className="w-full h-10 px-3 border border-[var(--border)] bg-[var(--card)] rounded-lg text-sm font-bold outline-none focus:border-blue-500 text-center text-[var(--foreground)]"
                     />
                   </div>
                 </div>
@@ -177,7 +179,7 @@ export default function AdminOrdersListPage() {
             </div>
 
             <div className="p-6 border-t border-[var(--border)] flex justify-end gap-3 bg-[var(--background)]">
-              <button onClick={() => setShowWeightModal(false)} className="px-6 py-3 font-bold text-slate-500">Скасувати</button>
+              <button onClick={() => setShowWeightModal(false)} className="px-6 py-3 font-bold text-slate-500">{t('common.cancel' as any)}</button>
               <button 
                 onClick={handleBulkTTN} 
                 disabled={processing}
@@ -191,15 +193,14 @@ export default function AdminOrdersListPage() {
         </div>
       )}
 
-
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm">
         <div className="flex items-center gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg">
             <Package size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Orders Registry</h1>
-            <p className="mt-1 text-sm font-medium text-slate-500">Bulk logistics processing node. Generate and print mass TTNs.</p>
+            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.orders.title' as any)}</h1>
+            <p className="mt-1 text-sm font-medium text-slate-500">{t('admin.orders.subtitle' as any)}</p>
           </div>
         </div>
         
@@ -231,7 +232,7 @@ export default function AdminOrdersListPage() {
       <SectionCard title="Orders Backlog">
         <DataTable
           rows={rows}
-          emptyText={isLoading ? "Loading orders data..." : "No custom orders found."}
+          emptyText={isLoading ? t('common.loading' as any) : "No custom orders found."}
           getRowKey={(row) => row.id}
           columns={[
             {

@@ -1,4 +1,3 @@
-// call:function_1{"queries":["web/app/layout.tsx"]}
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -9,7 +8,7 @@ import { SidebarProvider } from "@/components/providers/sidebar-provider";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { ClientLayoutWrapper } from "@/components/layout/client-layout-wrapper";
 import { SWRProvider } from "@/components/providers/swr-provider";
-import { Toaster } from 'sonner'; // 🔥 ДОДАЛИ ІМПОРТ
+import { Toaster } from 'sonner';
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -45,7 +44,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                if (localStorage.getItem('arcturus_theme') === 'dark' || (!('arcturus_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                const storedTheme = localStorage.getItem('arcturus_theme');
+                if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                   document.documentElement.classList.add('dark');
                 } else {
                   document.documentElement.classList.remove('dark');
@@ -65,7 +65,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <ClientLayoutWrapper>
                       {children}
                     </ClientLayoutWrapper>
-                    {/* 🔥 ДОДАЛИ ВІЗУАЛЬНИЙ ТОСТЕР */}
                     <Toaster position="top-right" richColors theme="system" />
                   </ToastProvider>
                 </SidebarProvider>

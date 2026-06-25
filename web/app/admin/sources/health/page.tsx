@@ -6,6 +6,7 @@ import { Loader2, PlaySquare, Power, ShieldAlert } from 'lucide-react';
 import { StatusPill } from '@/components/admin/status-pill';
 import { apiFetch } from '@/lib/api';
 import { useState, useEffect } from 'react';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface SourceHealth {
   sourceCode: string;
@@ -20,6 +21,7 @@ interface SourceHealth {
 }
 
 export default function SourcesHealthPage() {
+  const { t } = useI18n();
   const { data, isLoading, mutate } = useSWR<SourceHealth[]>('/api/proxy/source-health/summary', swrFetcher, { refreshInterval: 5000 });
   const rows = Array.isArray(data) ? data : [];
   const [loadingId, setLoadingId] = useState<string | null>(null);

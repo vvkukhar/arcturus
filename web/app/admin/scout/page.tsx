@@ -8,8 +8,10 @@ import { apiFetch } from '@/lib/api';
 import { DataTable } from '@/components/admin/data-table';
 import { StatusPill } from '@/components/admin/status-pill';
 import { formatMoney } from '@/lib/format';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function AdminScoutLeadsPage() {
+  const { t } = useI18n();
   const { data: rawLeads, isLoading, mutate } = useSWR<any[]>('/api/proxy/scout/leads', swrFetcher);
   const leads = Array.isArray(rawLeads) ? rawLeads : [];
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -63,8 +65,8 @@ export default function AdminScoutLeadsPage() {
           <Target size={28} />
         </div>
         <div>
-          <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Scout Leads (Bounty)</h1>
-          <p className="mt-1 text-sm font-medium text-slate-500">Огляд посилань, знайдених скаутами. Викупайте товари та нараховуйте винагороди.</p>
+          <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Ліди від Скаутів</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500">Перевірка знахідок користувачів та нарахування AC нагород.</p>
         </div>
       </div>
 
@@ -74,7 +76,7 @@ export default function AdminScoutLeadsPage() {
         ) : (
           <DataTable
             rows={leads}
-            emptyText="Скаутських лідів поки немає."
+            emptyText={t('scout.empty' as any)}
             getRowKey={(row) => row.id}
             columns={[
               {

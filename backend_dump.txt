@@ -391,137 +391,6 @@ LIQPAY_PUBLIC_KEY / LIQPAY_PRIVATE_KEY
 SENTRY_DSN
 - Джерело: sentry.io -> Create Project (Nest.js / Node.js) -> Settings -> Client Keys (DSN).
 
-===== FILE: C:\Users\Vlad\lego_trading_manager\backend\render.yaml =====
-
-# backend/render.yaml
-services:
-  - type: redis
-    name: arcturus-redis
-    plan: starter
-    ipAllowList: []
-    maxmemoryPolicy: allkeys-lru
-
-  - type: web
-    name: arcturus-api
-    env: docker
-    region: frankfurt
-    plan: starter
-    rootDir: .
-    dockerfilePath: ./apps/api/Dockerfile
-    autoDeploy: true
-    healthCheckPath: /api/health
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 4000
-      - key: DATABASE_URL
-        sync: false
-      - key: DIRECT_URL
-        sync: false
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: arcturus-redis
-          property: connectionString
-      - key: REDIS_HOST
-        fromService:
-          type: redis
-          name: arcturus-redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          type: redis
-          name: arcturus-redis
-          property: port
-      - key: REDIS_PASSWORD
-        sync: false
-      - key: JWT_SECRET
-        generateValue: true
-      - key: ADMIN_TOKEN
-        sync: false
-      - key: CORS_ORIGINS
-        sync: false
-      - key: PUBLIC_STORE_BASE_URL
-        sync: false
-      - key: SENTRY_DSN
-        sync: false
-      - key: LIQPAY_PUBLIC_KEY
-        sync: false
-      - key: LIQPAY_PRIVATE_KEY
-        sync: false
-      - key: MONOBANK_TOKEN
-        sync: false
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: TELEGRAM_CHAT_ID
-        sync: false
-
-  - type: worker
-    name: arcturus-workers
-    env: docker
-    region: frankfurt
-    plan: starter
-    rootDir: .
-    dockerfilePath: ./apps/workers/Dockerfile
-    autoDeploy: true
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        fromService:
-          type: web
-          name: arcturus-api
-          envVarKey: DATABASE_URL
-      - key: DIRECT_URL
-        fromService:
-          type: web
-          name: arcturus-api
-          envVarKey: DIRECT_URL
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: arcturus-redis
-          property: connectionString
-      - key: WORKER_CONCURRENCY
-        value: "5"
-      - key: TELEGRAM_BOT_TOKEN
-        fromService:
-          type: web
-          name: arcturus-api
-          envVarKey: TELEGRAM_BOT_TOKEN
-      - key: TELEGRAM_CHAT_ID
-        fromService:
-          type: web
-          name: arcturus-api
-          envVarKey: TELEGRAM_CHAT_ID
-
-  - type: worker
-    name: arcturus-scrapers
-    env: docker
-    region: frankfurt
-    plan: starter
-    rootDir: .
-    dockerfilePath: ./apps/scrapers/Dockerfile
-    autoDeploy: true
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        fromService:
-          type: web
-          name: arcturus-api
-          envVarKey: DATABASE_URL
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: arcturus-redis
-          property: connectionString
-      - key: SCRAPER_INTERVAL_MS
-        value: "1200000"
-      - key: PROXY_LIST
-        sync: false
-
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\start-dev.bat =====
 
 @echo off
@@ -751,12 +620,12 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
 COPY . .
-# Фікс для обриву мережі під час білду
+# Фікс: Якщо обривається мережа, жорстко видаляємо биті файли і качаємо начисто
 RUN npm config set fetch-retries 5 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm install --no-fund --no-audit || \
-    (sleep 5 && npm install --no-fund --no-audit)
+    (echo "NPM Install failed, cleaning corrupted modules and retrying..." && rm -rf node_modules && npm cache clean --force && sleep 5 && npm install --no-fund --no-audit)
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
 RUN npm run build:all
 
@@ -1072,38 +941,6 @@ npm install
 npm run prisma:generate
 npm run prisma:migrate
 npm run start:dev
-
-===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\render.yaml =====
-
-# backend/api/render.yaml
-services:
-  - type: web
-    name: arcturus-api
-    env: docker
-    plan: starter
-    dockerfilePath: ./Dockerfile
-    autoDeploy: true
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 4000
-      - key: DATABASE_URL
-        sync: false
-      - key: DIRECT_URL
-        sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_ANON_KEY
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      - key: JWT_AUDIENCE
-        value: authenticated
-      - key: JWT_ISSUER
-        sync: false
-      - key: ALLOWED_ORIGINS
-        sync: false
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\api\start-all.sh =====
 
@@ -24917,25 +24754,22 @@ export class ScannerService {
 
     if (!source) throw new NotFoundException('Source not found');
 
-    // 🔥 АВТОМАТИЧНЕ ДОДАВАННЯ В WATCHLIST ДЛЯ АДХОК-ПОШУКУ
     if (body.query) {
       const setNumber = this.extractSetNumber(body.query);
       if (setNumber) {
-        // Знаходимо цей набір в глобальній базі (Rebrickable)
         const item = await this.prisma.item.findFirst({ where: { setNumber } });
         
         if (item) {
           const existingWl = await this.prisma.watchlistItem.findFirst({ where: { itemId: item.id } });
           
           if (!existingWl) {
-            // Додаємо в Watchlist з "нескінченними" лімітами, щоб він 100% затригерив угоду (Deal)
             await this.prisma.watchlistItem.create({
               data: {
                 itemId: item.id,
                 titleSnapshot: item.title,
-                desiredBuyPrice: 50000, 
-                maxBuyPrice: 999999, // Гарантує, що все знайдене буде "Buy"
-                targetSellPrice: 1000000, 
+                desiredBuyPrice: 500, 
+                maxBuyPrice: 1500, 
+                targetSellPrice: null, 
                 active: true,
                 priority: 85,
                 notes: 'Auto-added via manual scanner search'
@@ -29647,12 +29481,12 @@ DATABASE_URL=postgresql://postgres.jomhjzwalawouebbuegm:GZPmaViYKiwIrXzi@aws-0-e
 FROM mcr.microsoft.com/playwright:v1.44.0-jammy AS builder
 WORKDIR /app
 COPY . .
-# Фікс для обриву мережі під час білду
+# Фікс: Якщо обривається мережа, жорстко видаляємо биті файли і качаємо начисто
 RUN npm config set fetch-retries 5 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm install --no-fund --no-audit || \
-    (sleep 5 && npm install --no-fund --no-audit)
+    (echo "NPM Install failed, cleaning corrupted modules and retrying..." && rm -rf node_modules && npm cache clean --force && sleep 5 && npm install --no-fund --no-audit)
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
 RUN npm run build:all
 
@@ -29661,7 +29495,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 
-# 🔥 ФІКС PLAYWRIGHT: Докачуємо правильну версію Chromium для нашої версії бібліотеки
 RUN npx playwright install chromium
 
 WORKDIR /app/apps/scrapers
@@ -29987,63 +29820,140 @@ exports.browserManager = new BrowserManager();
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\common\browser-manager.ts =====
 
 import { chromium } from 'playwright-extra';
-import { Browser, BrowserContext } from 'playwright';
+import { Browser } from 'playwright';
 import stealth from 'puppeteer-extra-plugin-stealth';
 import { proxyManager } from './proxy-manager';
-import { getRandomUserAgent } from './user-agents';
 
+// Stealth-плагін ховає той факт, що це автоматизований браузер
 chromium.use(stealth());
 
 export class BrowserManager {
   private browser: Browser | null = null;
-  private context: BrowserContext | null = null;
 
   async init(): Promise<void> {
     if (!this.browser) {
+      console.log('[BrowserManager] Launching new stealth chromium browser...');
       this.browser = await chromium.launch({
         headless: true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-blink-features=AutomationControlled',
+          '--window-size=1920,1080'
         ],
       });
-    }
-    if (!this.context) {
-      const proxyStr = proxyManager.getRawProxy();
-      this.context = await this.browser.newContext({
-        proxy: proxyStr ? { server: proxyStr } : undefined,
-        viewport: { width: 1280, height: 720 },
-        userAgent: getRandomUserAgent(),
-        ignoreHTTPSErrors: true,
-      });
+      console.log('[BrowserManager] Browser launched successfully');
     }
   }
 
-  async fetchHtml(url: string): Promise<string> {
+  async fetchHtml(url: string, waitForSelector?: string, retries = 15): Promise<string> {
+    console.log(`[BrowserManager] fetchHtml called for URL: ${url}. Retries left: ${retries}`);
     await this.init();
-    if (!this.context) throw new Error('Browser not initialized');
+    
+    if (!this.browser) {
+      throw new Error('Browser not initialized');
+    }
 
-    const page = await this.context.newPage();
+    const proxyStr = proxyManager.getRawProxy();
+    console.log(`[BrowserManager] Creating FRESH context. Proxy: ${proxyStr ? 'IPRoyal Active' : 'NONE'}`);
+    
+    let proxyConfig = undefined;
+    if (proxyStr) {
+      try {
+        const proxyUrl = new URL(proxyStr);
+        proxyConfig = {
+          server: `${proxyUrl.protocol}//${proxyUrl.host}`,
+          username: proxyUrl.username ? decodeURIComponent(proxyUrl.username) : undefined,
+          password: proxyUrl.password ? decodeURIComponent(proxyUrl.password) : undefined,
+        };
+      } catch (e) {
+        console.error('[BrowserManager] Failed to parse proxy string');
+      }
+    }
 
+    // Створюємо чистий контекст. Жодних кастомних заголовків!
+    const context = await this.browser.newContext({
+      proxy: proxyConfig,
+      viewport: { width: 1920, height: 1080 },
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      ignoreHTTPSErrors: true,
+      javaScriptEnabled: true,
+      locale: 'de-DE',
+      timezoneId: 'Europe/Berlin',
+    });
+
+    const page = await context.newPage();
+
+    // Блокуємо ТІЛЬКИ картинки та відео для економії трафіку IPRoyal.
     await page.route('**/*', (route) => {
       const type = route.request().resourceType();
-      // 🔥 ФІКС: Блокуємо тільки візуал. Дозволяємо XHR, fetch, websocket і other
-      if (['image', 'media', 'font', 'stylesheet'].includes(type)) {
-        route.abort().catch(() => {});
+      const reqUrl = route.request().url();
+      
+      if (
+        ['image', 'media'].includes(type) ||
+        reqUrl.includes('google-analytics') || 
+        reqUrl.includes('doubleclick') || 
+        reqUrl.includes('tracker')
+      ) {
+        route.abort('aborted').catch(() => {});
       } else {
         route.continue().catch(() => {});
       }
     });
 
     try {
-      // 🔥 ФІКС: Чекаємо networkidle замість domcontentloaded
-      await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
-      await page.waitForTimeout(2000); // Страхувальна пауза для відпрацювання JS
-      return await page.content();
+      console.log(`[BrowserManager] Navigating to ${url}...`);
+      const response = await page.goto(url, { waitUntil: 'commit', timeout: 30000 });
+      console.log(`[BrowserManager] Navigation commit. Status: ${response?.status()}`);
+
+      if (response?.status() === 403 || response?.status() === 401 || response?.status() === 429) {
+         throw new Error(`Access Denied by Server (HTTP ${response.status()})`);
+      }
+
+      if (waitForSelector) {
+        console.log(`[BrowserManager] Waiting for selector: ${waitForSelector}`);
+        try {
+          // 🔥 ФІКС: БЕЗ .catch(() => {}) 🔥
+          // Якщо селектор не з'явився - це 100% капча, навіть якщо HTTP статус 200.
+          // Цей блок викине помилку і змусить IPRoyal змінити IP-адресу.
+          await page.waitForSelector(waitForSelector, { state: 'attached', timeout: 15000 });
+        } catch (err) {
+          throw new Error(`Timeout waiting for ${waitForSelector}. The page is likely a 200 OK CAPTCHA.`);
+        }
+      } else {
+        await page.waitForTimeout(4000 + Math.random() * 2000);
+      }
+
+      const html = await page.content();
+      console.log(`[BrowserManager] Successfully fetched HTML. Length: ${html.length}`);
+
+      // Захист від відвертих капч
+      if (html.length < 10000) {
+        throw new Error(`Page too small (${html.length} bytes), likely a CAPTCHA or block page.`);
+      }
+
+      const lowerHtml = html.toLowerCase();
+      if (lowerHtml.includes('security challenge') || lowerHtml.includes('verify you are human')) {
+        throw new Error('CAPTCHA keyword detected in HTML.');
+      }
+
+      return html;
+    } catch (e: any) {
+      console.error(`[BrowserManager] ERROR fetching ${url}:`, e.message);
+      
+      if (retries > 0) {
+        console.log(`[BrowserManager] Proxy blocked/failed. Retrying with new IP... (${retries - 1} attempts left)`);
+        await context.close().catch(() => {});
+        // Робимо невелику паузу, щоб IPRoyal встиг перекинути нас на новий вузол
+        await new Promise(res => setTimeout(res, 2000));
+        return this.fetchHtml(url, waitForSelector, retries - 1);
+      }
+      throw e;
     } finally {
-      await page.close().catch(() => {});
+      console.log(`[BrowserManager] Closing context to force IP rotation`);
+      await context.close().catch(() => {});
     }
   }
 
@@ -30052,8 +29962,10 @@ export class BrowserManager {
   }
 
   async close(): Promise<void> {
-    if (this.context) { await this.context.close().catch(()=>{}); this.context = null; }
-    if (this.browser) { await this.browser.close().catch(()=>{}); this.browser = null; }
+    if (this.browser) { 
+      await this.browser.close().catch(()=>{}); 
+      this.browser = null; 
+    }
   }
 }
 
@@ -30527,13 +30439,14 @@ export class ProxyManager {
   private pool: ProxyNode[] = [];
   private currentIndex = 0;
   private readonly MAX_FAILURES = 3;
-  private readonly COOLDOWN_MS = 15 * 60 * 1000; // 15 хвилин кулдауну для "спаленого" проксі
+  private readonly COOLDOWN_MS = 15 * 60 * 1000; // 15 хвилин кулдауну
 
   constructor() {
     const proxyList = process.env.PROXY_LIST?.split(',') || [];
     this.pool = proxyList
       .map(p => p.trim())
-      .filter(Boolean)
+      // 🔥 ЗАХИСТ ВІД ДУРНЯ: Ігноруємо дефолтну заглушку, якщо ти забув її змінити
+      .filter(p => p && !p.includes('user:pass@ip:port') && p.startsWith('http'))
       .map(url => ({ url, failures: 0, cooldownUntil: 0 }));
   }
 
@@ -30543,7 +30456,6 @@ export class ProxyManager {
     const now = Date.now();
     let attempts = 0;
 
-    // Шукаємо живий проксі, який не в кулдауні
     while (attempts < this.pool.length) {
       const proxy = this.pool[this.currentIndex];
       this.currentIndex = (this.currentIndex + 1) % this.pool.length;
@@ -30554,8 +30466,6 @@ export class ProxyManager {
       attempts++;
     }
 
-    // Якщо всі в кулдауні, повертаємо null (скрапер піде з твого рідного IP на свій страх і ризик, 
-    // або краще перервати запит)
     console.warn('[ProxyManager] ⚠️ All proxies are currently in cooldown!');
     return undefined;
   }
@@ -30570,7 +30480,7 @@ export class ProxyManager {
       
       if (proxy.failures >= this.MAX_FAILURES) {
         proxy.cooldownUntil = Date.now() + this.COOLDOWN_MS;
-        proxy.failures = 0; // Скидаємо лічильник для наступного разу
+        proxy.failures = 0;
         console.error(`[ProxyManager] 🔴 Proxy burned! Sending to cooldown for 15 mins: ${proxy.url}`);
       }
     }
@@ -30580,7 +30490,7 @@ export class ProxyManager {
     if (!url) return;
     const proxy = this.pool.find(p => p.url === url || p.url.includes(url));
     if (proxy && proxy.failures > 0) {
-      proxy.failures = 0; // Якщо проксі відпрацював нормально, скидаємо "штрафні" бали
+      proxy.failures = 0;
     }
   }
 
@@ -31013,12 +30923,13 @@ function parseBrickeconomySearchHtml(html) {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickeconomy\brickeconomy-parser.ts =====
 
+// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickeconomy\brickeconomy-parser.ts
+
 import * as cheerio from 'cheerio';
 import { BrickeconomyParsedListing } from './brickeconomy-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
   const cleanRaw = raw.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-
   const matchAfter = cleanRaw.match(/(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(грн|UAH|EUR|€|\$|£)/i);
   const matchBefore = cleanRaw.match(/(\$|€|£|EUR)\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
 
@@ -31036,8 +30947,8 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   }
 
   const digits = numberPart.replace(/[^\d.,]/g, '');
-
   let normalizedDigits = digits;
+  
   if (digits.includes(',') && digits.includes('.')) {
     if (digits.lastIndexOf(',') > digits.lastIndexOf('.')) {
       normalizedDigits = digits.replace(/\./g, '').replace(',', '.');
@@ -31054,10 +30965,7 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   }
 
   const amount = Number(normalizedDigits);
-
-  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
-    return null;
-  }
+  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) return null;
 
   let currency = 'UAH';
   const currUpper = currencyPart.toUpperCase();
@@ -31073,15 +30981,15 @@ export function parseBrickeconomySearchHtml(html: string): BrickeconomyParsedLis
   const result: BrickeconomyParsedListing[] = [];
   const seen = new Set<string>();
 
-  $('.searchlist-item').each((_, element) => {
-    const titleElement = $(element).find('h4 a');
+  $('.searchlist-item, .row.ItemRow, .mb-5').each((_, element) => {
+    const titleElement = $(element).find('h4 a, h3 a, .title a').first();
     const title = titleElement.text().replace(/\s+/g, ' ').trim();
     const href = titleElement.attr('href')?.trim() ?? '';
     
     if (!title || !href) return;
 
     const externalListingId = href.split('/').pop() ?? href;
-    const priceText = $(element).find('.val-current').text();
+    const priceText = $(element).find('.val-current, .price').text();
     const priceParsed = parsePrice(priceText);
     
     if (!priceParsed) return;
@@ -31206,6 +31114,8 @@ async function runBrickEconomySource() {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickeconomy\brickeconomy-source.ts =====
 
+// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickeconomy\brickeconomy-source.ts
+
 import { browserManager } from '../../common/browser-manager';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
 import { stableListingId } from '../../common/listing-id';
@@ -31217,6 +31127,7 @@ import { parseBrickeconomySearchHtml } from './brickeconomy-parser';
 
 export async function runBrickEconomySource(specificQuery?: string | null): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'brickeconomy' } });
+  
   if (!source || !source.enabled) return;
 
   let searchQueries: string[] = [];
@@ -31241,13 +31152,12 @@ export async function runBrickEconomySource(specificQuery?: string | null): Prom
   let itemsUpdated = 0;
 
   try {
-    const creates: string[] = [];
-    const now = new Date().toISOString();
+    const upsertOperations: any[] = [];
+    const now = new Date();
 
     for (const query of searchQueries) {
       const url = `https://www.brickeconomy.com/search?query=${encodeURIComponent(query)}`;
       
-      // 🔥 ФІКС: browserManager замість httpClient
       const html = await browserManager.fetchHtml(url);
       const marketData = parseBrickeconomySearchHtml(html);
 
@@ -31258,34 +31168,49 @@ export async function runBrickEconomySource(specificQuery?: string | null): Prom
         const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
         const listingId = stableListingId('brickeconomy', data.externalListingId);
 
-        const price = data.price || 0;
-        const titleRawEscaped = data.titleRaw.replace(/'/g, "''");
-        const urlEscaped = data.url.replace(/'/g, "''");
-        const externalIdEscaped = data.externalListingId.replace(/'/g, "''");
-        const currency = data.currency ? `'${data.currency.replace(/'/g, "''")}'` : "'USD'";
+        upsertOperations.push(
+          prisma.marketListing.upsert({
+            where: { id: listingId },
+            update: {
+              price: data.price || 0,
+              status: 'active',
+              fetchedAt: now,
+              updatedAt: now,
+            },
+            create: {
+              id: listingId,
+              sourceId: source.id,
+              sourceCode: 'brickeconomy',
+              itemId,
+              externalListingId: data.externalListingId,
+              externalId: data.externalListingId,
+              titleRaw: data.titleRaw,
+              title: data.titleRaw,
+              url: data.url,
+              imageUrl: data.imageUrl ?? null,
+              price: data.price || 0,
+              currency: data.currency || 'USD',
+              shippingPrice: 0,
+              shippingCurrency: data.currency || 'USD',
+              condition: 'newSealed',
+              sealed: true,
+              status: 'active',
+              fetchedAt: now,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            }
+          })
+        );
 
-        creates.push(`('${listingId}', '${source.id}', 'brickeconomy', '${itemId}', '${externalIdEscaped}', '${titleRawEscaped}', '${urlEscaped}', NULL, ${price}, ${currency}, 0, ${currency}, 'newSealed', true, 'active', '${now}', '${now}')`);
-
-        if (resolvedItemId != null) {
-          itemsMatched += 1;
-        }
+        if (resolvedItemId != null) itemsMatched += 1;
       }
-      await new Promise((res) => setTimeout(res, 3000 + Math.random() * 3000));
     }
 
-    if (creates.length > 0) {
-      const dbChunkSize = 500;
-      for (let i = 0; i < creates.length; i += dbChunkSize) {
-        const chunk = creates.slice(i, i + dbChunkSize);
-        await prisma.$executeRawUnsafe(`
-          INSERT INTO "MarketListing" ("id", "sourceId", "sourceCode", "itemId", "externalListingId", "titleRaw", "url", "imageUrl", "price", "currency", "shippingPrice", "shippingCurrency", "condition", "sealed", "status", "fetchedAt", "updatedAt")
-          VALUES ${chunk.join(',')}
-          ON CONFLICT ("sourceCode", "externalListingId") DO UPDATE SET
-            "price" = EXCLUDED."price",
-            "status" = 'active',
-            "fetchedAt" = EXCLUDED."fetchedAt",
-            "updatedAt" = EXCLUDED."updatedAt"
-        `);
+    if (upsertOperations.length > 0) {
+      const chunkSize = 50;
+      for (let i = 0; i < upsertOperations.length; i += chunkSize) {
+        const chunk = upsertOperations.slice(i, i + chunkSize);
+        await prisma.$transaction(chunk);
         itemsInserted += chunk.length;
       }
     }
@@ -31441,97 +31366,119 @@ import * as cheerio from 'cheerio';
 import { BrickLinkParsedListing } from './bricklink-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
-  // Очищаємо від HTML-пробілів та символу "~" (Bricklink часто пише ~US $15.00)
   const cleanRaw = raw.replace(/~/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-
-  // Регулярка суто під формат Bricklink: Валюта + Пробіл + Число
-  // Наприклад: US $15.50, EUR 120.00, £ 45.00
-  const match = cleanRaw.match(/(US \$|EUR|€|£|GBP|CA \$|AU \$)\s*(\d{1,3}(?:[,.\s]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
+  const match = cleanRaw.match(/(US \$|EUR|€|£|GBP|CA \$|AU \$|UAH|SEK|PLN|CZK|DKK|HUF)\s*(\d{1,3}(?:[,.\s]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
 
   if (!match) return null;
 
   const currencyPart = match[1].toUpperCase();
   const numberPart = match[2];
 
-  // Нормалізуємо число (1,000.50 -> 1000.50 або 15,50 -> 15.50)
   let digits = numberPart.replace(/\s/g, '');
   if (digits.includes(',') && digits.includes('.')) {
-     digits = digits.replace(/,/g, '');
+     if (digits.lastIndexOf(',') > digits.lastIndexOf('.')) {
+       digits = digits.replace(/\./g, '').replace(',', '.');
+     } else {
+       digits = digits.replace(/,/g, '');
+     }
   } else {
      digits = digits.replace(',', '.');
   }
 
   const amount = Number(digits);
-
-  // Запобіжник від мільярдів
-  if (Number.isNaN(amount) || amount <= 0 || amount > 500000) {
-    return null;
-  }
+  if (Number.isNaN(amount) || amount <= 0) return null;
 
   let currency = 'USD';
   if (currencyPart.includes('EUR') || currencyPart.includes('€')) currency = 'EUR';
   else if (currencyPart.includes('£') || currencyPart.includes('GBP')) currency = 'GBP';
-  else if (currencyPart.includes('CA')) currency = 'CAD';
-  else if (currencyPart.includes('AU')) currency = 'AUD';
+  else if (currencyPart.includes('UAH')) currency = 'UAH';
+  else if (currencyPart.includes('SEK')) currency = 'SEK';
+  else if (currencyPart.includes('PLN')) currency = 'PLN';
+  else if (currencyPart.includes('CZK')) currency = 'CZK';
 
   return { amount, currency };
 }
 
-function normalizeUrl(rawUrl: string): string {
-  if (rawUrl.startsWith('http')) return rawUrl;
-  if (rawUrl.startsWith('/')) return `https://www.bricklink.com${rawUrl}`;
-  return `https://www.bricklink.com/${rawUrl}`;
-}
-
-export function parseBrickLinkSearchHtml(html: string): BrickLinkParsedListing[] {
+export function parseBrickLinkSearchHtml(html: string, fallbackTitle: string = 'LEGO Set'): BrickLinkParsedListing[] {
   const $ = cheerio.load(html);
   const result: BrickLinkParsedListing[] = [];
   const seen = new Set<string>();
 
-  $('a').each((_, element) => {
+  const catalogRows = $('table.pcTable tr, table.fv tr').has('a[href*="store.asp"]');
+  
+  if (catalogRows.length > 0) {
+    catalogRows.each((_, el) => {
+      const sellerLink = $(el).find('a[href*="store.asp"]').first();
+      const href = sellerLink.attr('href') ?? '';
+      if (!href) return;
+      
+      const priceText = $(el).find('td').filter((i, td) => !!$(td).text().match(/\d+/) && $(td).text().match(/(US \$|EUR|€|£|GBP|CA \$|AU \$|UAH|SEK|PLN)/i) !== null).first().text();
+      const parsedPrice = parsePrice(priceText);
+      if (!parsedPrice) return;
+
+      const descText = $(el).find('td').eq(1).text().toLowerCase();
+      const conditionText = $(el).find('td').eq(2).text().toLowerCase();
+      
+      const isNew = conditionText.includes('new');
+      const isSealed = isNew && descText.includes('sealed');
+      const isIncomplete = descText.includes('incomplete') || conditionText.includes('incomplete');
+
+      let condition = isNew ? 'new' : 'used';
+      if (isIncomplete) condition = 'incomplete';
+
+      const sellerName = sellerLink.text().trim() || 'Unknown';
+      const extId = href.split('?')[1] ?? href; 
+      const url = href.startsWith('http') ? href : `https://www.bricklink.com${href.startsWith('/') ? '' : '/'}${href}`;
+
+      if (seen.has(url)) return;
+      seen.add(url);
+
+      result.push({
+        externalListingId: extId,
+        titleRaw: fallbackTitle,
+        url,
+        imageUrl: null,
+        sellerName,
+        sellerRating: null,
+        price: parsedPrice.amount,
+        currency: parsedPrice.currency,
+        shippingPrice: null,
+        shippingCurrency: null,
+        country: 'EU',
+        condition,
+        sealed: isSealed,
+        completenessPercent: isIncomplete ? 80 : 100,
+        quantityAvailable: 1,
+      });
+    });
+    return result;
+  }
+
+  $('a[href*="item.page"]').each((_, element) => {
     const title = $(element).text().replace(/\s+/g, ' ').trim();
     const href = $(element).attr('href')?.trim() ?? '';
 
-    // 1. Беремо тільки лінки на товари
-    if (!title || !href || !href.includes('item.page')) {
-      return;
-    }
+    if (!title || !href) return;
+    if (!href.includes('?S=') && !href.includes('?M=')) return;
 
-    // 🔥 АНТИ-СМІТТЯ ФІКС: Пропускаємо наклейки (?P=), коробки (?O=), інструкції (?I=)
-    // Дозволяємо тільки Сети (?S=) та Мініфігурки (?M=)
-    if (!href.includes('?S=') && !href.includes('?M=')) {
-      return;
-    }
-
-    const container = $(element).closest('tr, div, li');
+    const container = $(element).closest('tr, div, li, .ps-item');
     const rowText = container.text().toLowerCase();
     
-    // Шукаємо ціну точково
     const priceNodes = container.find('b, strong, td, span').filter(function() {
-      const t = $(this).text();
-      return t.includes('$') || t.includes('EUR') || t.includes('€') || t.includes('£');
+      return $(this).text().match(/(US \$|EUR|€|£|GBP|CA \$|AU \$|UAH|SEK|PLN)/i) !== null;
     });
 
-    let priceText = '';
-    if (priceNodes.length > 0) {
-      priceText = priceNodes.last().text();
-    } else {
-      priceText = container.text();
-    }
-
+    const priceText = priceNodes.length > 0 ? priceNodes.last().text() : container.text();
     const priceParsed = parsePrice(priceText);
     if (!priceParsed) return;
 
-    const url = normalizeUrl(href);
+    const url = href.startsWith('http') ? href : `https://www.bricklink.com${href.startsWith('/') ? '' : '/'}${href}`;
     if (seen.has(url)) return;
     seen.add(url);
 
     const imageUrl = container.find('img').first().attr('src') ?? container.find('img').first().attr('data-src') ?? null;
-
-    // Визначаємо стан
     const isNew = rowText.includes('new');
     const isIncomplete = rowText.includes('incomplete');
-    
     let condition = isNew ? 'new' : 'used';
     if (isIncomplete) condition = 'incomplete';
     const sealed = isNew && rowText.includes('sealed');
@@ -31698,6 +31645,7 @@ import { parseBrickLinkSearchHtml } from './bricklink-parser';
 
 export async function runBrickLinkSource(specificQuery?: string | null): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'bricklink' } });
+  
   if (!source || !source.enabled) return;
 
   let searchQueries: string[] = [];
@@ -31727,15 +31675,20 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
     const now = new Date();
 
     for (const query of searchQueries) {
-      // Шукаємо в каталозі Bricklink
-      const url = `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(query)}#T=A`;
-      const html = await browserManager.fetchHtml(url);
-      const listings = parseBrickLinkSearchHtml(html);
+      const isDigitsOnly = /^\d+$/.test(query);
+      const url = isDigitsOnly 
+        ? `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${query}-1#T=S&O={"iconly":0}`
+        : `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(query)}#T=A`;
+      
+      const waitFor = isDigitsOnly ? 'table' : 'a[href*="item.page"]';
+      const html = await browserManager.fetchHtml(url, waitFor);
+      const listings = parseBrickLinkSearchHtml(html, `LEGO ${query}`);
 
       for (const listing of listings) {
         itemsSeen += 1;
 
-        const resolvedItemId = await resolveItemIdFromTitle(listing.titleRaw);
+        const resolvedTitle = isDigitsOnly ? `LEGO ${query}` : listing.titleRaw;
+        const resolvedItemId = await resolveItemIdFromTitle(resolvedTitle);
         const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
         const listingId = stableListingId('bricklink', listing.externalListingId);
 
@@ -31765,8 +31718,8 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
               itemId,
               externalListingId: listing.externalListingId,
               externalId: listing.externalListingId,
-              titleRaw: listing.titleRaw,
-              title: listing.titleRaw,
+              titleRaw: resolvedTitle,
+              title: resolvedTitle,
               url: listing.url,
               imageUrl: listing.imageUrl ?? null,
               price: listing.price || 0,
@@ -31787,7 +31740,7 @@ export async function runBrickLinkSource(specificQuery?: string | null): Promise
           unresolvedOperations.push({
             listingId,
             sourceCode: 'bricklink',
-            titleRaw: listing.titleRaw,
+            titleRaw: resolvedTitle,
           });
         } else {
           itemsMatched += 1;
@@ -31937,12 +31890,13 @@ function parseBrickowlSearchHtml(html) {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickowl\brickowl-parser.ts =====
 
+// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickowl\brickowl-parser.ts
+
 import * as cheerio from 'cheerio';
 import { BrickowlParsedListing } from './brickowl-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
   const cleanRaw = raw.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-
   const matchAfter = cleanRaw.match(/(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(грн|UAH|EUR|€|\$|£)/i);
   const matchBefore = cleanRaw.match(/(\$|€|£|EUR)\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
 
@@ -31960,8 +31914,8 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   }
 
   const digits = numberPart.replace(/[^\d.,]/g, '');
-
   let normalizedDigits = digits;
+  
   if (digits.includes(',') && digits.includes('.')) {
     if (digits.lastIndexOf(',') > digits.lastIndexOf('.')) {
       normalizedDigits = digits.replace(/\./g, '').replace(',', '.');
@@ -31978,10 +31932,7 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   }
 
   const amount = Number(normalizedDigits);
-
-  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
-    return null;
-  }
+  if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) return null;
 
   let currency = 'UAH';
   const currUpper = currencyPart.toUpperCase();
@@ -31997,8 +31948,8 @@ export function parseBrickowlSearchHtml(html: string): BrickowlParsedListing[] {
   const result: BrickowlParsedListing[] = [];
   const seen = new Set<string>();
 
-  $('.ws_item').each((_, element) => {
-    const titleElement = $(element).find('.name a');
+  $('.item-row, .product-list-item').each((_, element) => {
+    const titleElement = $(element).find('.name a, h2 a, h3 a').first();
     const title = titleElement.text().replace(/\s+/g, ' ').trim();
     const href = titleElement.attr('href')?.trim() ?? '';
     
@@ -32010,11 +31961,11 @@ export function parseBrickowlSearchHtml(html: string): BrickowlParsedListing[] {
     
     if (!priceParsed) return;
 
-    const url = `https://www.brickowl.com${href}`;
+    const url = href.startsWith('http') ? href : `https://www.brickowl.com${href}`;
     if (seen.has(url)) return;
     seen.add(url);
 
-    const imageUrl = $(element).find('.image img').attr('src') ?? null;
+    const imageUrl = $(element).find('.image img, .img-responsive').attr('src') ?? null;
     const isNew = title.toLowerCase().includes('new');
 
     result.push({
@@ -32167,6 +32118,8 @@ async function runBrickOwlSource() {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickowl\brickowl-source.ts =====
 
+// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\brickowl\brickowl-source.ts
+
 import { browserManager } from '../../common/browser-manager';
 import { estimateUaShippingBySource } from '../../common/shipping-estimator';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
@@ -32180,6 +32133,7 @@ import { parseBrickowlSearchHtml } from './brickowl-parser';
 
 export async function runBrickOwlSource(specificQuery?: string | null): Promise<void> {
   const source = await prisma.marketSource.findUnique({ where: { code: 'brickowl' } });
+  
   if (!source || !source.enabled) return;
 
   let searchQueries: string[] = [];
@@ -32209,16 +32163,19 @@ export async function runBrickOwlSource(specificQuery?: string | null): Promise<
     const now = new Date();
 
     for (const query of searchQueries) {
-      const url = `https://www.brickowl.com/search/catalog?query=${encodeURIComponent(query)}`;
+      const isDigitsOnly = /^\d+$/.test(query);
+      const url = isDigitsOnly 
+        ? `https://www.brickowl.com/search/catalog?query=${query}`
+        : `https://www.brickowl.com/search/catalog?query=${encodeURIComponent(query)}`;
       
-      // 🔥 ФІКС: browserManager замість httpClient (обхід Cloudflare)
       const html = await browserManager.fetchHtml(url);
       const listings = parseBrickowlSearchHtml(html);
 
       for (const listing of listings) {
         itemsSeen += 1;
 
-        const resolvedItemId = await resolveItemIdFromTitle(listing.titleRaw);
+        const resolvedTitle = isDigitsOnly ? `LEGO ${query}` : listing.titleRaw;
+        const resolvedItemId = await resolveItemIdFromTitle(resolvedTitle);
         const itemId = resolvedItemId ?? (await getOrCreatePlaceholderItemId());
         const listingId = stableListingId('brickowl', listing.externalListingId);
 
@@ -32235,7 +32192,7 @@ export async function runBrickOwlSource(specificQuery?: string | null): Promise<
           sourceCode: 'brickowl',
           itemId,
           externalListingId: listing.externalListingId,
-          titleRaw: listing.titleRaw,
+          titleRaw: resolvedTitle,
           url: listing.url,
           imageUrl: listing.imageUrl ?? null,
           price: listing.price || 0,
@@ -32253,7 +32210,7 @@ export async function runBrickOwlSource(specificQuery?: string | null): Promise<
           unresolvedOperations.push({
             listingId,
             sourceCode: 'brickowl',
-            titleRaw: listing.titleRaw,
+            titleRaw: resolvedTitle,
           });
         } else {
           itemsMatched += 1;
@@ -32278,8 +32235,6 @@ export async function runBrickOwlSource(specificQuery?: string | null): Promise<
         itemsInserted += creates.length;
         creates.length = 0;
       }
-
-      await new Promise((res) => setTimeout(res, 2500 + Math.random() * 3500));
     }
 
     if (creates.length > 0) {
@@ -32439,83 +32394,79 @@ import * as cheerio from 'cheerio';
 import { EbayParsedListing } from './ebay-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
-  const cleanRaw = raw.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-
-  const matchAfter = cleanRaw.match(/(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(грн|UAH|EUR|€|\$|£)/i);
-  const matchBefore = cleanRaw.match(/(\$|€|£|EUR)\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
-
-  let numberPart = '';
-  let currencyPart = '';
-
-  if (matchAfter) {
-    numberPart = matchAfter[1];
-    currencyPart = matchAfter[2];
-  } else if (matchBefore) {
-    currencyPart = matchBefore[1];
-    numberPart = matchBefore[2];
-  } else {
+  const cleanRaw = raw.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').replace(/to/gi, '-').replace(/bis/gi, '-').trim();
+  
+  const numMatch = cleanRaw.match(/(\d{1,3}(?:[.,\s]\d{3})*(?:[.,]\d{1,2})?)/);
+  
+  if (!numMatch) {
     return null;
   }
 
-  const digits = numberPart.replace(/[^\d.,]/g, '');
-
-  let normalizedDigits = digits;
+  let digits = numMatch[1].replace(/\s/g, '');
+  
   if (digits.includes(',') && digits.includes('.')) {
     if (digits.lastIndexOf(',') > digits.lastIndexOf('.')) {
-      normalizedDigits = digits.replace(/\./g, '').replace(',', '.');
+      digits = digits.replace(/\./g, '').replace(',', '.');
     } else {
-      normalizedDigits = digits.replace(/,/g, '');
+      digits = digits.replace(/,/g, '');
     }
   } else if (digits.includes(',')) {
-    const parts = digits.split(',');
-    if (parts[parts.length - 1].length <= 2) {
-      normalizedDigits = digits.replace(',', '.');
-    } else {
-      normalizedDigits = digits.replace(/,/g, '');
-    }
+    digits = digits.replace(',', '.');
   }
 
-  const amount = Number(normalizedDigits);
-
+  const amount = Number(digits);
   if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
     return null;
   }
 
-  let currency = 'UAH';
-  const currUpper = currencyPart.toUpperCase();
-  if (currUpper.includes('$')) currency = 'USD';
-  if (currUpper.includes('EUR') || currUpper.includes('€')) currency = 'EUR';
-  if (currUpper.includes('£')) currency = 'GBP';
+  let currency = 'EUR'; 
+  const currUpper = cleanRaw.toUpperCase();
+  if (currUpper.includes('$') || currUpper.includes('USD')) currency = 'USD';
+  if (currUpper.includes('£') || currUpper.includes('GBP')) currency = 'GBP';
+  if (currUpper.includes('UAH') || currUpper.includes('ГРН')) currency = 'UAH';
 
   return { amount, currency };
 }
 
 export function parseEbaySearchHtml(html: string): EbayParsedListing[] {
+  console.log(`[EbayParser] Starting HTML parse. HTML length: ${html.length}`);
   const $ = cheerio.load(html);
   const result: EbayParsedListing[] = [];
-  const seen = new Set<string>();
 
-  $('.s-item').each((_, element) => {
+  // Шукаємо за широкими селекторами
+  const elements = $('.s-item, .srp-results li.s-item');
+  console.log(`[EbayParser] Found ${elements.length} .s-item elements`);
+
+  elements.each((_, element) => {
     const titleElement = $(element).find('.s-item__title');
-    const title = titleElement.text().replace(/\s+/g, ' ').trim();
+    let title = titleElement.text().replace(/\s+/g, ' ').trim();
+    
+    title = title.replace(/^Neues Angebot/i, '').replace(/^New Listing/i, '').trim();
+
     const href = $(element).find('a.s-item__link').attr('href')?.trim() ?? '';
     
-    if (!title || !href || title.toLowerCase().includes('shop on ebay')) return;
+    if (!title) return;
+    
+    if (!href || title.toLowerCase().includes('shop on ebay') || title.toLowerCase().includes('weitere artikel')) {
+      return;
+    }
 
     const idMatch = href.match(/itm\/(\d+)/);
-    const externalListingId = idMatch ? idMatch[1] : href.split('?')[0];
+    const externalListingId = idMatch ? idMatch[1] : href.split('?')[0].split('/').pop() || href;
 
     const priceText = $(element).find('.s-item__price').text();
     const priceParsed = parsePrice(priceText);
-    if (!priceParsed) return;
+    
+    if (!priceParsed) {
+      console.log(`[EbayParser] ❌ Rejected Listing (Price Parse Failed): Title: "${title}", Raw Price: "${priceText}"`);
+      return;
+    }
 
     const url = href.split('?')[0];
-    if (seen.has(url)) return;
-    seen.add(url);
-
     const imageUrl = $(element).find('.s-item__image-img').attr('src') ?? null;
+    
     const conditionText = $(element).find('.SECONDARY_INFO').text().toLowerCase();
-    const isSealed = conditionText.includes('new') || conditionText.includes('sealed');
+    const isSealed = conditionText.includes('neu') || conditionText.includes('new') || conditionText.includes('sealed') || conditionText.includes('ovp');
 
     result.push({
       externalListingId,
@@ -32526,9 +32477,9 @@ export function parseEbaySearchHtml(html: string): EbayParsedListing[] {
       sellerRating: null,
       price: priceParsed.amount,
       currency: priceParsed.currency,
-      shippingPrice: null,
+      shippingPrice: null, 
       shippingCurrency: null,
-      country: 'US',
+      country: 'DE', 
       condition: isSealed ? 'new' : 'used',
       sealed: isSealed,
       completenessPercent: isSealed ? 100 : null,
@@ -32536,6 +32487,7 @@ export function parseEbaySearchHtml(html: string): EbayParsedListing[] {
     });
   });
 
+  console.log(`[EbayParser] ✅ Successfully parsed ${result.length} valid listings`);
   return result;
 }
 
@@ -32678,24 +32630,35 @@ import { prisma } from '../../prisma';
 import { parseEbaySearchHtml } from './ebay-parser';
 
 export async function runEbaySource(specificQuery?: string | null): Promise<void> {
+  console.log('[EbaySource] Starting runEbaySource (Browser Mode)');
   const source = await prisma.marketSource.findUnique({ where: { code: 'ebay' } });
-  if (!source || !source.enabled) return;
+  
+  if (!source || !source.enabled) {
+    console.error('[EbaySource] Source not found or disabled');
+    return;
+  }
 
   let searchQueries: string[] = [];
 
   if (specificQuery && specificQuery.trim()) {
     searchQueries = [specificQuery.trim()];
+    console.log(`[EbaySource] Using specific query: ${specificQuery}`);
   } else {
     const activeWatchlist = await prisma.watchlistItem.findMany({
       where: { active: true },
       select: { item: { select: { setNumber: true } } }
     });
     searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+    console.log(`[EbaySource] Found ${searchQueries.length} unique set numbers in watchlist`);
   }
 
-  if (searchQueries.length === 0) return;
+  if (searchQueries.length === 0) {
+    console.error('[EbaySource] Search queries array is empty');
+    return;
+  }
 
   const runId = await startSourceRun('ebay');
+  console.log(`[EbaySource] Created Run ID: ${runId}`);
 
   let itemsSeen = 0;
   let itemsMatched = 0;
@@ -32708,9 +32671,15 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
     const now = new Date();
 
     for (const query of searchQueries) {
-      const url = `https://www.ebay.com/sch/i.html?_nkw=lego+${encodeURIComponent(query)}&_sacat=0`;
-      const html = await browserManager.fetchHtml(url);
+      console.log(`[EbaySource] Processing query: ${query}`);
+      const url = `https://www.ebay.de/sch/i.html?_nkw=lego+${encodeURIComponent(query)}&_sacat=0`;
+      
+      console.log(`[EbaySource] Fetching via Browser Manager: ${url}`);
+      
+      const html = await browserManager.fetchHtml(url, '.s-item');
+      
       const listings = parseEbaySearchHtml(html);
+      console.log(`[EbaySource] Fetched ${listings.length} listings for query ${query}`);
 
       for (const listing of listings) {
         itemsSeen += 1;
@@ -32726,7 +32695,6 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
           sealed: listing.sealed,
         });
 
-        // 🔥 ВИКОРИСТОВУЄМО НАДІЙНИЙ PRISMA UPSERT
         upsertOperations.push(
           prisma.marketListing.upsert({
             where: { id: listingId },
@@ -32749,9 +32717,9 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
               url: listing.url,
               imageUrl: listing.imageUrl ?? null,
               price: listing.price || 0,
-              currency: listing.currency || 'USD',
+              currency: listing.currency || 'EUR',
               shippingPrice,
-              shippingCurrency: listing.shippingCurrency || listing.currency || 'USD',
+              shippingCurrency: listing.shippingCurrency || listing.currency || 'EUR',
               condition: listing.condition ?? null,
               sealed: listing.sealed ?? false,
               status: 'active',
@@ -32772,8 +32740,11 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
           itemsMatched += 1;
         }
       }
+      
+      await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
     }
 
+    console.log(`[EbaySource] Executing ${upsertOperations.length} DB upsert operations...`);
     if (upsertOperations.length > 0) {
       const chunkSize = 50;
       for (let i = 0; i < upsertOperations.length; i += chunkSize) {
@@ -32782,13 +32753,17 @@ export async function runEbaySource(specificQuery?: string | null): Promise<void
         itemsInserted += chunk.length;
       }
     }
+    console.log(`[EbaySource] DB upserts complete.`);
 
+    console.log(`[EbaySource] Enqueueing ${unresolvedOperations.length} unresolved matches...`);
     for (const u of unresolvedOperations) {
       await enqueueUnresolvedMatch(u);
     }
 
+    console.log(`[EbaySource] Run complete. Finishing run logs.`);
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
   } catch (error) {
+    console.error(`[EbaySource] FATAL ERROR:`, error);
     const message = error instanceof Error ? error.message : String(error);
     await logSourceError({ scope: 'scraper', sourceCode: 'ebay', message: 'eBay source failed', detailsJson: { error: message } });
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });
@@ -32948,8 +32923,12 @@ import { OlxParsedListing } from './olx-types';
 
 function parsePrice(raw: string): { amount: number; currency: string } | null {
   const cleanRaw = raw.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  // Якщо в текст потрапив шматок CSS-класу, тихо ігноруємо, це не помилка
+  if (cleanRaw.includes('{') || cleanRaw.includes('}') || cleanRaw.includes('css-')) {
+    return null;
+  }
 
-  // Шукаємо число, до якого жорстко прив'язана валюта
   const matchAfter = cleanRaw.match(/(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(грн|UAH|EUR|€|\$|£)/i);
   const matchBefore = cleanRaw.match(/(\$|€|£|EUR)\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
 
@@ -32963,12 +32942,13 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
     currencyPart = matchBefore[1];
     numberPart = matchBefore[2];
   } else {
+    // Тихо ігноруємо, якщо це просто текст без ціни
     return null;
   }
 
   const digits = numberPart.replace(/[^\d.,]/g, '');
-
   let normalizedDigits = digits;
+  
   if (digits.includes(',') && digits.includes('.')) {
     if (digits.lastIndexOf(',') > digits.lastIndexOf('.')) {
       normalizedDigits = digits.replace(/\./g, '').replace(',', '.');
@@ -32985,7 +32965,6 @@ function parsePrice(raw: string): { amount: number; currency: string } | null {
   }
 
   const amount = Number(normalizedDigits);
-
   if (Number.isNaN(amount) || amount <= 0 || amount > 10000000) {
     return null;
   }
@@ -33006,11 +32985,19 @@ function normalizeUrl(rawUrl: string): string {
 }
 
 export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
+  console.log(`[OlxParser] Starting HTML parse...`);
   const $ = cheerio.load(html);
+  
+  // 🔥 ГЛОБАЛЬНА ЧИСТКА ВІД СМІТТЯ 🔥
+  $('style, script, noscript').remove();
+  
   const result: OlxParsedListing[] = [];
   const seen = new Set<string>();
 
-  $('a').each((_, element) => {
+  const anchors = $('a');
+  console.log(`[OlxParser] Found ${anchors.length} anchor tags`);
+
+  anchors.each((_, element) => {
     const titleElement = $(element).find('h6');
     const rawTitleText = titleElement.length > 0 ? titleElement.text() : $(element).text();
     const title = rawTitleText.replace(/\s+/g, ' ').trim();
@@ -33031,13 +33018,14 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
     }
 
     const priceParsed = parsePrice(priceText);
-    if (!priceParsed) return;
+    if (!priceParsed) {
+      return; // Тихо пропускаємо, якщо ціну не знайдено
+    }
 
     const url = normalizeUrl(href);
     if (seen.has(url)) return;
     seen.add(url);
 
-    // 🔥 ФІКС З КАРТИНКАМИ OLX: Шукаємо у srcset, відкидаючи base64 заглушки
     const containerForImg = $(element).closest('[data-cy="l-card"], article, div');
     const imgNode = containerForImg.find('img').first();
     let imageUrl = null;
@@ -33047,7 +33035,6 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
       const srcset = imgNode.attr('srcset');
 
       if (srcset) {
-        // У OLX srcset має формат "url1 1x, url2 2x". Беремо перший урл.
         imageUrl = srcset.split(' ')[0];
       } else if (src && !src.startsWith('data:image')) {
         imageUrl = src;
@@ -33073,6 +33060,7 @@ export function parseOlxSearchHtml(html: string): OlxParsedListing[] {
     });
   });
 
+  console.log(`[OlxParser] Successfully parsed ${result.length} listings`);
   return result;
 }
 
@@ -33196,6 +33184,8 @@ async function runOlxSource() {
 
 ===== FILE: C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\olx\olx-source.ts =====
 
+// C:\Users\Vlad\lego_trading_manager\backend\apps\scrapers\src\sources\olx\olx-source.ts
+
 import { browserManager } from '../../common/browser-manager';
 import { resolveItemIdFromTitle } from '../../common/item-matcher';
 import { stableListingId } from '../../common/listing-id';
@@ -33207,24 +33197,35 @@ import { prisma } from '../../prisma';
 import { parseOlxSearchHtml } from './olx-parser';
 
 export async function runOlxSource(specificQuery?: string | null): Promise<void> {
+  console.log('[OlxSource] Starting runOlxSource');
   const source = await prisma.marketSource.findUnique({ where: { code: 'olx' } });
-  if (!source || !source.enabled) return;
+  
+  if (!source || !source.enabled) {
+    console.error('[OlxSource] Source not found or disabled');
+    return;
+  }
 
   let searchQueries: string[] = [];
 
   if (specificQuery && specificQuery.trim()) {
     searchQueries = [specificQuery.trim()];
+    console.log(`[OlxSource] Using specific query: ${specificQuery}`);
   } else {
     const activeWatchlist = await prisma.watchlistItem.findMany({
       where: { active: true },
       select: { item: { select: { setNumber: true } } }
     });
     searchQueries = Array.from(new Set(activeWatchlist.map(w => w.item?.setNumber).filter(Boolean))) as string[];
+    console.log(`[OlxSource] Found ${searchQueries.length} unique set numbers in watchlist`);
   }
 
-  if (searchQueries.length === 0) return;
+  if (searchQueries.length === 0) {
+    console.error('[OlxSource] Search queries array is empty');
+    return;
+  }
 
   const runId = await startSourceRun('olx');
+  console.log(`[OlxSource] Created Run ID: ${runId}`);
 
   let itemsSeen = 0;
   let itemsMatched = 0;
@@ -33237,12 +33238,13 @@ export async function runOlxSource(specificQuery?: string | null): Promise<void>
     const now = new Date();
 
     for (const query of searchQueries) {
-      // 🔥 ФІКС: OLX потребує дефіси замість пробілів та нижній регістр для правильного пошуку
+      console.log(`[OlxSource] Processing query: ${query}`);
       const formattedQuery = query.replace(/\s+/g, '-').toLowerCase();
       const url = `https://www.olx.ua/uk/list/q-lego-${encodeURIComponent(formattedQuery)}/`;
       
-      const html = await browserManager.fetchHtml(url);
+      const html = await browserManager.fetchHtml(url, 'a[href*="/d/"]');
       const listings = parseOlxSearchHtml(html);
+      console.log(`[OlxSource] Fetched ${listings.length} listings for query ${query}`);
 
       for (const listing of listings) {
         itemsSeen += 1;
@@ -33296,6 +33298,7 @@ export async function runOlxSource(specificQuery?: string | null): Promise<void>
       }
     }
 
+    console.log(`[OlxSource] Executing ${upsertOperations.length} DB upsert operations...`);
     if (upsertOperations.length > 0) {
       const chunkSize = 50;
       for (let i = 0; i < upsertOperations.length; i += chunkSize) {
@@ -33304,13 +33307,17 @@ export async function runOlxSource(specificQuery?: string | null): Promise<void>
         itemsInserted += chunk.length;
       }
     }
+    console.log(`[OlxSource] DB upserts complete.`);
 
+    console.log(`[OlxSource] Enqueueing ${unresolvedOperations.length} unresolved matches...`);
     for (const u of unresolvedOperations) {
       await enqueueUnresolvedMatch(u);
     }
 
+    console.log(`[OlxSource] Run complete. Finishing run logs.`);
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'success' });
   } catch (error) {
+    console.error(`[OlxSource] FATAL ERROR:`, error);
     const message = error instanceof Error ? error.message : String(error);
     await logSourceError({ scope: 'scraper', sourceCode: 'olx', message: 'OLX source failed', detailsJson: { error: message } });
     await finishSourceRun({ runId, itemsSeen, itemsMatched, itemsInserted, itemsUpdated, status: 'failed', errorMessage: message });
@@ -33392,12 +33399,12 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
 COPY . .
-# Фікс для обриву мережі під час білду
+# Фікс: Якщо обривається мережа, жорстко видаляємо биті файли і качаємо начисто
 RUN npm config set fetch-retries 5 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm install --no-fund --no-audit || \
-    (sleep 5 && npm install --no-fund --no-audit)
+    (echo "NPM Install failed, cleaning corrupted modules and retrying..." && rm -rf node_modules && npm cache clean --force && sleep 5 && npm install --no-fund --no-audit)
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
 RUN npm run build:all
 

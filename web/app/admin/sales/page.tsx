@@ -11,8 +11,10 @@ import { Loader2, Trash2, ReceiptText } from 'lucide-react';
 import { getSocket } from '@/lib/socket';
 import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function SalesPage() {
+  const { t } = useI18n();
   const { data, isLoading, mutate } = useSWR<any[]>('/api/proxy/sales', swrFetcher);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
@@ -20,7 +22,6 @@ export default function SalesPage() {
     const socket = getSocket();
     const handler = () => mutate();
     
-    // Слухаємо глобальне оновлення дашборду (включає POS, Orders, Manual Sales)
     socket.on('dashboard_refresh', handler);
     
     return () => {
@@ -38,10 +39,10 @@ export default function SalesPage() {
         method: 'DELETE',
         body: JSON.stringify({ id })
       });
-      toast.success('Продаж успішно скасовано. Товар повернено в інвентар.');
+      toast.success(t('common.success' as any));
       mutate();
     } catch (e: any) {
-      toast.error(e.message || 'Помилка скасування продажу');
+      toast.error(e.message || t('common.error' as any));
     } finally {
       setLoadingId(null);
     }
@@ -54,8 +55,8 @@ export default function SalesPage() {
           <ReceiptText size={24} />
         </div>
         <div>
-          <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Sales Record</h1>
-          <p className="mt-1 text-sm font-medium text-slate-500">Реєстр всіх транзакцій, доходів та прибутків фонду.</p>
+          <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.sales.title' as any)}</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500">{t('admin.sales.subtitle' as any)}</p>
         </div>
       </div>
       
@@ -65,7 +66,7 @@ export default function SalesPage() {
         </div>
         
         <div className="xl:col-span-2 bg-[var(--card)] border border-[var(--border)] rounded-[2.5rem] p-6 md:p-8 shadow-sm overflow-hidden flex flex-col">
-          <h2 className="text-xl font-black mb-6 text-[var(--foreground)]">Історія транзакцій</h2>
+          <h2 className="text-xl font-black mb-6 text-[var(--foreground)]">{t('admin.sales.title' as any)}</h2>
           
           <div className="flex-1 overflow-x-auto custom-scrollbar">
             {isLoading ? (
@@ -73,7 +74,7 @@ export default function SalesPage() {
             ) : (
               <DataTable
                 rows={rows}
-                emptyText="Ще немає жодного продажу."
+                emptyText={t('common.empty' as any)}
                 getRowKey={(row) => row.id}
                 columns={[
                   {

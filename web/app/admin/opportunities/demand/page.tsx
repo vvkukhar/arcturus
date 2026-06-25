@@ -9,6 +9,7 @@ import { SectionCard } from '@/components/admin/section-card';
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface DemandItem {
   itemId: string;
@@ -24,6 +25,7 @@ interface DemandItem {
 }
 
 export default function DemandHeatmapPage() {
+  const { t } = useI18n();
   const { data, isLoading, mutate } = useSWR<DemandItem[]>('/api/admin/demand', swrFetcher, { refreshInterval: 30000 });
   const [loadingId, setLoadingId] = useState<string | null>(null);
   
@@ -32,10 +34,9 @@ export default function DemandHeatmapPage() {
   const addToWatchlist = async (item: DemandItem) => {
     try {
       setLoadingId(item.itemId);
-      // Розраховуємо цілі закупки базуючись на середньому офері клієнтів
       const targetSell = item.averageOffer || item.highestOffer;
-      const maxBuy = targetSell * 0.75; // Хочемо 25% чистої маржі
-      const desiredBuy = targetSell * 0.6; // Ідеально 40% маржі
+      const maxBuy = targetSell * 0.75; 
+      const desiredBuy = targetSell * 0.6; 
 
       await apiFetch('/api/admin/watchlist/create', {
         method: 'POST',
@@ -45,16 +46,16 @@ export default function DemandHeatmapPage() {
           desiredBuyPrice: desiredBuy,
           maxBuyPrice: maxBuy,
           targetSellPrice: targetSell,
-          priority: 95, // Високий пріоритет, бо вже є покупець!
+          priority: 95, 
           active: true,
           notes: `Auto-added from Demand Heatmap. ${item.demandCount} users waiting.`
         }),
       });
       
-      toast.success('Added to Procurement Watchlist with High Priority!');
+      toast.success(t('common.success' as any));
       mutate();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to add to watchlist');
+      toast.error(err.message || t('common.error' as any));
     } finally {
       setLoadingId(null);
     }
@@ -68,7 +69,7 @@ export default function DemandHeatmapPage() {
             <Flame className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Community Demand Heatmap</h1>
+            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.demand' as any)}</h1>
             <p className="mt-1 text-sm font-medium text-slate-500">Discover what customers are actively searching for and willing to buy.</p>
           </div>
         </div>
@@ -90,7 +91,7 @@ export default function DemandHeatmapPage() {
       <SectionCard title="Most Wanted Assets">
         <DataTable
           rows={rows}
-          emptyText={isLoading ? "Analyzing community requests..." : "No active demand found. Promote the store!"}
+          emptyText={isLoading ? t('common.loading' as any) : t('common.empty' as any)}
           getRowKey={(row) => row.itemId}
           columns={[
             {

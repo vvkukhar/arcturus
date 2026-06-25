@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import { Search, Package, User, MapPin, ShieldCheck, Tag, Truck, LogIn, UserPlus } from 'lucide-react';
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export function CommandMenu() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -16,24 +18,24 @@ export function CommandMenu() {
 
   const commands = useMemo(() => {
     const base = [
-      { name: 'Каталог наборів', path: '/store/catalog', icon: Package, category: 'Магазин' },
-      { name: 'Відстежити замовлення', path: '/track', icon: MapPin, category: 'Магазин' },
-      { name: 'B2B Dropship Портал', path: '/dropship', icon: Truck, category: 'Магазин' },
-      { name: 'Виставити на продаж (5% комісія)', path: '/sell', icon: Tag, category: 'Маркетплейс' },
-      { name: 'Гарантія якості', path: '/authenticity', icon: ShieldCheck, category: 'Інформація' },
+      { name: t('nav.catalog' as any), path: '/store/catalog', icon: Package, category: 'Shop' },
+      { name: t('nav.track' as any), path: '/track', icon: MapPin, category: 'Shop' },
+      { name: t('dropship.title' as any), path: '/dropship', icon: Truck, category: 'Shop' },
+      { name: t('sidebar.sell' as any), path: '/sell', icon: Tag, category: 'Market' },
+      { name: t('nav.auth' as any), path: '/authenticity', icon: ShieldCheck, category: 'Info' },
     ];
 
     if (user) {
-      base.unshift({ name: 'Мій Кабінет', path: '/account', icon: User, category: 'Акаунт' });
+      base.unshift({ name: t('nav.account' as any), path: '/account', icon: User, category: 'Account' });
     } else {
       base.unshift(
-        { name: 'Увійти в акаунт', path: '/login', icon: LogIn, category: 'Акаунт' },
-        { name: 'Створити акаунт (Реєстрація)', path: '/register', icon: UserPlus, category: 'Акаунт' }
+        { name: t('auth.signIn' as any), path: '/login', icon: LogIn, category: 'Account' },
+        { name: t('auth.register' as any), path: '/register', icon: UserPlus, category: 'Account' }
       );
     }
 
     return base;
-  }, [user]);
+  }, [user, t]);
 
   const filteredCommands = useMemo(() => {
     if (!query) return commands;
@@ -74,7 +76,7 @@ export function CommandMenu() {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Шукати..."
+            placeholder={t('common.search' as any)}
             className="flex-1 bg-transparent border-none outline-none text-lg text-[var(--foreground)] placeholder-slate-400 font-medium"
           />
           <div className="hidden sm:flex items-center gap-1 text-[10px] font-black text-slate-400 bg-[var(--background)] border border-[var(--border)] px-2.5 py-1.5 rounded-lg shadow-sm">
@@ -84,7 +86,7 @@ export function CommandMenu() {
 
         <div className="max-h-[50vh] overflow-y-auto p-3 custom-scrollbar">
           {filteredCommands.length === 0 ? (
-            <div className="p-12 text-center text-slate-500 font-medium">Нічого не знайдено для "{query}"</div>
+            <div className="p-12 text-center text-slate-500 font-medium">{t('common.empty' as any)} "{query}"</div>
           ) : (
             <div className="space-y-1">
               {filteredCommands.map((cmd, idx) => {

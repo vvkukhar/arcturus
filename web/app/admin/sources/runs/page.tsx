@@ -6,6 +6,7 @@ import { DatabaseZap, Loader2 } from 'lucide-react';
 import { DataTable } from '@/components/admin/data-table';
 import { StatusPill } from '@/components/admin/status-pill';
 import { useState, useEffect } from 'react';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface SourceRunLog {
   id: string;
@@ -25,6 +26,7 @@ interface SourceRunLog {
 }
 
 export default function SourcesRunsPage() {
+  const { t } = useI18n();
   const { data, isLoading } = useSWR<SourceRunLog[]>('/api/proxy/sync-runs', swrFetcher, { refreshInterval: 10000 });
   const rows = Array.isArray(data) ? data : [];
   const [mounted, setMounted] = useState(false);

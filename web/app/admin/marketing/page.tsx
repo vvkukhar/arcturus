@@ -1,8 +1,11 @@
 import { SmmBroadcasterPanel } from '@/components/admin/smm-broadcaster-panel';
 import { LtvMaximizerPanel } from '@/components/admin/ltv-maximizer-panel';
 import { Megaphone } from 'lucide-react';
+import { dict } from '@/lib/i18n';
 
 export default function MarketingHubPage() {
+  const t = (key: keyof typeof dict.uk) => dict.uk[key] || dict.en[key] || key;
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 hardware-accelerated pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm">
@@ -11,8 +14,8 @@ export default function MarketingHubPage() {
             <Megaphone className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">AI Marketing Hub</h1>
-            <p className="mt-1 text-sm font-medium text-slate-500">Automated LTV maximization and Social Media FOMO broadcasting.</p>
+            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.marketing.title' as any)}</h1>
+            <p className="mt-1 text-sm font-medium text-slate-500">{t('admin.marketing.subtitle' as any)}</p>
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { ItemAutocomplete } from '@/components/admin/item-autocomplete';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
 import { Loader2, Plus, X, Package, DollarSign, Tag, Info, Layers, ImagePlus } from 'lucide-react';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 function parseNumber(value: string, fallback: number | null = null): number | null {
   if (!value.trim()) return fallback;
@@ -14,7 +15,6 @@ function parseNumber(value: string, fallback: number | null = null): number | nu
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-// Компресія зображень на клієнті перед відправкою (як на sell page)
 const compressImage = async (file: File, maxWidth = 1920): Promise<File> => {
   if (!file.type.startsWith('image/')) return file;
   return new Promise((resolve, reject) => {
@@ -52,18 +52,16 @@ const compressImage = async (file: File, maxWidth = 1920): Promise<File> => {
 
 export function CreateInventoryDialog() {
   const router = useRouter();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   
-  // States
   const [itemSearch, setItemSearch] = useState('');
   const [itemId, setItemId] = useState('');
   const [titleSnapshot, setTitleSnapshot] = useState('');
   
-  // Category & Theme
   const [kind, setKind] = useState('set');
   const [theme, setTheme] = useState('');
 
-  // Financials & Condition
   const [purchasePrice, setPurchasePrice] = useState('');
   const [expectedSalePriceManual, setExpectedSalePriceManual] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -72,7 +70,6 @@ export function CreateInventoryDialog() {
   const [source, setSource] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Images
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -124,11 +121,10 @@ export function CreateInventoryDialog() {
       const parsedExpected = parseNumber(expectedSalePriceManual, null);
       const parsedQty = parseNumber(quantity, 1);
 
-      if (parsedPrice === null || parsedPrice < 0) throw new Error('Ціна закупівлі не може бути від\'ємною');
-      if (parsedQty === null || parsedQty < 1) throw new Error('Кількість має бути мінімум 1');
-      if (!titleSnapshot.trim()) throw new Error('Введіть назву або оберіть товар з каталогу');
+      if (parsedPrice === null || parsedPrice < 0) throw new Error('Price cannot be negative');
+      if (parsedQty === null || parsedQty < 1) throw new Error('Quantity must be at least 1');
+      if (!titleSnapshot.trim()) throw new Error('Title is required');
 
-      // 1. Створюємо товар
       const res = await apiFetch<any>('/api/admin/inventory/create', {
         method: 'POST',
         body: JSON.stringify({ 
@@ -148,7 +144,6 @@ export function CreateInventoryDialog() {
 
       const createdId = res?.data?.id || res?.id;
 
-      // 2. Якщо є фотки - завантажуємо їх
       if (files.length > 0 && createdId) {
         for (let i = 0; i < files.length; i++) {
           const compressed = await compressImage(files[i]);
@@ -156,7 +151,6 @@ export function CreateInventoryDialog() {
           formData.append('inventoryItemId', createdId);
           formData.append('file', compressed);
 
-          // Використовуємо apiFetch, він вміє обробляти FormData і прокидати токен
           await apiFetch('/api/admin/media/inventory-image', {
             method: 'POST',
             body: formData,
@@ -167,7 +161,7 @@ export function CreateInventoryDialog() {
       router.refresh();
       handleClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не вдалося додати товар');
+      setError(err instanceof Error ? err.message : t('common.error' as any));
     } finally { 
       setLoading(false); 
     }
@@ -179,7 +173,7 @@ export function CreateInventoryDialog() {
     return (
       <Button onClick={() => setOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 rounded-xl px-5 h-11">
         <Plus className="h-4 w-4" /> 
-        Add Inventory
+        {t('admin.ui.inv.add' as any)}
       </Button>
     );
   }
@@ -189,18 +183,16 @@ export function CreateInventoryDialog() {
       <div className="min-h-full flex items-center justify-center p-4 py-12">
         <div className="w-full max-w-3xl flex flex-col rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] shadow-2xl animate-in zoom-in-95 duration-200">
           
-          {/* Header */}
           <div className="p-6 md:p-8 border-b border-[var(--border)] flex justify-between items-center bg-[var(--background)]/50 rounded-t-[2.5rem]">
             <div>
-              <h2 className="text-2xl font-black text-[var(--foreground)] tracking-tight">Add to Inventory</h2>
-              <p className="text-sm font-medium text-slate-500 mt-1">Оприбуткування нового активу на баланс.</p>
+              <h2 className="text-2xl font-black text-[var(--foreground)] tracking-tight">{t('admin.ui.inv.add' as any)}</h2>
+              <p className="text-sm font-medium text-slate-500 mt-1">{t('admin.ui.inv.addDesc' as any)}</p>
             </div>
             <button onClick={handleClose} className="rounded-full p-2 bg-[var(--card)] border border-[var(--border)] hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 transition-colors shadow-sm">
               <X size={20} />
             </button>
           </div>
 
-          {/* Body */}
           <div className="p-6 md:p-8 space-y-8 text-left">
             {error && (
               <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 shadow-sm dark:bg-red-900/20 dark:border-red-900/50 dark:text-red-400">
@@ -208,14 +200,13 @@ export function CreateInventoryDialog() {
               </div>
             )}
 
-            {/* Секція: Пошук та Категоризація */}
             <div className="space-y-4">
               <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-blue-500 border-b border-[var(--border)] pb-2">
-                <Layers size={16} /> 1. Ідентифікація та Категорія
+                <Layers size={16} /> {t('admin.ui.inv.step1' as any)}
               </h3>
               
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Артикул або Назва *</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.inv.skuName' as any)}</label>
                 <ItemAutocomplete 
                   value={itemSearch} 
                   onChangeAction={(val) => {
@@ -223,7 +214,7 @@ export function CreateInventoryDialog() {
                     setTitleSnapshot(val);
                     setItemId(''); 
                   }} 
-                  placeholder="Введіть артикул (напр. 75192) або назву..."
+                  placeholder=""
                   onPickAction={(i) => { 
                     setItemSearch(i.title); 
                     setItemId(i.id); 
@@ -236,20 +227,20 @@ export function CreateInventoryDialog() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Тип активу</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.inv.type' as any)}</label>
                   <select 
                     value={kind} 
                     onChange={(e) => setKind(e.target.value)}
                     className={`${inputClasses} cursor-pointer`}
                   >
-                    <option value="set">Набір (Set)</option>
-                    <option value="minifigure">Мініфігурка (Minifigure)</option>
-                    <option value="bundle">Лот / Колекція (Bundle)</option>
-                    <option value="part">Деталь (Part)</option>
+                    <option value="set">Set</option>
+                    <option value="minifigure">Minifigure</option>
+                    <option value="bundle">Bundle</option>
+                    <option value="part">Part</option>
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Серія (Theme)</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.inv.theme' as any)}</label>
                   <input 
                     type="text" 
                     value={theme} 
@@ -261,10 +252,9 @@ export function CreateInventoryDialog() {
               </div>
             </div>
 
-            {/* Секція: Фотографії */}
             <div className="space-y-4">
               <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-purple-500 border-b border-[var(--border)] pb-2">
-                <ImagePlus size={16} /> 2. Фотографії (опціонально)
+                <ImagePlus size={16} /> {t('admin.ui.inv.step2' as any)}
               </h3>
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                 {previewUrls.map((url, i) => (
@@ -288,71 +278,68 @@ export function CreateInventoryDialog() {
               <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple accept="image/jpeg,image/png,image/webp,image/avif,image/heic" className="hidden" />
             </div>
 
-            {/* Секція: Фінанси */}
             <div className="space-y-4">
               <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-emerald-500 border-b border-[var(--border)] pb-2">
-                <DollarSign size={16} /> 3. Фінанси та Кількість
+                <DollarSign size={16} /> {t('admin.ui.inv.step3' as any)}
               </h3>
               
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Собівартість (₴) *</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.inv.cost' as any)}</label>
                   <input required type="number" step="0.01" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} placeholder="0.00" className={inputClasses} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Ціна продажу (₴)</label>
-                  <input type="number" step="0.01" value={expectedSalePriceManual} onChange={(e) => setExpectedSalePriceManual(e.target.value)} placeholder="Авто-прорахунок" className={inputClasses} />
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.inv.sell' as any)}</label>
+                  <input type="number" step="0.01" value={expectedSalePriceManual} onChange={(e) => setExpectedSalePriceManual(e.target.value)} placeholder="0.00" className={inputClasses} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Кількість (шт) *</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.inv.qty' as any)}</label>
                   <input required type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className={inputClasses} />
                 </div>
               </div>
             </div>
 
-            {/* Секція: Стан та деталі */}
             <div className="space-y-4">
               <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-orange-500 border-b border-[var(--border)] pb-2">
-                <Tag size={16} /> 4. Стан та Джерело
+                <Tag size={16} /> {t('admin.ui.inv.step4' as any)}
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Стан коробки / деталей</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.inv.condBox' as any)}</label>
                   <select value={condition} onChange={(e) => setCondition(e.target.value)} className={`${inputClasses} cursor-pointer`}>
-                    <option value="new">Новий (New)</option>
-                    <option value="used">Б/В (Used)</option>
-                    <option value="incomplete">Неповний (Incomplete)</option>
+                    <option value="new">New</option>
+                    <option value="used">Used</option>
+                    <option value="incomplete">Incomplete</option>
                   </select>
                 </div>
 
                 <div className="space-y-1.5 flex flex-col justify-end pb-1">
                   <label className="flex h-[46px] items-center justify-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2 cursor-pointer hover:bg-[var(--card)] transition-colors shadow-sm">
                     <input type="checkbox" checked={sealed} onChange={(e) => setSealed(e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-5 w-5" />
-                    <span className="font-bold text-[var(--foreground)] text-sm">Заводські Пломби (Sealed)</span>
+                    <span className="font-bold text-[var(--foreground)] text-sm">Sealed</span>
                   </label>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Де купили (Опціонально)</label>
-                  <input type="text" value={source} onChange={(e) => setSource(e.target.value)} placeholder="OLX, eBay, і т.д." className={inputClasses} />
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('admin.ui.inv.source' as any)}</label>
+                  <input type="text" value={source} onChange={(e) => setSource(e.target.value)} placeholder="OLX, eBay..." className={inputClasses} />
                 </div>
               </div>
 
               <div className="space-y-1.5 pt-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 flex items-center gap-1">
-                  <Info size={12} /> Нотатки (відображаються на вітрині)
+                  <Info size={12} /> {t('admin.ui.inv.notes' as any)}
                 </label>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Опишіть стан набору, наявність інструкцій чи дефекти коробки..." rows={2} className={`${inputClasses} resize-none`} />
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="..." rows={2} className={`${inputClasses} resize-none`} />
               </div>
             </div>
 
           </div>
 
-          {/* Footer Buttons */}
           <div className="p-6 md:p-8 border-t border-[var(--border)] flex justify-end gap-3 bg-[var(--background)]/50 rounded-b-[2.5rem]">
             <Button type="button" variant="ghost" className="px-8 h-12 rounded-xl font-bold" onClick={handleClose} disabled={loading}>
-              Cancel
+              {t('common.cancel' as any)}
             </Button>
             <Button 
               onClick={handleSubmit} 
@@ -360,7 +347,7 @@ export function CreateInventoryDialog() {
               disabled={loading || !titleSnapshot || !purchasePrice}
             >
               {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Package className="mr-2 h-5 w-5" />} 
-              {loading ? 'Збереження...' : 'Оприбуткувати Актив'}
+              {loading ? t('admin.ui.inv.saving' as any) : t('admin.ui.inv.save' as any)}
             </Button>
           </div>
 

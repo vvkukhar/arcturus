@@ -29,7 +29,7 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isPending || !name.trim() || !contact.trim()) return;
     
@@ -69,7 +69,7 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
       setError(err instanceof Error ? err.message : 'Unknown error during checkout.');
       setIsPending(false);
     }
-  }, [name, contact, message, isPending, inventoryItemId, productTitle]);
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -102,7 +102,7 @@ export function OrderContactForm({ inventoryItemId, productTitle }: Props) {
           required
           value={contact}
           onChange={(e) => setContact(e.target.value)}
-          placeholder="@username / +380..."
+          placeholder="+380..."
           disabled={isPending}
           className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-medium transition-all placeholder:text-slate-400 hover:bg-slate-50 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50 text-[var(--foreground)]"
         />

@@ -1,4 +1,3 @@
-// call:function_1{"queries":["web/components/checkout/nova-poshta-picker.tsx"]}
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -6,6 +5,7 @@ import { searchNPCities, getNPWarehouses, type NPCity, type NPWarehouse } from '
 import { useDebounce } from '@/lib/use-debounce';
 import { MapPin, Box, Loader2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface Props {
   onCitySelect: (city: string) => void;
@@ -13,6 +13,7 @@ interface Props {
 }
 
 export function NovaPoshtaPicker({ onCitySelect, onWarehouseSelect }: Props) {
+  const { t } = useI18n();
   const [cityQuery, setCityQuery] = useState('');
   const [cities, setCities] = useState<NPCity[]>([]);
   const [selectedCity, setSelectedCity] = useState<NPCity | null>(null);
@@ -95,7 +96,7 @@ export function NovaPoshtaPicker({ onCitySelect, onWarehouseSelect }: Props) {
     <div className="space-y-5 animate-in fade-in duration-300">
       <div className="space-y-1.5 relative" ref={cityRef}>
         <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
-          <MapPin size={14} /> Місто
+          <MapPin size={14} /> {t('checkout.city' as any)}
         </label>
         <div className="relative">
           <input
@@ -106,7 +107,7 @@ export function NovaPoshtaPicker({ onCitySelect, onWarehouseSelect }: Props) {
               if (selectedCity) setSelectedCity(null);
             }}
             onFocus={() => { if (cities.length > 0) setIsCityDropdownOpen(true); }}
-            placeholder="Введіть назву міста..."
+            placeholder={t('checkout.city' as any)}
             className="w-full h-14 pl-5 pr-12 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all text-[var(--foreground)]"
           />
           {isSearchingCity && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-blue-500" />}
@@ -134,7 +135,7 @@ export function NovaPoshtaPicker({ onCitySelect, onWarehouseSelect }: Props) {
 
       <div className={cn("space-y-1.5 relative transition-opacity duration-300", !selectedCity ? "opacity-50 pointer-events-none" : "opacity-100")} ref={warehouseRef}>
         <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
-          <Box size={14} /> Відділення
+          <Box size={14} /> {t('checkout.branch' as any)}
         </label>
         <div className="relative">
           <input
@@ -145,7 +146,7 @@ export function NovaPoshtaPicker({ onCitySelect, onWarehouseSelect }: Props) {
               setIsWarehouseDropdownOpen(true);
             }}
             onFocus={() => setIsWarehouseDropdownOpen(true)}
-            placeholder={isLoadingWarehouses ? "Завантаження відділень..." : "Оберіть відділення..."}
+            placeholder={isLoadingWarehouses ? t('common.loading' as any) : t('checkout.branch' as any)}
             disabled={!selectedCity || isLoadingWarehouses}
             className="w-full h-14 pl-5 pr-12 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all text-[var(--foreground)] disabled:opacity-70"
           />

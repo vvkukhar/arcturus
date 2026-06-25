@@ -1,4 +1,3 @@
-// web/app/store/mystery-boxes/page.tsx
 'use client';
 
 import useSWR from 'swr';
@@ -8,9 +7,11 @@ import { Gift, Sparkles, Loader2, LockKeyhole, ShieldCheck } from 'lucide-react'
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function MysteryBoxesPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const { data: boxes, isLoading } = useSWR<any[]>('/api/proxy/monetization/mystery-boxes', swrFetcher, { refreshInterval: 15000 });
   const [buyingId, setBuyingId] = useState<string | null>(null);
 
@@ -37,7 +38,7 @@ export default function MysteryBoxesPage() {
         }
       }
     } catch (e: any) {
-      alert(e.message || 'Не вдалося придбати бокс. Можливо ви не авторизовані або бокс вже забрали.');
+      alert(e.message || t('mystery.fail' as any));
     } finally {
       setBuyingId(null);
     }
@@ -52,10 +53,10 @@ export default function MysteryBoxesPage() {
           <Gift size={48} className="animate-pulse" />
         </div>
         <h1 className="text-5xl md:text-7xl font-black text-[var(--foreground)] mb-6 tracking-tight relative z-10">
-          Collector's <span className="bg-gradient-to-r from-purple-500 to-pink-600 bg-clip-text text-transparent">Mystery Box</span>
+          {t('mystery.title' as any)}
         </h1>
         <p className="text-lg md:text-xl text-slate-500 font-medium max-w-2xl mx-auto relative z-10">
-          Гарантована цінність наборів всередині завжди перевищує вартість боксу. Раритетні та зняті з виробництва набори в кожній коробці. Кількість жорстко обмежена.
+          {t('mystery.subtitle' as any)}
         </p>
       </div>
 
@@ -66,8 +67,8 @@ export default function MysteryBoxesPage() {
       ) : safeBoxes.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[3rem] border border-dashed border-[var(--border)] bg-[var(--card)] py-32 text-center shadow-sm">
           <LockKeyhole className="w-16 h-16 text-slate-300 mb-6" />
-          <h3 className="text-3xl font-black text-[var(--foreground)] mb-2">Всі бокси розпродано</h3>
-          <p className="text-lg font-medium text-slate-500">Алгоритми формують нові пули. Повертайтесь згодом.</p>
+          <h3 className="text-3xl font-black text-[var(--foreground)] mb-2">{t('mystery.empty' as any)}</h3>
+          <p className="text-lg font-medium text-slate-500">{t('mystery.emptySub' as any)}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -89,11 +90,11 @@ export default function MysteryBoxesPage() {
 
                 <div className="bg-[var(--background)] rounded-2xl p-5 border border-[var(--border)] mb-8">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-500">Вартість</span>
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-500">{t('mystery.price' as any)}</span>
                     <span className="text-3xl font-black text-[var(--foreground)]">{formatMoney(box.price)}</span>
                   </div>
                   <div className="flex justify-between items-center pt-3 border-t border-[var(--border)]">
-                    <span className="text-xs font-bold text-slate-500 flex items-center gap-1"><ShieldCheck size={14}/> Гарантована цінність ринку:</span>
+                    <span className="text-xs font-bold text-slate-500 flex items-center gap-1"><ShieldCheck size={14}/> {t('mystery.guaranteedVal' as any)}</span>
                     <span className="text-sm font-black text-emerald-500">&gt; {formatMoney(box.price * 1.3)}</span>
                   </div>
                 </div>
@@ -104,7 +105,7 @@ export default function MysteryBoxesPage() {
                   className="w-full py-4 bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 font-black rounded-2xl transition-transform active:scale-95 flex items-center justify-center gap-2 shadow-xl"
                 >
                   {buyingId === box.id ? <Loader2 className="animate-spin" /> : <Gift size={20} />}
-                  Забрати Бокс
+                  {t('mystery.buy' as any)}
                 </button>
               </div>
             </div>

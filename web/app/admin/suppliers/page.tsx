@@ -9,9 +9,11 @@ import { StatusPill } from '@/components/admin/status-pill';
 import { apiFetch } from '@/lib/api';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function AdminSuppliersPage() {
-  const { data: suppliers, isLoading, mutate } = useSWR<any[]>('/api/admin/suppliers', swrFetcher);
+  const { t } = useI18n();
+  const { data: suppliers, isLoading, mutate } = useSWR<any[]>('/api/proxy/admin/suppliers', swrFetcher);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const rows = Array.isArray(suppliers) ? suppliers : [];
@@ -20,7 +22,7 @@ export default function AdminSuppliersPage() {
     const notes = prompt(`Enter notes for this supplier (optional):`) ?? '';
     try {
       setLoadingId(`${action}-${id}`);
-      await apiFetch(`/api/admin/suppliers/${id}`, {
+      await apiFetch(`/api/proxy/admin/suppliers/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ action, notes }),
       });
@@ -41,7 +43,7 @@ export default function AdminSuppliersPage() {
             <Shield size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Supplier CRM (Radar)</h1>
+            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.suppliers' as any)}</h1>
             <p className="mt-1 text-sm font-medium text-slate-500">Manage seller reputation, Whitelist trusted sources, and block scammers.</p>
           </div>
         </div>

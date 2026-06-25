@@ -4,13 +4,15 @@ import { use } from 'react';
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import { Loader2 } from 'lucide-react';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function SellOpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useI18n();
   const { data, isLoading } = useSWR<any>(`/api/admin/opportunities/sell/${id}`, swrFetcher as any);
 
   if (isLoading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin w-8 h-8 text-blue-500" /></div>;
-  if (!data) return <div className="p-10 text-center font-bold text-slate-500">Opportunity not found</div>;
+  if (!data) return <div className="p-10 text-center font-bold text-slate-500">{t('admin.inventory.notfound' as any)}</div>;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20 animate-fade-in-up">

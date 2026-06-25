@@ -26,7 +26,7 @@ export default function ReportsPage() {
     <div className="p-6 md:p-10 max-w-7xl mx-auto animate-fade-in-up">
       <div className="mb-10">
         <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('sidebar.reports' as any)}</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">Financial snapshots and audits.</p>
+        <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('admin.reports.desc' as any) || 'Financial snapshots and audits.'}</p>
       </div>
 
       {reports.length === 0 ? (
@@ -44,7 +44,7 @@ export default function ReportsPage() {
                 <div>
                   <span className="text-xs font-black text-slate-400 uppercase tracking-wider">{report.type || t('reports.system' as any)}</span>
                   <h3 className="text-xl font-bold mt-1 mb-2 leading-tight">Financial Snapshot {new Date(report.createdAt).toLocaleDateString('uk-UA')}</h3>
-                  <p className="text-sm text-slate-500 font-medium">From {new Date(report.periodStart).toLocaleDateString('uk-UA')} to {new Date(report.periodEnd).toLocaleDateString('uk-UA')}</p>
+                  <p className="text-sm text-slate-500 font-medium">З {new Date(report.periodStart).toLocaleDateString('uk-UA')} по {new Date(report.periodEnd).toLocaleDateString('uk-UA')}</p>
                 </div>
               </div>
               <button 

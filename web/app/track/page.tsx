@@ -62,7 +62,7 @@ export default function TrackOrderPage() {
                   type="text" 
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="e.g. cm702x8... or +380..."
+                  placeholder={t('track.input' as any)}
                   className="w-full pl-12 pr-4 py-4 bg-[var(--background)] border border-[var(--border)] rounded-xl focus:ring-2 focus:ring-blue-600 outline-none text-[var(--foreground)] text-base md:text-lg transition-shadow font-medium" 
                 />
               </div>
@@ -84,30 +84,30 @@ export default function TrackOrderPage() {
                   <Package className="text-slate-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-black uppercase tracking-widest text-slate-400">Order Found</div>
+                  <div className="text-xs font-black uppercase tracking-widest text-slate-400">{t('common.success' as any)}</div>
                   <div className="text-lg font-black text-[var(--foreground)] leading-tight truncate" title={data.productTitle}>{data.productTitle}</div>
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)]">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Status</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('common.status' as any)}</div>
                   <div className={`inline-flex px-2 py-1 rounded-md text-xs font-black uppercase tracking-wider ${getStatusColor(data.status)}`}>
                     {data.status}
                   </div>
                 </div>
                 <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)]">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Price</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('orderbook.price' as any)}</div>
                   <div className="text-lg font-black text-[var(--foreground)]">
                     {data.sellPrice ? formatMoney(data.sellPrice) : 'Pending'}
                   </div>
                 </div>
                 <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)]">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Order ID</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('track.input' as any)}</div>
                   <div className="text-sm font-bold text-slate-600 dark:text-slate-400 font-mono truncate" title={data.id}>{data.id}</div>
                 </div>
                 <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)]">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Date</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('common.date' as any)}</div>
                   <div className="text-sm font-bold text-slate-600 dark:text-slate-400">
                     {new Date(data.createdAt).toLocaleDateString()}
                   </div>
@@ -118,8 +118,8 @@ export default function TrackOrderPage() {
 
           {error && !isLoading && (
             <div className="mt-8 p-6 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-center animate-in fade-in">
-              <p className="text-red-600 dark:text-red-400 font-bold">Order not found.</p>
-              <p className="text-sm text-red-500/80 mt-1 font-medium">Please check your ID or phone number and try again.</p>
+              <p className="text-red-600 dark:text-red-400 font-bold">{t('catalog.notfound.title' as any)}</p>
+              <p className="text-sm text-red-500/80 mt-1 font-medium">{t('catalog.notfound.desc' as any)}</p>
             </div>
           )}
         </div>

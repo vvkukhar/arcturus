@@ -10,12 +10,14 @@ import { SpotlightCard } from '@/components/store/spotlight-card';
 import { TiltCard } from '@/components/store/tilt-card';
 import { useCart } from '@/lib/store/cart';
 import { ProductModal } from './product-modal';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 type Props = {
   item: any;
 };
 
 function ProductCardComponent({ item }: Props) {
+  const { t } = useI18n();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const addItem = useCart((state) => state.addItem);
   const items = useCart((state) => state.items);
@@ -64,11 +66,11 @@ function ProductCardComponent({ item }: Props) {
                 </span>
                 {item.sealed ? (
                   <span className="inline-flex items-center rounded-xl bg-blue-600/95 backdrop-blur-md px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm border border-blue-500/50">
-                    Нове / Sealed
+                    {t('product.card.new' as any)}
                   </span>
                 ) : (
                   <span className="inline-flex items-center rounded-xl bg-emerald-600/95 backdrop-blur-md px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm border border-emerald-500/50">
-                    Б/В / Ідеал
+                    {t('product.card.used' as any)}
                   </span>
                 )}
               </div>
@@ -118,7 +120,7 @@ function ProductCardComponent({ item }: Props) {
                 </h3>
                 {item.item?.setNumber && (
                   <p className="mt-3 text-xs font-bold uppercase tracking-widest text-slate-400">
-                    Арт: {item.item.setNumber}
+                    {t('product.card.art' as any)}: {item.item.setNumber}
                   </p>
                 )}
               </div>
@@ -126,10 +128,10 @@ function ProductCardComponent({ item }: Props) {
               <div className="mt-6 flex items-end justify-between border-t border-[var(--border)] pt-6">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                    {status === 'Available' ? 'Доступно' : 'Продано'}
+                    {status === 'Available' ? t('product.card.available' as any) : t('product.card.sold' as any)}
                   </span>
                   <span className="text-3xl font-black tracking-tighter text-[var(--foreground)] leading-none">
-                    {isPriced ? formatMoney(price) : 'Запит'}
+                    {isPriced ? formatMoney(price) : t('product.card.request' as any)}
                   </span>
                 </div>
               </div>

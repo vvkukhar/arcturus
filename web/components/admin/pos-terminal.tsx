@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/format';
 import { useToast } from '@/components/ui/toast-provider';
 import Image from 'next/image';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface PosCartItem {
   inventoryItemId: string;
@@ -18,6 +19,7 @@ interface PosCartItem {
 }
 
 export function PosTerminal() {
+  const { t } = useI18n();
   const [cart, setCart] = useState<PosCartItem[]>([]);
   const [barcode, setBarcode] = useState('');
   const [isScanning, setIsScanning] = useState(false);
@@ -139,7 +141,7 @@ export function PosTerminal() {
               autoFocus
               value={barcode}
               onChange={e => setBarcode(e.target.value)}
-              placeholder="Scan barcode or enter set number..."
+              placeholder={t('admin.ui.pos.scan' as any)}
               className="w-full h-16 pl-14 pr-6 rounded-2xl bg-[var(--background)] border border-[var(--border)] text-xl font-black outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-[var(--foreground)]"
               disabled={isScanning}
             />
@@ -149,14 +151,14 @@ export function PosTerminal() {
 
         <div className="flex-1 bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden flex flex-col">
           <div className="p-4 border-b border-[var(--border)] bg-[var(--background)]/50">
-            <h2 className="font-black text-lg text-[var(--foreground)]">Current Order</h2>
+            <h2 className="font-black text-lg text-[var(--foreground)]">{t('admin.ui.pos.order' as any)}</h2>
           </div>
           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-3">
             {cart.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-400">
                 <ShoppingCart size={48} className="mb-4 opacity-50" />
-                <p className="font-bold">Cart is empty</p>
-                <p className="text-sm">Scan an item to begin</p>
+                <p className="font-bold">{t('admin.ui.pos.empty' as any)}</p>
+                <p className="text-sm">{t('admin.ui.pos.scan' as any)}</p>
               </div>
             ) : (
               cart.map(item => (
@@ -191,7 +193,7 @@ export function PosTerminal() {
       </div>
 
       <div className="w-96 bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm flex flex-col p-6">
-        <h2 className="font-black text-2xl mb-6">Summary</h2>
+        <h2 className="font-black text-2xl mb-6">{t('admin.ui.pos.summary' as any)}</h2>
         
         <div className="space-y-4 mb-8 flex-1">
           <div className="flex justify-between items-center text-slate-500 font-bold">
@@ -200,7 +202,7 @@ export function PosTerminal() {
           </div>
           <div className="w-full h-px bg-[var(--border)]" />
           <div className="flex justify-between items-end">
-            <span className="text-sm font-black uppercase tracking-widest text-slate-400">Total Due</span>
+            <span className="text-sm font-black uppercase tracking-widest text-slate-400">{t('admin.ui.pos.total' as any)}</span>
             <span className="text-4xl font-black text-blue-600 dark:text-blue-400">{formatMoney(total)}</span>
           </div>
         </div>
@@ -212,7 +214,7 @@ export function PosTerminal() {
             className="w-full h-16 flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-lg disabled:opacity-50 transition-all shadow-lg shadow-blue-500/20 active:scale-95 group"
           >
             {isProcessing ? <Loader2 className="animate-spin" /> : <CreditCard />} 
-            Terminal (Card)
+            {t('admin.ui.pos.card' as any)}
             <kbd className="hidden sm:inline-block ml-2 px-2 py-1 bg-black/20 rounded text-[10px] font-mono group-hover:bg-black/30">Alt + C</kbd>
           </button>
           <button 
@@ -221,7 +223,7 @@ export function PosTerminal() {
             className="w-full h-16 flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-lg disabled:opacity-50 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 group"
           >
             {isProcessing ? <Loader2 className="animate-spin" /> : <Banknote />} 
-            Cash
+            {t('admin.ui.pos.cash' as any)}
             <kbd className="hidden sm:inline-block ml-2 px-2 py-1 bg-black/20 rounded text-[10px] font-mono group-hover:bg-black/30">Alt + M</kbd>
           </button>
           <button 
@@ -229,7 +231,7 @@ export function PosTerminal() {
             onClick={() => handleCheckout('crypto')}
             className="w-full h-16 flex items-center justify-center gap-3 bg-slate-900 hover:bg-black text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 rounded-2xl font-black text-lg disabled:opacity-50 transition-all shadow-lg shadow-slate-900/20 active:scale-95"
           >
-            {isProcessing ? <Loader2 className="animate-spin" /> : <Bitcoin />} Crypto Pay
+            {isProcessing ? <Loader2 className="animate-spin" /> : <Bitcoin />} {t('admin.ui.pos.crypto' as any)}
           </button>
         </div>
       </div>

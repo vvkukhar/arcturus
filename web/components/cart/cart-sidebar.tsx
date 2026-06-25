@@ -41,10 +41,10 @@ export function CartSidebar() {
         onClick={() => setIsCartOpen(false)}
       />
       
-      <div className="relative w-full max-w-md bg-[var(--background)] h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="relative w-full max-w-md bg-[var(--card)] h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-[var(--border)]">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--card)]">
           <h2 className="text-xl font-extrabold text-[var(--foreground)] flex items-center gap-2">
-            <ShoppingBag size={20} />
+            <ShoppingBag size={20} className="text-blue-500" />
             {t('cart.title' as any)}
           </h2>
           <button 
@@ -55,10 +55,10 @@ export function CartSidebar() {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-[var(--background)]">
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-[var(--background)]/50">
           {items.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-              <div className="h-24 w-24 bg-[var(--card)] rounded-full flex items-center justify-center text-slate-300 border border-[var(--border)]">
+              <div className="h-24 w-24 bg-[var(--background)] rounded-full flex items-center justify-center text-slate-300 border border-[var(--border)] shadow-inner">
                 <ShoppingBag size={40} />
               </div>
               <div>
@@ -67,7 +67,7 @@ export function CartSidebar() {
               </div>
               <button 
                 onClick={() => { setIsCartOpen(false); router.push('/store/catalog'); }}
-                className="mt-4 px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/20"
+                className="mt-4 px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/20 active:scale-95"
               >
                 {t('cart.startBrowsing' as any)}
               </button>
@@ -75,7 +75,7 @@ export function CartSidebar() {
           ) : (
             <div className="space-y-4">
               {items.map((item) => (
-                <div key={item.id} className="flex gap-4 p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm group">
+                <div key={item.id} className="flex gap-4 p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm group hover:border-blue-500/30 transition-colors">
                   <div className="h-20 w-20 flex-shrink-0 bg-[var(--background)] rounded-xl overflow-hidden border border-[var(--border)] relative">
                     {item.imageUrl ? (
                       <Image src={item.imageUrl} alt={item.title} fill sizes="80px" className="object-contain p-2 mix-blend-multiply dark:mix-blend-normal" />
@@ -89,22 +89,22 @@ export function CartSidebar() {
                       <h3 className="text-sm font-bold text-[var(--foreground)] line-clamp-2 leading-tight">
                         {item.title}
                       </h3>
-                      <button onClick={() => removeItem(item.id)} className="text-slate-400 hover:text-red-500 p-1 transition-colors opacity-0 group-hover:opacity-100">
+                      <button onClick={() => removeItem(item.id)} className="text-slate-400 hover:text-red-500 p-1 transition-colors opacity-0 group-hover:opacity-100 bg-[var(--background)] rounded-md border border-transparent hover:border-red-200">
                         <X size={16} />
                       </button>
                     </div>
                     
                     <div className="flex items-end justify-between mt-2">
                       <div className="flex items-center border border-[var(--border)] rounded-lg bg-[var(--background)]">
-                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="p-1.5 text-slate-500 hover:text-[var(--foreground)] rounded-l-lg transition-colors">
+                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="p-1.5 text-slate-500 hover:text-[var(--foreground)] hover:bg-[var(--card)] rounded-l-lg transition-colors">
                           <Minus size={14} />
                         </button>
                         <span className="w-8 text-center text-sm font-bold text-[var(--foreground)]">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="p-1.5 text-slate-500 hover:text-[var(--foreground)] rounded-r-lg transition-colors">
+                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="p-1.5 text-slate-500 hover:text-[var(--foreground)] hover:bg-[var(--card)] rounded-r-lg transition-colors">
                           <Plus size={14} />
                         </button>
                       </div>
-                      <span className="font-black text-[var(--foreground)]">
+                      <span className="font-black text-[var(--foreground)] text-lg">
                         {formatMoney(item.price * item.quantity)}
                       </span>
                     </div>
@@ -116,10 +116,10 @@ export function CartSidebar() {
         </div>
 
         {items.length > 0 && (
-          <div className="border-t border-[var(--border)] p-6 bg-[var(--card)]">
+          <div className="border-t border-[var(--border)] p-6 bg-[var(--card)] shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
             <div className="flex justify-between items-center mb-6">
-              <span className="text-slate-500 font-medium text-sm">{t('cart.subtotal' as any)}</span>
-              <span className="text-2xl font-black text-[var(--foreground)]">
+              <span className="text-slate-500 font-medium text-sm uppercase tracking-widest">{t('cart.subtotal' as any)}</span>
+              <span className="text-3xl font-black text-[var(--foreground)]">
                 {formatMoney(totalPrice())}
               </span>
             </div>

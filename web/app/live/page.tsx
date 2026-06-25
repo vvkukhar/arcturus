@@ -5,20 +5,26 @@ import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import { getSocket } from '@/lib/socket';
 import { formatMoney } from '@/lib/format';
-import { Flame, Clock, Gavel, Loader2, ArrowUpCircle } from 'lucide-react';
+import { Flame, Clock, Gavel, Loader2, ArrowUpCircle, Lock } from 'lucide-react';
 import Image from 'next/image';
 import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function ArcturusLivePage() {
+  const { t } = useI18n();
   const { data: streamData, mutate: mutateStream } = useSWR<any>('/api/proxy/live/active', swrFetcher);
   
   const [timeLeft, setTimeLeft] = useState('');
   const [bidAmount, setBidAmount] = useState('');
   const [isBidding, setIsBidding] = useState(false);
+  const [isPayingDeposit, setIsPayingDeposit] = useState(false);
+
+  const { data: user } = useSWR<any>('/api/auth/me', swrFetcher);
 
   const stream = streamData;
   const activeAuction = stream?.auctions?.[0];
+  const hasTicket = activeAuction?.tickets?.some((tk: any) => tk.userId === user?.id && tk.status === 'locked');
 
   useEffect(() => {
     const socket = getSocket();
@@ -58,6 +64,20 @@ export default function ArcturusLivePage() {
     return () => clearInterval(interval);
   }, [activeAuction?.endsAt]);
 
+  const handlePayDeposit = async () => {
+    if (isPayingDeposit) return;
+    try {
+      setIsPayingDeposit(true);
+      await apiFetch(`/api/proxy/live/auction/${activeAuction.id}/ticket`, { method: 'POST' });
+      toast.success(t('live.depositSuccess' as any));
+      mutateStream();
+    } catch (e: any) {
+      toast.error(e.message || 'Error');
+    } finally {
+      setIsPayingDeposit(false);
+    }
+  };
+
   const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeAuction || isBidding) return;
@@ -69,7 +89,7 @@ export default function ArcturusLivePage() {
         body: JSON.stringify({ amount: Number(bidAmount) })
       });
       setBidAmount('');
-      toast.success('Bid placed!');
+      toast.success(t('live.bidSuccess' as any));
     } catch (e: any) {
       toast.error(e.message || 'Bid failed');
     } finally {
@@ -81,11 +101,14 @@ export default function ArcturusLivePage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white p-6 text-center">
         <Flame size={64} className="text-slate-800 mb-6" />
-        <h1 className="text-3xl font-black mb-2">ARCTURUS LIVE</h1>
-        <p className="text-slate-500 font-medium">Трансляція наразі офлайн. Слідкуйте за анонсами в Telegram.</p>
+        <h1 className="text-3xl font-black mb-2">{t('live.title' as any)}</h1>
+        <p className="text-slate-500 font-medium">{t('live.offline' as any)}</p>
       </div>
     );
   }
+
+  const minNextBid = activeAuction ? activeAuction.currentPrice + 50 : 0;
+  const isEnded = activeAuction && new Date(activeAuction.endsAt).getTime() <= Date.now();
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col relative">
@@ -128,34 +151,54 @@ export default function ArcturusLivePage() {
               <h3 className="text-xl font-bold leading-tight mb-8 line-clamp-2">{activeAuction.inventoryItem?.titleSnapshot}</h3>
 
               <div className="mt-auto">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Current Bid</div>
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t('live.currentBid' as any)}</div>
                 <div className="text-5xl font-black text-emerald-400 mb-6 font-mono">{formatMoney(activeAuction.currentPrice)}</div>
 
-                <form onSubmit={handleBid} className="flex gap-3">
-                  <input 
-                    type="number" 
-                    required 
-                    min={activeAuction.currentPrice + 50}
-                    value={bidAmount}
-                    onChange={e => setBidAmount(e.target.value)}
-                    placeholder={`Min ${activeAuction.currentPrice + 50}`}
-                    className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl px-4 py-4 text-xl font-bold outline-none focus:border-blue-500"
-                  />
-                  <button 
-                    type="submit"
-                    disabled={isBidding || timeLeft === 'ENDED'}
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-6 rounded-2xl font-black transition-all active:scale-95 disabled:opacity-50"
-                  >
-                    {isBidding ? <Loader2 className="animate-spin" /> : <ArrowUpCircle size={28} />}
-                  </button>
-                </form>
+                {!hasTicket && !isEnded ? (
+                  <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-2xl relative z-10">
+                    <div className="flex items-center gap-3 mb-4 text-red-500">
+                      <Lock size={24} />
+                      <span className="font-black text-lg">{t('live.depositReq' as any)}</span>
+                    </div>
+                    <p className="text-sm font-medium text-slate-300 mb-6">{t('live.depositDesc' as any)}</p>
+                    <button 
+                      onClick={handlePayDeposit}
+                      disabled={isPayingDeposit}
+                      className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl transition-transform active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2"
+                    >
+                      {isPayingDeposit ? <Loader2 className="animate-spin" /> : <Gavel />} {t('live.payDeposit' as any)}
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleBid} className="space-y-4">
+                    <div className="flex gap-3">
+                      <input 
+                        type="number" 
+                        required 
+                        min={minNextBid}
+                        value={bidAmount}
+                        onChange={e => setBidAmount(e.target.value)}
+                        placeholder={`Min ${minNextBid}`}
+                        className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl px-4 py-4 text-xl font-bold outline-none focus:border-blue-500"
+                        disabled={isEnded || isBidding}
+                      />
+                      <button 
+                        type="submit"
+                        disabled={isBidding || timeLeft === 'ENDED'}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-6 rounded-2xl font-black transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        {isBidding ? <Loader2 className="animate-spin" /> : <ArrowUpCircle size={28} />}
+                      </button>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-500">{t('live.antiSniping' as any)}</p>
+                  </form>
+                )}
               </div>
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <Gavel size={48} className="text-slate-800 mb-4" />
               <div className="text-xl font-black text-slate-500">Wait for the next drop</div>
-              <div className="text-sm font-medium text-slate-600 mt-2">The host will start an auction soon.</div>
             </div>
           )}
         </div>

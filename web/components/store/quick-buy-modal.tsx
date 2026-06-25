@@ -7,8 +7,10 @@ import { formatMoney } from '@/lib/format';
 import { NovaPoshtaPicker } from '@/components/checkout/nova-poshta-picker';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export function QuickBuyModal({ product, isOpen, onClose }: { product: any; isOpen: boolean; onClose: () => void }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [buyerName, setBuyerName] = useState('');
   const [contact, setContact] = useState('');
@@ -76,17 +78,17 @@ export function QuickBuyModal({ product, isOpen, onClose }: { product: any; isOp
 
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
           <div className="flex justify-between items-center bg-[var(--background)] p-4 rounded-2xl border border-[var(--border)] mb-6">
-            <span className="font-bold text-sm uppercase text-slate-500 tracking-widest">До сплати</span>
+            <span className="font-bold text-sm uppercase text-slate-500 tracking-widest">{t('checkout.total' as any)}</span>
             <span className="font-black text-2xl text-[var(--foreground)]">{formatMoney(product.price)}</span>
           </div>
 
           <form id="quick-buy-form" onSubmit={handleQuickBuy} className="space-y-5">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Отримувач</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('checkout.firstName' as any)}</label>
               <input required value={buyerName} onChange={e => setBuyerName(e.target.value)} placeholder="ПІБ" className="w-full h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] font-bold outline-none focus:border-blue-500 text-[var(--foreground)]" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Телефон</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('checkout.phone' as any)}</label>
               <input required value={contact} onChange={e => setContact(e.target.value)} placeholder="+380..." className="w-full h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] font-bold outline-none focus:border-blue-500 text-[var(--foreground)]" />
             </div>
             <NovaPoshtaPicker onCitySelect={setCity} onWarehouseSelect={setBranch} />
@@ -96,7 +98,7 @@ export function QuickBuyModal({ product, isOpen, onClose }: { product: any; isOp
         <div className="p-6 border-t border-[var(--border)] bg-[var(--background)]/50">
           <button form="quick-buy-form" type="submit" disabled={!isFormValid || loading} className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-lg flex items-center justify-center gap-2 shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50 transition-all">
             {loading ? <Loader2 className="animate-spin" /> : <CreditCard />}
-            Сплатити {formatMoney(product.price)}
+            {t('contactForm.paySafe' as any)} {formatMoney(product.price)}
           </button>
         </div>
       </div>

@@ -1,17 +1,12 @@
+'use client';
+
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { apiFetch } from '@/lib/api';
+import { swrFetcher } from '@/lib/swr-fetcher';
 import { Clock, CheckCircle2, PhoneCall, XCircle, Package, Receipt, Truck } from 'lucide-react';
 import { formatMoney } from '@/lib/format';
-
-export const revalidate = 0;
-
-async function getBoard(): Promise<any> {
-  try {
-    return await api.get<any>('/orders/board');
-  } catch {
-    return { pending: [], approved: [], contacted: [], sold: [], cancelled: [] };
-  }
-}
+import { useI18n } from '@/components/providers/i18n-provider';
 
 function KanbanColumn({ 
   title, 
@@ -84,41 +79,45 @@ function KanbanColumn({
   );
 }
 
-export default async function OrdersBoardPage() {
-  const board = await getBoard();
+export default function OrdersBoardPage() {
+  const { t } = useI18n();
+  const { data: board } = useSWR<any>('/api/proxy/orders/board', swrFetcher, { 
+    refreshInterval: 10000,
+    fallbackData: { pending: [], approved: [], contacted: [], sold: [], cancelled: [] }
+  });
 
   return (
     <div className="h-[calc(100vh-8rem)] min-h-[600px] flex flex-col space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Order Status Board</h1>
-        <p className="mt-1 text-sm font-medium text-slate-500">Visual kanban pipeline for order fulfillment and shipping.</p>
+        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.orders.title' as any)}</h1>
+        <p className="mt-1 text-sm font-medium text-slate-500">{t('admin.orders.subtitle' as any)}</p>
       </div>
 
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 overflow-hidden pb-4">
         <KanbanColumn 
           title="Pending / Approved" 
-          items={[...board.pending, ...board.approved]} 
+          items={[...(board?.pending || []), ...(board?.approved || [])]} 
           icon={Clock}
           colorClass="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" 
           headerClass="bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-500"
         />
         <KanbanColumn 
           title="Contacted" 
-          items={board.contacted} 
+          items={board?.contacted || []} 
           icon={PhoneCall}
           colorClass="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" 
           headerClass="bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-500"
         />
         <KanbanColumn 
           title="Sold & Shipped" 
-          items={board.sold} 
+          items={board?.sold || []} 
           icon={Truck}
           colorClass="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" 
           headerClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-500"
         />
         <KanbanColumn 
           title="Cancelled" 
-          items={board.cancelled} 
+          items={board?.cancelled || []} 
           icon={XCircle}
           colorClass="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" 
           headerClass="bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-500"

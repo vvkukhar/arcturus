@@ -9,13 +9,15 @@ import { ImageGalleryManager } from '@/components/admin/image-gallery-manager';
 import { ImageUploadForm } from '@/components/admin/image-upload-form';
 import { InventorySplitDialog } from '@/components/admin/inventory-split-dialog';
 import type { InventoryItem } from '@/lib/types';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function InventoryItemPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useI18n();
   const { data: item, isLoading, mutate } = useSWR<InventoryItem>(`/api/admin/inventory/${id}`, swrFetcher);
 
   if (isLoading) return <div className="flex h-[calc(100vh-8rem)] items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-blue-500" /></div>;
-  if (!item) return <div className="flex h-[calc(100vh-8rem)] items-center justify-center font-bold text-slate-500">Inventory Item Not Found</div>;
+  if (!item) return <div className="flex h-[calc(100vh-8rem)] items-center justify-center font-bold text-slate-500">{t('admin.inventory.notfound' as any)}</div>;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20 animate-fade-in-up hardware-accelerated">

@@ -7,6 +7,7 @@ import { TableSearchForm } from '@/components/admin/table-search-form';
 import { api } from '@/lib/api';
 import { formatMoney, formatPercent } from '@/lib/format';
 import type { OpportunityItem } from '@/lib/types';
+import { dict } from '@/lib/i18n';
 
 type Props = {
   searchParams: Promise<{
@@ -28,6 +29,7 @@ export default async function AdminSellOpportunitiesPage({ searchParams }: Props
   const resolvedParams = await searchParams;
   const q = resolvedParams.q;
   const rows = await getSellOpportunities();
+  const t = (key: keyof typeof dict.uk) => dict.uk[key] || dict.en[key] || key;
   
   const filtered = q
     ? rows.filter((row) =>
@@ -37,13 +39,16 @@ export default async function AdminSellOpportunitiesPage({ searchParams }: Props
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-      <SectionCard title="Sell Opportunities">
+      <div className="bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm">
+        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.opps.sell.title' as any)}</h1>
+      </div>
+      <SectionCard title={t('admin.opps.sell.title' as any)}>
         <div className="mb-6">
-          <TableSearchForm placeholder="Search sell opportunities by title or item ID" />
+          <TableSearchForm placeholder={t('admin.opps.sell.search' as any)} />
         </div>
         <DataTable
           rows={filtered}
-          emptyText="No sell opportunities available at the moment."
+          emptyText={t('admin.opps.sell.empty' as any)}
           getRowKey={(row) => `${row.itemId}-${row.inventoryItemId}`}
           columns={[
             {

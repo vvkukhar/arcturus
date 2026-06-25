@@ -7,6 +7,7 @@ import { SectionCard } from '@/components/admin/section-card';
 import { DataTable } from '@/components/admin/data-table';
 import { formatMoney, formatPercent } from '@/lib/format';
 import { StatusPill } from '@/components/admin/status-pill';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface ArbitrageRow {
   id: string;
@@ -25,6 +26,7 @@ interface ArbitrageRow {
 }
 
 export default function ArbitrageRadarPage() {
+  const { t } = useI18n();
   const { data: rows, isLoading } = useSWR<ArbitrageRow[]>('/api/admin/arbitrage', swrFetcher);
   const safeRows = Array.isArray(rows) ? rows : [];
 
@@ -36,21 +38,21 @@ export default function ArbitrageRadarPage() {
             <Globe className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Global Arbitrage</h1>
-            <p className="mt-1 text-sm font-medium text-slate-500">Cross-border opportunities calculated with landed costs and customs taxes.</p>
+            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.arbitrage.title' as any)}</h1>
+            <p className="mt-1 text-sm font-medium text-slate-500">{t('admin.arbitrage.subtitle' as any)}</p>
           </div>
         </div>
       </div>
 
-      <SectionCard title="Cross-Border Deals Radar">
+      <SectionCard title={t('admin.arbitrage.radar' as any)}>
         <DataTable
           rows={safeRows}
-          emptyText={isLoading ? "Scanning global markets..." : "No profitable import arbitrage opportunities found right now."}
+          emptyText={isLoading ? t('common.loading' as any) : t('admin.arbitrage.empty' as any)}
           getRowKey={(row) => row.id}
           columns={[
             {
               key: 'item',
-              header: 'Asset',
+              header: t('admin.watchlist.col.asset' as any),
               render: (row) => (
                 <div className="flex flex-col max-w-[250px]">
                   <span className="font-black text-[var(--foreground)] truncate" title={row.title}>{row.title}</span>

@@ -10,7 +10,9 @@ import { swrFetcher } from '@/lib/swr-fetcher';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { useI18n } from '@/components/providers/i18n-provider';
 
+// ... (compressImage function remains the same)
 const compressImage = async (file: File, maxWidth = 1920): Promise<File> => {
   if (!file.type.startsWith('image/')) return file;
   return new Promise((resolve, reject) => {
@@ -48,6 +50,7 @@ const compressImage = async (file: File, maxWidth = 1920): Promise<File> => {
 
 export default function SellPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const { data: user, isLoading: userLoading } = useSWR('/api/auth/me', swrFetcher);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +90,7 @@ export default function SellPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      toast.error('Будь ласка, увійдіть в акаунт, щоб продати товар');
+      toast.error(t('sell.authReq' as any));
       return;
     }
 
@@ -117,10 +120,10 @@ export default function SellPage() {
         });
       }
 
-      toast.success('Заявку успішно подано на розгляд!');
+      toast.success(t('common.success' as any));
       router.push('/account');
     } catch (err: any) {
-      toast.error(err.message || 'Помилка подачі заявки');
+      toast.error(err.message || t('common.error' as any));
     } finally {
       setLoading(false);
     }
@@ -139,9 +142,9 @@ export default function SellPage() {
           <div className="inline-flex items-center justify-center p-4 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-2xl mb-6">
             <Tag size={40} />
           </div>
-          <h1 className="text-4xl md:text-6xl font-black text-[var(--foreground)] mb-6 tracking-tight">Продати на Arcturus</h1>
+          <h1 className="text-4xl md:text-6xl font-black text-[var(--foreground)] mb-6 tracking-tight">{t('sell.title' as any)}</h1>
           <p className="text-lg md:text-xl text-slate-500 dark:text-slate-400 font-medium max-w-2xl mx-auto">
-            Оберіть спосіб продажу, який підходить саме вам. Ми гарантуємо безпеку та швидкість кожної угоди.
+            {t('sell.subtitle' as any)}
           </p>
         </div>
 
@@ -158,9 +161,9 @@ export default function SellPage() {
               >
                 <div className="flex items-center gap-3 mb-2">
                   <Scale size={24} className={tradeType === 'c2c' ? "text-blue-600 dark:text-blue-400" : "text-slate-400"} />
-                  <h3 className="text-lg font-black text-[var(--foreground)]">Маркетплейс (C2C)</h3>
+                  <h3 className="text-lg font-black text-[var(--foreground)]">{t('sell.c2cTitle' as any)}</h3>
                 </div>
-                <p className="text-sm font-medium text-slate-500">Ви самі встановлюєте ціну. Ми беремо лише 5% комісії після успішного продажу колекціонерам.</p>
+                <p className="text-sm font-medium text-slate-500">{t('sell.c2cDesc' as any)}</p>
               </button>
 
               <button 
@@ -173,16 +176,16 @@ export default function SellPage() {
               >
                 <div className="flex items-center gap-3 mb-2">
                   <Zap size={24} className={tradeType === 'c2b' ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"} />
-                  <h3 className="text-lg font-black text-[var(--foreground)]">Швидкий викуп (C2B)</h3>
+                  <h3 className="text-lg font-black text-[var(--foreground)]">{t('sell.c2bTitle' as any)}</h3>
                 </div>
-                <p className="text-sm font-medium text-slate-500">Гроші одразу. Запропонуйте свою ціну, ми оцінимо набір і викупимо його в той же день.</p>
+                <p className="text-sm font-medium text-slate-500">{t('sell.c2bDesc' as any)}</p>
               </button>
             </div>
 
             <div className="bg-[var(--card)] p-8 rounded-3xl border border-[var(--border)] shadow-sm">
               <ShieldCheck size={32} className="text-purple-500 mb-4" />
-              <h3 className="text-xl font-bold text-[var(--foreground)] mb-2">Безпечна угода</h3>
-              <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">Arcturus виступає гарантом. Ви отримуєте кошти на картку одразу після перевірки оригінальності та стану набору на нашому складі.</p>
+              <h3 className="text-xl font-bold text-[var(--foreground)] mb-2">{t('sell.safeTitle' as any)}</h3>
+              <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">{t('sell.safeDesc' as any)}</p>
             </div>
           </div>
 
@@ -192,28 +195,27 @@ export default function SellPage() {
                 <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
                   <Lock size={32} className="text-slate-400" />
                 </div>
-                <h2 className="text-2xl font-black mb-4">Потрібна авторизація</h2>
-                <p className="text-slate-500 font-medium mb-8">Увійдіть у свій акаунт або створіть новий, щоб виставити товар.</p>
+                <h2 className="text-2xl font-black mb-4">{t('sell.authReq' as any)}</h2>
+                <p className="text-slate-500 font-medium mb-8">{t('sell.authDesc' as any)}</p>
                 <Link href="/login" className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
-                  Увійти в кабінет <ArrowRight size={20} />
+                  {t('sell.authBtn' as any)} <ArrowRight size={20} />
                 </Link>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="bg-[var(--card)] p-8 md:p-10 rounded-[2.5rem] border border-[var(--border)] shadow-xl space-y-6">
                 <div>
-                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest ml-1 mb-2 block">Артикул / Назва Набору з Бази</label>
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest ml-1 mb-2 block">{t('sell.form.itemId' as any)}</label>
                   <input 
                     required
                     value={formData.itemId}
                     onChange={(e) => setFormData({...formData, itemId: e.target.value})}
-                    placeholder="Наприклад: 75192 або Millennium Falcon"
                     className="w-full rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4 font-bold text-[var(--foreground)] focus:ring-2 focus:ring-blue-600 outline-none transition-shadow"
                   />
                 </div>
 
                 <div>
                   <label className="text-xs font-black uppercase text-slate-500 tracking-widest ml-1 mb-2 block">
-                    {tradeType === 'c2c' ? 'Бажана ціна продажу (UAH)' : 'За скільки готові віддати нам? (UAH)'}
+                    {tradeType === 'c2c' ? t('sell.form.priceC2c' as any) : t('sell.form.priceC2b' as any)}
                   </label>
                   <div className="relative">
                     <DollarSign className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -226,15 +228,10 @@ export default function SellPage() {
                       className="w-full rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4 pl-14 font-bold text-[var(--foreground)] focus:ring-2 focus:ring-blue-600 outline-none transition-shadow"
                     />
                   </div>
-                  {tradeType === 'c2c' ? (
-                    <p className="text-xs text-slate-400 font-bold mt-2 ml-1">Ви отримуєте на картку: <span className="text-blue-600 dark:text-blue-400">{formData.expectedPrice ? (Number(formData.expectedPrice) * 0.95).toFixed(2) : '0.00'} ₴</span> (мінус 5% комісії)</p>
-                  ) : (
-                    <p className="text-xs text-slate-400 font-bold mt-2 ml-1">Жодних комісій. Якщо ціна підходить, ви отримуєте: <span className="text-emerald-600 dark:text-emerald-400">{formData.expectedPrice ? Number(formData.expectedPrice).toFixed(2) : '0.00'} ₴</span></p>
-                  )}
                 </div>
 
                 <div>
-                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest ml-1 mb-2 block">Фотографії набору (до 5 шт)</label>
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest ml-1 mb-2 block">{t('sell.form.photos' as any)}</label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {previewUrls.map((url, i) => (
                       <div key={i} className="relative aspect-square rounded-2xl border border-[var(--border)] overflow-hidden group bg-slate-100 dark:bg-slate-900">
@@ -255,7 +252,7 @@ export default function SellPage() {
                         className="flex flex-col items-center justify-center aspect-square rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--background)] text-slate-400 hover:text-blue-500 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
                       >
                         <ImagePlus size={24} className="mb-2" />
-                        <span className="text-xs font-bold uppercase tracking-widest">Додати</span>
+                        <span className="text-xs font-bold uppercase tracking-widest">{t('common.add' as any)}</span>
                       </button>
                     )}
                   </div>
@@ -270,12 +267,11 @@ export default function SellPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest ml-1 mb-2 block">Стан та комплектація</label>
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest ml-1 mb-2 block">{t('sell.form.condition' as any)}</label>
                   <textarea 
                     required
                     value={formData.notes}
                     onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                    placeholder="Новий запечатаний чи б/в? Опишіть стан коробки, пломб, наявність інструкцій та фігурок..."
                     className="w-full rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4 font-medium text-[var(--foreground)] focus:ring-2 focus:ring-blue-600 outline-none transition-shadow custom-scrollbar resize-none"
                     rows={4}
                   />
@@ -290,7 +286,7 @@ export default function SellPage() {
                   )}
                 >
                   {loading ? <Loader2 className="animate-spin" size={24} /> : <PackageOpen size={24} />}
-                  {tradeType === 'c2c' ? 'Виставити на Маркетплейс' : 'Запропонувати на Викуп'}
+                  {tradeType === 'c2c' ? t('sell.form.submitC2c' as any) : t('sell.form.submitC2b' as any)}
                 </button>
               </form>
             )}

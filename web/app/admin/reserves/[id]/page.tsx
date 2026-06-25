@@ -11,10 +11,12 @@ import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function ReserveDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { t } = useI18n();
   
   const { data, isLoading } = useSWR<any>(`/api/admin/reserves/${id}`, swrFetcher);
   const { data: dropshipOptions, isLoading: dropshipLoading } = useSWR<any[]>(
@@ -23,7 +25,7 @@ export default function ReserveDetailPage({ params }: { params: Promise<{ id: st
   );
 
   if (isLoading) return <div className="flex h-[calc(100vh-8rem)] items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-blue-500" /></div>;
-  if (!data) return <div className="flex h-[calc(100vh-8rem)] items-center justify-center font-bold text-slate-500">Reserve request not found</div>;
+  if (!data) return <div className="flex h-[calc(100vh-8rem)] items-center justify-center font-bold text-slate-500">{t('admin.reserves.empty' as any)}</div>;
 
   const imageUrl = data.inventoryItem?.images?.[0]?.imageUrl;
   const isZeroTouchAvailable = !data.inventoryItem && data.status === 'pending' && Array.isArray(dropshipOptions) && dropshipOptions.length > 0;
@@ -35,10 +37,10 @@ export default function ReserveDetailPage({ params }: { params: Promise<{ id: st
         method: 'POST',
         body: JSON.stringify({ reserveRequestId: id, listingId, supplierCost })
       });
-      toast.success('Zero-Touch Fulfillment успішно активовано!');
+      toast.success(t('common.success' as any));
       router.refresh();
     } catch (e: any) {
-      toast.error(e.message || 'Помилка підтвердження дропшипу');
+      toast.error(e.message || t('common.error' as any));
     }
   };
 

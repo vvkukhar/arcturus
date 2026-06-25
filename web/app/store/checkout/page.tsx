@@ -9,8 +9,10 @@ import { formatMoney } from '@/lib/format';
 import { apiFetch } from '@/lib/api';
 import { NovaPoshtaPicker } from '@/components/checkout/nova-poshta-picker';
 import type { ApiResponse } from '@/lib/types';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export default function CheckoutPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const { items, totalPrice, removeItem, clearCart, validateStock } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -86,13 +88,13 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 animate-in zoom-in duration-300">
         <div className="text-7xl mb-6">🛒</div>
-        <h1 className="text-3xl font-black text-[var(--foreground)] mb-4">Кошик порожній</h1>
-        <p className="text-slate-500 font-medium mb-8">Час знайти круті набори для вашої колекції.</p>
+        <h1 className="text-3xl font-black text-[var(--foreground)] mb-4">{t('checkout.emptyTitle' as any)}</h1>
+        <p className="text-slate-500 font-medium mb-8">{t('checkout.emptyDesc' as any)}</p>
         <button 
           onClick={() => router.push('/store/catalog')} 
           className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-500/20"
         >
-          Перейти до каталогу
+          {t('checkout.returnCat' as any)}
         </button>
       </div>
     );
@@ -102,13 +104,13 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 animate-in fade-in duration-500 pb-24 transform-gpu">
-      <h1 className="text-4xl font-black text-[var(--foreground)] tracking-tight mb-10">Оформлення замовлення</h1>
+      <h1 className="text-4xl font-black text-[var(--foreground)] tracking-tight mb-10">{t('checkout.title' as any)}</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-7 space-y-6">
           <div className="bg-[var(--card)] border border-[var(--border)] rounded-[2.5rem] p-8 shadow-sm">
             <h2 className="text-xl font-black mb-8 flex items-center gap-3">
-              <ShieldCheck className="text-blue-500 h-6 w-6" /> Контактні дані та доставка
+              <ShieldCheck className="text-blue-500 h-6 w-6" /> {t('checkout.contactInfo' as any)}
             </h2>
             
             {error && (
@@ -120,7 +122,7 @@ export default function CheckoutPage() {
             <form id="checkout-form" onSubmit={handleCheckout} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Ім'я та Прізвище</label>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">{t('checkout.firstName' as any)}</label>
                   <input 
                     type="text" 
                     required 
@@ -128,11 +130,11 @@ export default function CheckoutPage() {
                     onChange={(e) => setBuyerName(e.target.value)} 
                     disabled={isProcessing} 
                     className="w-full h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all disabled:opacity-50 text-[var(--foreground)]" 
-                    placeholder="Введіть ваше ім'я" 
+                    placeholder="ПІБ" 
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Телефон / Telegram</label>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">{t('checkout.phone' as any)}</label>
                   <input 
                     type="text" 
                     required 
@@ -140,7 +142,7 @@ export default function CheckoutPage() {
                     onChange={(e) => setContactInfo(e.target.value)} 
                     disabled={isProcessing} 
                     className="w-full h-14 px-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold outline-none transition-all disabled:opacity-50 text-[var(--foreground)]" 
-                    placeholder="+380... або @username" 
+                    placeholder="+380..." 
                   />
                 </div>
               </div>
@@ -172,7 +174,7 @@ export default function CheckoutPage() {
 
         <div className="lg:col-span-5">
           <div className="bg-[var(--card)] border border-[var(--border)] rounded-[2.5rem] p-8 shadow-sm sticky top-6">
-            <h2 className="text-xl font-black mb-6">Ваше замовлення</h2>
+            <h2 className="text-xl font-black mb-6">{t('checkout.orderSummary' as any)}</h2>
             
             <div className="space-y-4 mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">
               {items.map((item) => (
@@ -201,7 +203,7 @@ export default function CheckoutPage() {
 
             <div className="border-t border-[var(--border)] pt-6 mb-8">
               <div className="flex justify-between items-end">
-                <span className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">До оплати</span>
+                <span className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">{t('checkout.subtotal' as any)}</span>
                 <span className="text-4xl font-black text-[var(--foreground)] tracking-tight">{formatMoney(totalPrice())}</span>
               </div>
             </div>
@@ -217,7 +219,7 @@ export default function CheckoutPage() {
               ) : (
                 <>
                   <CreditCard className="h-6 w-6" /> 
-                  Сплатити безпечно 
+                  {t('contactForm.paySafe' as any)}
                   <ArrowRight className="h-5 w-5 ml-1" />
                 </>
               )}

@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, L
 import { ChartNoAxesCombined, Loader2, Landmark, Boxes, PiggyBank } from 'lucide-react';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney } from '@/lib/format';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface AllocationData {
   capitalAtWork: number;
@@ -22,7 +23,8 @@ interface CashflowPlan {
 }
 
 export default function AdminAllocationPage() {
-const { data: allocation, isLoading: aLoading } = useSWR<AllocationData>('/api/proxy/allocation', swrFetcher);
+  const { t } = useI18n();
+  const { data: allocation, isLoading: aLoading } = useSWR<AllocationData>('/api/proxy/allocation', swrFetcher);
   const { data: cashflow, isLoading: cLoading } = useSWR<CashflowPlan>('/api/proxy/allocation/cashflow-plan', swrFetcher);
 
   if (aLoading || cLoading) {
@@ -47,12 +49,12 @@ const { data: allocation, isLoading: aLoading } = useSWR<AllocationData>('/api/p
             <ChartNoAxesCombined className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Capital Allocation</h1>
-            <p className="mt-1 text-sm font-medium text-slate-500">Portfolio exposure, risk distribution, and reinvestment planning.</p>
+            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.allocation.title' as any)}</h1>
+            <p className="mt-1 text-sm font-medium text-slate-500">{t('admin.allocation.subtitle' as any)}</p>
           </div>
         </div>
         <div className="bg-[var(--background)]/50 border border-[var(--border)] px-6 py-4 rounded-2xl">
-          <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Total Capital at Work</div>
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{t('admin.allocation.total' as any)}</div>
           <div className="text-3xl font-black text-[var(--foreground)]">{formatMoney(allocation?.capitalAtWork)}</div>
         </div>
       </div>
@@ -61,7 +63,7 @@ const { data: allocation, isLoading: aLoading } = useSWR<AllocationData>('/api/p
         <div className="xl:col-span-1 rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm flex flex-col">
           <div className="mb-6 flex items-center gap-3">
             <Landmark className="text-indigo-500" />
-            <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Distribution</h2>
+            <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">{t('admin.allocation.dist' as any)}</h2>
           </div>
           <div className="flex-1 min-h-[250px] w-full relative">
             {chartData.length > 0 ? (
@@ -77,7 +79,7 @@ const { data: allocation, isLoading: aLoading } = useSWR<AllocationData>('/api/p
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 font-bold">No active capital</div>
+              <div className="h-full flex items-center justify-center text-slate-400 font-bold">{t('common.empty' as any)}</div>
             )}
           </div>
         </div>
@@ -86,16 +88,16 @@ const { data: allocation, isLoading: aLoading } = useSWR<AllocationData>('/api/p
           <div className="rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm">
             <div className="mb-6 flex items-center gap-3">
               <Boxes className="text-emerald-500" />
-              <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Exposure by Theme</h2>
+              <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">{t('admin.allocation.theme' as any)}</h2>
             </div>
             <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
-              {allocation?.byTheme?.map((t, idx) => (
+              {allocation?.byTheme?.map((tItem, idx) => (
                 <div key={idx} className="flex justify-between items-center group">
                   <div>
-                    <div className="font-bold text-[var(--foreground)] group-hover:text-emerald-500 transition-colors">{t.theme}</div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t.units} units</div>
+                    <div className="font-bold text-[var(--foreground)] group-hover:text-emerald-500 transition-colors">{tItem.theme}</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{tItem.units} units</div>
                   </div>
-                  <div className="font-black text-slate-700 dark:text-slate-300">{formatMoney(t.cost)}</div>
+                  <div className="font-black text-slate-700 dark:text-slate-300">{formatMoney(tItem.cost)}</div>
                 </div>
               ))}
             </div>
@@ -104,7 +106,7 @@ const { data: allocation, isLoading: aLoading } = useSWR<AllocationData>('/api/p
           <div className="rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm">
             <div className="mb-6 flex items-center gap-3">
               <PiggyBank className="text-amber-500" />
-              <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Cashflow Plan</h2>
+              <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">{t('admin.allocation.cashflow' as any)}</h2>
             </div>
             <div className="space-y-5">
               <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30">

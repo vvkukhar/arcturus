@@ -8,6 +8,7 @@ import { CheckCircle, Package, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatMoney } from '@/lib/format';
 import { swrFetcher } from '@/lib/swr-fetcher';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface OrderSuccessData {
   id: string;
@@ -23,6 +24,7 @@ interface OrderSuccessData {
 function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { t } = useI18n();
   const orderId = searchParams.get('orderId') || searchParams.get('reference');
 
   const { data: order, isLoading, error } = useSWR<OrderSuccessData>(
@@ -43,7 +45,7 @@ function SuccessContent() {
         <div className="flex flex-col items-center gap-4 animate-pulse">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
           <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-            Підтвердження транзакції...
+            {t('common.loading' as any)}
           </div>
         </div>
       </main>
@@ -60,7 +62,7 @@ function SuccessContent() {
           <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-[2rem] bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30">
             <CheckCircle className="h-12 w-12 text-white" strokeWidth={2.5} />
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-[var(--foreground)] mb-2">Оплата успішна</h1>
+          <h1 className="text-4xl font-black tracking-tight text-[var(--foreground)] mb-2">{t('common.success' as any)}</h1>
           <p className="text-slate-600 dark:text-slate-400 font-medium leading-relaxed mb-8">
             Дякуємо, {order?.buyerName?.split(' ')[0] || 'клієнте'}! Ваше замовлення підтверджено та передано на пакування.
           </p>
@@ -76,7 +78,7 @@ function SuccessContent() {
                 )}
               </div>
               <div className="flex-1 overflow-hidden">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Замовлення #{order.id.slice(-6)}</div>
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">ID #{order.id.slice(-6)}</div>
                 <div className="font-black text-[var(--foreground)] truncate">{order.productTitle}</div>
                 <div className="text-blue-600 font-black mt-1">{formatMoney(order.sellPrice)}</div>
               </div>
@@ -84,7 +86,7 @@ function SuccessContent() {
           )}
           <div className="flex flex-col gap-4">
             <Button href="/store/catalog" size="lg" className="w-full h-16 rounded-[2rem] text-lg">
-              Повернутись до каталогу
+              {t('catalog.back' as any)}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
@@ -104,7 +106,7 @@ export default function SuccessPage() {
       <main className="min-h-screen bg-[var(--background)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 animate-pulse">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-          <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">Завантаження...</div>
+          <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">Loading...</div>
         </div>
       </main>
     }>

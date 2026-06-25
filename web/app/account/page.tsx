@@ -64,7 +64,7 @@ export default function AccountPage() {
         }),
       });
       
-      toast.success('Профіль успішно оновлено!');
+      toast.success(t('common.success' as any));
       setProfilePassword('');
       mutateUser();
       
@@ -74,7 +74,7 @@ export default function AccountPage() {
         }, 1500);
       }
     } catch (err: any) {
-      toast.error(err.message || 'Помилка оновлення профілю');
+      toast.error(err.message || t('common.error' as any));
     } finally {
       setIsSavingProfile(false);
     }
@@ -85,10 +85,10 @@ export default function AccountPage() {
     try {
       setGeneratingKey(true);
       await apiFetch('/api/auth/api-key', { method: 'POST' });
-      toast.success('Новий API Key згенеровано!');
+      toast.success(t('common.success' as any));
       mutateUser();
     } catch (err: any) {
-      toast.error(err.message || 'Не вдалося згенерувати API ключ');
+      toast.error(err.message || t('common.error' as any));
     } finally {
       setGeneratingKey(false);
     }
@@ -109,36 +109,36 @@ export default function AccountPage() {
         method: 'PATCH',
         body: JSON.stringify({ action }),
       });
-      toast.success(action === 'accept' ? 'Пропозицію прийнято!' : 'Пропозицію відхилено');
+      toast.success(t('common.success' as any));
       mutateIncomingOffers();
     } catch (err: any) {
-      toast.error(err.message || 'Не вдалося обробити пропозицію');
+      toast.error(err.message || t('common.error' as any));
     } finally {
       setRespondingId(null);
     }
   };
 
   const getStatusBadge = (status: string) => {
-    if (status === 'approved') return <span className="flex items-center gap-1 text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded text-[10px] font-black uppercase"><CheckCircle2 size={12}/> В продажу</span>;
-    if (status === 'rejected') return <span className="flex items-center gap-1 text-red-600 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded text-[10px] font-black uppercase"><XCircle size={12}/> Відхилено</span>;
-    return <span className="flex items-center gap-1 text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded text-[10px] font-black uppercase"><Clock size={12}/> Модерація</span>;
+    if (status === 'approved') return <span className="flex items-center gap-1 text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded text-[10px] font-black uppercase"><CheckCircle2 size={12}/> {t('account.status.approved' as any)}</span>;
+    if (status === 'rejected') return <span className="flex items-center gap-1 text-red-600 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded text-[10px] font-black uppercase"><XCircle size={12}/> {t('account.status.rejected' as any)}</span>;
+    return <span className="flex items-center gap-1 text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded text-[10px] font-black uppercase"><Clock size={12}/> {t('account.status.pending' as any)}</span>;
   };
 
   const getOfferStatusPill = (status: string) => {
-    if (status === 'accepted') return <span className="text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-[10px] font-black uppercase px-2.5 py-1 rounded-md">Прийнято</span>;
-    if (status === 'rejected') return <span className="text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 text-[10px] font-black uppercase px-2.5 py-1 rounded-md">Відхилено</span>;
-    return <span className="text-amber-600 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 text-[10px] font-black uppercase px-2.5 py-1 rounded-md">Очікує</span>;
+    if (status === 'accepted') return <span className="text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-[10px] font-black uppercase px-2.5 py-1 rounded-md">{t('wallet.status.accepted' as any)}</span>;
+    if (status === 'rejected') return <span className="text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 text-[10px] font-black uppercase px-2.5 py-1 rounded-md">{t('wallet.status.rejected' as any)}</span>;
+    return <span className="text-amber-600 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 text-[10px] font-black uppercase px-2.5 py-1 rounded-md">{t('wallet.status.pending' as any)}</span>;
   };
 
   const tabs = [
-    { id: 'listings', icon: Store, label: 'Мої товари' },
-    { id: 'wallet', icon: Wallet, label: 'Гаманець та Офери' },
-    { id: 'orders', icon: Package, label: 'Мої покупки' },
-    { id: 'settings', icon: Settings, label: 'Налаштування' }
+    { id: 'listings', icon: Store, label: t('account.myList' as any) },
+    { id: 'wallet', icon: Wallet, label: t('account.walletAndOffers' as any) },
+    { id: 'orders', icon: Package, label: t('account.myPurchases' as any) },
+    { id: 'settings', icon: Settings, label: t('account.settings' as any) }
   ];
 
   if (user?.isPro || user?.role === 'admin' || user?.role === 'operator') {
-    tabs.push({ id: 'developer', icon: Terminal, label: 'Developer API' });
+    tabs.push({ id: 'developer', icon: Terminal, label: t('account.developerApi' as any) });
   }
 
   return (
@@ -178,15 +178,15 @@ export default function AccountPage() {
                 
                 {activeTab === 'listings' && (
                   <div className="flex-1 space-y-4">
-                    <h2 className="text-2xl font-black mb-6">Мої товари на маркетплейсі</h2>
+                    <h2 className="text-2xl font-black mb-6">{t('account.myList' as any)}</h2>
                     
                     {lLoading ? (
                       <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-500 w-8 h-8" /></div>
                     ) : myListings.length === 0 ? (
                       <div className="flex-1 flex flex-col items-center justify-center text-center py-20 border-2 border-dashed border-[var(--border)] rounded-3xl">
                         <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center text-blue-400 mb-4"><Store size={28} /></div>
-                        <p className="text-lg font-bold mb-2">Ви ще нічого не продаєте</p>
-                        <p className="text-slate-500 font-medium">Заповніть заявку, щоб виставити товар на продаж.</p>
+                        <p className="text-lg font-bold mb-2">{t('account.noListings' as any)}</p>
+                        <p className="text-slate-500 font-medium">{t('account.noListingsDesc' as any)}</p>
                       </div>
                     ) : (
                       myListings.map(item => (
@@ -196,7 +196,7 @@ export default function AccountPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <h4 className="font-bold text-[var(--foreground)] truncate text-lg">{item.titleSnapshot}</h4>
-                            <p className="text-xs text-slate-500 mt-1 font-mono">ID: {item.id.slice(0,8)} • Створено: {new Date(item.createdAt).toLocaleDateString()}</p>
+                            <p className="text-xs text-slate-500 mt-1 font-mono">ID: {item.id.slice(0,8)} • {new Date(item.createdAt).toLocaleDateString()}</p>
                           </div>
                           <div className="flex flex-col items-end gap-2 shrink-0">
                             <span className="font-black text-lg">{formatMoney(item.expectedSalePriceManual ?? item.purchasePrice)}</span>
@@ -214,19 +214,19 @@ export default function AccountPage() {
 
                     <div className="border-t border-[var(--border)] pt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div>
-                        <h3 className="font-black text-lg mb-4 flex items-center gap-2"><Handshake size={18} className="text-blue-500"/> Вхідний торг (C2C)</h3>
+                        <h3 className="font-black text-lg mb-4 flex items-center gap-2"><Handshake size={18} className="text-blue-500"/> {t('wallet.incomingBids' as any)}</h3>
                         <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                           {safeIncomingOffers.length === 0 ? (
-                            <p className="text-sm font-medium text-slate-400">Ніхто поки не пропонував меншу ціну за ваші набори.</p>
+                            <p className="text-sm font-medium text-slate-400">{t('wallet.noIncomingBids' as any)}</p>
                           ) : (
                             safeIncomingOffers.map((off: any) => (
                               <div key={off.id} className="p-4 bg-[var(--background)] border border-[var(--border)] rounded-2xl flex flex-col gap-3">
                                 <div>
                                   <div className="font-bold text-sm truncate">{off.inventoryItem?.titleSnapshot}</div>
-                                  <div className="text-xs text-slate-500 font-medium mt-0.5">Покупець: {off.buyer?.name}</div>
+                                  <div className="text-xs text-slate-500 font-medium mt-0.5">{t('wallet.buyer' as any)} {off.buyer?.name}</div>
                                 </div>
                                 <div className="flex justify-between items-center bg-[var(--card)] px-3 py-2 rounded-xl border border-[var(--border)] text-sm">
-                                  <span className="text-slate-500 font-bold">Пропонує:</span>
+                                  <span className="text-slate-500 font-bold">{t('wallet.offers' as any)}</span>
                                   <span className="font-black text-indigo-500">{formatMoney(off.amount)}</span>
                                 </div>
                                 <div className="flex gap-2">
@@ -235,14 +235,14 @@ export default function AccountPage() {
                                     onClick={() => handleOfferResponse(off.id, 'accept')}
                                     className="flex-1 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-black text-xs uppercase tracking-wider rounded-xl transition-colors flex justify-center items-center gap-1"
                                   >
-                                    {respondingId === `accept-${off.id}` ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Прийняти
+                                    {respondingId === `accept-${off.id}` ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} {t('wallet.accept' as any)}
                                   </button>
                                   <button
                                     disabled={respondingId !== null}
                                     onClick={() => handleOfferResponse(off.id, 'reject')}
                                     className="flex-1 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-black text-xs uppercase tracking-wider rounded-xl transition-colors flex justify-center items-center gap-1"
                                   >
-                                    {respondingId === `reject-${off.id}` ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Відхилити
+                                    {respondingId === `reject-${off.id}` ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} {t('wallet.reject' as any)}
                                   </button>
                                 </div>
                               </div>
@@ -252,16 +252,16 @@ export default function AccountPage() {
                       </div>
 
                       <div>
-                        <h3 className="font-black text-lg mb-4">Надіслані пропозиції</h3>
+                        <h3 className="font-black text-lg mb-4">{t('wallet.sentOffers' as any)}</h3>
                         <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                           {safeMyOffers.length === 0 ? (
-                            <p className="text-sm font-medium text-slate-400">Ви ще не пропонували свою ціну на товари інших продавців.</p>
+                            <p className="text-sm font-medium text-slate-400">{t('wallet.noSentOffers' as any)}</p>
                           ) : (
                             safeMyOffers.map((off: any) => (
                               <div key={off.id} className="p-4 border border-[var(--border)] rounded-2xl flex items-center justify-between gap-4">
                                 <div className="min-w-0">
                                   <div className="font-bold text-sm truncate">{off.inventoryItem?.titleSnapshot}</div>
-                                  <div className="text-sm font-black text-indigo-500 mt-1">Ви запропонували: {formatMoney(off.amount)}</div>
+                                  <div className="text-sm font-black text-indigo-500 mt-1">{t('wallet.youOffered' as any)} {formatMoney(off.amount)}</div>
                                 </div>
                                 <div className="shrink-0">
                                   {getOfferStatusPill(off.status)}
@@ -278,18 +278,18 @@ export default function AccountPage() {
                 {activeTab === 'orders' && (
                   <div className="flex-1 flex flex-col items-center justify-center text-center py-20 border-2 border-dashed border-[var(--border)] rounded-3xl">
                     <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4"><Package size={28} /></div>
-                    <p className="text-lg font-bold mb-2">Ви ще нічого не купували</p>
-                    <p className="text-slate-500 font-medium">Ваші придбані товари відображатимуться тут.</p>
+                    <p className="text-lg font-bold mb-2">{t('account.noPositions' as any)}</p>
+                    <p className="text-slate-500 font-medium">{t('account.noPositionsDesc' as any)}</p>
                   </div>
                 )}
                 
                 {activeTab === 'settings' && (
                   <div className="flex-1 max-w-xl">
-                    <h2 className="text-2xl font-black mb-6">Налаштування профілю</h2>
+                    <h2 className="text-2xl font-black mb-6">{t('account.profileSettings' as any)}</h2>
                     
                     <form onSubmit={handleUpdateProfile} className="space-y-5">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Повне Ім'я</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('account.fullName' as any)}</label>
                         <div className="relative">
                           <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                           <input
@@ -303,7 +303,7 @@ export default function AccountPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Email</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('account.email' as any)}</label>
                         <div className="relative">
                           <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                           <input
@@ -317,18 +317,18 @@ export default function AccountPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Новий Пароль (Опціонально)</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">{t('account.newPassword' as any)}</label>
                         <div className="relative">
                           <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                           <input
                             type="password"
                             value={profilePassword}
                             onChange={(e) => setProfilePassword(e.target.value)}
-                            placeholder="Залишіть пустим, якщо не змінюєте"
+                            placeholder={t('account.leaveEmpty' as any) as string}
                             className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-4 pl-12 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all focus:border-blue-500 focus:bg-[var(--card)] focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400"
                           />
                         </div>
-                        {profilePassword && <p className="text-xs text-amber-500 font-bold ml-1 mt-1">Зміна пароля вимагатиме повторної авторизації.</p>}
+                        {profilePassword && <p className="text-xs text-amber-500 font-bold ml-1 mt-1">{t('account.passwordWarn' as any)}</p>}
                       </div>
 
                       <div className="pt-4">
@@ -338,7 +338,7 @@ export default function AccountPage() {
                           className="w-full h-14 text-base rounded-xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                           {isSavingProfile ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-                          Зберегти Зміни
+                          {t('account.saveChanges' as any)}
                         </button>
                       </div>
                     </form>
@@ -347,7 +347,7 @@ export default function AccountPage() {
 
                 {activeTab === 'developer' && (
                   <div className="flex-1 max-w-2xl animate-in fade-in slide-in-from-right-4">
-                    <h2 className="text-2xl font-black mb-6 flex items-center gap-2"><Terminal className="text-indigo-500" /> B2B Developer API</h2>
+                    <h2 className="text-2xl font-black mb-6 flex items-center gap-2"><Terminal className="text-indigo-500" /> {t('account.developerApi' as any)}</h2>
                     <p className="text-slate-500 font-medium mb-8">
                       Використовуйте API для створення власних ботів, інтеграції цін або автоматизації дропшипінгу з платформою Arcturus.
                     </p>
@@ -355,7 +355,7 @@ export default function AccountPage() {
                     <div className="bg-slate-900 text-white p-8 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
                       <div className="absolute top-0 right-0 p-8 opacity-5"><Terminal size={150} /></div>
                       <div className="relative z-10">
-                        <h3 className="text-lg font-black mb-2">Ваш API Key</h3>
+                        <h3 className="text-lg font-black mb-2">{t('account.yourApiKey' as any)}</h3>
                         
                         {user?.apiKey ? (
                           <div className="space-y-4">
@@ -370,7 +370,7 @@ export default function AccountPage() {
                             </div>
                             
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Доступ:</span>
+                              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('account.apiAccess' as any)}</span>
                               <span className="text-xs font-black bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-1 rounded uppercase tracking-wider">{user.apiTier || 'B2B'}</span>
                             </div>
 
@@ -380,19 +380,19 @@ export default function AccountPage() {
                               className="mt-6 flex items-center gap-2 text-sm font-bold text-red-400 hover:text-red-300 transition-colors"
                             >
                               {generatingKey ? <Loader2 className="animate-spin" size={16} /> : <XCircle size={16} />}
-                              Відкликати поточний та згенерувати новий ключ
+                              {t('account.apiRevoke' as any)}
                             </button>
                           </div>
                         ) : (
                           <div className="text-center py-6">
-                            <p className="text-slate-400 mb-6">У вас ще немає згенерованого ключа доступу.</p>
+                            <p className="text-slate-400 mb-6">{t('account.apiNoKey' as any)}</p>
                             <button 
                               onClick={handleGenerateApiKey} 
                               disabled={generatingKey}
                               className="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-4 rounded-xl shadow-lg shadow-indigo-600/20 transition-transform active:scale-95 flex items-center justify-center gap-2 mx-auto"
                             >
                               {generatingKey ? <Loader2 className="animate-spin" size={20} /> : <Terminal size={20} />}
-                              Згенерувати API Key
+                              {t('account.apiGenerate' as any)}
                             </button>
                           </div>
                         )}
@@ -400,7 +400,7 @@ export default function AccountPage() {
                     </div>
 
                     <div className="mt-8 space-y-4">
-                      <h3 className="font-black text-lg">Документація</h3>
+                      <h3 className="font-black text-lg">{t('account.apiDocs' as any)}</h3>
                       <div className="bg-[var(--background)] p-4 rounded-2xl border border-[var(--border)]">
                         <div className="flex items-center gap-2 mb-2 font-mono text-sm font-bold">
                           <span className="text-emerald-600">GET</span> /api/v1/b2b/market

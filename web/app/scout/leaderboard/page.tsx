@@ -2,9 +2,10 @@
 
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
-import { Trophy, Medal, Target, ShieldCheck, Loader2 } from 'lucide-react';
+import { Trophy, Target, ShieldCheck, Loader2 } from 'lucide-react';
 import { formatMoney } from '@/lib/format';
 import Link from 'next/link';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface Scout {
   id: string;
@@ -16,6 +17,7 @@ interface Scout {
 }
 
 export default function LeaderboardPage() {
+  const { t } = useI18n();
   const { data, isLoading } = useSWR<Scout[]>('/api/proxy/gamification/leaderboard', swrFetcher);
   const scouts = Array.isArray(data) ? data : [];
 
@@ -35,12 +37,12 @@ export default function LeaderboardPage() {
               <Trophy size={32} />
             </div>
             <div>
-              <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Зал Слави</h1>
-              <p className="text-slate-500 font-medium mt-1">Топ найкращих скаутів платформи Arcturus.</p>
+              <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('scout.hall.title' as any)}</h1>
+              <p className="text-slate-500 font-medium mt-1">{t('scout.hall.desc' as any)}</p>
             </div>
           </div>
           <Link href="/scout" className="px-6 py-3 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold rounded-xl hover:scale-105 transition-transform shadow-md">
-            Запропонувати Лід
+            {t('scout.hall.suggest' as any)}
           </Link>
         </div>
 
@@ -51,7 +53,7 @@ export default function LeaderboardPage() {
             </div>
           ) : scouts.length === 0 ? (
             <div className="py-20 text-center text-slate-500 font-medium">
-              Рейтинг поки порожній. Станьте першим!
+              {t('scout.hall.empty' as any)}
             </div>
           ) : (
             <div className="divide-y divide-[var(--border)]">
@@ -69,14 +71,14 @@ export default function LeaderboardPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-4 text-xs font-bold text-slate-500">
-                      <span className="flex items-center gap-1"><Target size={14}/> {scout.totalLeads} лідів знайдено</span>
-                      <span className="flex items-center gap-1 text-emerald-500"><ShieldCheck size={14}/> {scout.successfulLeads} викуплено</span>
+                      <span className="flex items-center gap-1"><Target size={14}/> {scout.totalLeads} {t('scout.hall.leads' as any)}</span>
+                      <span className="flex items-center gap-1 text-emerald-500"><ShieldCheck size={14}/> {scout.successfulLeads} {t('scout.hall.bought' as any)}</span>
                     </div>
                   </div>
 
                   <div className="text-right">
                     <div className="font-black text-2xl text-amber-500">{formatMoney(scout.points).replace('₴','')} pts</div>
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Score</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('scout.hall.score' as any)}</div>
                   </div>
                 </div>
               ))}

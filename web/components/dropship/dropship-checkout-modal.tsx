@@ -9,6 +9,7 @@ import { apiFetch } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatMoney } from '@/lib/format';
 import { NovaPoshtaPicker } from '@/components/checkout/nova-poshta-picker';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface DropshipCheckoutModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ interface DropshipCheckoutModalProps {
 }
 
 export function DropshipCheckoutModal({ isOpen, onClose, item }: DropshipCheckoutModalProps) {
+  const { t } = useI18n();
   const { data: vaultBalance, mutate: mutateVault } = useSWR<number>('/api/proxy/vault/balance', swrFetcher);
   
   const [loading, setLoading] = useState(false);
@@ -56,12 +58,12 @@ export function DropshipCheckoutModal({ isOpen, onClose, item }: DropshipCheckou
       if (paymentMethod === 'card' && res.url) {
         window.location.href = res.url;
       } else {
-        toast.success('Замовлення успішно створено та оплачено!');
+        toast.success(t('dropship.modal.success' as any));
         mutateVault();
         onClose();
       }
     } catch (err: any) {
-      toast.error(err.message || 'Помилка створення замовлення');
+      toast.error(err.message || 'Error');
     } finally {
       setLoading(false);
     }
@@ -81,7 +83,7 @@ export function DropshipCheckoutModal({ isOpen, onClose, item }: DropshipCheckou
             <Truck size={28} />
           </div>
           <div className="min-w-0 pr-10">
-            <h2 className="text-2xl font-black tracking-tight leading-tight">Відправка клієнту</h2>
+            <h2 className="text-2xl font-black tracking-tight leading-tight">{t('dropship.modal.title' as any)}</h2>
             <p className="text-xs font-bold text-slate-500 truncate mt-1">{item.title}</p>
           </div>
         </div>
@@ -89,7 +91,7 @@ export function DropshipCheckoutModal({ isOpen, onClose, item }: DropshipCheckou
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
           <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-900/50 rounded-2xl p-5 flex justify-between items-center">
             <div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1">До сплати за оптом</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1">{t('dropship.modal.wholesalePrice' as any)}</div>
               <div className="text-3xl font-black text-[var(--foreground)]">{formatMoney(item.wholesalePrice)}</div>
             </div>
             <Box className="text-indigo-300 dark:text-indigo-800 w-12 h-12" />
@@ -97,32 +99,32 @@ export function DropshipCheckoutModal({ isOpen, onClose, item }: DropshipCheckou
 
           <form id="dropship-form" onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
-              <h3 className="font-black text-lg flex items-center gap-2"><ShieldCheck className="text-blue-500" size={18}/> Дані вашого клієнта</h3>
+              <h3 className="font-black text-lg flex items-center gap-2"><ShieldCheck className="text-blue-500" size={18}/> {t('dropship.modal.clientInfo' as any)}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">ПІБ Клієнта</label>
-                  <input required value={customerName} onChange={(e) => setCustomerName(e.target.value)} disabled={loading} className="w-full h-14 px-5 rounded-xl bg-[var(--background)] border border-[var(--border)] focus:border-indigo-500 outline-none font-bold text-[var(--foreground)]" placeholder="Іванов Іван" />
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">{t('dropship.modal.clientName' as any)}</label>
+                  <input required value={customerName} onChange={(e) => setCustomerName(e.target.value)} disabled={loading} className="w-full h-14 px-5 rounded-xl bg-[var(--background)] border border-[var(--border)] focus:border-indigo-500 outline-none font-bold text-[var(--foreground)]" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Телефон Клієнта</label>
-                  <input required value={contact} onChange={(e) => setContact(e.target.value)} disabled={loading} className="w-full h-14 px-5 rounded-xl bg-[var(--background)] border border-[var(--border)] focus:border-indigo-500 outline-none font-bold text-[var(--foreground)]" placeholder="+380..." />
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">{t('dropship.modal.clientPhone' as any)}</label>
+                  <input required value={contact} onChange={(e) => setContact(e.target.value)} disabled={loading} className="w-full h-14 px-5 rounded-xl bg-[var(--background)] border border-[var(--border)] focus:border-indigo-500 outline-none font-bold text-[var(--foreground)]" />
                 </div>
               </div>
               <NovaPoshtaPicker onCitySelect={setCity} onWarehouseSelect={setBranch} />
             </div>
 
             <div className="space-y-4 pt-4 border-t border-[var(--border)]">
-              <h3 className="font-black text-lg">Метод Оплати</h3>
+              <h3 className="font-black text-lg">{t('dropship.modal.payment' as any)}</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div 
                   onClick={() => canUseVault && setPaymentMethod('vault')}
                   className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'vault' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-[var(--border)] hover:border-indigo-300'} ${!canUseVault && 'opacity-50 cursor-not-allowed'}`}
                 >
                   <div className="font-black text-[var(--foreground)] flex justify-between items-center mb-1">
-                    Vault Баланс
+                    {t('dropship.modal.vault' as any)}
                     {paymentMethod === 'vault' && <div className="w-3 h-3 bg-indigo-500 rounded-full" />}
                   </div>
-                  <div className={`text-xs font-bold ${canUseVault ? 'text-slate-500' : 'text-red-500'}`}>Доступно: {formatMoney(currentBalance)}</div>
+                  <div className={`text-xs font-bold ${canUseVault ? 'text-slate-500' : 'text-red-500'}`}>Available: {formatMoney(currentBalance)}</div>
                 </div>
 
                 <div 
@@ -130,7 +132,7 @@ export function DropshipCheckoutModal({ isOpen, onClose, item }: DropshipCheckou
                   className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'card' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-[var(--border)] hover:border-indigo-300'}`}
                 >
                   <div className="font-black text-[var(--foreground)] flex justify-between items-center mb-1">
-                    Картка / Apple Pay
+                    {t('dropship.modal.card' as any)}
                     {paymentMethod === 'card' && <div className="w-3 h-3 bg-indigo-500 rounded-full" />}
                   </div>
                   <div className="text-xs font-bold text-slate-500 flex items-center gap-1 mt-1"><CreditCard size={12}/> Monobank Acquiring</div>
@@ -148,7 +150,7 @@ export function DropshipCheckoutModal({ isOpen, onClose, item }: DropshipCheckou
             className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg rounded-xl shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 className="animate-spin" size={24} /> : <Truck size={24} />}
-            Сплатити та Відправити
+            {t('dropship.modal.submit' as any)}
           </Button>
         </div>
       </div>

@@ -7,15 +7,17 @@ import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney } from '@/lib/format';
 import { Gavel, Clock, Flame, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 function Countdown({ endsAt }: { endsAt: string }) {
   const [timeLeft, setTimeLeft] = useState('');
+  const { t } = useI18n();
 
   useEffect(() => {
     const interval = setInterval(() => {
       const diff = new Date(endsAt).getTime() - Date.now();
       if (diff <= 0) {
-        setTimeLeft('Finished');
+        setTimeLeft(t('auctions.time.finished' as any));
         clearInterval(interval);
         return;
       }
@@ -25,12 +27,13 @@ function Countdown({ endsAt }: { endsAt: string }) {
       setTimeLeft(`${h}h ${m}m ${s}s`);
     }, 1000);
     return () => clearInterval(interval);
-  }, [endsAt]);
+  }, [endsAt, t]);
 
   return <span>{timeLeft}</span>;
 }
 
 export default function AuctionsCatalogPage() {
+  const { t } = useI18n();
   const { data: auctions, isLoading } = useSWR<any[]>('/api/auctions', swrFetcher, { refreshInterval: 5000 });
 
   return (
@@ -38,10 +41,10 @@ export default function AuctionsCatalogPage() {
       <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-black uppercase tracking-widest mb-4 border border-red-200 dark:border-red-800">
-            <Flame size={14} className="animate-pulse" /> Live Bidding
+            <Flame size={14} className="animate-pulse" /> {t('auctions.live' as any)}
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-[var(--foreground)]">Exclusive Auctions</h1>
-          <p className="mt-2 font-medium text-slate-500">Bid on rare and retired sets in real-time.</p>
+          <h1 className="text-4xl font-black tracking-tight text-[var(--foreground)]">{t('auctions.exclusive' as any)}</h1>
+          <p className="mt-2 font-medium text-slate-500">{t('auctions.desc' as any)}</p>
         </div>
       </div>
 
@@ -73,7 +76,7 @@ export default function AuctionsCatalogPage() {
                   <h3 className="font-black text-lg leading-tight line-clamp-2 mb-4 group-hover:text-red-600 transition-colors">{item.titleSnapshot}</h3>
                   <div className="mt-auto flex items-end justify-between">
                     <div>
-                      <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Current Bid</div>
+                      <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">{t('auctions.current' as any)}</div>
                       <div className="text-2xl font-black text-red-600 dark:text-red-400">{formatMoney(auction.currentPrice)}</div>
                     </div>
                     <div className="h-10 w-10 bg-[var(--background)] rounded-xl border border-[var(--border)] flex items-center justify-center text-[var(--foreground)] group-hover:bg-red-600 group-hover:text-white group-hover:border-red-600 transition-colors">
@@ -88,8 +91,8 @@ export default function AuctionsCatalogPage() {
       ) : (
         <div className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-[var(--border)] bg-[var(--card)] py-20 text-center">
           <Gavel className="w-16 h-16 text-slate-300 mb-4" />
-          <h3 className="text-xl font-black text-[var(--foreground)]">No Active Auctions</h3>
-          <p className="mt-2 font-medium text-slate-500">Check back later for exclusive drops.</p>
+          <h3 className="text-xl font-black text-[var(--foreground)]">{t('auctions.empty' as any)}</h3>
+          <p className="mt-2 font-medium text-slate-500">{t('auctions.emptyDesc' as any)}</p>
         </div>
       )}
     </div>

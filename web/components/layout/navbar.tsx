@@ -32,7 +32,7 @@ export function Navbar() {
   }, []);
 
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-[var(--border)] bg-white/90 shadow-sm backdrop-blur-xl transition-colors duration-300 dark:bg-slate-950/90">
+    <nav className="sticky top-0 z-40 w-full border-b border-[var(--border)] bg-[var(--card)]/80 shadow-sm backdrop-blur-xl transition-colors duration-300">
       <div className="mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between md:h-20">
           <div className="flex items-center gap-4 lg:gap-8">
@@ -53,19 +53,19 @@ export function Navbar() {
             </Link>
 
             <div className="hidden md:flex items-center gap-6 ml-4">
-               <Link href="/store/catalog" className="text-sm font-bold text-slate-600 hover:text-blue-600 dark:text-slate-300 transition-colors">Магазин</Link>
-               <Link href="/ecosystem" className="flex items-center gap-1.5 text-sm font-bold text-slate-600 hover:text-purple-600 dark:text-slate-300 transition-colors"><Network size={16}/> Екосистема</Link>
-               <Link href="/sell" className="text-sm font-bold text-slate-600 hover:text-emerald-600 dark:text-slate-300 transition-colors">Продати нам</Link>
+               <Link href="/store/catalog" className="text-sm font-bold text-slate-600 hover:text-blue-600 dark:text-slate-300 transition-colors">{t('nav.catalog' as any)}</Link>
+               <Link href="/ecosystem" className="flex items-center gap-1.5 text-sm font-bold text-slate-600 hover:text-purple-600 dark:text-slate-300 transition-colors"><Network size={16}/> {t('ecosystem.title1' as any)}</Link>
+               <Link href="/sell" className="text-sm font-bold text-slate-600 hover:text-emerald-600 dark:text-slate-300 transition-colors">{t('sidebar.sell' as any)}</Link>
             </div>
           </div>
 
           <div className="flex items-center gap-1 md:gap-3">
             <button 
               onClick={dispatchCommand}
-              className="mr-2 hidden items-center gap-2 rounded-xl border border-[var(--border)] bg-slate-100 px-3 py-2 text-slate-500 transition-colors hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-800 md:flex"
+              className="mr-2 hidden items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-slate-500 transition-colors hover:bg-slate-200 dark:hover:bg-slate-800 md:flex"
             >
               <Search size={16} />
-              <span className="text-sm font-bold">Search...</span>
+              <span className="text-sm font-bold">{t('common.search' as any)}</span>
               <kbd className="rounded bg-white px-1.5 py-0.5 text-[10px] font-black shadow-sm dark:bg-slate-900">⌘K</kbd>
             </button>
 
@@ -73,7 +73,7 @@ export function Navbar() {
               <>
                 <button 
                   onClick={toggleLanguage}
-                  className="flex items-center gap-1.5 rounded-full border border-transparent px-2.5 py-1.5 text-xs font-bold uppercase text-slate-600 transition-colors hover:border-[var(--border)] hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 md:px-3 md:py-2 md:text-sm"
+                  className="flex items-center gap-1.5 rounded-full border border-transparent px-2.5 py-1.5 text-xs font-bold uppercase text-slate-600 transition-colors hover:border-[var(--border)] hover:bg-[var(--background)] dark:text-slate-300 dark:hover:bg-slate-800 md:px-3 md:py-2 md:text-sm"
                 >
                   <Globe className="h-4 w-4 md:h-5 md:w-5" />
                   {lang}
@@ -81,7 +81,7 @@ export function Navbar() {
 
                 <button 
                   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="rounded-full border border-transparent p-2 text-slate-500 transition-colors hover:border-[var(--border)] hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 md:p-2.5"
+                  className="rounded-full border border-transparent p-2 text-slate-500 transition-colors hover:border-[var(--border)] hover:bg-[var(--background)] dark:text-slate-300 dark:hover:bg-slate-800 md:p-2.5"
                 >
                   {theme === 'dark' ? <Sun className="h-5 w-5 md:h-6 md:w-6" /> : <Moon className="h-5 w-5 md:h-6 md:w-6" />}
                 </button>
@@ -90,7 +90,7 @@ export function Navbar() {
 
             {!isLoading && !user && mounted && (
               <div className="hidden md:flex items-center gap-2 mx-2">
-                <Link href="/login" className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                <Link href="/login" className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-[var(--background)] rounded-xl transition-colors">
                   {t('auth.signIn' as any)}
                 </Link>
                 <Link href="/register" className="px-4 py-2 text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-xl transition-colors shadow-md shadow-blue-600/20">
@@ -113,7 +113,7 @@ export function Navbar() {
 
             <button
               onClick={() => setIsCartOpen(true)}
-              className="group relative rounded-full p-2 text-slate-800 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 md:p-2.5 ml-1"
+              className="group relative rounded-full p-2 text-slate-800 transition-colors hover:bg-[var(--background)] dark:text-slate-200 dark:hover:bg-slate-800 md:p-2.5 ml-1"
             >
               <ShoppingCart className="h-5 w-5 transition-transform group-hover:scale-110 md:h-6 md:w-6" />
               {mounted && totalItems > 0 && (

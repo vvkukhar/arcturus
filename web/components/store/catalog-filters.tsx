@@ -1,14 +1,15 @@
-// call:function_1{"queries":["web/components/store/catalog-filters.tsx"]}
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Filter, Layers } from 'lucide-react';
 import { useState, useCallback, useEffect } from 'react';
 import { useDebounce } from '@/lib/use-debounce';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 export function CatalogFilters({ themes, initialQuery, initialTheme, initialType }: { themes: string[], initialQuery: string, initialTheme: string, initialType: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   
   const [q, setQ] = useState(initialQuery);
   const [theme, setTheme] = useState(initialTheme);
@@ -55,7 +56,7 @@ export function CatalogFilters({ themes, initialQuery, initialTheme, initialType
         <input 
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Пошук наборів..." 
+          placeholder={t('catalog.search.placeholder' as any)} 
           className="h-14 w-full rounded-2xl border-none bg-white/10 pl-12 pr-4 text-sm font-bold text-white placeholder:text-slate-400 outline-none transition-all focus:bg-white/20 focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -67,11 +68,11 @@ export function CatalogFilters({ themes, initialQuery, initialTheme, initialType
           onChange={handleTypeChange}
           className="h-14 w-full appearance-none rounded-2xl border-none bg-white/10 pl-12 pr-10 text-sm font-bold text-white outline-none transition-all focus:bg-white/20 focus:ring-2 focus:ring-blue-500 cursor-pointer"
         >
-          <option value="" className="text-black">Всі категорії</option>
-          <option value="set" className="text-black">Набори</option>
-          <option value="minifigure" className="text-black">Мініфігурки</option>
-          <option value="bundle" className="text-black">Лоти / Колекції</option>
-          <option value="part" className="text-black">Деталі</option>
+          <option value="" className="text-black">{t('catalog.type.all' as any)}</option>
+          <option value="set" className="text-black">{t('catalog.type.set' as any)}</option>
+          <option value="minifigure" className="text-black">{t('catalog.type.minifigure' as any)}</option>
+          <option value="bundle" className="text-black">{t('catalog.type.bundle' as any)}</option>
+          <option value="part" className="text-black">{t('catalog.type.part' as any)}</option>
         </select>
       </div>
 
@@ -82,9 +83,9 @@ export function CatalogFilters({ themes, initialQuery, initialTheme, initialType
           onChange={handleThemeChange}
           className="h-14 w-full appearance-none rounded-2xl border-none bg-white/10 pl-12 pr-10 text-sm font-bold text-white outline-none transition-all focus:bg-white/20 focus:ring-2 focus:ring-blue-500 cursor-pointer"
         >
-          <option value="" className="text-black">Усі серії</option>
-          {themes.map((t) => (
-            <option key={t} value={t} className="text-black">{t}</option>
+          <option value="" className="text-black">{t('catalog.theme.all' as any)}</option>
+          {themes.map((tItem) => (
+            <option key={tItem} value={tItem} className="text-black">{tItem}</option>
           ))}
         </select>
       </div>

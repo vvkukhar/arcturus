@@ -2,6 +2,7 @@ import { SectionCard } from '@/components/admin/section-card';
 import { DataTable } from '@/components/admin/data-table';
 import { api } from '@/lib/api';
 import { StatusPill } from '@/components/admin/status-pill';
+import { dict } from '@/lib/i18n';
 
 export const revalidate = 0;
 
@@ -22,23 +23,24 @@ async function getActivityLogs(): Promise<ActivityLog[]> {
 
 export default async function ActivityPage() {
   const rows = await getActivityLogs();
+  const t = (key: keyof typeof dict.uk) => dict.uk[key] || dict.en[key] || key;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 hardware-accelerated">
       <div className="bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm">
-        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">System Activity</h1>
-        <p className="mt-1 text-sm font-medium text-slate-500">Immutable audit log of all system actions.</p>
+        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.activity.title' as any)}</h1>
+        <p className="mt-1 text-sm font-medium text-slate-500">{t('admin.activity.subtitle' as any)}</p>
       </div>
 
-      <SectionCard title="Recent Activity" contentClassName="p-0 sm:p-6">
+      <SectionCard title={t('admin.activity.recent' as any)} contentClassName="p-0 sm:p-6">
         <DataTable
           rows={rows}
-          emptyText="No recent activity found."
+          emptyText={t('admin.activity.empty' as any)}
           getRowKey={(row) => row.id}
           columns={[
             {
               key: 'action',
-              header: 'Action / Event',
+              header: t('admin.activity.col.action' as any),
               render: (row) => (
                 <div className="flex flex-col gap-1">
                   <span className="font-semibold text-[var(--foreground)]">{row.action}</span>
@@ -52,7 +54,7 @@ export default async function ActivityPage() {
             },
             {
               key: 'type',
-              header: 'Category',
+              header: t('common.category' as any),
               render: (row) => {
                 const lower = row.action.toLowerCase();
                 let cat = 'System';
@@ -64,7 +66,7 @@ export default async function ActivityPage() {
             },
             {
               key: 'createdAt',
-              header: 'Timestamp',
+              header: t('admin.activity.col.time' as any),
               render: (row) => (
                 <span className="text-sm font-mono text-slate-500">
                   {new Date(row.createdAt).toLocaleString('uk-UA')}

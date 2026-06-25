@@ -30,16 +30,16 @@ export default function WatchlistPage() {
       <div className="mb-10 flex flex-col md:flex-row justify-between items-end gap-6">
         <div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('sidebar.watchlist' as any)}</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">Monitoring active assets for potential entry points.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">{t('watchlist.subtitle2' as any)}</p>
         </div>
         <Link href="/store/catalog" className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors">
-          <Search size={18} /> Find Sets
+          <Search size={18} /> {t('watchlist.findSets' as any)}
         </Link>
       </div>
 
       <div className="bg-[var(--card)] rounded-3xl border border-[var(--border)] shadow-sm overflow-hidden">
         {watchlist.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 font-medium">Your watchlist is currently empty.</div>
+          <div className="p-12 text-center text-slate-500 font-medium">{t('watchlist.emptyList' as any)}</div>
         ) : (
           watchlist.map((item) => {
             const spread = (item.targetSellPrice ?? item.maxBuyPrice) - item.maxBuyPrice;

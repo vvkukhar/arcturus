@@ -12,6 +12,7 @@ import { InventoryDeleteButton } from '@/components/admin/inventory-delete-butto
 import { apiFetch } from '@/lib/api';
 import type { InventoryItem, ApiResponse } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 type Props = {
   rows: InventoryItem[];
@@ -19,6 +20,7 @@ type Props = {
 
 export function InventoryBulkTable({ rows }: Props) {
   const router = useRouter();
+  const { t } = useI18n();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
 
@@ -96,7 +98,7 @@ export function InventoryBulkTable({ rows }: Props) {
             className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-60"
           >
             {bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {bulkLoading ? 'Deleting...' : 'Delete Selected'}
+            {bulkLoading ? t('common.loading' as any) : t('common.delete' as any)}
           </button>
         </div>
       )}
@@ -116,9 +118,18 @@ export function InventoryBulkTable({ rows }: Props) {
                   onChange={toggleAll}
                 />
               </th>
-              {['Item', 'Purchase', 'Cost Basis', 'Manual Sell', 'Qty', 'Condition', 'Est. ROI', 'Actions'].map((header) => (
-                <th key={header} className="border-b border-[var(--border)] bg-[var(--background)]/80 px-4 py-4 text-left text-xs font-black uppercase tracking-wider text-slate-500 backdrop-blur-md">
-                  {header}
+              {[
+                t('admin.inventory.col.item' as any), 
+                t('admin.inventory.col.purchase' as any), 
+                t('admin.inventory.col.costBasis' as any), 
+                t('admin.inventory.col.manualSell' as any), 
+                t('admin.inventory.col.qty' as any), 
+                t('admin.inventory.col.condition' as any), 
+                t('admin.inventory.col.estRoi' as any), 
+                t('common.actions' as any)
+              ].map((header) => (
+                <th key={header as string} className="border-b border-[var(--border)] bg-[var(--background)]/80 px-4 py-4 text-left text-xs font-black uppercase tracking-wider text-slate-500 backdrop-blur-md">
+                  {header as string}
                 </th>
               ))}
             </tr>

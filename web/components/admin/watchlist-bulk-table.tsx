@@ -13,6 +13,7 @@ import { apiFetch } from '@/lib/api';
 import type { WatchlistItem, ApiResponse } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 type Props = {
   rows: WatchlistItem[];
@@ -20,6 +21,7 @@ type Props = {
 
 export function WatchlistBulkTable({ rows }: Props) {
   const router = useRouter();
+  const { t } = useI18n();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
 
@@ -44,21 +46,17 @@ export function WatchlistBulkTable({ rows }: Props) {
 
   const clear = useCallback(() => setSelected(new Set()), []);
 
-const bulkAdd = useCallback(async () => {
+  const bulkAdd = useCallback(async () => {
     if (bulkLoading || selected.size === 0) return;
     try {
       setBulkLoading(true);
-      
-      // Відправляємо кожен елемент окремо через гарантовано робочий ендпоінт
       const requests = Array.from(selected).map((id) =>
         apiFetch('/api/proxy/flows/purchase/add', {
           method: 'POST',
           body: JSON.stringify({ watchlistItemId: id }),
         })
       );
-      
       await Promise.all(requests);
-      
       clear();
       router.refresh();
     } catch (err: any) {
@@ -102,7 +100,7 @@ const bulkAdd = useCallback(async () => {
   if (rows.length === 0) {
     return (
       <div className="flex items-center justify-center p-12 rounded-[2rem] border-2 border-dashed border-[var(--border)] bg-[var(--background)]/50 text-sm font-bold text-slate-400">
-        Watchlist is currently empty
+        {t('admin.watchlist.empty' as any)}
       </div>
     );
   }
@@ -123,7 +121,7 @@ const bulkAdd = useCallback(async () => {
             className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-bold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40 transition-colors shadow-sm disabled:opacity-60"
           >
             {bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Activate Selected
+            {t('admin.watchlist.activateSel' as any)}
           </button>
           <button
             disabled={bulkLoading}
@@ -131,7 +129,7 @@ const bulkAdd = useCallback(async () => {
             className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-5 py-2.5 text-sm font-bold text-amber-700 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/40 transition-colors shadow-sm disabled:opacity-60"
           >
             {bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Deactivate Selected
+            {t('admin.watchlist.deactivateSel' as any)}
           </button>
           <button
             disabled={bulkLoading}
@@ -139,7 +137,7 @@ const bulkAdd = useCallback(async () => {
             className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-bold text-red-700 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors shadow-sm disabled:opacity-60"
           >
             {bulkLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Delete Selected
+            {t('admin.watchlist.deleteSel' as any)}
           </button>
         </div>
       )}
@@ -159,9 +157,18 @@ const bulkAdd = useCallback(async () => {
                   onChange={toggleAll}
                 />
               </th>
-              {['Asset', 'Desired Entry', 'Max Entry', 'Target Exit', 'Est. ROI', 'Status', 'Priority', ''].map((header) => (
-                <th key={header} className="border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-5 py-4 text-left text-xs font-black uppercase tracking-widest text-slate-500">
-                  {header}
+              {[
+                t('admin.watchlist.col.asset' as any), 
+                t('admin.watchlist.col.desired' as any), 
+                t('admin.watchlist.col.max' as any), 
+                t('admin.watchlist.col.target' as any), 
+                t('admin.inventory.col.estRoi' as any), 
+                t('common.status' as any), 
+                t('admin.watchlist.col.priority' as any), 
+                ''
+              ].map((header) => (
+                <th key={header as string} className="border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-5 py-4 text-left text-xs font-black uppercase tracking-widest text-slate-500">
+                  {header as string}
                 </th>
               ))}
             </tr>

@@ -1,6 +1,7 @@
 import { SectionCard } from '@/components/admin/section-card';
 import { PayoutsTable } from '@/components/admin/payouts-table';
 import { api } from '@/lib/api';
+import { dict } from '@/lib/i18n';
 
 export const revalidate = 0;
 
@@ -14,11 +15,12 @@ async function getPendingPayouts(): Promise<any[]> {
 
 export default async function AdminPayoutsPage() {
   const rows = await getPendingPayouts();
+  const t = (key: keyof typeof dict.uk) => dict.uk[key] || dict.en[key] || key;
 
   return (
     <div className="animate-fade-in-up space-y-6 hardware-accelerated">
       <div className="bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm">
-        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Marketplace Payouts</h1>
+        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.payouts' as any)}</h1>
         <p className="mt-1 text-sm font-medium text-slate-500">Manage pending payouts to community sellers.</p>
       </div>
 

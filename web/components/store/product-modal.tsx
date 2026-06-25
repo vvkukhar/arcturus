@@ -61,11 +61,11 @@ export function ProductModal({ item, isOpen, onCloseAction }: { item: InventoryI
         <div className="w-full md:w-1/2 p-6 md:p-8 lg:p-12 flex flex-col justify-center">
           <div className="flex flex-wrap gap-2 mb-4">
             <span className="px-2.5 py-1 md:px-3 md:py-1.5 bg-[var(--card)] border border-[var(--border)] text-slate-600 dark:text-slate-300 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-md">
-              {item.condition}
+              {item.condition === 'used' ? t('product.card.used' as any) : item.condition}
             </span>
             {item.sealed && (
               <span className="px-2.5 py-1 md:px-3 md:py-1.5 bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-400 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-md">
-                Sealed
+                {t('product.card.new' as any)}
               </span>
             )}
           </div>
@@ -74,7 +74,7 @@ export function ProductModal({ item, isOpen, onCloseAction }: { item: InventoryI
             {item.titleSnapshot}
           </h2>
           
-          {item.itemId && <p className="text-xs md:text-sm text-slate-500 font-medium mb-4 md:mb-6 font-mono tracking-widest uppercase">ID: {item.itemId}</p>}
+          {item.itemId && <p className="text-xs md:text-sm text-slate-500 font-medium mb-4 md:mb-6 font-mono tracking-widest uppercase">{t('product.card.art' as any)}: {item.itemId}</p>}
 
           <div className="text-3xl sm:text-4xl md:text-5xl font-black text-[var(--foreground)]">
             {formatMoney(price)}
@@ -104,7 +104,7 @@ export function ProductModal({ item, isOpen, onCloseAction }: { item: InventoryI
               }`}
             >
               <ShoppingCart size={24}/>
-              {status !== 'Available' ? 'Продано' : inCart ? 'У кошику' : t('product.addToCart' as any)}
+              {status !== 'Available' ? t('product.card.sold' as any) : inCart ? t('product.card.inCart' as any) : t('product.addToCart' as any)}
             </button>
           </div>
         </div>

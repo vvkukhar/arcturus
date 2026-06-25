@@ -10,7 +10,7 @@ import {
   LineChart, Activity, Filter, BarChart2, Clock, 
   FileText, PieChart, Wallet, Heart, TrendingUp, Package, 
   HelpCircle, ShieldCheck, X, Crown, Target, Gift, Vault, Truck,
-  LogIn, UserPlus, Network // 🔥 ДОДАЛИ Network СЮДИ
+  LogIn, UserPlus, Network
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
@@ -33,7 +33,7 @@ export function Sidebar() {
 
   const menu = [
     {
-      title: 'Акаунт', 
+      title: 'nav.account', 
       show: !isAuth,
       items: [
         { name: 'auth.signIn', path: '/login', icon: LogIn, show: !isAuth },
@@ -42,11 +42,11 @@ export function Sidebar() {
     },
     {
       title: 'sidebar.trading',
-      show: isPro, // 🔥 ФІКС: Показуємо тільки адмінам та PRO
+      show: isPro,
       items: [
         { name: 'sidebar.market', path: '/market', icon: LineChart, show: isPro },
         { name: 'sidebar.screener', path: '/screener', icon: Filter, show: isPro },
-        { name: 'PRO Deals', path: '/deals', icon: Target, show: isPro },
+        { name: 'pro.success.btn1', path: '/deals', icon: Target, show: isPro },
         { name: 'sidebar.indices', path: '/indices', icon: BarChart2, show: isPro },
         { name: 'sidebar.orderbook', path: '/orderbook', icon: Activity, show: isPro },
       ]
@@ -67,9 +67,9 @@ export function Sidebar() {
         { name: 'sidebar.dashboard', path: '/account', icon: Wallet, show: isAuth },
         { name: 'sidebar.watchlist', path: '/account/watchlist', icon: Heart, show: isAuth },
         { name: 'sidebar.performance', path: '/account/performance', icon: TrendingUp, show: isAuth },
-        { name: 'Arcturus Vault', path: '/vault', icon: Vault, show: isPro },
-        { name: 'The Syndicate', path: '/syndicate', icon: Network, show: isAuth }, // 🔥 ДОДАЛИ СЮДИ
-        { name: 'Arcturus PRO', path: '/pro', icon: Crown, show: isAuth },
+        { name: 'vault.title', path: '/vault', icon: Vault, show: isPro },
+        { name: 'syndicate.title', path: '/syndicate', icon: Network, show: isAuth },
+        { name: 'pro.title', path: '/pro', icon: Crown, show: isAuth },
       ]
     },
     {
@@ -77,8 +77,8 @@ export function Sidebar() {
       show: true,
       items: [
         { name: 'nav.catalog', path: '/store/catalog', icon: Package, show: true },
-        { name: 'Mystery Boxes', path: '/store/mystery-boxes', icon: Gift, show: true },
-        { name: 'B2B Dropship', path: '/dropship', icon: Truck, show: isPro }, 
+        { name: 'mystery.title', path: '/store/mystery-boxes', icon: Gift, show: true },
+        { name: 'dropship.title', path: '/dropship', icon: Truck, show: isPro }, 
         { name: 'sidebar.sell', path: '/sell', icon: Package, show: true },
         { name: 'nav.auth', path: '/authenticity', icon: ShieldCheck, show: true },
         { name: 'footer.faq', path: '/faq', icon: HelpCircle, show: true },
@@ -102,7 +102,7 @@ export function Sidebar() {
         <div className="flex items-center justify-between p-6 border-b border-[var(--border)] lg:hidden">
           <span className="font-extrabold text-xl flex items-center gap-2 text-[var(--foreground)]">
             <Package className="text-blue-600" size={24} />
-            Terminal
+            Arcturus
           </span>
           <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:bg-[var(--background)] hover:text-slate-600 rounded-full transition-colors">
             <X size={20} />
@@ -117,7 +117,7 @@ export function Sidebar() {
             return (
               <div key={idx}>
                 <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 px-3">
-                  {isMounted && section.title.includes('Акаунт') ? 'Акаунт' : isMounted ? t(section.title as any) : '...'}
+                  {isMounted ? t(section.title as any) : '...'}
                 </h4>
                 <div className="space-y-1">
                   {visibleItems.map((item, iIdx) => {
@@ -135,7 +135,7 @@ export function Sidebar() {
                       >
                         <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                         <span>
-                          {isMounted && (item.name.includes('PRO') || item.name.includes('Mystery') || item.name.includes('Vault') || item.name.includes('B2B')) ? item.name : isMounted ? t(item.name as any) : '...'}
+                          {isMounted ? t(item.name as any) : '...'}
                         </span>
                       </Link>
                     );

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ShoppingCart, Package } from 'lucide-react';
 import { formatMoney } from '@/lib/format';
 import { useCart } from '@/lib/store/cart';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface ProductCardProps {
   item: {
@@ -20,6 +21,7 @@ interface ProductCardProps {
 }
 
 function ProductCardComponent({ item }: ProductCardProps) {
+  const { t } = useI18n();
   const addItem = useCart((state) => state.addItem);
   const inCart = useCart((state) => state.items.some((i) => i.id === item.id));
   
@@ -73,7 +75,7 @@ function ProductCardComponent({ item }: ProductCardProps) {
             {item.title}
           </h3>
           <p className="mt-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-            {item.condition}
+            {item.condition === 'used' ? t('product.card.used' as any) : item.condition === 'new' ? t('product.card.new' as any) : item.condition}
           </p>
         </div>
 

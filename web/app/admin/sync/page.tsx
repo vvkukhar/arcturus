@@ -8,6 +8,7 @@ import { RefreshCw, ServerCrash, DatabaseZap, Loader2, PlaySquare } from 'lucide
 import { MetricCard } from '@/components/admin/metric-card';
 import { StatusPill } from '@/components/admin/status-pill';
 import { getSocket } from '@/lib/socket';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface SyncSummary {
   totalItems: number;
@@ -24,6 +25,7 @@ interface CriticalItem {
 }
 
 export default function SyncCenterPage() {
+  const { t } = useI18n();
   const { data: summary, mutate: mutateSummary } = useSWR<SyncSummary>('/api/proxy/sync/dashboard/summary', swrFetcher);
   const { data: criticalData } = useSWR<CriticalItem[]>('/api/proxy/sync/critical?limit=10', swrFetcher);
   
@@ -99,15 +101,15 @@ export default function SyncCenterPage() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
       <div className="bg-[var(--card)] border border-[var(--border)] p-6 md:p-8 rounded-[2rem] shadow-sm">
-        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Sync Center</h1>
-        <p className="mt-1 text-sm font-medium text-slate-500">Asynchronous background synchronization via BullMQ.</p>
+        <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.sync.title' as any)}</h1>
+        <p className="mt-1 text-sm font-medium text-slate-500">{t('admin.sync.subtitle' as any)}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Total Monitored Assets" value={summary?.totalItems ?? 0} subtitle="Tracked in database" />
-        <MetricCard title="Needs Refresh" value={summary?.needsRefresh ?? 0} subtitle="Stale or missing snapshots" />
-        <MetricCard title="Fresh Snapshots" value={summary?.fresh ?? 0} subtitle="Updated in last 6 hours" />
-        <MetricCard title="Aging / Stale" value={(summary?.aging ?? 0) + (summary?.stale ?? 0)} subtitle="Requires attention" />
+        <MetricCard title={t('admin.sync.totalAssets' as any)} value={summary?.totalItems ?? 0} subtitle="Tracked in database" />
+        <MetricCard title={t('admin.sync.needsRefresh' as any)} value={summary?.needsRefresh ?? 0} subtitle="Stale or missing snapshots" />
+        <MetricCard title={t('admin.sync.freshSnaps' as any)} value={summary?.fresh ?? 0} subtitle="Updated in last 6 hours" />
+        <MetricCard title={t('admin.sync.agingStale' as any)} value={(summary?.aging ?? 0) + (summary?.stale ?? 0)} subtitle="Requires attention" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -118,8 +120,8 @@ export default function SyncCenterPage() {
                 <DatabaseZap size={24} />
               </div>
               <div>
-                <h2 className="text-xl font-black text-[var(--foreground)]">Global Async Refresh</h2>
-                <p className="text-sm font-medium text-slate-500">Dispatch bulk computation jobs.</p>
+                <h2 className="text-xl font-black text-[var(--foreground)]">{t('admin.sync.globalRefresh' as any)}</h2>
+                <p className="text-sm font-medium text-slate-500">{t('admin.sync.globalRefreshDesc' as any)}</p>
               </div>
             </div>
           </div>
@@ -150,7 +152,7 @@ export default function SyncCenterPage() {
                 className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-indigo-700 disabled:opacity-50"
               >
                 {(loading || isRunning) ? <Loader2 className="h-5 w-5 animate-spin" /> : <PlaySquare className="h-5 w-5" />}
-                {(loading || isRunning) ? 'Queueing...' : 'Dispatch Refresh'}
+                {(loading || isRunning) ? 'Queueing...' : t('admin.sync.startRefresh' as any)}
               </button>
               <button
                 onClick={() => setSyncState({ status: 'idle', processedItems: 0, totalItems: 0, message: 'Ready' })}
@@ -169,8 +171,8 @@ export default function SyncCenterPage() {
               <ServerCrash size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-black text-[var(--foreground)]">Critical Assets</h2>
-              <p className="text-sm font-medium text-slate-500">Items missing data or severely outdated.</p>
+              <h2 className="text-xl font-black text-[var(--foreground)]">{t('admin.sync.criticalAssets' as any)}</h2>
+              <p className="text-sm font-medium text-slate-500">{t('admin.sync.criticalDesc' as any)}</p>
             </div>
           </div>
 

@@ -6,6 +6,7 @@ import { formatMoney, formatPercent } from '@/lib/format';
 import { Loader2, Target, ExternalLink, ShieldAlert } from 'lucide-react';
 import { ProGate } from '@/components/store/pro-gate';
 import Image from 'next/image';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface ProDeal {
   id: string;
@@ -21,6 +22,7 @@ interface ProDeal {
 }
 
 export default function ProDealsPage() {
+  const { t } = useI18n();
   const { data, isLoading } = useSWR<ProDeal[]>('/api/proxy/pro/deals', swrFetcher, { refreshInterval: 15000 });
   const deals = Array.isArray(data) ? data : [];
 
@@ -29,13 +31,13 @@ export default function ProDealsPage() {
       <div className="p-6 md:p-10 max-w-7xl mx-auto animate-fade-in-up">
         <div className="mb-10 flex flex-col md:flex-row justify-between items-end gap-6">
           <div>
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight">PRO Deals Radar</h1>
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight">{t('pro.success.btn1' as any)}</h1>
             <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg font-medium">
-              Real-time feed of profitable market anomalies.
+              {t('pro.signalsDesc' as any)}
             </p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-xl font-bold text-sm">
-            <Target size={16} className="animate-pulse" /> Live Scanner Active
+            <Target size={16} className="animate-pulse" /> {t('market.active' as any)}
           </div>
         </div>
 
@@ -44,8 +46,8 @@ export default function ProDealsPage() {
         ) : deals.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-16 rounded-[2.5rem] border-2 border-dashed border-[var(--border)] bg-[var(--card)]/50">
             <ShieldAlert size={48} className="text-slate-300 mb-6" />
-            <h3 className="text-2xl font-black text-[var(--foreground)]">No active deals</h3>
-            <p className="mt-2 font-medium text-slate-500">Wait for the market to update. The radar scans constantly.</p>
+            <h3 className="text-2xl font-black text-[var(--foreground)]">{t('common.empty' as any)}</h3>
+            <p className="mt-2 font-medium text-slate-500">{t('ticker.awaiting' as any)}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -67,15 +69,15 @@ export default function ProDealsPage() {
 
                 <div className="grid grid-cols-2 gap-4 mb-6 pt-6 border-t border-[var(--border)]">
                   <div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Buy Price</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{t('orderbook.price' as any)}</div>
                     <div className="text-xl font-black text-[var(--foreground)]">{formatMoney(deal.buyPrice)}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-1">Target Exit</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-1">{t('screener.col.target' as any)}</div>
                     <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">{formatMoney(deal.targetSellPrice)}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">Profit</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">{t('admin.profit.avgProfit' as any)}</div>
                     <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">+{formatMoney(deal.profit)}</div>
                   </div>
                   <div>
@@ -90,7 +92,7 @@ export default function ProDealsPage() {
                   rel="noopener noreferrer"
                   className="w-full py-3.5 bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white font-black rounded-xl transition-transform active:scale-95 flex items-center justify-center gap-2"
                 >
-                  Buy on {deal.sourceCode} <ExternalLink size={16} />
+                  {t('scout.buy' as any)} <ExternalLink size={16} />
                 </a>
               </div>
             ))}

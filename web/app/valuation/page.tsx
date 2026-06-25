@@ -44,10 +44,10 @@ export default function ValuationPage() {
       let confidence = data.count >= 10 ? 98.5 : data.count >= 4 ? 82.0 : 45.0;
       
       let finalPrice = data.median;
-      if (condition.includes('Used')) {
+      if (condition.includes('Used') || condition.includes('Вживаний')) {
         finalPrice *= 0.75;
         confidence *= 0.9;
-      } else if (condition.includes('Damaged')) {
+      } else if (condition.includes('Damaged') || condition.includes('Пошкоджений')) {
         finalPrice *= 0.85;
       }
 

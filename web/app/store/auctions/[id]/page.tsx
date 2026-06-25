@@ -23,13 +23,13 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
   const { data: user } = useSWR<any>('/api/auth/me', swrFetcher);
   const { data: auction, isLoading, mutate } = useSWR<any>(`/api/auctions/${id}`, swrFetcher);
 
-  const hasTicket = auction?.tickets?.some((t: any) => t.userId === user?.id && t.status === 'locked');
+  const hasTicket = auction?.tickets?.some((ticket: any) => ticket.userId === user?.id && ticket.status === 'locked');
 
   useEffect(() => {
     if (!auction) return;
     const socket = getSocket();
     
-    const handleNewBid = (payload: any) => {
+    const handleNewBid = () => {
       toast.info('New bid placed!');
       mutate();
     };
@@ -45,7 +45,7 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
     const interval = setInterval(() => {
       const diff = new Date(auction.endsAt).getTime() - Date.now();
       if (diff <= 0) {
-        setTimeLeft('Auction Ended');
+        setTimeLeft(t('auctions.time.finished' as any));
         clearInterval(interval);
         return;
       }
@@ -55,17 +55,17 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
       setTimeLeft(`${h}h ${m}m ${s}s`);
     }, 1000);
     return () => clearInterval(interval);
-  }, [auction?.endsAt]);
+  }, [auction?.endsAt, t]);
 
   const handlePayDeposit = async () => {
     if (isPayingDeposit) return;
     try {
       setIsPayingDeposit(true);
       await apiFetch(`/api/proxy/live/auction/${id}/ticket`, { method: 'POST' });
-      toast.success('Депозит 500 ₴ успішно заблоковано! Ви можете робити ставки.');
+      toast.success(t('live.depositSuccess' as any));
       mutate();
     } catch (e: any) {
-      toast.error(e.message || 'Помилка. Поповніть Vault баланс мінімум на 500 ₴.');
+      toast.error(e.message || 'Error');
     } finally {
       setIsPayingDeposit(false);
     }
@@ -75,7 +75,7 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
     e.preventDefault();
     const amount = Number(bidAmount);
     if (amount <= (auction?.currentPrice || 0)) {
-      toast.error('Bid must be higher than current price');
+      toast.error(t('offer.errorHigher' as any));
       return;
     }
 
@@ -86,7 +86,7 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({ amount }),
       });
       setBidAmount('');
-      toast.success('Bid placed successfully!');
+      toast.success(t('live.bidSuccess' as any));
       mutate();
     } catch (err: any) {
       toast.error(err.message || 'Failed to place bid.');
@@ -107,7 +107,7 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-in fade-in duration-500 pb-24">
       <Link href="/store/auctions" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--card)] border border-[var(--border)] text-sm font-bold hover:bg-slate-50 transition-colors mb-8">
-        <ArrowLeft className="h-4 w-4" /> Back to Auctions
+        <ArrowLeft className="h-4 w-4" /> {t('auctions.back' as any)}
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -129,7 +129,7 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
           <div className="bg-[var(--card)] p-8 rounded-[2rem] border border-[var(--border)] shadow-xl mb-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-5"><Gavel size={120} /></div>
             
-            <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Current Bid</div>
+            <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">{t('auctions.current' as any)}</div>
             <div className="text-5xl md:text-6xl font-black text-red-600 dark:text-red-400 mb-8 font-mono">
               {formatMoney(auction.currentPrice)}
             </div>
@@ -138,15 +138,15 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 p-6 rounded-2xl relative z-10">
                 <div className="flex items-center gap-3 mb-4 text-red-600 dark:text-red-400">
                   <Lock size={24} />
-                  <span className="font-black text-lg">Вхід за Депозитом</span>
+                  <span className="font-black text-lg">{t('live.depositReq' as any)}</span>
                 </div>
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-6">Щоб робити ставки, необхідно сплатити гарантійний депозит 500 ₴ з балансу Vault. Депозит повертається, якщо ви не виграєте аукціон.</p>
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-6">{t('live.depositDesc' as any)}</p>
                 <button 
                   onClick={handlePayDeposit}
                   disabled={isPayingDeposit}
                   className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl transition-transform active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2"
                 >
-                  {isPayingDeposit ? <Loader2 className="animate-spin" /> : <Gavel />} Оплатити 500 ₴
+                  {isPayingDeposit ? <Loader2 className="animate-spin" /> : <Gavel />} {t('live.payDeposit' as any)}
                 </button>
               </div>
             ) : (
@@ -170,18 +170,18 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
                     disabled={isEnded || isBidding || !bidAmount || Number(bidAmount) <= auction.currentPrice}
                     className="h-16 px-8 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-lg flex items-center justify-center gap-2 transition-all shadow-xl shadow-red-600/20 disabled:opacity-50 disabled:scale-100 active:scale-95"
                   >
-                    {isBidding ? <Loader2 className="animate-spin" /> : <ArrowUpCircle />} Place Bid
+                    {isBidding ? <Loader2 className="animate-spin" /> : <ArrowUpCircle />} {t('auctions.placeBid' as any)}
                   </button>
                 </div>
                 <p className="text-xs font-semibold text-slate-500">
-                  Anti-sniping is active. Bids placed in the last 15 seconds will extend the timer.
+                  {t('auctions.antiSniping' as any)}
                 </p>
               </form>
             )}
           </div>
 
           <div className="flex-1">
-            <h3 className="font-black text-lg mb-4">Bid History ({auction.bids?.length || 0})</h3>
+            <h3 className="font-black text-lg mb-4">{t('auctions.bidHistory' as any)} ({auction.bids?.length || 0})</h3>
             <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
               {auction.bids?.map((bid: any, idx: number) => (
                 <div key={bid.id} className="flex justify-between items-center p-4 bg-[var(--card)] border border-[var(--border)] rounded-2xl">
@@ -197,7 +197,7 @@ export default function AuctionRoomPage({ params }: { params: Promise<{ id: stri
               ))}
               {(!auction.bids || auction.bids.length === 0) && (
                 <div className="text-center p-8 text-slate-400 font-bold border-2 border-dashed border-[var(--border)] rounded-2xl">
-                  No bids yet. Be the first!
+                  {t('auctions.noBids' as any)}
                 </div>
               )}
             </div>

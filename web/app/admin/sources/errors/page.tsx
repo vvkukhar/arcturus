@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swr-fetcher';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { DataTable } from '@/components/admin/data-table';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface SyncErrorLog {
   id: string;
@@ -18,6 +19,7 @@ interface SyncErrorLog {
 }
 
 export default function SourcesErrorsPage() {
+  const { t } = useI18n();
   const { data, isLoading } = useSWR<SyncErrorLog[]>('/api/proxy/sync-runs/errors', swrFetcher, { refreshInterval: 10000 });
   const rows = Array.isArray(data) ? data : [];
 

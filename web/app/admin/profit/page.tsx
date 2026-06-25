@@ -8,6 +8,7 @@ import { swrFetcher } from '@/lib/swr-fetcher';
 import { formatMoney, formatPercent } from '@/lib/format';
 import { MetricCard } from '@/components/admin/metric-card';
 import { getSocket } from '@/lib/socket';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 const ResponsiveContainer = dynamic(() => import('recharts').then((mod) => mod.ResponsiveContainer), { ssr: false });
 const AreaChart = dynamic(() => import('recharts').then((mod) => mod.AreaChart), { ssr: false });
@@ -46,7 +47,7 @@ interface VelocityStats {
 }
 
 export default function AdminProfitPage() {
-  // Тягнемо з проксі, щоб іти напряму в сервіс аналітики без Redis-кешування
+  const { t } = useI18n();
   const { data: summary, isLoading: sLoading, mutate: mutateSummary } = useSWR<ProfitSummary>('/api/proxy/profit/summary', swrFetcher);
   const { data: monthly = [], isLoading: mLoading, mutate: mutateMonthly } = useSWR<MonthlyProfit[]>('/api/proxy/profit/monthly', swrFetcher);
   const { data: themes = [], isLoading: tLoading, mutate: mutateThemes } = useSWR<ThemeProfit[]>('/api/proxy/profit/by-theme', swrFetcher);
@@ -83,34 +84,34 @@ export default function AdminProfitPage() {
             <Coins className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">Profit & Loss</h1>
-            <p className="mt-1 text-sm font-medium text-slate-500">Realized gains, ROI tracking, and sales velocity.</p>
+            <h1 className="text-3xl font-black text-[var(--foreground)] tracking-tight">{t('admin.profit.title' as any)}</h1>
+            <p className="mt-1 text-sm font-medium text-slate-500">{t('admin.profit.subtitle' as any)}</p>
           </div>
         </div>
         <div className="flex items-center gap-4 text-right bg-[var(--background)] px-6 py-4 rounded-2xl border border-[var(--border)]">
           <div>
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Total Realized Profit</div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{t('admin.profit.totalRealized' as any) || 'Total Realized Profit'}</div>
             <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{formatMoney(summary?.totalProfit)}</div>
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Total Revenue" value={formatMoney(summary?.totalRevenue)} subtitle={`${summary?.salesCount ?? 0} total sales completed`} />
-        <MetricCard title="Average Profit / Sale" value={formatMoney(summary?.avgProfitPerSale)} subtitle="Net gain per transaction" />
-        <MetricCard title="Realized ROI" value={formatPercent(summary?.realizedRoiPercent)} subtitle="Return on sold capital" />
-        <MetricCard title="Sales Velocity (30d)" value={`${velocity?.soldPerDay ?? 0} / day`} subtitle={velocity?.estimatedDaysToClear ? `Est. clear time: ${velocity.estimatedDaysToClear} days` : 'Insufficient data'} />
+        <MetricCard title={t('admin.profit.totalRev' as any)} value={formatMoney(summary?.totalRevenue)} subtitle={`${summary?.salesCount ?? 0} total sales completed`} />
+        <MetricCard title={t('admin.profit.avgProfit' as any)} value={formatMoney(summary?.avgProfitPerSale)} subtitle="Net gain per transaction" />
+        <MetricCard title={t('admin.profit.realizedRoi' as any)} value={formatPercent(summary?.realizedRoiPercent)} subtitle="Return on sold capital" />
+        <MetricCard title={t('admin.profit.velocity' as any)} value={`${velocity?.soldPerDay ?? 0} / day`} subtitle={velocity?.estimatedDaysToClear ? `Est. clear time: ${velocity.estimatedDaysToClear} days` : 'Insufficient data'} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2 rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm flex flex-col">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Revenue & Profit Timeline</h2>
+              <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">{t('admin.profit.timeline' as any)}</h2>
               <p className="text-sm font-medium text-slate-500">Monthly financial performance</p>
             </div>
             <div className="px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-black tracking-widest uppercase border border-blue-200 dark:border-blue-800">
-              All Time
+              {t('common.all' as any)} Time
             </div>
           </div>
           <div className="flex-1 min-h-[350px] w-full">
@@ -137,7 +138,7 @@ export default function AdminProfitPage() {
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-slate-400 font-bold border-2 border-dashed border-[var(--border)] rounded-2xl bg-[var(--background)]/50">
                 <Coins size={32} className="mb-3 opacity-50" />
-                No timeline data available
+                {t('common.empty' as any)}
               </div>
             )}
           </div>
@@ -145,25 +146,25 @@ export default function AdminProfitPage() {
 
         <div className="rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm flex flex-col">
           <div className="mb-6">
-            <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Theme Performance</h2>
+            <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">{t('admin.profit.themePerf' as any)}</h2>
             <p className="text-sm font-medium text-slate-500">Profit distribution</p>
           </div>
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
             {themes.length > 0 ? (
-              themes.map((t, idx) => (
+              themes.map((tItem, idx) => (
                 <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-[var(--background)]/50 border border-[var(--border)] hover:border-emerald-500/30 hover:bg-[var(--card)] hover:shadow-md transition-all group">
                   <div>
-                    <div className="font-black text-[var(--foreground)] leading-tight">{t.theme}</div>
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t.salesCount} sales</div>
+                    <div className="font-black text-[var(--foreground)] leading-tight">{tItem.theme}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{tItem.salesCount} sales</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-black text-emerald-600 dark:text-emerald-400">{formatMoney(t.profit)}</div>
+                    <div className="font-black text-emerald-600 dark:text-emerald-400">{formatMoney(tItem.profit)}</div>
                   </div>
                 </div>
               ))
             ) : (
               <div className="h-full flex items-center justify-center text-slate-400 font-bold">
-                No theme data
+                {t('common.empty' as any)}
               </div>
             )}
           </div>
@@ -173,7 +174,7 @@ export default function AdminProfitPage() {
       <div className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-[2.5rem] border border-[var(--border)] bg-[var(--card)] p-8 shadow-sm">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">Unrealized Potential</h2>
+            <h2 className="text-xl font-black text-[var(--foreground)] tracking-tight">{t('admin.profit.unrealized' as any)}</h2>
             <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl">
               <ArrowUpRight size={20} />
             </div>

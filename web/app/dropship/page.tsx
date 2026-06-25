@@ -8,6 +8,7 @@ import { formatMoney } from '@/lib/format';
 import { ProGate } from '@/components/store/pro-gate';
 import Image from 'next/image';
 import { DropshipCheckoutModal } from '@/components/dropship/dropship-checkout-modal';
+import { useI18n } from '@/components/providers/i18n-provider';
 
 interface WholesaleItem {
   id: string;
@@ -21,6 +22,7 @@ interface WholesaleItem {
 }
 
 export default function DropshipB2bPage() {
+  const { t } = useI18n();
   const { data, isLoading, mutate } = useSWR<WholesaleItem[]>('/api/proxy/dropship/catalog', swrFetcher);
   const [query, setQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<WholesaleItem | null>(null);
@@ -40,8 +42,8 @@ export default function DropshipB2bPage() {
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-xl text-xs font-black uppercase tracking-widest mb-4 border border-indigo-500/30">
               <Store size={14} /> Zero-Touch Fulfillment
             </div>
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2">B2B Dropship Portal</h1>
-            <p className="text-slate-400 font-medium max-w-xl">Отримуйте оптові ціни (-15%) на наш інвентар. Оформлюйте доставку напряму своїм клієнтам, а різницю забирайте собі.</p>
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2">{t('dropship.title' as any)}</h1>
+            <p className="text-slate-400 font-medium max-w-xl">{t('dropship.subtitle' as any)}</p>
           </div>
 
           <div className="relative z-10 w-full md:w-80">
@@ -50,7 +52,7 @@ export default function DropshipB2bPage() {
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Шукати набори..."
+              placeholder={t('dropship.search' as any)}
               className="w-full bg-black/50 border border-slate-700 text-white rounded-2xl pl-12 pr-4 py-4 font-bold focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
             />
           </div>
@@ -61,8 +63,8 @@ export default function DropshipB2bPage() {
         ) : filteredItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 bg-[var(--card)] border border-[var(--border)] rounded-[3rem]">
             <Package size={64} className="text-slate-300 mb-6" />
-            <h2 className="text-2xl font-black text-[var(--foreground)]">Немає товарів</h2>
-            <p className="text-slate-500 font-medium">Спробуйте змінити пошуковий запит.</p>
+            <h2 className="text-2xl font-black text-[var(--foreground)]">{t('dropship.noItems' as any)}</h2>
+            <p className="text-slate-500 font-medium">{t('dropship.emptySub' as any)}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -90,7 +92,7 @@ export default function DropshipB2bPage() {
                         <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400 leading-none mt-1">{formatMoney(item.wholesalePrice)}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Ваш Профіт</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-emerald-500">{t('dropship.profit' as any)}</div>
                         <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><TrendingUp size={16} /> {formatMoney(item.profitMargin)}</div>
                       </div>
                     </div>
@@ -99,7 +101,7 @@ export default function DropshipB2bPage() {
                       onClick={() => setSelectedItem(item)}
                       className="w-full py-4 bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white font-black rounded-xl transition-transform active:scale-95 flex items-center justify-center gap-2 shadow-lg"
                     >
-                      Відправити клієнту <Truck size={18} />
+                      {t('dropship.sendToClient' as any)} <Truck size={18} />
                     </button>
                   </div>
                 </div>

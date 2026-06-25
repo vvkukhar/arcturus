@@ -1,9 +1,9 @@
-// call:function_1{"queries":["web/app/seller/[id]/page.tsx"]}
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Package, ShieldCheck, User, Star, TrendingUp } from 'lucide-react';
 import { appConfig } from '@/lib/config';
 import { ProductCard } from '@/components/store/product-card';
+import { dict } from '@/lib/i18n';
 
 export const revalidate = 60;
 
@@ -22,6 +22,9 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
   if (!data) notFound();
 
   const { seller, stats, listings } = data;
+  
+  // Серверний компонент, беремо українську за замовчуванням
+  const t = (key: keyof typeof dict.uk) => dict.uk[key] || dict.en[key] || key;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 animate-in fade-in duration-500 transform-gpu min-h-screen">
@@ -40,7 +43,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
             <ShieldCheck className="text-blue-500 w-8 h-8" />
           </div>
           <p className="text-slate-500 font-medium text-lg mb-8">
-            На платформі з {new Date(seller.createdAt).toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' })}
+            {t('seller.since' as any)} {new Date(seller.createdAt).toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' })}
           </p>
 
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
@@ -49,7 +52,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
                 <TrendingUp size={20} />
               </div>
               <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Успішних угод</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('seller.success' as any)}</div>
                 <div className="text-xl font-black text-[var(--foreground)] leading-tight">{stats.soldCount}</div>
               </div>
             </div>
@@ -59,7 +62,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
                 <Star size={20} />
               </div>
               <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Рейтинг</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('seller.rating' as any)}</div>
                 <div className="text-xl font-black text-[var(--foreground)] leading-tight">5.0 <span className="text-sm text-slate-400 font-medium">/ 5</span></div>
               </div>
             </div>
@@ -71,7 +74,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
       <div>
         <div className="flex items-center gap-3 mb-8">
           <Package className="text-slate-400" size={24} />
-          <h2 className="text-3xl font-black tracking-tight text-[var(--foreground)]">Товари продавця ({stats.activeListings})</h2>
+          <h2 className="text-3xl font-black tracking-tight text-[var(--foreground)]">{t('seller.products' as any)} ({stats.activeListings})</h2>
         </div>
 
         {listings.length > 0 ? (
@@ -80,7 +83,6 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
               const safeTitle = item.titleSnapshot || item.item?.title || 'Unknown Item';
               const baseSlug = String(safeTitle).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
               
-              // 🔥 ФІКС ТУТ
               const safeSlug = `${baseSlug}-id-${item.id}`;
               const safeImage = item.images?.[0]?.imageUrl || 'https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?w=800&q=80';
               
@@ -102,8 +104,8 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
         ) : (
           <div className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-[var(--border)] bg-[var(--card)] py-20 text-center">
             <span className="mb-4 text-6xl opacity-50" aria-hidden="true">🛒</span>
-            <h3 className="text-xl font-black text-[var(--foreground)]">Немає активних товарів</h3>
-            <p className="mt-2 font-medium text-slate-500">Зараз у цього продавця немає виставлених наборів.</p>
+            <h3 className="text-xl font-black text-[var(--foreground)]">{t('seller.noProducts' as any)}</h3>
+            <p className="mt-2 font-medium text-slate-500">{t('seller.noProductsDesc' as any)}</p>
           </div>
         )}
       </div>
